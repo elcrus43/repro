@@ -10,6 +10,21 @@ export function LoginPage() {
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
+    async function handleGoogleLogin() {
+        setError('');
+        try {
+            const { error: err } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            if (err) setError(err.message);
+        } catch (e) {
+            setError('Ошибка инициализации Google Auth: ' + e.message);
+        }
+    }
+
     async function handleSubmit(e) {
         e.preventDefault();
         setLoading(true);
@@ -20,7 +35,26 @@ export function LoginPage() {
         });
         if (err) { setError(err.message === 'Invalid login credentials' ? 'Неверный email или пароль' : err.message); setLoading(false); return; }
 
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+        let { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
+
+        // If profile missing (could happen if registration was interrupted), create it
+        if (!profile) {
+            const newProfile = {
+                id: data.user.id,
+                full_name: data.user.user_metadata?.full_name || 'Пользователь',
+                phone: data.user.user_metadata?.phone || '',
+                agency_name: data.user.user_metadata?.agency_name || '',
+                role: 'realtor',
+            };
+            const { data: createdProfile, error: createErr } = await supabase.from('profiles').insert(newProfile).select().single();
+            if (createErr) {
+                setError('Ошибка при получении профиля: ' + createErr.message);
+                setLoading(false);
+                return;
+            }
+            profile = createdProfile;
+        }
+
         if (profile) {
             dispatch({ type: 'SET_USER', user: { ...profile, email: data.user.email } });
             const [clients, properties, requests, matches, showings, tasks] = await Promise.all([
@@ -51,23 +85,34 @@ export function LoginPage() {
                 <h1>re/pro</h1>
                 <p>Умная недвижимость</p>
             </div>
-            <form className="auth-card" onSubmit={handleSubmit}>
-                <h2>Вход</h2>
-                {error && <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)' }}>{error}</div>}
-                <div className="form-group">
-                    <label className="form-label">Email</label>
-                    <input className="form-input" type="email" value={form.email} placeholder="anna@novydom.ru"
-                        onChange={e => setForm({ ...form, email: e.target.value })} required />
+            <div className="auth-card">
+                <form onSubmit={handleSubmit}>
+                    <h2>Вход</h2>
+                    {error && <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 12 }}>{error}</div>}
+                    <div className="form-group">
+                        <label className="form-label">Email</label>
+                        <input className="form-input" type="email" value={form.email} placeholder="anna@novydom.ru"
+                            onChange={e => setForm({ ...form, email: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Пароль</label>
+                        <input className="form-input" type="password" value={form.password} placeholder="••••••••"
+                            onChange={e => setForm({ ...form, password: e.target.value })} required />
+                    </div>
+                    <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+                        {loading ? 'Входим...' : 'Войти'}
+                    </button>
+                </form>
+
+                <div className="auth-divider">
+                    <span>или</span>
                 </div>
-                <div className="form-group">
-                    <label className="form-label">Пароль</label>
-                    <input className="form-input" type="password" value={form.password} placeholder="••••••••"
-                        onChange={e => setForm({ ...form, password: e.target.value })} required />
-                </div>
-                <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                    {loading ? 'Входим...' : 'Войти'}
+
+                <button type="button" className="btn btn-outline btn-full" onClick={handleGoogleLogin} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                    <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" /><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853" /><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05" /><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#EA4335" /></svg>
+                    Google
                 </button>
-            </form>
+            </div>
             <div className="auth-footer">
                 Нет аккаунта? <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 700 }}>Регистрация</Link>
             </div>
@@ -80,19 +125,50 @@ export function RegisterPage() {
     const navigate = useNavigate();
     const [form, setForm] = useState({ full_name: '', email: '', phone: '', password: '', agency_name: '' });
     const [error, setError] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
     const [loading, setLoading] = useState(false);
+
+    async function handleGoogleLogin() {
+        setError('');
+        try {
+            const { error: err } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            if (err) setError(err.message);
+        } catch (e) {
+            setError('Ошибка инициализации Google Auth: ' + e.message);
+        }
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setSuccessMsg('');
 
         // 1. Create auth user
         const { data, error: signUpErr } = await supabase.auth.signUp({
             email: form.email,
             password: form.password,
+            options: {
+                data: {
+                    full_name: form.full_name,
+                    phone: form.phone,
+                    agency_name: form.agency_name
+                }
+            }
         });
         if (signUpErr) { setError(signUpErr.message); setLoading(false); return; }
+
+        // If email confirmation is required, session will be null
+        if (!data.session) {
+            setSuccessMsg('Аккаунт создан! Пожалуйста, проверьте почту и подтвердите email для входа.');
+            setLoading(false);
+            return;
+        }
 
         const userId = data.user.id;
 
@@ -118,29 +194,50 @@ export function RegisterPage() {
                 <h1>re/pro</h1>
                 <p>Умная недвижимость</p>
             </div>
-            <form className="auth-card" onSubmit={handleSubmit}>
+            <div className="auth-card">
                 <h2>Регистрация</h2>
-                {error && <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 8 }}>{error}</div>}
-                {[
-                    { label: 'ФИО', key: 'full_name', placeholder: 'Иванова Анна Петровна', required: true },
-                    { label: 'Email', key: 'email', type: 'email', placeholder: 'anna@mail.ru', required: true },
-                    { label: 'Телефон', key: 'phone', placeholder: '+7-999-000-0000', required: true },
-                    { label: 'Пароль', key: 'password', type: 'password', placeholder: '••••••••', required: true },
-                    { label: 'Название агентства', key: 'agency_name', placeholder: 'АН «Мой Дом»' },
-                ].map(f => (
-                    <div key={f.key} className="form-group">
-                        <label className="form-label">{f.label}{f.required && <span className="required">*</span>}</label>
-                        <input
-                            className="form-input" type={f.type || 'text'} placeholder={f.placeholder}
-                            value={form[f.key]} required={f.required}
-                            onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                        />
-                    </div>
-                ))}
-                <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
-                    {loading ? 'Создаём аккаунт...' : 'Зарегистрироваться'}
-                </button>
-            </form>
+                {error && <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 12 }}>{error}</div>}
+                {successMsg && <div style={{ color: 'var(--primary)', fontSize: 14, background: 'var(--primary-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 12 }}>{successMsg}</div>}
+
+                {!successMsg ? (
+                    <>
+                        <form onSubmit={handleSubmit}>
+                            {[
+                                { label: 'ФИО', key: 'full_name', placeholder: 'Иванова Анна Петровна', required: true },
+                                { label: 'Email', key: 'email', type: 'email', placeholder: 'anna@mail.ru', required: true },
+                                { label: 'Телефон', key: 'phone', placeholder: '+7-999-000-0000', required: true },
+                                { label: 'Пароль', key: 'password', type: 'password', placeholder: '••••••••', required: true },
+                                { label: 'Название агентства', key: 'agency_name', placeholder: 'АН «Мой Дом»' },
+                            ].map(f => (
+                                <div key={f.key} className="form-group">
+                                    <label className="form-label">{f.label}{f.required && <span className="required">*</span>}</label>
+                                    <input
+                                        className="form-input" type={f.type || 'text'} placeholder={f.placeholder}
+                                        value={form[f.key]} required={f.required}
+                                        onChange={e => setForm({ ...form, [f.key]: e.target.value })}
+                                    />
+                                </div>
+                            ))}
+                            <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
+                                {loading ? 'Создаём аккаунт...' : 'Зарегистрироваться'}
+                            </button>
+                        </form>
+
+                        <div className="auth-divider">
+                            <span>или</span>
+                        </div>
+
+                        <button type="button" className="btn btn-outline btn-full" onClick={handleGoogleLogin} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                            <svg width="18" height="18" viewBox="0 0 18 18"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4" /><path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853" /><path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z" fill="#FBBC05" /><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962l3.007 2.332C4.672 5.164 6.656 3.58 9 3.58z" fill="#EA4335" /></svg>
+                            Google
+                        </button>
+                    </>
+                ) : (
+                    <Link to="/login" className="btn btn-primary btn-full" style={{ textAlign: 'center', display: 'block', textDecoration: 'none' }}>
+                        Перейти ко входу
+                    </Link>
+                )}
+            </div>
             <div className="auth-footer">
                 Уже есть аккаунт? <Link to="/login" style={{ color: 'white', fontWeight: 600 }}>Войти</Link>
             </div>
