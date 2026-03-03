@@ -272,21 +272,95 @@ export function AppProvider({ children }) {
 
     // On mount: check session and load data
     useEffect(() => {
-        async function init() {
-            dispatch({ type: 'SET_LOADING', value: true });
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-                const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-                if (profile) {
-                    dispatch({ type: 'SET_USER', user: { ...profile, email: session.user.email } });
-                    const data = await loadUserData(session.user.id);
+        let isInitial = true;
+
+        async function loadProfileAndData(sessionUser) {
+            // Try to load the profile from DB
+            const { data: profile, error: profileErr } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', sessionUser.id)
+                .single();
+
+            if (profileErr && profileErr.code !== 'PGRST116') {
+                // PGRST116 = "no rows returned" (profile just doesn't exist yet)
+                // Any other error (like RLS recursion 42P17) means something is wrong with the DB
+                console.error('[Profile load error]', profileErr);
+
+                // Fallback: use auth metadata to log the user in so the app is at least usable
+                const fallbackProfile = {
+                    id: sessionUser.id,
+                    full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+                    email: sessionUser.email,
+                    phone: sessionUser.user_metadata?.phone || '',
+                    agency_name: '',
+                    role: 'realtor',
+                };
+                console.warn('[Profile] Using auth metadata fallback due to DB error');
+                dispatch({ type: 'SET_USER', user: fallbackProfile });
+                // Load data as best we can; individual loads may also fail if DB is broken
+                try {
+                    const data = await loadUserData(sessionUser.id);
                     dispatch({ type: 'SET_ALL', data });
-                } else {
+                } catch (e) {
+                    console.error('[Data load error]', e);
                     dispatch({ type: 'SET_LOADING', value: false });
                 }
+                return;
+            }
+
+            // If profile missing (for example, first OAuth sign-in), create it automatically
+            if (!profile) {
+                const newProfile = {
+                    id: sessionUser.id,
+                    full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+                    phone: sessionUser.user_metadata?.phone || '',
+                    agency_name: '',
+                    role: 'realtor',
+                };
+                console.log('[Profile] Creating new profile for', sessionUser.id);
+                const { data: createdProfile, error: createErr } = await supabase.from('profiles').insert(newProfile).select().single();
+                if (!createErr) {
+                    const data = await loadUserData(sessionUser.id);
+                    dispatch({ type: 'SET_USER', user: { ...createdProfile, email: sessionUser.email } });
+                    dispatch({ type: 'SET_ALL', data });
+                } else {
+                    console.error('[Profile creation error]', createErr);
+                    // Still let the user in with fallback
+                    const fallbackProfile = {
+                        id: sessionUser.id,
+                        full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+                        email: sessionUser.email,
+                        phone: '',
+                        agency_name: '',
+                        role: 'realtor',
+                    };
+                    dispatch({ type: 'SET_USER', user: fallbackProfile });
+                    dispatch({ type: 'SET_LOADING', value: false });
+                }
+                return;
+            }
+
+            if (profile) {
+                dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
+                const data = await loadUserData(sessionUser.id);
+                dispatch({ type: 'SET_ALL', data });
             } else {
                 dispatch({ type: 'SET_LOADING', value: false });
             }
+        }
+
+        async function init() {
+            dispatch({ type: 'SET_LOADING', value: true });
+            const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+            if (sessionErr) console.error('[Session error]', sessionErr);
+
+            if (session?.user) {
+                await loadProfileAndData(session.user);
+            } else {
+                dispatch({ type: 'SET_LOADING', value: false });
+            }
+            isInitial = false;
         }
         init();
 
@@ -294,6 +368,11 @@ export function AppProvider({ children }) {
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_OUT') {
                 dispatch({ type: 'LOGOUT' });
+            } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+                // If it's the initial load, init() already handled it
+                if (!isInitial) {
+                    await loadProfileAndData(session.user);
+                }
             }
         });
         return () => subscription.unsubscribe();

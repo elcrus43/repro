@@ -156,6 +156,19 @@ create table if not exists tasks (
 --  Row Level Security (каждый видит только свои данные)
 -- ══════════════════════════════════════════════════════
 
+-- Сначала удаляем старые политики, если они есть
+drop policy if exists "profile_self" on profiles;
+drop policy if exists "profile_select_own" on profiles;
+drop policy if exists "profile_insert_self" on profiles;
+drop policy if exists "profile_update_own" on profiles;
+
+drop policy if exists "clients_own" on clients;
+drop policy if exists "properties_own" on properties;
+drop policy if exists "requests_own" on requests;
+drop policy if exists "matches_own" on matches;
+drop policy if exists "showings_own" on showings;
+drop policy if exists "tasks_own" on tasks;
+
 alter table profiles enable row level security;
 alter table clients enable row level security;
 alter table properties enable row level security;
@@ -165,7 +178,9 @@ alter table showings enable row level security;
 alter table tasks enable row level security;
 
 -- Profiles
-create policy "profile_self" on profiles for all using (auth.uid() = id) with check (auth.uid() = id);
+create policy "profile_select_own" on profiles for select using (auth.uid() = id);
+create policy "profile_insert_self" on profiles for insert with check (auth.uid() = id);
+create policy "profile_update_own" on profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
 -- Clients, Properties, Requests, Matches, Showings, Tasks
 create policy "clients_own" on clients for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
