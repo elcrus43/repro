@@ -6,6 +6,36 @@ import { supabase } from '../../lib/supabase';
 export function ProfilePage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const [deferredPrompt, setDeferredPrompt] = React.useState(null);
+    const [isInstalled, setIsInstalled] = React.useState(false);
+
+    React.useEffect(() => {
+        const handler = (e) => {
+            e.preventDefault();
+            setDeferredPrompt(e);
+        };
+        window.addEventListener('beforeinstallprompt', handler);
+
+        window.addEventListener('appinstalled', () => {
+            setIsInstalled(true);
+            setDeferredPrompt(null);
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            setIsInstalled(true);
+        }
+
+        return () => window.removeEventListener('beforeinstallprompt', handler);
+    }, []);
+
+    async function handleInstall() {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+            setDeferredPrompt(null);
+        }
+    }
     const user = state.currentUser;
     if (!user) return null;
 
@@ -54,6 +84,17 @@ export function ProfilePage() {
                     <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.phone}</div>
                     <span className="badge badge-primary" style={{ marginTop: 8 }}>{user.role === 'admin' ? 'Администратор' : 'Риэлтор'}</span>
                 </div>
+
+                {/* PWA Install */}
+                {deferredPrompt && !isInstalled && (
+                    <div className="card" style={{ background: 'var(--primary)', color: 'white', padding: '16px' }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Установить приложение</div>
+                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте re/pro на рабочий стол для быстрого доступа</div>
+                        <button className="btn btn-full" style={{ background: 'white', color: 'var(--primary)' }} onClick={handleInstall}>
+                            Установить
+                        </button>
+                    </div>
+                )}
 
                 {/* Stats */}
                 <div className="card">
