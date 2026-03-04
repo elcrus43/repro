@@ -30,6 +30,14 @@ export function calculateMatch(property, request) {
   } else if (request.districts.some(d => d.toLowerCase() === property.district?.toLowerCase())) {
     score += 20;
     matched.push(`Район: ${property.district}`);
+
+    // Bonus for mircodistrict if district matched (5 pts)
+    if (request.microdistricts && request.microdistricts.length > 0 && property.microdistrict) {
+      if (request.microdistricts.some(m => m.toLowerCase() === property.microdistrict.toLowerCase())) {
+        score += 5;
+        matched.push(`Микрорайон: ${property.microdistrict} (совпадение)`);
+      }
+    }
   } else {
     mismatched.push(`Район: объект в ${property.district}, запрос в [${request.districts.join(', ')}]`);
   }
