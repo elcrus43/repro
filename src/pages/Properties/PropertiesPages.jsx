@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice } from '../../utils/matching';
+import { formatPhone } from '../../utils/format';
 
 const BUILDING_TYPES = { panel: 'Панель', brick: 'Кирпич', monolith: 'Монолит', wood: 'Дерево', block: 'Блок', other: 'Другой' };
 const RENOVATION_LABELS = { none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' };
@@ -61,14 +62,28 @@ export function PropertiesPage() {
                 {properties.map(prop => {
                     const client = state.clients.find(c => c.id === prop.client_id);
                     const matches = state.matches.filter(m => m.property_id === prop.id);
+                    const handleDelete = (e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Удалить объект?')) {
+                            dispatch({ type: 'DELETE_PROPERTY', id: prop.id });
+                        }
+                    };
+                    const handleEdit = (e) => {
+                        e.stopPropagation();
+                        navigate(`/properties/${prop.id}/edit`);
+                    };
                     return (
                         <div key={prop.id} className="card card-clickable" onClick={() => navigate(`/properties/${prop.id}`)}>
-                            <div className="flex items-center gap-8" style={{ marginBottom: 10 }}>
+                            <div className="flex items-start gap-8" style={{ marginBottom: 10 }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>{formatPrice(prop.price)}</div>
                                     <span className={`badge badge-${statusColors[prop.status]}`}>{statusLabels[prop.status]}</span>
                                 </div>
-                                {matches.length > 0 && <span className="badge badge-primary">Матчей: {matches.length}</span>}
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                    {matches.length > 0 && <span className="badge badge-primary">Матчей: {matches.length}</span>}
+                                    <button className="icon-btn" onClick={handleEdit}>✏️</button>
+                                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                                </div>
                             </div>
                             <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, marginBottom: 2 }}>
                                 {prop.rooms > 0 ? `${prop.rooms}-комн.` : 'Студия'} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт.
@@ -119,8 +134,8 @@ export function PropertyCardPage() {
                 <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
                 <span className="topbar-title">Объект</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}>E</button>
-                    <button className="icon-btn" onClick={handleDelete}>D</button>
+                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}>✏️</button>
+                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
                 </div>
             </div>
             <div className="page-content">
@@ -168,7 +183,7 @@ export function PropertyCardPage() {
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700 }}>Продавец: {client.full_name}</div>
-                                <a href={`tel:${client.phone}`} style={{ fontSize: 13, color: 'var(--primary)' }} onClick={e => e.stopPropagation()}>{client.phone}</a>
+                                <a href={`tel:${client.phone}`} style={{ fontSize: 13, color: 'var(--primary)' }} onClick={e => e.stopPropagation()}>{formatPhone(client.phone)}</a>
                             </div>
                             <span style={{ color: 'var(--text-muted)' }}>›</span>
                         </div>
@@ -236,12 +251,12 @@ export function PropertyFormPage() {
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
     function handleSubmit() {
-        const prop = { ...form, price: +form.price, price_min: +form.price_min || null, area_total: +form.area_total, area_living: +form.area_living || null, area_kitchen: +form.area_kitchen || null, floor: +form.floor, floors_total: +form.floors_total, year_built: +form.year_built || null, rooms: +form.rooms };
+        const prop = { ...form, price: +form.price, price_min: +form.price_min || null, area_total: +form.area_total, area_living: +form.area_living || null, area_kitchen: +form.area_kitchen || null, floor: +form.floor, floors_total: +form.floors_total, year_built: +form.year_built || null, rooms: +form.rooms, client_id: form.client_id || null };
         if (isEdit) { dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } }); navigate(`/properties/${id}`); }
         else { dispatch({ type: 'ADD_PROPERTY', property: { ...prop, realtor_id: state.currentUser?.id } }); navigate('/properties'); }
     }
 
-    const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id && (c.client_type === 'seller' || c.client_type === 'both'));
+    const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id);
 
     return (
         <div className="page fade-in">

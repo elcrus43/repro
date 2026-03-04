@@ -5,7 +5,7 @@ const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10);
 const weekEnd = new Date(new Date().getTime() + 7 * 86400000).toISOString().slice(0, 10);
 
-function TaskItem({ task, onToggle }) {
+function TaskItem({ task, onToggle, onDelete, onEdit }) {
     const { state } = useApp();
     const client = task.client_id ? state.clients.find(c => c.id === task.client_id) : null;
     const prop = task.property_id ? state.properties.find(p => p.id === task.property_id) : null;
@@ -31,17 +31,21 @@ function TaskItem({ task, onToggle }) {
                 {prop && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Объект: {prop.address}</div>}
                 {task.due_date && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(task.due_date).toLocaleDateString('ru-RU')}</div>}
             </div>
-            <div style={{ width: 6, height: '100%', minHeight: 20, borderRadius: 3, background: priorColors[task.priority] || '#ccc', flexShrink: 0 }} />
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <button className="icon-btn" onClick={() => onEdit(task)}>✏️</button>
+                <button className="icon-btn" onClick={() => onDelete(task)}>🗑️</button>
+                <div style={{ width: 6, height: 20, borderRadius: 3, background: priorColors[task.priority] || '#ccc', flexShrink: 0 }} />
+            </div>
         </div>
     );
 }
 
-function Group({ label, tasks: ts, color, onToggle }) {
+function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
     if (ts.length === 0) return null;
     return (
         <div className="card">
             <div style={{ fontWeight: 700, fontSize: 14, color, marginBottom: 4 }}>{label} ({ts.length})</div>
-            {ts.map(t => <TaskItem key={t.id} task={t} onToggle={onToggle} />)}
+            {ts.map(t => <TaskItem key={t.id} task={t} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)}
         </div>
     );
 }
@@ -76,9 +80,26 @@ export function TasksPage() {
 
     function addTask(e) {
         e.preventDefault();
-        dispatch({ type: 'ADD_TASK', task: { ...newTask, realtor_id: user?.id, status: 'pending' } });
+        const taskToSave = { ...newTask, client_id: newTask.client_id || null, property_id: newTask.property_id || null, request_id: newTask.request_id || null, showing_id: newTask.showing_id || null, due_date: newTask.due_date || null };
+        if (newTask.id) {
+            dispatch({ type: 'UPDATE_TASK', task: taskToSave });
+        } else {
+            dispatch({ type: 'ADD_TASK', task: { ...taskToSave, realtor_id: user?.id, status: 'pending' } });
+        }
         setNewTask({ title: '', description: '', due_date: '', priority: 'medium' });
         setShowForm(false);
+    }
+
+    function deleteTask(task) {
+        if (window.confirm('Удалить задачу?')) {
+            dispatch({ type: 'DELETE_TASK', id: task.id });
+        }
+    }
+
+    function editTask(task) {
+        setNewTask(task);
+        setShowForm(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     return (
@@ -107,11 +128,11 @@ export function TasksPage() {
                     </form>
                 )}
 
-                <Group label="Просрочено" tasks={overdue} color="var(--danger)" onToggle={toggleDone} />
-                <Group label="Сегодня" tasks={todayT.filter(t => !overdue.find(o => o.id === t.id))} color="var(--warning)" onToggle={toggleDone} />
-                <Group label="Завтра" tasks={tomorrowT} color="var(--success)" onToggle={toggleDone} />
-                <Group label="Позже" tasks={later} color="var(--text-secondary)" onToggle={toggleDone} />
-                {filter === 'all' && <Group label="Выполнено" tasks={done} color="var(--text-muted)" onToggle={toggleDone} />}
+                <Group label="Просрочено" tasks={overdue} color="var(--danger)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
+                <Group label="Сегодня" tasks={todayT.filter(t => !overdue.find(o => o.id === t.id))} color="var(--warning)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
+                <Group label="Завтра" tasks={tomorrowT} color="var(--success)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
+                <Group label="Позже" tasks={later} color="var(--text-secondary)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
+                {filter === 'all' && <Group label="Выполнено" tasks={done} color="var(--text-muted)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />}
 
                 {tasks.length === 0 && !showForm && (
                     <div className="empty-state">

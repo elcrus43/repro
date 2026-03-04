@@ -84,6 +84,8 @@ function reducer(state, action) {
             return { ...state, showings: [...state.showings, action.showing], matches: action.matches, tasks: [...state.tasks, action.task] };
         case 'UPDATE_SHOWING':
             return { ...state, showings: state.showings.map(s => s.id === action.showing.id ? action.showing : s), matches: action.matches };
+        case 'DELETE_SHOWING':
+            return { ...state, showings: state.showings.filter(s => s.id !== action.id) };
 
         case 'ADD_TASK':
             return { ...state, tasks: [...state.tasks, action.task] };
@@ -118,8 +120,23 @@ async function loadUserData(userId) {
     };
 }
 
-async function syncAction(action) {
+async function syncAction(rawAction) {
     try {
+        const sanitizeObj = (obj) => {
+            if (obj === '') return null;
+            if (!obj || typeof obj !== 'object') return obj;
+            if (Array.isArray(obj)) return obj.map(sanitizeObj);
+            const sanitized = { ...obj };
+            for (const key in sanitized) {
+                if (sanitized[key] === '') sanitized[key] = null;
+                else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+                    sanitized[key] = sanitizeObj(sanitized[key]);
+                }
+            }
+            return sanitized;
+        };
+        const action = sanitizeObj(rawAction);
+
         let result;
         const logData = (table, data) => {
             console.log(`[Supabase] Syncing to ${table}:`, data);
@@ -196,6 +213,9 @@ async function syncAction(action) {
                 });
                 return;
             }
+            case 'DELETE_SHOWING':
+                result = await supabase.from('showings').delete().eq('id', action.id);
+                break;
             case 'ADD_TASK':
             case 'UPDATE_TASK':
                 result = await supabase.from('tasks').upsert(action.task);
