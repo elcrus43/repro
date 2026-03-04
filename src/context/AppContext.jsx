@@ -121,9 +121,14 @@ async function loadUserData(userId) {
 async function syncAction(action) {
     try {
         let result;
+        const logData = (table, data) => {
+            console.log(`[Supabase] Syncing to ${table}:`, data);
+        };
+
         switch (action.type) {
             case 'ADD_CLIENT':
             case 'UPDATE_CLIENT':
+                logData('clients', action.client);
                 result = await supabase.from('clients').upsert(action.client);
                 break;
             case 'DELETE_CLIENT':
@@ -131,8 +136,9 @@ async function syncAction(action) {
                 break;
             case 'ADD_PROPERTY':
             case 'UPDATE_PROPERTY':
+                logData('properties', action.property);
                 result = await supabase.from('properties').upsert(action.property);
-                if (!result.error && action.matches.length > 0) {
+                if (!result.error && action.matches?.length > 0) {
                     const matchResult = await supabase.from('matches').upsert(action.matches);
                     if (matchResult.error) console.error('[Supabase Match Sync Error]', matchResult.error);
                 }
@@ -142,8 +148,9 @@ async function syncAction(action) {
                 break;
             case 'ADD_REQUEST':
             case 'UPDATE_REQUEST':
+                logData('requests', action.request);
                 result = await supabase.from('requests').upsert(action.request);
-                if (!result.error && action.matches.length > 0) {
+                if (!result.error && action.matches?.length > 0) {
                     const matchResult = await supabase.from('matches').upsert(action.matches);
                     if (matchResult.error) console.error('[Supabase Match Sync Error]', matchResult.error);
                 }
@@ -199,6 +206,11 @@ async function syncAction(action) {
         }
         if (result?.error) {
             console.error('[Supabase Sync Error]', action.type, result.error);
+            if (result.error.code === '42501') {
+                alert('Ошибка доступа (RLS). Пожалуйста, убедитесь, что вы создали профиль в базе данных.');
+            } else {
+                alert(`Ошибка сохранения: ${result.error.message}`);
+            }
         }
     } catch (err) {
         console.error('[Supabase Critical Error]', action.type, err);
