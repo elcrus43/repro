@@ -182,10 +182,38 @@ create policy "profile_select_own" on profiles for select using (auth.uid() = id
 create policy "profile_insert_self" on profiles for insert with check (auth.uid() = id);
 create policy "profile_update_own" on profiles for update using (auth.uid() = id) with check (auth.uid() = id);
 
--- Clients, Properties, Requests, Matches, Showings, Tasks
-create policy "clients_own" on clients for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
-create policy "properties_own" on properties for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
-create policy "requests_own" on requests for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
-create policy "matches_own" on matches for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
-create policy "showings_own" on showings for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
-create policy "tasks_own" on tasks for all using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+-- Clients
+create policy "clients_select" on clients for select using (auth.uid() = realtor_id);
+create policy "clients_insert" on clients for insert with check (auth.uid() = realtor_id);
+create policy "clients_update" on clients for update using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+create policy "clients_delete" on clients for delete using (auth.uid() = realtor_id);
+
+-- Properties
+create policy "properties_select" on properties for select using (auth.uid() = realtor_id);
+create policy "properties_insert" on properties for insert with check (auth.uid() = realtor_id);
+create policy "properties_update" on properties for update using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+create policy "properties_delete" on properties for delete using (auth.uid() = realtor_id);
+
+-- Requests
+create policy "requests_select" on requests for select using (auth.uid() = realtor_id);
+create policy "requests_insert" on requests for insert with check (auth.uid() = realtor_id);
+create policy "requests_update" on requests for update using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+create policy "requests_delete" on requests for delete using (auth.uid() = realtor_id);
+
+-- Matches
+create policy "matches_select" on matches for select using (auth.uid() = realtor_id);
+create policy "matches_insert" on matches for insert with check (auth.uid() = realtor_id);
+create policy "matches_update" on matches for update using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+create policy "matches_delete" on matches for delete using (auth.uid() = realtor_id);
+
+-- Showings
+create policy "showings_select" on showings for select using (auth.uid() = realtor_id);
+create policy "showings_insert" on showings for insert with check (auth.uid() = realtor_id);
+create policy "showings_update" on showings for update using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+create policy "showings_delete" on showings for delete using (auth.uid() = realtor_id);
+
+-- Tasks
+create policy "tasks_select" on tasks for select using (auth.uid() = realtor_id);
+create policy "tasks_insert" on tasks for insert with check (auth.uid() = realtor_id);
+create policy "tasks_update" on tasks for update using (auth.uid() = realtor_id) with check (auth.uid() = realtor_id);
+create policy "tasks_delete" on tasks for delete using (auth.uid() = realtor_id);
