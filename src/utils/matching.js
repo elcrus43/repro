@@ -176,26 +176,36 @@ export function calculateMatch(property, request) {
   }
 
   // === PAYMENT (10 pts) ===
-  const pType = request.payment_type;
-  if (pType === 'cash') {
+  const pTypes = request.payment_types || ['mortgage'];
+  let paymentMatched = false;
+  let paymentDetails = [];
+
+  if (pTypes.includes('cash')) {
+    paymentMatched = true;
+    paymentDetails.push('Наличные (всегда подходит)');
+  }
+  if (pTypes.includes('mortgage') && property.mortgage_available) {
+    paymentMatched = true;
+    paymentDetails.push('Ипотека');
+  }
+  if (pTypes.includes('matcapital') && property.matcapital_available) {
+    paymentMatched = true;
+    paymentDetails.push('Маткапитал');
+  }
+  if (pTypes.includes('certificate') && property.certificate_available) {
+    paymentMatched = true;
+    paymentDetails.push('Сертификат');
+  }
+  if (pTypes.includes('mixed')) {
+    paymentMatched = true;
+    paymentDetails.push('Смешанная (договорная)');
+  }
+
+  if (paymentMatched) {
     score += 10;
-    matched.push('Оплата: наличные (всегда подходит)');
-  } else if (pType === 'mortgage') {
-    if (property.mortgage_available) {
-      score += 10;
-      matched.push('Ипотека: подходит');
-    } else {
-      mismatched.push('Ипотека: объект не подходит под ипотеку');
-    }
-  } else if (pType === 'matcapital') {
-    if (property.matcapital_available) {
-      score += 10;
-      matched.push('Маткапитал: подходит');
-    } else {
-      mismatched.push('Маткапитал: объект не подходит');
-    }
+    matched.push(`Оплата: подходит (${paymentDetails.join(', ')})`);
   } else {
-    score += 10;
+    mismatched.push(`Оплата: объект не подходит под запрошенные способы [${pTypes.join(', ')}]`);
   }
 
   const finalScore = Math.min(100, Math.round(score));

@@ -94,7 +94,7 @@ create table if not exists requests (
   renovation_min text,
   balcony_required boolean default false,
   parking_required boolean default false,
-  payment_type text default 'mortgage',
+  payment_types text[] default '{mortgage}',
   mortgage_approved boolean default false,
   mortgage_bank text,
   mortgage_amount numeric,
