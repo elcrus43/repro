@@ -263,7 +263,7 @@ export function RequestFormPage() {
         else { dispatch({ type: 'ADD_REQUEST', request: { ...req, realtor_id: state.currentUser?.id } }); navigate('/requests'); }
     }
 
-    const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id && (c.client_type === 'buyer' || c.client_type === 'both'));
+    const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id && c.client_types?.includes('buyer'));
 
     return (
         <div className="page fade-in">

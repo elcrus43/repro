@@ -14,8 +14,10 @@ export function ClientsPage() {
     const clients = state.clients
         .filter(c => c.realtor_id === user?.id)
         .filter(c => {
-            if (filter === 'buyer') return c.client_type === 'buyer' || c.client_type === 'both';
-            if (filter === 'seller') return c.client_type === 'seller' || c.client_type === 'both';
+            if (filter === 'buyer') return c.client_types?.includes('buyer');
+            if (filter === 'seller') return c.client_types?.includes('seller');
+            if (filter === 'landlord') return c.client_types?.includes('landlord');
+            if (filter === 'tenant') return c.client_types?.includes('tenant');
             if (filter === 'active') return c.status === 'active';
             return true;
         })
@@ -23,7 +25,7 @@ export function ClientsPage() {
             !search || c.full_name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
         );
 
-    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', both: 'Оба' };
+    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
 
@@ -42,7 +44,7 @@ export function ClientsPage() {
             </div>
 
             <div className="tab-filters">
-                {[['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['active', 'Активные']].map(([val, label]) => (
+                {[['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['landlord', 'Арендодатели'], ['tenant', 'Арендаторы'], ['active', 'Активные']].map(([val, label]) => (
                     <button key={val} className={`tab-filter ${filter === val ? 'active' : ''}`} onClick={() => setFilter(val)}>{label}</button>
                 ))}
             </div>
@@ -83,12 +85,16 @@ export function ClientsPage() {
                                             {statusLabels[client.status] || client.status}
                                         </span>
                                     </div>
-                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                        {typeLabels[client.client_type]} · {formatPhone(client.phone)}
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                        {client.client_types?.map(t => (
+                                            <span key={t} style={{ opacity: 0.8 }}>{typeLabels[t]}</span>
+                                        )).reduce((prev, curr) => [prev, ' · ', curr])}
+                                        {client.client_types?.length > 0 && ' · '} {formatPhone(client.phone)}
                                     </div>
-                                    {matches.length > 0 && (
-                                        <div style={{ fontSize: 12, color: 'var(--primary)', marginTop: 2 }}>Матчей: {matches.length}</div>
-                                    )}
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {client.additional_contacts?.length > 0 && `+${client.additional_contacts.length} чел. · `}
+                                        {matches.length > 0 && `Матчей: ${matches.length}`}
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>
                                     <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
@@ -124,7 +130,7 @@ export function ClientCardPage() {
     const myTasks = state.tasks.filter(t => t.client_id === id);
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
-    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', both: 'Покупатель + Продавец' };
+    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
     const messengerIcons = { WhatsApp: '', Telegram: '', Viber: '', другой: '' };
     const initials = client.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?';
 
@@ -150,8 +156,10 @@ export function ClientCardPage() {
                 {/* Header */}
                 <div className="card" style={{ textAlign: 'center', padding: '24px 16px' }}>
                     <div style={{ fontSize: 18, fontWeight: 800 }}>{client.full_name}</div>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
-                        <span className="badge badge-primary">{typeLabels[client.client_type]}</span>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8, flexWrap: 'wrap' }}>
+                        {client.client_types?.map(t => (
+                            <span key={t} className="badge badge-primary">{typeLabels[t]}</span>
+                        ))}
                         <span className={`badge badge-${client.status === 'active' ? 'success' : 'warning'}`}>{statusLabels[client.status]}</span>
                     </div>
                 </div>
@@ -165,12 +173,6 @@ export function ClientCardPage() {
                             <a href={`tel:${client.phone}`} className="info-val text-primary">{formatPhone(client.phone)}</a>
                         </div>
                     )}
-                    {client.phone_2 && (
-                        <div className="info-row">
-                            <span className="info-key">Телефон 2</span>
-                            <a href={`tel:${client.phone_2}`} className="info-val text-primary">{formatPhone(client.phone_2)}</a>
-                        </div>
-                    )}
                     {client.email && (
                         <div className="info-row">
                             <span className="info-key">Email</span>
@@ -180,9 +182,36 @@ export function ClientCardPage() {
                     {client.messenger && (
                         <div className="info-row">
                             <span className="info-key">Мессенджер</span>
-                            <span className="info-val">{messengerIcons[client.messenger]} {client.messenger}</span>
+                            <span className="info-val">{client.messenger}</span>
                         </div>
                     )}
+
+                    {client.additional_contacts?.map((contact, idx) => (
+                        <React.Fragment key={idx}>
+                            <div style={{ padding: '8px 0', borderBottom: '1px solid var(--border)', marginTop: 8 }}>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Доп. контакт</div>
+                                <div style={{ fontWeight: 600 }}>{contact.name || 'Без имени'}</div>
+                            </div>
+                            {contact.phone && (
+                                <div className="info-row">
+                                    <span className="info-key">Телефон</span>
+                                    <a href={`tel:${contact.phone}`} className="info-val text-primary">{formatPhone(contact.phone)}</a>
+                                </div>
+                            )}
+                            {contact.email && (
+                                <div className="info-row">
+                                    <span className="info-key">Email</span>
+                                    <span className="info-val">{contact.email}</span>
+                                </div>
+                            )}
+                            {contact.messenger && (
+                                <div className="info-row">
+                                    <span className="info-key">Мессенджер</span>
+                                    <span className="info-val">{contact.messenger}</span>
+                                </div>
+                            )}
+                        </React.Fragment>
+                    ))}
                     <div className="info-row">
                         <span className="info-key">Источник</span>
                         <span className="info-val">{client.source || '—'}</span>
@@ -228,8 +257,8 @@ export function ClientCardPage() {
 }
 
 const defaultClient = {
-    full_name: '', phone: '', phone_2: '', email: '', messenger: '',
-    client_type: 'buyer', source: '', status: 'active', notes: '',
+    full_name: '', phone: '', email: '', messenger: '',
+    client_types: ['buyer'], additional_contacts: [], source: '', status: 'active', notes: '',
 };
 
 export function ClientFormPage() {
@@ -254,7 +283,36 @@ export function ClientFormPage() {
     }
 
     const messengers = ['WhatsApp', 'Telegram', 'Viber', 'другой'];
-    const sources = ['Авито', 'ЦИАН', 'рекомендация', 'соцсети', 'звонок', 'другое'];
+    const sources = ['Авито', 'ЦИАН', 'лидген', 'с показа', 'рекомендация', 'соцсети', 'звонок', 'другое'];
+    const clientTypes = [
+        { id: 'buyer', label: 'Покупатель' },
+        { id: 'seller', label: 'Продавец' },
+        { id: 'landlord', label: 'Арендодатель' },
+        { id: 'tenant', label: 'Арендатор' },
+    ];
+
+    const toggleType = (typeId) => {
+        const types = form.client_types || [];
+        if (types.includes(typeId)) {
+            setF('client_types', types.filter(t => t !== typeId));
+        } else {
+            setF('client_types', [...types, typeId]);
+        }
+    };
+
+    const addContact = () => {
+        setF('additional_contacts', [...(form.additional_contacts || []), { name: '', phone: '', email: '', messenger: '' }]);
+    };
+
+    const updateContact = (idx, field, val) => {
+        const contacts = [...(form.additional_contacts || [])];
+        contacts[idx] = { ...contacts[idx], [field]: val };
+        setF('additional_contacts', contacts);
+    };
+
+    const removeContact = (idx) => {
+        setF('additional_contacts', form.additional_contacts.filter((_, i) => i !== idx));
+    };
 
     return (
         <div className="page fade-in">
@@ -269,20 +327,21 @@ export function ClientFormPage() {
                         <input className="form-input" value={form.full_name} onChange={e => setF('full_name', e.target.value)} required placeholder="Иванов Иван Иванович" />
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Тип клиента <span className="required">*</span></label>
+                        <label className="form-label">Типы клиента <span className="required">*</span></label>
                         <div className="chip-group">
-                            {[['buyer', 'Покупатель'], ['seller', 'Продавец'], ['both', 'Оба']].map(([v, l]) => (
-                                <button key={v} type="button" className={`chip ${form.client_type === v ? 'active' : ''}`} onClick={() => setF('client_type', v)}>{l}</button>
+                            {clientTypes.map(t => (
+                                <button key={t.id} type="button"
+                                    className={`chip ${form.client_types?.includes(t.id) ? 'active' : ''}`}
+                                    onClick={() => toggleType(t.id)}
+                                >
+                                    {t.label}
+                                </button>
                             ))}
                         </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Телефон <span className="required">*</span></label>
                         <input className="form-input" value={formatPhone(form.phone)} onChange={e => setF('phone', e.target.value)} required placeholder="+7 (999) 000-00-00" />
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label">Телефон 2</label>
-                        <input className="form-input" value={formatPhone(form.phone_2)} onChange={e => setF('phone_2', e.target.value)} placeholder="+7 (999) 000-00-00" />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Email</label>
@@ -295,6 +354,29 @@ export function ClientFormPage() {
                                 <button key={m} type="button" className={`chip ${form.messenger === m ? 'active' : ''}`} onClick={() => setF('messenger', form.messenger === m ? '' : m)}>{m}</button>
                             ))}
                         </div>
+                    </div>
+
+                    <div style={{ marginTop: 8, padding: '12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <div style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Доп. контактные лица</div>
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={addContact}>+ Лицо</button>
+                        </div>
+
+                        {form.additional_contacts?.map((contact, idx) => (
+                            <div key={idx} style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
+                                <button type="button"
+                                    style={{ position: 'absolute', top: 4, right: 4, background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}
+                                    onClick={() => removeContact(idx)}
+                                >✕</button>
+                                <input className="form-input" value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} placeholder="Имя" />
+                                <input className="form-input" value={formatPhone(contact.phone)} onChange={e => updateContact(idx, 'phone', e.target.value)} placeholder="Телефон" />
+                                <div className="chip-group">
+                                    {messengers.map(m => (
+                                        <button key={m} type="button" className={`chip chip-sm ${contact.messenger === m ? 'active' : ''}`} onClick={() => updateContact(idx, 'messenger', contact.messenger === m ? '' : m)}>{m}</button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                     <div className="form-group">
                         <label className="form-label">Источник</label>
