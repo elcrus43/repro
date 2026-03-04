@@ -43,7 +43,7 @@ const defaultReq = {
     renovation_min: '',
     balcony_required: false,
     parking_required: false,
-    payment_type: 'mortgage',
+    payment_types: ['mortgage'],
     mortgage_approved: false,
     mortgage_bank: '',
     mortgage_amount: '',
@@ -156,6 +156,8 @@ export function RequestCardPage() {
 
     const urgencyLabel = { low: 'Низкая', medium: 'Средняя', high: 'Высокая' };
     const paymentLabel = { cash: 'Наличные', mortgage: 'Ипотека', matcapital: 'Маткапитал', certificate: 'Сертификат', mixed: 'Смешанная' };
+    const buildingTypeLabel = { panel: 'Панельный', brick: 'Кирпичный', mono: 'Монолитный', block: 'Блочный', wooden: 'Деревянный' };
+    const pTypes = req.payment_types || ['mortgage'];
 
     return (
         <div className="page fade-in">
@@ -203,16 +205,17 @@ export function RequestCardPage() {
                         </span>
                     </div>
                     {req.balcony_required && <div className="info-row"><span className="info-key">Балкон</span><span className="info-val">Нужен</span></div>}
-                    {req.building_types?.length > 0 && <div className="info-row"><span className="info-key">Тип дома</span><span className="info-val">{req.building_types.join(', ')}</span></div>}
+                    {req.building_types?.length > 0 && <div className="info-row"><span className="info-key">Тип дома</span><span className="info-val">{req.building_types.map(bt => buildingTypeLabel[bt] || bt).join(', ')}</span></div>}
                     {req.renovation_min && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Ремонт</span><span className="info-val">от {req.renovation_min}</span></div>}
                 </div>
 
                 {/* Payment */}
                 <div className="card">
                     <div className="section-title" style={{ marginBottom: 8 }}>💳 Оплата</div>
-                    <div className="info-row"><span className="info-key">Тип оплаты</span><span className="info-val">{paymentLabel[req.payment_type] || req.payment_type}</span></div>
-                    {req.mortgage_approved && <div className="info-row"><span className="info-key">Ипотека</span><span className="info-val">Одобрена · {req.mortgage_bank}</span></div>}
-                    {req.mortgage_amount && <div className="info-row"><span className="info-key">Сумма</span><span className="info-val">{formatPrice(req.mortgage_amount)}</span></div>}
+                    <div className="info-row"><span className="info-key">Тип оплаты</span><span className="info-val">{pTypes.map(pt => paymentLabel[pt] || pt).join(', ')}</span></div>
+                    {pTypes.includes('mortgage') && <div className="info-row"><span className="info-key">Ипотека одобрена</span><span className="info-val">{req.mortgage_approved ? 'Да' : 'Нет'}</span></div>}
+                    {pTypes.includes('mortgage') && req.mortgage_bank && <div className="info-row"><span className="info-key">Банк</span><span className="info-val">{req.mortgage_bank}</span></div>}
+                    {pTypes.includes('mortgage') && req.mortgage_amount > 0 && <div className="info-row"><span className="info-key">Сумма ипотеки</span><span className="info-val">{formatPrice(req.mortgage_amount)}</span></div>}
                     {req.urgency && <div className="info-row"><span className="info-key">Срочность</span><span className="info-val">{urgencyLabel[req.urgency]}</span></div>}
                     {req.desired_move_date && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Заселение до</span><span className="info-val">{new Date(req.desired_move_date).toLocaleDateString('ru-RU')}</span></div>}
                 </div>
@@ -383,14 +386,20 @@ export function RequestFormPage() {
                 {step === 2 && (
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div className="form-group">
-                            <label className="form-label">Способ оплаты <span className="required">*</span></label>
+                            <label className="form-label">Способы оплаты <span className="required">*</span></label>
                             <div className="chip-group">
-                                {[['cash', 'Наличные'], ['mortgage', 'Ипотека'], ['matcapital', 'Маткапитал'], ['mixed', 'Смешанная']].map(([v, l]) => (
-                                    <button key={v} type="button" className={`chip ${form.payment_type === v ? 'active' : ''}`} onClick={() => setF('payment_type', v)}>{l}</button>
-                                ))}
+                                {[['cash', 'Наличные'], ['mortgage', 'Ипотека'], ['matcapital', 'Маткапитал'], ['mixed', 'Смешанная']].map(([v, l]) => {
+                                    const isActive = (form.payment_types || []).includes(v);
+                                    return (
+                                        <button key={v} type="button" className={`chip ${isActive ? 'active' : ''}`} onClick={() => {
+                                            const pts = form.payment_types || [];
+                                            setF('payment_types', isActive ? pts.filter(t => t !== v) : [...pts, v]);
+                                        }}>{l}</button>
+                                    );
+                                })}
                             </div>
                         </div>
-                        {form.payment_type === 'mortgage' && (
+                        {(form.payment_types || []).includes('mortgage') && (
                             <>
                                 <div className="toggle-row">
                                     <span className="toggle-label">Ипотека одобрена</span>
