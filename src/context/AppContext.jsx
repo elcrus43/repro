@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useReducer, useEffect, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
+
 import { nanoid } from '../utils/nanoid';
 import { runMatchingForProperty, runMatchingForRequest } from '../utils/matching';
 import { supabase } from '../lib/supabase';
@@ -262,7 +264,11 @@ async function syncAction(action, state) {
 export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(reducer, EMPTY_STATE);
     const stateRef = React.useRef(state);
-    stateRef.current = state;
+
+    // Keep ref in sync without triggering render (useEffect runs after render)
+    useEffect(() => {
+        stateRef.current = state;
+    });
 
     // Supabase-aware dispatch: updates local state immediately, syncs in background
     const dbDispatch = React.useCallback(async (action) => {
@@ -365,7 +371,7 @@ export function AppProvider({ children }) {
         init();
 
         // Listen to auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
             if (event === 'SIGNED_OUT') {
                 dispatch({ type: 'LOGOUT' });
             } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {

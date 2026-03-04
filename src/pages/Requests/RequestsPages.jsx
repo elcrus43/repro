@@ -5,6 +5,21 @@ import { formatPrice } from '../../utils/matching';
 
 const STEPS = ['Основное', 'Параметры', 'Оплата', 'Дополнительно'];
 
+function StepDots({ step }) {
+    return (
+        <div className="stepper" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
+            {STEPS.map((s, i) => (
+                <React.Fragment key={s}>
+                    <div className="step-item">
+                        <div className={`step-circle ${i < step ? 'done' : i === step ? 'active' : ''}`}>{i < step ? '✓' : i + 1}</div>
+                    </div>
+                    {i < STEPS.length - 1 && <div className={`step-line ${i < step ? 'done' : ''}`} />}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+}
+
 const defaultReq = {
     status: 'active',
     property_types: ['apartment'],
@@ -228,26 +243,13 @@ export function RequestFormPage() {
 
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id && (c.client_type === 'buyer' || c.client_type === 'both'));
 
-    const StepDots = () => (
-        <div className="stepper" style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)' }}>
-            {STEPS.map((s, i) => (
-                <React.Fragment key={s}>
-                    <div className="step-item">
-                        <div className={`step-circle ${i < step ? 'done' : i === step ? 'active' : ''}`}>{i < step ? '✓' : i + 1}</div>
-                    </div>
-                    {i < STEPS.length - 1 && <div className={`step-line ${i < step ? 'done' : ''}`} />}
-                </React.Fragment>
-            ))}
-        </div>
-    );
-
     return (
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => step > 0 ? setStep(s => s - 1) : navigate(isEdit ? `/requests/${id}` : '/requests')}>←</button>
                 <span className="topbar-title">{isEdit ? 'Редактировать запрос' : 'Новый запрос'}</span>
             </div>
-            <StepDots />
+            <StepDots step={step} />
 
             <div className="page-content">
                 <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>Шаг {step + 1} — {STEPS[step]}</div>

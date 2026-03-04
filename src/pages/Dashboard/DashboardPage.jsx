@@ -1,10 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPrice, getLevelLabel } from '../../utils/matching';
+
 
 export function DashboardPage() {
-    const { state, dispatch } = useApp();
+    const { state } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
     if (!user) return null;
@@ -14,7 +14,6 @@ export function DashboardPage() {
     const myRequests = state.requests.filter(r => r.realtor_id === user.id && r.status === 'active');
     const myMatches = state.matches.filter(m => m.realtor_id === user.id);
     const newMatches = myMatches.filter(m => m.status === 'new').sort((a, b) => b.score - a.score).slice(0, 5);
-    const deals = myMatches.filter(m => m.status === 'deal').length;
 
     const today = new Date().toISOString().slice(0, 10);
     const todayTasks = state.tasks.filter(t => t.realtor_id === user.id && t.due_date?.startsWith(today) && t.status === 'pending');
@@ -71,7 +70,6 @@ export function DashboardPage() {
                                 const prop = state.properties.find(p => p.id === m.property_id);
                                 const req = state.requests.find(r => r.id === m.request_id);
                                 const client = req ? state.clients.find(c => c.id === req.client_id) : null;
-                                const lvl = getLevelLabel(m.match_level);
                                 return (
                                     <div key={m.id} className="notif-banner" onClick={() => navigate(`/matches/${m.id}`)}>
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
