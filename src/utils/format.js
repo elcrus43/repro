@@ -3,7 +3,7 @@
  * @param {string} phone
  * @returns {string}
  */
-export function formatPhone(phone) {
+export function formatPhone(phone, inputMode = false) {
     if (!phone) return '';
     // Clean all non-digits
     const clean = phone.replace(/\D/g, '');
@@ -23,7 +23,8 @@ export function formatPhone(phone) {
     const part3 = match.substring(6, 8);
     const part4 = match.substring(8, 10);
 
-    return `+7 (${part1}) ${part2}-${part3}-${part4}`;
+    const prefix = inputMode ? '' : '+7 ';
+    return `${prefix}(${part1}) ${part2}-${part3}-${part4}`;
 }
 
 /**
@@ -33,6 +34,6 @@ export function stripPhone(phone) {
     if (!phone) return '';
     const clean = phone.replace(/\D/g, '');
     if (clean.length === 10) return '7' + clean;
-    if (clean.length === 11 && clean.startsWith('8')) return '7' + clean.substring(1);
+    if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) return '7' + clean.substring(1);
     return clean;
 }

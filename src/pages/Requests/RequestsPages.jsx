@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPrice } from '../../utils/matching';
+import { formatPrice, cleanPrice } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
-
-import { formatPhone } from '../../utils/format';
+import { formatPhone, stripPhone } from '../../utils/format';
+import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 
 const STEPS = ['Основное', 'Параметры', 'Оплата', 'Дополнительно'];
 
@@ -258,9 +258,26 @@ export function RequestFormPage() {
     }
 
     function handleSubmit() {
-        const req = { ...form, budget_min: +form.budget_min || null, budget_max: +form.budget_max, area_min: +form.area_min || null, area_max: +form.area_max || null, kitchen_area_min: +form.kitchen_area_min || null, floor_min: +form.floor_min || null, floor_max: +form.floor_max || null, mortgage_amount: +form.mortgage_amount || null, client_id: form.client_id || null, desired_move_date: form.desired_move_date || null };
-        if (isEdit) { dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } }); navigate(`/requests/${id}`); }
-        else { dispatch({ type: 'ADD_REQUEST', request: { ...req, realtor_id: state.currentUser?.id } }); navigate('/requests'); }
+        const req = {
+            ...form,
+            budget_min: cleanPrice(form.budget_min),
+            budget_max: cleanPrice(form.budget_max),
+            mortgage_amount: cleanPrice(form.mortgage_amount),
+            area_min: Number(form.area_min) || null,
+            area_max: Number(form.area_max) || null,
+            kitchen_area_min: Number(form.kitchen_area_min) || null,
+            floor_min: Number(form.floor_min) || null,
+            floor_max: Number(form.floor_max) || null,
+            client_id: form.client_id || null,
+            desired_move_date: form.desired_move_date || null
+        };
+        if (isEdit) {
+            dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } });
+            navigate(`/requests/${id}`);
+        } else {
+            dispatch({ type: 'ADD_REQUEST', request: { ...req, realtor_id: state.currentUser?.id } });
+            navigate('/requests');
+        }
     }
 
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id && c.client_types?.includes('buyer'));
@@ -303,20 +320,41 @@ export function RequestFormPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Город <span className="required">*</span></label>
-                            <input className="form-input" value={form.city} onChange={e => setF('city', e.target.value)} placeholder="Новосибирск" />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Районы (несколько)</label>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <input className="form-input" value={districtInput} onChange={e => setDistrictInput(e.target.value)} placeholder="Центральный" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (districtInput.trim()) { toggleArr('districts', districtInput.trim()); setDistrictInput(''); } } }} />
-                                <button type="button" className="btn btn-secondary btn-sm" onClick={() => { if (districtInput.trim()) { toggleArr('districts', districtInput.trim()); setDistrictInput(''); } }}>+ Добавить</button>
-                            </div>
-                            <div className="chip-group" style={{ marginTop: 6 }}>
-                                {form.districts?.map(d => (
-                                    <span key={d} className="chip active" onClick={() => toggleArr('districts', d)}>{d} ✕</span>
+                            <div className="chip-group">
+                                {CITIES.map(c => (
+                                    <button key={c} type="button" className={`chip ${form.city === c ? 'active' : ''}`} onClick={() => { setF('city', c); setF('districts', []); }}>{c}</button>
                                 ))}
                             </div>
                         </div>
+                        {form.city === 'Киров' && (
+                            <div className="form-group">
+                                <label className="form-label">Районы Кирова</label>
+                                <div className="chip-group" style={{ flexWrap: 'wrap' }}>
+                                    {KIROV_DISTRICTS.map(d => (
+                                        <button key={d.name} type="button"
+                                            className={`chip ${form.districts?.includes(d.name) ? 'active' : ''}`}
+                                            onClick={() => toggleArr('districts', d.name)}
+                                        >
+                                            {d.name.replace(' район', '')}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {form.city !== 'Киров' && form.city !== '' && (
+                            <div className="form-group">
+                                <label className="form-label">Районы (несколько)</label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <input className="form-input" value={districtInput} onChange={e => setDistrictInput(e.target.value)} placeholder="Название района" onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); if (districtInput.trim()) { toggleArr('districts', districtInput.trim()); setDistrictInput(''); } } }} />
+                                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => { if (districtInput.trim()) { toggleArr('districts', districtInput.trim()); setDistrictInput(''); } }}>+ Добавить</button>
+                                </div>
+                                <div className="chip-group" style={{ marginTop: 6 }}>
+                                    {form.districts?.map(d => (
+                                        <span key={d} className="chip active" onClick={() => toggleArr('districts', d)}>{d} ✕</span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -416,7 +454,7 @@ export function RequestFormPage() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Одобренная сумма</label>
-                                            <input className="form-input" type="number" value={form.mortgage_amount || ''} onChange={e => setF('mortgage_amount', e.target.value)} placeholder="4200000" />
+                                            <input className="form-input" value={form.mortgage_amount ? Number(form.mortgage_amount).toLocaleString('ru-RU') : ''} onChange={e => setF('mortgage_amount', e.target.value.replace(/\s/g, ''))} placeholder="4 200 000" />
                                         </div>
                                     </>
                                 )}

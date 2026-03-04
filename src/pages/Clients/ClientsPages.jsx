@@ -273,11 +273,19 @@ export function ClientFormPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
+        const client = {
+            ...form,
+            phone: stripPhone(form.phone),
+            additional_contacts: (form.additional_contacts || []).map(c => ({
+                ...c,
+                phone: stripPhone(c.phone)
+            }))
+        };
         if (id) {
-            dispatch({ type: 'UPDATE_CLIENT', client: { ...form, id } });
+            dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
             navigate(`/clients/${id}`);
         } else {
-            dispatch({ type: 'ADD_CLIENT', client: { ...form, realtor_id: state.currentUser?.id } });
+            dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
             navigate('/clients');
         }
     }
@@ -341,7 +349,7 @@ export function ClientFormPage() {
                     </div>
                     <div className="form-group">
                         <label className="form-label">Телефон <span className="required">*</span></label>
-                        <input className="form-input" value={formatPhone(form.phone)} onChange={e => setF('phone', e.target.value)} required placeholder="+7 (999) 000-00-00" />
+                        <input className="form-input" value={formatPhone(form.phone, true)} onChange={e => setF('phone', e.target.value)} required placeholder="(999) 000-00-00" />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Email</label>
@@ -369,7 +377,7 @@ export function ClientFormPage() {
                                     onClick={() => removeContact(idx)}
                                 >✕</button>
                                 <input className="form-input" value={contact.name} onChange={e => updateContact(idx, 'name', e.target.value)} placeholder="Имя" />
-                                <input className="form-input" value={formatPhone(contact.phone)} onChange={e => updateContact(idx, 'phone', e.target.value)} placeholder="Телефон" />
+                                <input className="form-input" value={formatPhone(contact.phone, true)} onChange={e => updateContact(idx, 'phone', e.target.value)} placeholder="Телефон" />
                                 <div className="chip-group">
                                     {messengers.map(m => (
                                         <button key={m} type="button" className={`chip chip-sm ${contact.messenger === m ? 'active' : ''}`} onClick={() => updateContact(idx, 'messenger', contact.messenger === m ? '' : m)}>{m}</button>

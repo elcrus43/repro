@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPrice } from '../../utils/matching';
-import { formatPhone } from '../../utils/format';
-import { Edit2, Trash2 } from 'lucide-react';
+import { formatPrice, cleanPrice } from '../../utils/matching';
+import { formatPhone, stripPhone } from '../../utils/format';
+import { CITIES, KIROV_DISTRICTS } from '../../data/location';
+import { Edit2, Trash2, MapPin } from 'lucide-react';
 
 const BUILDING_TYPES = { panel: 'Панель', brick: 'Кирпич', monolith: 'Монолит', wood: 'Дерево', block: 'Блок', other: 'Другой' };
 const RENOVATION_LABELS = { none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' };
@@ -252,9 +253,26 @@ export function PropertyFormPage() {
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
     function handleSubmit() {
-        const prop = { ...form, price: +form.price, price_min: +form.price_min || null, area_total: +form.area_total, area_living: +form.area_living || null, area_kitchen: +form.area_kitchen || null, floor: +form.floor, floors_total: +form.floors_total, year_built: +form.year_built || null, rooms: +form.rooms, client_id: form.client_id || null };
-        if (isEdit) { dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } }); navigate(`/properties/${id}`); }
-        else { dispatch({ type: 'ADD_PROPERTY', property: { ...prop, realtor_id: state.currentUser?.id } }); navigate('/properties'); }
+        const prop = {
+            ...form,
+            price: cleanPrice(form.price),
+            price_min: cleanPrice(form.price_min),
+            area_total: Number(form.area_total) || 0,
+            area_living: Number(form.area_living) || null,
+            area_kitchen: Number(form.area_kitchen) || null,
+            floor: Number(form.floor) || 0,
+            floors_total: Number(form.floors_total) || 0,
+            year_built: Number(form.year_built) || null,
+            rooms: Number(form.rooms) || 0,
+            client_id: form.client_id || null
+        };
+        if (isEdit) {
+            dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } });
+            navigate(`/properties/${id}`);
+        } else {
+            dispatch({ type: 'ADD_PROPERTY', property: { ...prop, realtor_id: state.currentUser?.id } });
+            navigate('/properties');
+        }
     }
 
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id);
@@ -298,12 +316,49 @@ export function PropertyFormPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Город <span className="required">*</span></label>
-                            <input className="form-input" value={form.city} onChange={e => setF('city', e.target.value)} placeholder="Новосибирск" />
+                            <div className="chip-group">
+                                {CITIES.map(c => (
+                                    <button key={c} type="button" className={`chip ${form.city === c ? 'active' : ''}`} onClick={() => { setF('city', c); setF('district', ''); setF('microdistrict', ''); }}>{c}</button>
+                                ))}
+                            </div>
+                            {form.city === 'Другой' && (
+                                <input className="form-input" style={{ marginTop: 8 }} value={form.city_custom || ''} onChange={e => setF('city_custom', e.target.value)} placeholder="Введите город" />
+                            )}
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Район <span className="required">*</span></label>
-                            <input className="form-input" value={form.district} onChange={e => setF('district', e.target.value)} placeholder="Центральный" />
-                        </div>
+
+                        {form.city === 'Киров' && (
+                            <>
+                                <div className="form-group">
+                                    <label className="form-label">Район Кирова</label>
+                                    <select className="form-select" value={form.district || ''} onChange={e => { setF('district', e.target.value); setF('microdistrict', ''); }}>
+                                        <option value="">— Выберите район —</option>
+                                        {KIROV_DISTRICTS.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                                {form.district && (
+                                    <div className="form-group">
+                                        <label className="form-label">Микрорайон / Местность</label>
+                                        <select className="form-select" value={form.microdistrict || ''} onChange={e => setF('microdistrict', e.target.value)}>
+                                            <option value="">— Любой —</option>
+                                            {KIROV_DISTRICTS.find(d => d.name === form.district)?.microdistricts.map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                            <option value="custom">— Свой вариант —</option>
+                                        </select>
+                                        {form.microdistrict === 'custom' && (
+                                            <input className="form-input" style={{ marginTop: 8 }} value={form.microdistrict_custom || ''} onChange={e => setF('microdistrict_custom', e.target.value)} placeholder="Введите микрорайон" />
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                        {form.city !== 'Киров' && form.city !== '' && (
+                            <div className="form-group">
+                                <label className="form-label">Район</label>
+                                <input className="form-input" value={form.district || ''} onChange={e => setF('district', e.target.value)} placeholder="Название района" />
+                            </div>
+                        )}
+
                         <div className="form-group">
                             <label className="form-label">Адрес <span className="required">*</span></label>
                             <input className="form-input" value={form.address} onChange={e => setF('address', e.target.value)} placeholder="ул. Ленина, 42" />
@@ -322,11 +377,11 @@ export function PropertyFormPage() {
                         <div className="input-row">
                             <div className="form-group">
                                 <label className="form-label">Цена, ₽ <span className="required">*</span></label>
-                                <input className="form-input" type="number" value={form.price} onChange={e => setF('price', e.target.value)} placeholder="3800000" />
+                                <input className="form-input" value={form.price ? Number(form.price).toLocaleString('ru-RU') : ''} onChange={e => setF('price', e.target.value.replace(/\s/g, ''))} placeholder="3 800 000" />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Мин. цена (торг)</label>
-                                <input className="form-input" type="number" value={form.price_min || ''} onChange={e => setF('price_min', e.target.value)} placeholder="3600000" />
+                                <input className="form-input" value={form.price_min ? Number(form.price_min).toLocaleString('ru-RU') : ''} onChange={e => setF('price_min', e.target.value.replace(/\s/g, ''))} placeholder="3 600 000" />
                             </div>
                         </div>
                         <div className="form-group">
