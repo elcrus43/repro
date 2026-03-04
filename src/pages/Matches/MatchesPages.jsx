@@ -105,6 +105,18 @@ export function MatchDetailPage() {
     const id = window.location.pathname.split('/')[2];
     const match = state.matches.find(m => m.id === id);
 
+    // Хуки ДОЛЖНЫ быть до любого раннего return
+    const [comment, setComment] = useState(match?.realtor_comment || '');
+    const [showShowingForm, setShowShowingForm] = useState(false);
+    const [showingDate, setShowingDate] = useState('');
+
+    // Mark as viewed when opened
+    React.useEffect(() => {
+        if (match && match.status === 'new') {
+            dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
+        }
+    }, [match?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
     if (!match) return (
         <div className="page"><div className="topbar"><button className="topbar-back" onClick={() => navigate('/matches')}>←</button><span className="topbar-title">Не найдено</span></div></div>
     );
@@ -115,15 +127,7 @@ export function MatchDetailPage() {
     const seller = prop ? state.clients.find(c => c.id === prop.client_id) : null;
     const lvl = getLevelLabel(match.match_level);
 
-    const [comment, setComment] = useState(match.realtor_comment || '');
-    const [showShowingForm, setShowShowingForm] = useState(false);
-    const [showingDate, setShowingDate] = useState('');
-
     const statusLabels = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ', showing_done: 'Показ проведён', rejected: 'Отклонён', deal: 'Сделка' };
-
-    function updateStatus(status) {
-        dispatch({ type: 'UPDATE_MATCH', match: { ...match, status, realtor_comment: comment } });
-    }
 
     function handleReject() {
         const reason = window.prompt('Причина отказа (необязательно):') || '';
@@ -147,13 +151,6 @@ export function MatchDetailPage() {
         setShowShowingForm(false);
         navigate('/showings');
     }
-
-    // Mark as viewed when opened
-    React.useEffect(() => {
-        if (match.status === 'new') {
-            dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
-        }
-    }, []);
 
     return (
         <div className="page fade-in">

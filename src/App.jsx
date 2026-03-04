@@ -1,7 +1,6 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
-import { supabase } from './lib/supabase';
 
 // Pages
 import { LoginPage, RegisterPage } from './pages/Auth/AuthPages';
