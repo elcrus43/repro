@@ -328,15 +328,30 @@ export function RequestFormPage() {
                         </div>
                         {form.city === 'Киров' && (
                             <div className="form-group">
-                                <label className="form-label">Районы Кирова</label>
-                                <div className="chip-group" style={{ flexWrap: 'wrap' }}>
+                                <label className="form-label">Районы и микрорайоны Кирова</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {KIROV_DISTRICTS.map(d => (
-                                        <button key={d.name} type="button"
-                                            className={`chip ${form.districts?.includes(d.name) ? 'active' : ''}`}
-                                            onClick={() => toggleArr('districts', d.name)}
-                                        >
-                                            {d.name.replace(' район', '')}
-                                        </button>
+                                        <div key={d.name} style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-secondary)' }}>{d.name}</span>
+                                                <button type="button"
+                                                    className={`chip chip-sm ${form.districts?.includes(d.name) ? 'active' : ''}`}
+                                                    onClick={() => toggleArr('districts', d.name)}
+                                                >
+                                                    Весь район
+                                                </button>
+                                            </div>
+                                            <div className="chip-group" style={{ flexWrap: 'wrap' }}>
+                                                {d.microdistricts.map(m => (
+                                                    <button key={m} type="button"
+                                                        className={`chip chip-sm ${(form.microdistricts || []).includes(m) ? 'active' : ''}`}
+                                                        onClick={() => toggleArr('microdistricts', m)}
+                                                    >
+                                                        {m}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
