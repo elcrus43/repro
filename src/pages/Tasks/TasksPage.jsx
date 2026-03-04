@@ -126,7 +126,21 @@ export function TasksPage() {
         if (newTask.id) {
             dispatch({ type: 'UPDATE_TASK', task: taskToSave });
         } else {
-            dispatch({ type: 'ADD_TASK', task: { ...taskToSave, realtor_id: user?.id, status: 'pending' } });
+            if (newTask.task_type === 'Показ') {
+                dispatch({
+                    type: 'ADD_SHOWING',
+                    showing: {
+                        realtor_id: user?.id,
+                        client_id: taskToSave.client_id,
+                        property_id: taskToSave.property_id,
+                        showing_date: taskToSave.due_date || new Date().toISOString(),
+                        status: 'planned'
+                    },
+                    customTask: { ...taskToSave, realtor_id: user?.id, status: 'pending' }
+                });
+            } else {
+                dispatch({ type: 'ADD_TASK', task: { ...taskToSave, realtor_id: user?.id, status: 'pending' } });
+            }
         }
         setNewTask({ title: '', description: '', due_date: '', priority: 'medium', client_id: '', property_id: '', task_type: '' });
         setShowForm(false);
