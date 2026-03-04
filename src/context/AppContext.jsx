@@ -144,10 +144,13 @@ async function syncAction(rawAction) {
         };
 
         switch (action.type) {
-            case 'UPDATE_PROFILE':
-                logData('profiles', action.profile);
-                result = await supabase.from('profiles').upsert(action.profile);
+            case 'UPDATE_PROFILE': {
+                const { id, full_name, phone, agency_name, role, created_at } = action.profile;
+                const profileData = { id, full_name, phone, agency_name, role, created_at };
+                logData('profiles', profileData);
+                result = await supabase.from('profiles').upsert(profileData);
                 break;
+            }
             case 'ADD_CLIENT':
             case 'UPDATE_CLIENT':
                 logData('clients', action.client);
