@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, stripPhone } from '../../utils/format';
 import { Edit2, Trash2 } from 'lucide-react';
 
 export function ClientsPage() {

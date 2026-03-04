@@ -266,13 +266,8 @@ export function getLevelLabel(level) {
 }
 
 export function formatPrice(n) {
-  if (!n) return '—';
-  if (n >= 10_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + ' млн ₽';
-  return Number(n).toLocaleString('ru-RU') + ' ₽';
-}
-
-export function formatPrice(n) {
   if (!n && n !== 0) return '—';
+  if (n >= 10_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + ' млн ₽';
   return Number(n).toLocaleString('ru-RU') + ' ₽';
 }
 
