@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { formatPhone } from '../../utils/format';
 
 export function ShowingsPage() {
     const { state, dispatch } = useApp();
@@ -119,10 +120,13 @@ export function ShowingsPage() {
                             <div key={s.id} className="card" style={{ marginBottom: 8 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                     <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{time}</span>
-                                    <span className="badge badge-primary">{statusLabels[s.status]}</span>
+                                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        <span className="badge badge-primary">{statusLabels[s.status]}</span>
+                                        <button className="icon-btn" onClick={() => { if (window.confirm('Удалить показ?')) dispatch({ type: 'DELETE_SHOWING', id: s.id }); }}>🗑️</button>
+                                    </div>
                                 </div>
                                 {prop && <div style={{ fontWeight: 600, fontSize: 14 }}>Объект: {prop.address}</div>}
-                                {client && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Клиент: {client.full_name} · {client.phone}</div>}
+                                {client && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Клиент: {client.full_name} · {formatPhone(client.phone)}</div>}
                                 {s.client_feedback && (
                                     <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
                                         {feedbackOptions.find(f => f.val === s.client_feedback)?.label}

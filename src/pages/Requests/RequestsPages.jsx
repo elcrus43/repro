@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice } from '../../utils/matching';
+import { formatPhone } from '../../utils/format';
 
 const STEPS = ['Основное', 'Параметры', 'Оплата', 'Дополнительно'];
 
@@ -94,16 +95,31 @@ export function RequestsPage() {
                 {requests.map(req => {
                     const client = state.clients.find(c => c.id === req.client_id);
                     const matches = state.matches.filter(m => m.request_id === req.id);
+                    const handleDelete = (e) => {
+                        e.stopPropagation();
+                        if (window.confirm('Удалить запрос?')) {
+                            dispatch({ type: 'DELETE_REQUEST', id: req.id });
+                        }
+                    };
+                    const handleEdit = (e) => {
+                        e.stopPropagation();
+                        navigate(`/requests/${req.id}/edit`);
+                    };
                     return (
                         <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)}>
-                            <div className="flex items-center gap-8" style={{ marginBottom: 8 }}>
+                            <div className="flex items-start gap-8" style={{ marginBottom: 8 }}>
                                 <div className="avatar avatar-sm" style={{ background: 'linear-gradient(135deg,#2563EB,#7c3aed)' }}>
                                     {client?.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?'}
                                 </div>
                                 <div style={{ flex: 1 }}>
                                     <span style={{ fontWeight: 700, fontSize: 15 }}>{client?.full_name || '—'}</span>
+                                    {client && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatPhone(client.phone)}</div>}
                                 </div>
-                                <span className={`badge badge-${statusColors[req.status]}`}>{statusLabels[req.status]}</span>
+                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                    <span className={`badge badge-${statusColors[req.status]}`}>{statusLabels[req.status]}</span>
+                                    <button className="icon-btn" onClick={handleEdit}>✏️</button>
+                                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                                </div>
                             </div>
                             <div style={{ fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>
                                 {req.property_types?.map(t => t === 'apartment' ? 'Квартира' : t === 'house' ? 'Дом' : t).join(', ')}
@@ -145,7 +161,8 @@ export function RequestCardPage() {
                 <button className="topbar-back" onClick={() => navigate('/requests')}>←</button>
                 <span className="topbar-title">Запрос</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}>E</button>
+                    <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}>✏️</button>
+                    <button className="icon-btn" onClick={() => { if (window.confirm('Удалить запрос?')) { dispatch({ type: 'DELETE_REQUEST', id }); navigate('/requests'); } }}>🗑️</button>
                 </div>
             </div>
             <div className="page-content">
@@ -158,7 +175,7 @@ export function RequestCardPage() {
                             </div>
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700 }}>{client.full_name}</div>
-                                <a href={`tel:${client.phone}`} style={{ fontSize: 13, color: 'var(--primary)' }} onClick={e => e.stopPropagation()}>{client.phone}</a>
+                                <a href={`tel:${client.phone}`} style={{ fontSize: 13, color: 'var(--primary)' }} onClick={e => e.stopPropagation()}>{formatPhone(client.phone)}</a>
                             </div>
                             <span className={`badge badge-${req.status === 'active' ? 'success' : 'muted'}`}>{req.status === 'active' ? 'Активен' : req.status}</span>
                         </div>
@@ -236,7 +253,7 @@ export function RequestFormPage() {
     }
 
     function handleSubmit() {
-        const req = { ...form, budget_min: +form.budget_min || null, budget_max: +form.budget_max, area_min: +form.area_min || null, area_max: +form.area_max || null, kitchen_area_min: +form.kitchen_area_min || null, floor_min: +form.floor_min || null, floor_max: +form.floor_max || null, mortgage_amount: +form.mortgage_amount || null };
+        const req = { ...form, budget_min: +form.budget_min || null, budget_max: +form.budget_max, area_min: +form.area_min || null, area_max: +form.area_max || null, kitchen_area_min: +form.kitchen_area_min || null, floor_min: +form.floor_min || null, floor_max: +form.floor_max || null, mortgage_amount: +form.mortgage_amount || null, client_id: form.client_id || null, desired_move_date: form.desired_move_date || null };
         if (isEdit) { dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } }); navigate(`/requests/${id}`); }
         else { dispatch({ type: 'ADD_REQUEST', request: { ...req, realtor_id: state.currentUser?.id } }); navigate('/requests'); }
     }

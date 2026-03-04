@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { formatPhone } from '../../utils/format';
 
 export function ClientsPage() {
     const { state } = useApp();
@@ -60,8 +61,19 @@ export function ClientsPage() {
                         return prop?.client_id === client.id || req?.client_id === client.id;
                     });
                     const initials = client.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?';
+                    const handleDelete = (e) => {
+                        e.stopPropagation();
+                        if (window.confirm(`Удалить клиента ${client.full_name}?`)) {
+                            dispatch({ type: 'DELETE_CLIENT', id: client.id });
+                            // stay on list page
+                        }
+                    };
+                    const handleEdit = (e) => {
+                        e.stopPropagation();
+                        navigate(`/clients/${client.id}/edit`);
+                    };
                     return (
-                        <div key={client.id} className="card card-clickable" onClick={() => navigate(`/clients/${client.id}`)}>
+                        <div key={client.id} className="card" style={{ position: 'relative' }} onClick={() => navigate(`/clients/${client.id}`)}>
                             <div className="flex items-center gap-12">
                                 <div className="avatar" style={{ background: client.client_type === 'buyer' ? 'linear-gradient(135deg,#2563EB,#7c3aed)' : 'linear-gradient(135deg,#16A34A,#059669)' }}>
                                     {initials}
@@ -74,13 +86,16 @@ export function ClientsPage() {
                                         </span>
                                     </div>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                        {typeLabels[client.client_type]} · {client.phone}
+                                        {typeLabels[client.client_type]} · {formatPhone(client.phone)}
                                     </div>
                                     {matches.length > 0 && (
                                         <div style={{ fontSize: 12, color: 'var(--primary)', marginTop: 2 }}>Матчей: {matches.length}</div>
                                     )}
                                 </div>
-                                <span style={{ color: 'var(--text-muted)', fontSize: 18 }}>›</span>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                    <button className="icon-btn" onClick={handleEdit}>✏️</button>
+                                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                                </div>
                             </div>
                         </div>
                     );
@@ -128,8 +143,8 @@ export function ClientCardPage() {
                 <button className="topbar-back" onClick={() => navigate('/clients')}>←</button>
                 <span className="topbar-title">Клиент</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/clients/${id}/edit`)}>E</button>
-                    <button className="icon-btn" onClick={handleDelete}>D</button>
+                    <button className="icon-btn" onClick={() => navigate(`/clients/${id}/edit`)}>✏️</button>
+                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
                 </div>
             </div>
 
@@ -152,13 +167,13 @@ export function ClientCardPage() {
                     {client.phone && (
                         <div className="info-row">
                             <span className="info-key">Телефон</span>
-                            <a href={`tel:${client.phone}`} className="info-val text-primary">{client.phone}</a>
+                            <a href={`tel:${client.phone}`} className="info-val text-primary">{formatPhone(client.phone)}</a>
                         </div>
                     )}
                     {client.phone_2 && (
                         <div className="info-row">
                             <span className="info-key">Телефон 2</span>
-                            <a href={`tel:${client.phone_2}`} className="info-val text-primary">{client.phone_2}</a>
+                            <a href={`tel:${client.phone_2}`} className="info-val text-primary">{formatPhone(client.phone_2)}</a>
                         </div>
                     )}
                     {client.email && (
@@ -267,11 +282,11 @@ export function ClientFormPage() {
                     </div>
                     <div className="form-group">
                         <label className="form-label">Телефон <span className="required">*</span></label>
-                        <input className="form-input" value={form.phone} onChange={e => setF('phone', e.target.value)} required placeholder="+7-999-000-0000" />
+                        <input className="form-input" value={formatPhone(form.phone)} onChange={e => setF('phone', e.target.value)} required placeholder="+7 (999) 000-00-00" />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Телефон 2</label>
-                        <input className="form-input" value={form.phone_2 || ''} onChange={e => setF('phone_2', e.target.value)} placeholder="+7-999-000-0000" />
+                        <input className="form-input" value={formatPhone(form.phone_2)} onChange={e => setF('phone_2', e.target.value)} placeholder="+7 (999) 000-00-00" />
                     </div>
                     <div className="form-group">
                         <label className="form-label">Email</label>
