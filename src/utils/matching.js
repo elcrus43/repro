@@ -267,9 +267,19 @@ export function getLevelLabel(level) {
 
 export function formatPrice(n) {
   if (!n) return '—';
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + ' млн ₽';
-  if (n >= 1_000) return (n / 1_000).toFixed(0) + ' тыс. ₽';
-  return n + ' ₽';
+  if (n >= 10_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + ' млн ₽';
+  return Number(n).toLocaleString('ru-RU') + ' ₽';
+}
+
+export function formatPrice(n) {
+  if (!n && n !== 0) return '—';
+  return Number(n).toLocaleString('ru-RU') + ' ₽';
+}
+
+export function cleanPrice(val) {
+  if (!val) return null;
+  const clean = String(val).replace(/[^0-9]/g, '');
+  return clean ? Number(clean) : null;
 }
 
 export function formatDate(dt) {
