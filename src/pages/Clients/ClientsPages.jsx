@@ -76,9 +76,6 @@ export function ClientsPage() {
                     return (
                         <div key={client.id} className="card" style={{ position: 'relative' }} onClick={() => navigate(`/clients/${client.id}`)}>
                             <div className="flex items-center gap-12">
-                                <div className="avatar" style={{ background: client.client_type === 'buyer' ? 'linear-gradient(135deg,#2563EB,#7c3aed)' : 'linear-gradient(135deg,#16A34A,#059669)' }}>
-                                    {initials}
-                                </div>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div className="flex items-center gap-8" style={{ marginBottom: 2 }}>
                                         <span style={{ fontWeight: 700, fontSize: 15 }}>{client.full_name}</span>
@@ -104,7 +101,7 @@ export function ClientsPage() {
             </div>
 
             <button className="fab" onClick={() => navigate('/clients/new')}>+</button>
-        </div>
+        </div >
     );
 }
 
@@ -152,9 +149,6 @@ export function ClientCardPage() {
             <div className="page-content">
                 {/* Header */}
                 <div className="card" style={{ textAlign: 'center', padding: '24px 16px' }}>
-                    <div className="avatar avatar-lg" style={{ margin: '0 auto 12px', background: client.client_type === 'buyer' ? 'linear-gradient(135deg,#2563EB,#7c3aed)' : 'linear-gradient(135deg,#16A34A,#059669)' }}>
-                        {initials}
-                    </div>
                     <div style={{ fontSize: 18, fontWeight: 800 }}>{client.full_name}</div>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 8 }}>
                         <span className="badge badge-primary">{typeLabels[client.client_type]}</span>
