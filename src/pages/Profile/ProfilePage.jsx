@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
-import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut } from 'lucide-react';
+import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2 } from 'lucide-react';
 
 
 export function ProfilePage() {
@@ -40,6 +40,18 @@ export function ProfilePage() {
     }
     const user = state.currentUser;
     if (!user) return null;
+
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editData, setEditData] = React.useState({ full_name: user?.full_name || '', phone: user?.phone || '', agency_name: user?.agency_name || '' });
+
+    React.useEffect(() => {
+        if (user) setEditData({ full_name: user.full_name || '', phone: user.phone || '', agency_name: user.agency_name || '' });
+    }, [user]);
+
+    const handleSave = () => {
+        dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
+        setIsEditing(false);
+    };
 
     const myClients = state.clients.filter(c => c.realtor_id === user.id);
     const myProperties = state.properties.filter(p => p.realtor_id === user.id);
@@ -94,13 +106,33 @@ export function ProfilePage() {
             </div>
             <div className="page-content">
                 {/* Avatar & Info */}
-                <div className="card" style={{ textAlign: 'center', padding: '28px 16px' }}>
+                <div className="card" style={{ textAlign: 'center', padding: '28px 16px', position: 'relative' }}>
+                    {!isEditing && (
+                        <button className="icon-btn" style={{ position: 'absolute', top: 12, right: 12 }} onClick={() => setIsEditing(true)}>
+                            <Edit2 size={18} />
+                        </button>
+                    )}
                     <div className="avatar avatar-lg" style={{ margin: '0 auto 12px', fontSize: 32 }}>{initials}</div>
-                    <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>{user.full_name}</div>
-                    {user.agency_name && <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>{user.agency_name}</div>}
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.email}</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.phone}</div>
-                    <span className="badge badge-primary" style={{ marginTop: 8 }}>{user.role === 'admin' ? 'Администратор' : 'Риэлтор'}</span>
+
+                    {isEditing ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
+                            <input className="form-input" value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
+                            <input className="form-input" value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
+                            <input className="form-input" value={editData.phone} onChange={e => setEditData({ ...editData, phone: e.target.value })} placeholder="Телефон" />
+                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setIsEditing(false)}>Отмена</button>
+                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave}>Сохранить</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 2 }}>{user.full_name}</div>
+                            {user.agency_name && <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 4 }}>{user.agency_name}</div>}
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.email}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{user.phone}</div>
+                            <span className="badge badge-primary" style={{ marginTop: 8 }}>{user.role === 'admin' ? 'Администратор' : 'Риэлтор'}</span>
+                        </>
+                    )}
                 </div>
 
                 {/* PWA Install */}

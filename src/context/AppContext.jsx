@@ -22,6 +22,7 @@ function reducer(state, action) {
     switch (action.type) {
         case 'SET_LOADING': return { ...state, loading: action.value };
         case 'SET_USER': return { ...state, currentUser: action.user };
+        case 'UPDATE_PROFILE': return { ...state, currentUser: { ...state.currentUser, ...action.profile } };
         case 'LOGOUT': return { ...EMPTY_STATE, loading: false };
 
         case 'SET_ALL':
@@ -143,6 +144,10 @@ async function syncAction(rawAction) {
         };
 
         switch (action.type) {
+            case 'UPDATE_PROFILE':
+                logData('profiles', action.profile);
+                result = await supabase.from('profiles').upsert(action.profile);
+                break;
             case 'ADD_CLIENT':
             case 'UPDATE_CLIENT':
                 logData('clients', action.client);
