@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
+import { Edit2, Trash2 } from 'lucide-react';
 
 export function ClientsPage() {
     const { state } = useApp();
@@ -93,8 +94,8 @@ export function ClientsPage() {
                                     )}
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>
-                                    <button className="icon-btn" onClick={handleEdit}>✏️</button>
-                                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                                    <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
+                                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
                                 </div>
                             </div>
                         </div>
@@ -143,8 +144,8 @@ export function ClientCardPage() {
                 <button className="topbar-back" onClick={() => navigate('/clients')}>←</button>
                 <span className="topbar-title">Клиент</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/clients/${id}/edit`)}>✏️</button>
-                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                    <button className="icon-btn" onClick={() => navigate(`/clients/${id}/edit`)}><Edit2 size={18} /></button>
+                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={18} /></button>
                 </div>
             </div>
 

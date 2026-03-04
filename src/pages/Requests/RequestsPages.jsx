@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice } from '../../utils/matching';
+import { Edit2, Trash2 } from 'lucide-react';
+
 import { formatPhone } from '../../utils/format';
 
 const STEPS = ['Основное', 'Параметры', 'Оплата', 'Дополнительно'];
@@ -12,9 +14,9 @@ function StepDots({ step }) {
             {STEPS.map((s, i) => (
                 <React.Fragment key={s}>
                     <div className="step-item">
-                        <div className={`step-circle ${i < step ? 'done' : i === step ? 'active' : ''}`}>{i < step ? '✓' : i + 1}</div>
+                        <div className={`step - circle ${i < step ? 'done' : i === step ? 'active' : ''} `}>{i < step ? '✓' : i + 1}</div>
                     </div>
-                    {i < STEPS.length - 1 && <div className={`step-line ${i < step ? 'done' : ''}`} />}
+                    {i < STEPS.length - 1 && <div className={`step - line ${i < step ? 'done' : ''} `} />}
                 </React.Fragment>
             ))}
         </div>
@@ -103,7 +105,7 @@ export function RequestsPage() {
                     };
                     const handleEdit = (e) => {
                         e.stopPropagation();
-                        navigate(`/requests/${req.id}/edit`);
+                        navigate(`/ requests / ${req.id}/edit`);
                     };
                     return (
                         <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)}>
@@ -117,8 +119,8 @@ export function RequestsPage() {
                                 </div>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                     <span className={`badge badge-${statusColors[req.status]}`}>{statusLabels[req.status]}</span>
-                                    <button className="icon-btn" onClick={handleEdit}>✏️</button>
-                                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                                    <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
+                                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
                                 </div>
                             </div>
                             <div style={{ fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>
@@ -133,9 +135,9 @@ export function RequestsPage() {
                         </div>
                     );
                 })}
-            </div>
+            </div >
             <button className="fab" onClick={() => navigate('/requests/new')}>+</button>
-        </div>
+        </div >
     );
 }
 
@@ -161,8 +163,8 @@ export function RequestCardPage() {
                 <button className="topbar-back" onClick={() => navigate('/requests')}>←</button>
                 <span className="topbar-title">Запрос</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}>✏️</button>
-                    <button className="icon-btn" onClick={() => { if (window.confirm('Удалить запрос?')) { dispatch({ type: 'DELETE_REQUEST', id }); navigate('/requests'); } }}>🗑️</button>
+                    <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}><Edit2 size={18} /></button>
+                    <button className="icon-btn" onClick={() => { if (window.confirm('Удалить запрос?')) { dispatch({ type: 'DELETE_REQUEST', id }); navigate('/requests'); } }}><Trash2 size={18} /></button>
                 </div>
             </div>
             <div className="page-content">

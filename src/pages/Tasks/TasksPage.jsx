@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { nanoid } from '../../utils/matching';
+import { Edit2, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 const today = new Date().toISOString().slice(0, 10);
@@ -32,8 +34,8 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                 {task.due_date && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(task.due_date).toLocaleDateString('ru-RU')}</div>}
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <button className="icon-btn" onClick={() => onEdit(task)}>✏️</button>
-                <button className="icon-btn" onClick={() => onDelete(task)}>🗑️</button>
+                <button className="icon-btn" onClick={() => onEdit(task)}><Edit2 size={16} /></button>
+                <button className="icon-btn" onClick={() => onDelete(task)}><Trash2 size={16} /></button>
                 <div style={{ width: 6, height: 20, borderRadius: 3, background: priorColors[task.priority] || '#ccc', flexShrink: 0 }} />
             </div>
         </div>

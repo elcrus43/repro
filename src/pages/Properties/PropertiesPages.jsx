@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice } from '../../utils/matching';
 import { formatPhone } from '../../utils/format';
+import { Edit2, Trash2 } from 'lucide-react';
 
 const BUILDING_TYPES = { panel: 'Панель', brick: 'Кирпич', monolith: 'Монолит', wood: 'Дерево', block: 'Блок', other: 'Другой' };
 const RENOVATION_LABELS = { none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' };
@@ -81,8 +82,8 @@ export function PropertiesPage() {
                                 </div>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                     {matches.length > 0 && <span className="badge badge-primary">Матчей: {matches.length}</span>}
-                                    <button className="icon-btn" onClick={handleEdit}>✏️</button>
-                                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                                    <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
+                                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
                                 </div>
                             </div>
                             <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, marginBottom: 2 }}>
@@ -134,8 +135,8 @@ export function PropertyCardPage() {
                 <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
                 <span className="topbar-title">Объект</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}>✏️</button>
-                    <button className="icon-btn" onClick={handleDelete}>🗑️</button>
+                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}><Edit2 size={18} /></button>
+                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={18} /></button>
                 </div>
             </div>
             <div className="page-content">

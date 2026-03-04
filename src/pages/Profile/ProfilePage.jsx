@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut } from 'lucide-react';
+
 
 export function ProfilePage() {
     const { state, dispatch } = useApp();
@@ -47,11 +49,27 @@ export function ProfilePage() {
     const conversion = myMatches.length > 0 ? ((deals / myMatches.length) * 100).toFixed(1) : 0;
     const initials = user.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?';
 
+    const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
+
+    const toggleTheme = () => {
+        const root = document.documentElement;
+        if (root.classList.contains('dark')) {
+            root.classList.remove('dark');
+            localStorage.setItem('theme', 'light');
+            setIsDark(false);
+        } else {
+            root.classList.add('dark');
+            localStorage.setItem('theme', 'dark');
+            setIsDark(true);
+        }
+    };
+
     const menuItems = [
-        { icon: '→', label: 'Настройки', action: () => { } },
-        { icon: '→', label: 'Уведомления', action: () => { } },
-        { icon: '→', label: 'Экспорт данных', action: () => { } },
-        { icon: '→', label: 'Помощь', action: () => { } },
+        { icon: isDark ? <Sun size={20} /> : <Moon size={20} />, label: isDark ? 'Светлая тема' : 'Темная тема', action: toggleTheme },
+        { icon: <Settings size={20} />, label: 'Настройки', action: () => { } },
+        { icon: <Bell size={20} />, label: 'Уведомления', action: () => { } },
+        { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: () => { } },
+        { icon: <CircleHelp size={20} />, label: 'Помощь', action: () => { } },
     ];
 
     async function handleLogout() {
@@ -130,11 +148,11 @@ export function ProfilePage() {
                             display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
                             border: 'none', background: 'none', cursor: 'pointer',
                             borderBottom: i < menuItems.length - 1 ? '1px solid var(--border-light)' : 'none',
-                            textAlign: 'left', fontSize: 15
+                            textAlign: 'left', fontSize: 15, color: 'var(--text)'
                         }}>
-                            <span style={{ fontSize: 20 }}>{item.icon}</span>
-                            <span style={{ flex: 1 }}>{item.label}</span>
-                            <span style={{ color: 'var(--text-muted)' }}>›</span>
+                            <span style={{ color: 'var(--text-muted)', display: 'flex' }}>{item.icon}</span>
+                            <span style={{ flex: 1, fontWeight: 500 }}>{item.label}</span>
+                            {item.label !== 'Темная тема' && item.label !== 'Светлая тема' && <span style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></span>}
                         </button>
                     ))}
                 </div>
@@ -143,19 +161,19 @@ export function ProfilePage() {
                 <div className="card" style={{ padding: 0 }}>
                     <button onClick={clearData} style={{
                         display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
-                        border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', textAlign: 'left', fontSize: 15
+                        border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', textAlign: 'left', fontSize: 15, color: 'var(--text)'
                     }}>
-                        <span style={{ fontSize: 20 }}>R</span>
-                        <span style={{ flex: 1 }}>Сбросить демо-данные</span>
-                        <span style={{ color: 'var(--text-muted)' }}>›</span>
+                        <span style={{ color: 'var(--text-muted)', display: 'flex' }}><RotateCcw size={20} /></span>
+                        <span style={{ flex: 1, fontWeight: 500 }}>Сбросить демо-данные</span>
+                        <span style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></span>
                     </button>
                     <button onClick={handleLogout} style={{
                         display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
                         border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 15,
                         color: 'var(--danger)'
                     }}>
-                        <span style={{ fontSize: 20 }}>X</span>
-                        <span>Выйти</span>
+                        <span style={{ display: 'flex' }}><LogOut size={20} /></span>
+                        <span style={{ fontWeight: 500 }}>Выйти</span>
                     </button>
                 </div>
             </div>

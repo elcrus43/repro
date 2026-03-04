@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
+import { Building2, Users, Sparkles, CheckSquare, UserCircle } from 'lucide-react';
 
 // Pages
 import { LoginPage, RegisterPage } from './pages/Auth/AuthPages';
@@ -21,11 +22,11 @@ function BottomNav() {
   const newMatchCount = state.matches.filter(m => m.realtor_id === state.currentUser?.id && m.status === 'new').length;
 
   const tabs = [
-    { path: '/properties', icon: '■', label: 'Объекты' },
-    { path: '/clients', icon: '●', label: 'Клиенты' },
-    { path: '/matches', icon: '▲', label: 'Матчи', badge: newMatchCount > 0 },
-    { path: '/tasks', icon: '◆', label: 'Задачи' },
-    { path: '/profile', icon: '○', label: 'Профиль' },
+    { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
+    { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
+    { path: '/matches', icon: <Sparkles size={22} />, label: 'Матчи', badge: newMatchCount > 0 },
+    { path: '/tasks', icon: <CheckSquare size={22} />, label: 'Задачи' },
+    { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль' },
   ];
 
   const isActive = (path) => pathname.startsWith(path);
@@ -127,6 +128,13 @@ function AppRoutes() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    }
+  }, []);
+
   return (
     <AppProvider>
       <BrowserRouter>
