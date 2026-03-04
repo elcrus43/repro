@@ -201,11 +201,14 @@ async function syncAction(rawAction) {
                 return;
             }
             case 'ADD_SHOWING': {
-                const results = await Promise.all([
+                const queries = [
                     supabase.from('showings').upsert(action.showing),
-                    supabase.from('tasks').upsert(action.task),
-                    supabase.from('matches').upsert(action.matches)
-                ]);
+                    supabase.from('tasks').upsert(action.task)
+                ];
+                if (action.showing.match_id) {
+                    queries.push(supabase.from('matches').upsert(action.matches.find(m => m.id === action.showing.match_id)));
+                }
+                const results = await Promise.all(queries);
                 results.forEach((res, i) => {
                     if (res.error) console.error(`[Supabase Showing Sync Error ${i}]`, res.error);
                 });
@@ -303,11 +306,11 @@ export function AppProvider({ children }) {
         } else if (action.type === 'ADD_SHOWING') {
             const sh = { ...action.showing, id: action.showing.id || nanoid(), created_at: now };
             enhancedAction.showing = sh;
-            enhancedAction.matches = stateRef.current.matches.map(m =>
+            enhancedAction.matches = sh.match_id ? stateRef.current.matches.map(m =>
                 m.id === sh.match_id ? { ...m, status: 'showing_planned', updated_at: now } : m
-            );
-            enhancedAction.task = {
-                id: nanoid(), realtor_id: sh.realtor_id, client_id: sh.client_id, property_id: sh.property_id,
+            ) : stateRef.current.matches;
+            enhancedAction.task = action.customTask ? { ...action.customTask, id: action.customTask.id || nanoid(), created_at: now, realtor_id: sh.realtor_id } : {
+                id: nanoid(), realtor_id: sh.realtor_id, client_id: sh.client_id || null, property_id: sh.property_id || null,
                 title: `Показ — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
                 description: '', due_date: sh.showing_date, priority: 'high', status: 'pending',
                 created_at: now,
