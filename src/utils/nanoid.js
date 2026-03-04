@@ -1,4 +1,5 @@
 // Simple nanoid-like unique ID generator
+// Standard UUID generator for DB compatibility
 export function nanoid() {
-    return Math.random().toString(36).slice(2, 9) + Date.now().toString(36);
+    return crypto.randomUUID();
 }

@@ -120,71 +120,88 @@ async function loadUserData(userId) {
 
 async function syncAction(action) {
     try {
+        let result;
         switch (action.type) {
             case 'ADD_CLIENT':
             case 'UPDATE_CLIENT':
-                await supabase.from('clients').upsert(action.client);
+                result = await supabase.from('clients').upsert(action.client);
                 break;
             case 'DELETE_CLIENT':
-                await supabase.from('clients').delete().eq('id', action.id);
+                result = await supabase.from('clients').delete().eq('id', action.id);
                 break;
             case 'ADD_PROPERTY':
             case 'UPDATE_PROPERTY':
-                await supabase.from('properties').upsert(action.property);
-                if (action.matches.length > 0) {
-                    await supabase.from('matches').upsert(action.matches);
+                result = await supabase.from('properties').upsert(action.property);
+                if (!result.error && action.matches.length > 0) {
+                    const matchResult = await supabase.from('matches').upsert(action.matches);
+                    if (matchResult.error) console.error('[Supabase Match Sync Error]', matchResult.error);
                 }
                 break;
             case 'DELETE_PROPERTY':
-                await supabase.from('properties').delete().eq('id', action.id);
+                result = await supabase.from('properties').delete().eq('id', action.id);
                 break;
             case 'ADD_REQUEST':
             case 'UPDATE_REQUEST':
-                await supabase.from('requests').upsert(action.request);
-                if (action.matches.length > 0) {
-                    await supabase.from('matches').upsert(action.matches);
+                result = await supabase.from('requests').upsert(action.request);
+                if (!result.error && action.matches.length > 0) {
+                    const matchResult = await supabase.from('matches').upsert(action.matches);
+                    if (matchResult.error) console.error('[Supabase Match Sync Error]', matchResult.error);
                 }
                 break;
             case 'DELETE_REQUEST':
-                await supabase.from('requests').delete().eq('id', action.id);
+                result = await supabase.from('requests').delete().eq('id', action.id);
                 break;
             case 'UPDATE_MATCH':
-                await supabase.from('matches').upsert(action.match);
+                result = await supabase.from('matches').upsert(action.match);
                 break;
             case 'CLOSE_DEAL': {
                 const { matchId, propertyId, requestId, now } = action;
-                await Promise.all([
+                const results = await Promise.all([
                     supabase.from('matches').update({ status: 'deal', updated_at: now }).eq('id', matchId),
                     supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('property_id', propertyId).neq('id', matchId),
                     supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('request_id', requestId).neq('id', matchId),
                     supabase.from('properties').update({ status: 'sold', updated_at: now }).eq('id', propertyId),
                     supabase.from('requests').update({ status: 'found', updated_at: now }).eq('id', requestId)
                 ]);
-                break;
+                results.forEach((res, i) => {
+                    if (res.error) console.error(`[Supabase Deal Sync Error ${i}]`, res.error);
+                });
+                return;
             }
-            case 'ADD_SHOWING':
-                await Promise.all([
+            case 'ADD_SHOWING': {
+                const results = await Promise.all([
                     supabase.from('showings').upsert(action.showing),
                     supabase.from('tasks').upsert(action.task),
                     supabase.from('matches').upsert(action.matches)
                 ]);
-                break;
-            case 'UPDATE_SHOWING':
-                await Promise.all([
+                results.forEach((res, i) => {
+                    if (res.error) console.error(`[Supabase Showing Sync Error ${i}]`, res.error);
+                });
+                return;
+            }
+            case 'UPDATE_SHOWING': {
+                const results = await Promise.all([
                     supabase.from('showings').upsert(action.showing),
                     supabase.from('matches').upsert(action.matches)
                 ]);
-                break;
+                results.forEach((res, i) => {
+                    if (res.error) console.error(`[Supabase Showing Update Error ${i}]`, res.error);
+                });
+                return;
+            }
             case 'ADD_TASK':
             case 'UPDATE_TASK':
-                await supabase.from('tasks').upsert(action.task);
+                result = await supabase.from('tasks').upsert(action.task);
                 break;
             case 'DELETE_TASK':
-                await supabase.from('tasks').delete().eq('id', action.id);
+                result = await supabase.from('tasks').delete().eq('id', action.id);
                 break;
         }
+        if (result?.error) {
+            console.error('[Supabase Sync Error]', action.type, result.error);
+        }
     } catch (err) {
-        console.error('[Supabase sync error]', action.type, err);
+        console.error('[Supabase Critical Error]', action.type, err);
     }
 }
 
