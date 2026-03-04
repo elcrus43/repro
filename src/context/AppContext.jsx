@@ -27,88 +27,51 @@ function reducer(state, action) {
         case 'SET_ALL':
             return { ...state, ...action.data, loading: false };
 
-        // Clients
-        case 'ADD_CLIENT': {
-            const c = { ...action.client, id: action.client.id || nanoid(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-            return { ...state, clients: [...state.clients, c] };
-        }
-        case 'UPDATE_CLIENT': {
-            const clients = state.clients.map(c => c.id === action.client.id ? { ...action.client, updated_at: new Date().toISOString() } : c);
-            return { ...state, clients };
-        }
         case 'DELETE_CLIENT':
             return { ...state, clients: state.clients.filter(c => c.id !== action.id) };
 
-        // Properties
-        case 'ADD_PROPERTY': {
-            const prop = { ...action.property, id: action.property.id || nanoid(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-            const newMatches = runMatchingForProperty(prop, state.requests).map(r => ({
-                id: nanoid(), ...r, realtor_id: prop.realtor_id,
-                status: 'new', rejection_reason: '', realtor_comment: '',
-                created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-            }));
-            return { ...state, properties: [...state.properties, prop], matches: [...state.matches, ...newMatches] };
-        }
-        case 'UPDATE_PROPERTY': {
-            const prop = { ...action.property, updated_at: new Date().toISOString() };
-            const properties = state.properties.map(p => p.id === prop.id ? prop : p);
-            const filteredMatches = state.matches.filter(m => m.property_id !== prop.id || m.status !== 'new');
-            const newMatches = runMatchingForProperty(prop, state.requests).map(r => ({
-                id: nanoid(), ...r, realtor_id: prop.realtor_id,
-                status: 'new', rejection_reason: '', realtor_comment: '',
-                created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-            }));
-            return { ...state, properties, matches: [...filteredMatches, ...newMatches] };
-        }
+        case 'ADD_CLIENT':
+            return { ...state, clients: [...state.clients, action.client] };
+        case 'UPDATE_CLIENT':
+            return { ...state, clients: state.clients.map(c => c.id === action.client.id ? action.client : c) };
+
+        case 'ADD_PROPERTY':
+            return { ...state, properties: [...state.properties, action.property], matches: [...state.matches, ...action.matches] };
+        case 'UPDATE_PROPERTY':
+            return {
+                ...state,
+                properties: state.properties.map(p => p.id === action.property.id ? action.property : p),
+                matches: [...state.matches.filter(m => m.property_id !== action.property.id || m.status !== 'new'), ...action.matches]
+            };
         case 'DELETE_PROPERTY':
             return { ...state, properties: state.properties.filter(p => p.id !== action.id) };
 
-        // Requests
-        case 'ADD_REQUEST': {
-            const req = { ...action.request, id: action.request.id || nanoid(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-            const newMatches = runMatchingForRequest(req, state.properties).map(r => ({
-                id: nanoid(), ...r, realtor_id: req.realtor_id,
-                status: 'new', rejection_reason: '', realtor_comment: '',
-                created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-            }));
-            return { ...state, requests: [...state.requests, req], matches: [...state.matches, ...newMatches] };
-        }
-        case 'UPDATE_REQUEST': {
-            const req = { ...action.request, updated_at: new Date().toISOString() };
-            const requests = state.requests.map(r => r.id === req.id ? req : r);
-            const filteredMatches = state.matches.filter(m => m.request_id !== req.id || m.status !== 'new');
-            const newMatches = runMatchingForRequest(req, state.properties).map(r => ({
-                id: nanoid(), ...r, realtor_id: req.realtor_id,
-                status: 'new', rejection_reason: '', realtor_comment: '',
-                created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-            }));
-            return { ...state, requests, matches: [...filteredMatches, ...newMatches] };
-        }
+        case 'ADD_REQUEST':
+            return { ...state, requests: [...state.requests, action.request], matches: [...state.matches, ...action.matches] };
+        case 'UPDATE_REQUEST':
+            return {
+                ...state,
+                requests: state.requests.map(r => r.id === action.request.id ? action.request : r),
+                matches: [...state.matches.filter(m => m.request_id !== action.request.id || m.status !== 'new'), ...action.matches]
+            };
         case 'DELETE_REQUEST':
             return { ...state, requests: state.requests.filter(r => r.id !== action.id) };
 
-        // Matches
-        case 'UPDATE_MATCH': {
-            const matches = state.matches.map(m => m.id === action.match.id ? { ...action.match, updated_at: new Date().toISOString() } : m);
-            return { ...state, matches };
-        }
-        case 'ADD_MATCHES': {
+        case 'UPDATE_MATCH':
+            return { ...state, matches: state.matches.map(m => m.id === action.match.id ? action.match : m) };
+        case 'ADD_MATCHES':
             return { ...state, matches: [...state.matches, ...action.matches] };
-        }
+
         case 'CLOSE_DEAL': {
-            const { matchId } = action;
-            const match = state.matches.find(m => m.id === matchId);
-            if (!match) return state;
-            const matches = state.matches.map(m => {
-                if (m.id === matchId) return { ...m, status: 'deal', updated_at: new Date().toISOString() };
-                if ((m.property_id === match.property_id || m.request_id === match.request_id) && m.id !== matchId)
-                    return { ...m, status: 'rejected', updated_at: new Date().toISOString() };
-                return m;
-            });
-            const properties = state.properties.map(p => p.id === match.property_id ? { ...p, status: 'sold' } : p);
-            const requests = state.requests.map(r => r.id === match.request_id ? { ...r, status: 'found' } : r);
-            const prop = state.properties.find(p => p.id === match.property_id);
-            const req = state.requests.find(r => r.id === match.request_id);
+            const { matchId, propertyId, requestId, now } = action;
+            const properties = state.properties.map(p => p.id === propertyId ? { ...p, status: 'sold', updated_at: now } : p);
+            const requests = state.requests.map(r => r.id === requestId ? { ...r, status: 'found', updated_at: now } : r);
+            const matches = state.matches.map(m =>
+                m.id === matchId ? { ...m, status: 'deal', updated_at: now } :
+                    (m.property_id === propertyId || m.request_id === requestId) ? { ...m, status: 'rejected', updated_at: now } : m
+            );
+            const prop = properties.find(p => p.id === propertyId);
+            const req = requests.find(r => r.id === requestId);
             const clients = state.clients.map(c => {
                 if (prop && c.id === prop.client_id) return { ...c, status: 'deal_closed' };
                 if (req && c.id === req.client_id) return { ...c, status: 'deal_closed' };
@@ -117,36 +80,15 @@ function reducer(state, action) {
             return { ...state, matches, properties, requests, clients };
         }
 
-        // Showings
-        case 'ADD_SHOWING': {
-            const sh = { ...action.showing, id: action.showing.id || nanoid(), created_at: new Date().toISOString() };
-            const matches = state.matches.map(m => m.id === sh.match_id ? { ...m, status: 'showing_planned', updated_at: new Date().toISOString() } : m);
-            const task = {
-                id: nanoid(), realtor_id: sh.realtor_id, client_id: sh.client_id, property_id: sh.property_id,
-                title: `Показ — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
-                description: '', due_date: sh.showing_date, priority: 'high', status: 'pending',
-                created_at: new Date().toISOString(),
-            };
-            return { ...state, showings: [...state.showings, sh], matches, tasks: [...state.tasks, task] };
-        }
-        case 'UPDATE_SHOWING': {
-            const showings = state.showings.map(s => s.id === action.showing.id ? action.showing : s);
-            let matches = state.matches;
-            if (action.showing.status === 'completed') {
-                matches = state.matches.map(m => m.id === action.showing.match_id ? { ...m, status: 'showing_done', updated_at: new Date().toISOString() } : m);
-            }
-            return { ...state, showings, matches };
-        }
+        case 'ADD_SHOWING':
+            return { ...state, showings: [...state.showings, action.showing], matches: action.matches, tasks: [...state.tasks, action.task] };
+        case 'UPDATE_SHOWING':
+            return { ...state, showings: state.showings.map(s => s.id === action.showing.id ? action.showing : s), matches: action.matches };
 
-        // Tasks
-        case 'ADD_TASK': {
-            const t = { ...action.task, id: action.task.id || nanoid(), created_at: new Date().toISOString() };
-            return { ...state, tasks: [...state.tasks, t] };
-        }
-        case 'UPDATE_TASK': {
-            const tasks = state.tasks.map(t => t.id === action.task.id ? action.task : t);
-            return { ...state, tasks };
-        }
+        case 'ADD_TASK':
+            return { ...state, tasks: [...state.tasks, action.task] };
+        case 'UPDATE_TASK':
+            return { ...state, tasks: state.tasks.map(t => t.id === action.task.id ? action.task : t) };
         case 'DELETE_TASK':
             return { ...state, tasks: state.tasks.filter(t => t.id !== action.id) };
 
@@ -176,44 +118,33 @@ async function loadUserData(userId) {
     };
 }
 
-async function syncAction(action, state) {
+async function syncAction(action) {
     try {
         switch (action.type) {
             case 'ADD_CLIENT':
-            case 'UPDATE_CLIENT': {
-                const c = action.client;
-                await supabase.from('clients').upsert({ ...c, id: c.id || nanoid() });
+            case 'UPDATE_CLIENT':
+                await supabase.from('clients').upsert(action.client);
                 break;
-            }
             case 'DELETE_CLIENT':
                 await supabase.from('clients').delete().eq('id', action.id);
                 break;
             case 'ADD_PROPERTY':
-            case 'UPDATE_PROPERTY': {
-                const p = action.property;
-                await supabase.from('properties').upsert({ ...p, id: p.id || nanoid() });
-                // Also upsert new matches generated
-                const freshState = state;
-                const newMatches = freshState.matches.filter(m => m.property_id === (p.id || p.id) && m.status === 'new');
-                if (newMatches.length > 0) {
-                    await supabase.from('matches').upsert(newMatches);
+            case 'UPDATE_PROPERTY':
+                await supabase.from('properties').upsert(action.property);
+                if (action.matches.length > 0) {
+                    await supabase.from('matches').upsert(action.matches);
                 }
                 break;
-            }
             case 'DELETE_PROPERTY':
                 await supabase.from('properties').delete().eq('id', action.id);
                 break;
             case 'ADD_REQUEST':
-            case 'UPDATE_REQUEST': {
-                const r = action.request;
-                await supabase.from('requests').upsert({ ...r, id: r.id || nanoid() });
-                const freshState = state;
-                const newMatches = freshState.matches.filter(m => m.request_id === r.id && m.status === 'new');
-                if (newMatches.length > 0) {
-                    await supabase.from('matches').upsert(newMatches);
+            case 'UPDATE_REQUEST':
+                await supabase.from('requests').upsert(action.request);
+                if (action.matches.length > 0) {
+                    await supabase.from('matches').upsert(action.matches);
                 }
                 break;
-            }
             case 'DELETE_REQUEST':
                 await supabase.from('requests').delete().eq('id', action.id);
                 break;
@@ -221,32 +152,30 @@ async function syncAction(action, state) {
                 await supabase.from('matches').upsert(action.match);
                 break;
             case 'CLOSE_DEAL': {
-                // Sync all affected matches, properties, requests
-                const match = state.matches.find(m => m.id === action.matchId);
-                if (match) {
-                    const affectedMatches = state.matches.filter(m =>
-                        m.id === action.matchId || m.property_id === match.property_id || m.request_id === match.request_id
-                    );
-                    await supabase.from('matches').upsert(affectedMatches.map(m => ({
-                        ...m,
-                        status: m.id === action.matchId ? 'deal' : 'rejected'
-                    })));
-                    await supabase.from('properties').update({ status: 'sold' }).eq('id', match.property_id);
-                    await supabase.from('requests').update({ status: 'found' }).eq('id', match.request_id);
-                }
+                const { matchId, propertyId, requestId, now } = action;
+                await Promise.all([
+                    supabase.from('matches').update({ status: 'deal', updated_at: now }).eq('id', matchId),
+                    supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('property_id', propertyId).neq('id', matchId),
+                    supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('request_id', requestId).neq('id', matchId),
+                    supabase.from('properties').update({ status: 'sold', updated_at: now }).eq('id', propertyId),
+                    supabase.from('requests').update({ status: 'found', updated_at: now }).eq('id', requestId)
+                ]);
                 break;
             }
-            case 'ADD_SHOWING': {
-                const sh = action.showing;
-                await supabase.from('showings').upsert(sh);
+            case 'ADD_SHOWING':
+                await Promise.all([
+                    supabase.from('showings').upsert(action.showing),
+                    supabase.from('tasks').upsert(action.task),
+                    supabase.from('matches').upsert(action.matches)
+                ]);
                 break;
-            }
             case 'UPDATE_SHOWING':
-                await supabase.from('showings').upsert(action.showing);
+                await Promise.all([
+                    supabase.from('showings').upsert(action.showing),
+                    supabase.from('matches').upsert(action.matches)
+                ]);
                 break;
             case 'ADD_TASK':
-                await supabase.from('tasks').upsert(action.task);
-                break;
             case 'UPDATE_TASK':
                 await supabase.from('tasks').upsert(action.task);
                 break;
@@ -255,7 +184,7 @@ async function syncAction(action, state) {
                 break;
         }
     } catch (err) {
-        console.warn('[Supabase sync error]', action.type, err.message);
+        console.error('[Supabase sync error]', action.type, err);
     }
 }
 
@@ -270,10 +199,77 @@ export function AppProvider({ children }) {
         stateRef.current = state;
     });
 
-    // Supabase-aware dispatch: updates local state immediately, syncs in background
+    // Supabase-aware dispatch: handles ID generation and metadata before reducer
     const dbDispatch = React.useCallback(async (action) => {
-        dispatch(action);
-        await syncAction(action, stateRef.current);
+        let enhancedAction = { ...action };
+        const now = new Date().toISOString();
+
+        if (action.type === 'ADD_CLIENT') {
+            enhancedAction.client = { ...action.client, id: action.client.id || nanoid(), created_at: now, updated_at: now };
+        } else if (action.type === 'UPDATE_CLIENT') {
+            enhancedAction.client = { ...action.client, updated_at: now };
+        } else if (action.type === 'ADD_PROPERTY' || action.type === 'UPDATE_PROPERTY') {
+            const prop = {
+                ...action.property,
+                id: action.property.id || nanoid(),
+                created_at: action.property.created_at || now,
+                updated_at: now
+            };
+            enhancedAction.property = prop;
+            enhancedAction.matches = runMatchingForProperty(prop, stateRef.current.requests).map(m => ({
+                id: nanoid(), ...m, realtor_id: prop.realtor_id,
+                status: 'new', rejection_reason: '', realtor_comment: '',
+                created_at: now, updated_at: now,
+            }));
+        } else if (action.type === 'ADD_REQUEST' || action.type === 'UPDATE_REQUEST') {
+            const req = {
+                ...action.request,
+                id: action.request.id || nanoid(),
+                created_at: action.request.created_at || now,
+                updated_at: now
+            };
+            enhancedAction.request = req;
+            enhancedAction.matches = runMatchingForRequest(req, stateRef.current.properties).map(m => ({
+                id: nanoid(), ...m, realtor_id: req.realtor_id,
+                status: 'new', rejection_reason: '', realtor_comment: '',
+                created_at: now, updated_at: now,
+            }));
+        } else if (action.type === 'UPDATE_MATCH') {
+            enhancedAction.match = { ...action.match, updated_at: now };
+        } else if (action.type === 'CLOSE_DEAL') {
+            const match = stateRef.current.matches.find(m => m.id === action.matchId);
+            if (match) {
+                enhancedAction.propertyId = match.property_id;
+                enhancedAction.requestId = match.request_id;
+                enhancedAction.now = now;
+            }
+        } else if (action.type === 'ADD_SHOWING') {
+            const sh = { ...action.showing, id: action.showing.id || nanoid(), created_at: now };
+            enhancedAction.showing = sh;
+            enhancedAction.matches = stateRef.current.matches.map(m =>
+                m.id === sh.match_id ? { ...m, status: 'showing_planned', updated_at: now } : m
+            );
+            enhancedAction.task = {
+                id: nanoid(), realtor_id: sh.realtor_id, client_id: sh.client_id, property_id: sh.property_id,
+                title: `Показ — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+                description: '', due_date: sh.showing_date, priority: 'high', status: 'pending',
+                created_at: now,
+            };
+        } else if (action.type === 'UPDATE_SHOWING') {
+            enhancedAction.showing = action.showing;
+            let matches = stateRef.current.matches;
+            if (action.showing.status === 'completed') {
+                matches = stateRef.current.matches.map(m =>
+                    m.id === action.showing.match_id ? { ...m, status: 'showing_done', updated_at: now } : m
+                );
+            }
+            enhancedAction.matches = matches;
+        } else if (action.type === 'ADD_TASK') {
+            enhancedAction.task = { ...action.task, id: action.task.id || nanoid(), created_at: now };
+        }
+
+        dispatch(enhancedAction);
+        await syncAction(enhancedAction);
     }, []);
 
     // On mount: check session and load data
