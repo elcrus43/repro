@@ -223,9 +223,10 @@ export function ClientCardPage() {
                 ))}
 
                 {/* Quick add buttons */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                     <button className="btn btn-secondary" onClick={() => navigate(`/requests/new?client=${id}`)}>+ Запрос</button>
                     <button className="btn btn-secondary" onClick={() => navigate(`/properties/new?client=${id}`)}>+ Объект</button>
+                    <button className="btn btn-secondary" onClick={() => navigate(`/tasks?client=${id}&action=new`)}>+ Задача</button>
                 </div>
             </div>
         </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { nanoid } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -55,9 +56,48 @@ function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
 export function TasksPage() {
     const { state, dispatch } = useApp();
     const user = state.currentUser;
+    const location = useLocation();
+
+    const searchParams = new URLSearchParams(location.search);
+    const prefillClientId = searchParams.get('client');
+    const autoOpenForm = searchParams.get('action') === 'new';
+
     const [filter, setFilter] = useState('today');
-    const [showForm, setShowForm] = useState(false);
-    const [newTask, setNewTask] = useState({ title: '', description: '', due_date: '', priority: 'medium' });
+    const [showForm, setShowForm] = useState(autoOpenForm);
+    const [newTask, setNewTask] = useState({
+        title: '', description: '', due_date: '', priority: 'medium',
+        client_id: prefillClientId || '', property_id: '', task_type: ''
+    });
+
+    const myClients = state.clients.filter(c => c.realtor_id === user?.id && c.status === 'active');
+    const myProperties = state.properties.filter(p => p.realtor_id === user?.id && p.status === 'active');
+
+    const TASK_TYPES = ['Позвонить', 'Встреча с собственником', 'Показ', 'Задаток', 'Сделка', 'Другое'];
+
+    function handleFieldChange(field, value) {
+        setNewTask(prev => {
+            const updated = { ...prev, [field]: value };
+
+            if (field === 'task_type' || field === 'client_id' || field === 'property_id') {
+                const type = field === 'task_type' ? value : prev.task_type;
+                if (type && type !== 'Другое') {
+                    const cid = field === 'client_id' ? value : prev.client_id;
+                    const pid = field === 'property_id' ? value : prev.property_id;
+                    const client = state.clients.find(c => c.id === cid);
+                    const prop = state.properties.find(p => p.id === pid);
+
+                    const parts = [type];
+                    if (client) parts.push(client.full_name);
+                    if (prop) {
+                        const shortAddr = prop.address ? prop.address.split(',')[0] : prop.city;
+                        if (shortAddr) parts.push(shortAddr);
+                    }
+                    updated.title = parts.join(' ');
+                }
+            }
+            return updated;
+        });
+    }
 
     const tasks = state.tasks
         .filter(t => t.realtor_id === user?.id)
@@ -88,7 +128,7 @@ export function TasksPage() {
         } else {
             dispatch({ type: 'ADD_TASK', task: { ...taskToSave, realtor_id: user?.id, status: 'pending' } });
         }
-        setNewTask({ title: '', description: '', due_date: '', priority: 'medium' });
+        setNewTask({ title: '', description: '', due_date: '', priority: 'medium', client_id: '', property_id: '', task_type: '' });
         setShowForm(false);
     }
 
@@ -99,7 +139,7 @@ export function TasksPage() {
     }
 
     function editTask(task) {
-        setNewTask(task);
+        setNewTask({ ...task, task_type: task.task_type || '' });
         setShowForm(true);
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -118,15 +158,35 @@ export function TasksPage() {
             <div className="page-content" style={{ paddingTop: 8 }}>
                 {showForm && (
                     <form className="card" onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>Новая задача</div>
-                        <input className="form-input" placeholder="Название задачи" value={newTask.title} required onChange={e => setNewTask(t => ({ ...t, title: e.target.value }))} />
-                        <input className="form-input" type="datetime-local" value={newTask.due_date} onChange={e => setNewTask(t => ({ ...t, due_date: e.target.value }))} />
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{newTask.id ? 'Редактировать задачу' : 'Новая задача'}</div>
+
+                        <select className="form-select" value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
+                            <option value="">Шаблон задачи...</option>
+                            {TASK_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                        </select>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <select className="form-select" value={newTask.client_id || ''} onChange={e => handleFieldChange('client_id', e.target.value)}>
+                                <option value="">Без клиента</option>
+                                {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                            </select>
+                            <select className="form-select" value={newTask.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
+                                <option value="">Без объекта</option>
+                                {myProperties.map(p => <option key={p.id} value={p.id}>{p.address || p.city}</option>)}
+                            </select>
+                        </div>
+
+                        <input className="form-input" placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
+                        <input className="form-input" type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
                         <div className="chip-group">
                             {[['high', 'Важная'], ['medium', 'Средняя'], ['low', 'Низкая']].map(([v, l]) => (
-                                <button key={v} type="button" className={`chip ${newTask.priority === v ? 'active' : ''}`} onClick={() => setNewTask(t => ({ ...t, priority: v }))}>{l}</button>
+                                <button key={v} type="button" className={`chip ${newTask.priority === v ? 'active' : ''}`} onClick={() => handleFieldChange('priority', v)}>{l}</button>
                             ))}
                         </div>
-                        <button type="submit" className="btn btn-primary">Добавить</button>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowForm(false)}>Отмена</button>
+                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
+                        </div>
                     </form>
                 )}
 
