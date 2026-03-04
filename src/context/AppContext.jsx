@@ -371,7 +371,7 @@ export function AppProvider({ children }) {
         init();
 
         // Listen to auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event) => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'SIGNED_OUT') {
                 dispatch({ type: 'LOGOUT' });
             } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
