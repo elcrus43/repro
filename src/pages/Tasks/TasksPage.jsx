@@ -123,6 +123,7 @@ export function TasksPage() {
     function addTask(e) {
         e.preventDefault();
         const taskToSave = { ...newTask, client_id: newTask.client_id || null, property_id: newTask.property_id || null, due_date: newTask.due_date || null };
+        delete taskToSave.task_type;
         if (newTask.id) {
             dispatch({ type: 'UPDATE_TASK', task: taskToSave });
         } else {
