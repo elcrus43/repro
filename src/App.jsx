@@ -53,7 +53,7 @@ function LoadingScreen() {
     }}>
       <div className="sidebar-logo">
         <div className="avatar" style={{ background: 'var(--primary)', color: 'white' }}>rp</div>
-        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>re/pro</div>
+        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>RE|PRO</div>
       </div>
       <div style={{ fontSize: 14, opacity: 0.7 }}>Загрузка...</div>
     </div>

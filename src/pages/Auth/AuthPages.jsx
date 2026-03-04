@@ -82,7 +82,7 @@ export function LoginPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <h1>re/pro</h1>
+                <h1>RE|PRO</h1>
                 <p>Умная недвижимость</p>
             </div>
             <div className="auth-card">
@@ -191,7 +191,7 @@ export function RegisterPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <h1>re/pro</h1>
+                <h1>RE|PRO</h1>
                 <p>Умная недвижимость</p>
             </div>
             <div className="auth-card">

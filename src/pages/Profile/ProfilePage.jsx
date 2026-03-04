@@ -112,7 +112,6 @@ export function ProfilePage() {
                             <Edit2 size={18} />
                         </button>
                     )}
-                    <div className="avatar avatar-lg" style={{ margin: '0 auto 12px', fontSize: 32 }}>{initials}</div>
 
                     {isEditing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
@@ -139,7 +138,7 @@ export function ProfilePage() {
                 {deferredPrompt && !isInstalled && (
                     <div className="card" style={{ background: 'var(--primary)', color: 'white', padding: '16px' }}>
                         <div style={{ fontWeight: 700, marginBottom: 4 }}>Установить приложение</div>
-                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте re/pro на рабочий стол для быстрого доступа</div>
+                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте RE|PRO на рабочий стол для быстрого доступа</div>
                         <button className="btn btn-full" style={{ background: 'white', color: 'var(--primary)' }} onClick={handleInstall}>
                             Установить
                         </button>
