@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
-import { formatPhone, stripPhone } from '../../utils/format';
+import { formatPhone } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { Edit2, Trash2, MapPin, Calendar, Eye, Activity } from 'lucide-react';
+import { BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS, MARKET_LABELS, STATUS_LABELS, STATUS_COLORS } from '../../data/constants';
 
 const STATUS_FUNNEL = [
     { id: 'meeting', label: 'Встреча', color: 'primary' },
@@ -36,26 +37,8 @@ export function PropertiesPage() {
         })
         .filter(p => !search || p.address?.toLowerCase().includes(search.toLowerCase()) || p.district?.toLowerCase().includes(search.toLowerCase()));
 
-    const statusLabels = {
-        meeting: 'Встреча',
-        agreement: 'АД',
-        advertising: 'В рекламе',
-        deposit: 'Задаток',
-        deal: 'Сделка',
-        rejected: 'Отказ',
-        // legacy
-        active: 'Активен', sold: 'Продан', reserved: 'Резерв', withdrawn: 'Снят'
-    };
-
-    const statusColors = {
-        meeting: 'primary',
-        agreement: 'warning-alt',
-        advertising: 'success',
-        deposit: 'warning',
-        deal: 'success',
-        rejected: 'danger',
-        active: 'success', sold: 'muted', reserved: 'warning', withdrawn: 'danger'
-    };
+    const statusLabels = STATUS_LABELS;
+    const statusColors = STATUS_COLORS;
 
     return (
         <div className="page fade-in">
@@ -85,7 +68,6 @@ export function PropertiesPage() {
                 )}
                 {properties.map(prop => {
                     const client = state.clients.find(c => c.id === prop.client_id);
-                    const matches = state.matches.filter(m => m.property_id === prop.id);
 
                     const handleDelete = (e) => {
                         e.stopPropagation();
