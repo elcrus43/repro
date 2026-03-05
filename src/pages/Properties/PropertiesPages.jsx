@@ -21,13 +21,14 @@ export function PropertiesPage() {
     const navigate = useNavigate();
     const user = state.currentUser;
     const [search, setSearch] = useState('');
+    const [scope, setScope] = useState('all'); // all or mine
     const [filter, setFilter] = useState('all');
 
     const params = new URLSearchParams(window.location.search);
     const clientFilter = params.get('client');
 
     const properties = state.properties
-        .filter(p => p.realtor_id === user?.id)
+        .filter(p => scope === 'all' || p.realtor_id === user?.id)
         .filter(p => !clientFilter || p.client_id === clientFilter)
         .filter(p => {
             if (filter === 'apartment') return p.property_type === 'apartment';
@@ -56,6 +57,13 @@ export function PropertiesPage() {
                 {[['all', 'Все'], ['apartment', 'Квартиры'], ['house', 'Дома'], ['active', 'В рекламе']].map(([v, l]) => (
                     <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
                 ))}
+            </div>
+
+            <div style={{ padding: '0 16px', marginTop: 8 }}>
+                <div style={{ display: 'flex', background: 'var(--bg)', padding: 4, borderRadius: 8, gap: 4 }}>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'all' ? 'white' : 'transparent', boxShadow: scope === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'all' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('all')}>Общая база</button>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои объекты</button>
+                </div>
             </div>
 
             <div className="page-content" style={{ paddingTop: 8 }}>

@@ -60,11 +60,13 @@ export function RequestsPage() {
     const navigate = useNavigate();
     const user = state.currentUser;
     const [search, setSearch] = useState('');
+    const [filter, setFilter] = useState('all');
+    const [scope, setScope] = useState('all'); // all or mine
     const params = new URLSearchParams(window.location.search);
     const clientFilter = params.get('client');
 
     const requests = state.requests
-        .filter(r => r.realtor_id === user?.id)
+        .filter(r => scope === 'all' || r.realtor_id === user?.id)
         .filter(r => !clientFilter || r.client_id === clientFilter)
         .filter(r => {
             if (!search) return true;
@@ -87,6 +89,13 @@ export function RequestsPage() {
                     <input className="form-input" placeholder="Поиск по клиенту" value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
             </div>
+            <div style={{ padding: '0 16px', marginTop: 8 }}>
+                <div style={{ display: 'flex', background: 'var(--bg)', padding: 4, borderRadius: 8, gap: 4 }}>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'all' ? 'white' : 'transparent', boxShadow: scope === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'all' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('all')}>Общая база</button>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои запросы</button>
+                </div>
+            </div>
+
             <div className="page-content" style={{ paddingTop: 12 }}>
                 {requests.length === 0 && (
                     <div className="empty-state">
@@ -517,3 +526,4 @@ export function RequestFormPage() {
         </div>
     );
 }
+/* The filter case for requests might be missing filter state in the list page */
