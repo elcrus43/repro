@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { nanoid } from '../../utils/nanoid';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 

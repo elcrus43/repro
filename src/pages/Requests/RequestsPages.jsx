@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
-import { formatPhone, stripPhone } from '../../utils/format';
+import { formatPhone } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
+import { BUILDING_TYPES } from '../../data/constants';
 
 const STEPS = ['Основное', 'Параметры', 'Оплата', 'Дополнительно'];
 
@@ -14,9 +15,9 @@ function StepDots({ step }) {
             {STEPS.map((s, i) => (
                 <React.Fragment key={s}>
                     <div className="step-item">
-                        <div className={`step - circle ${i < step ? 'done' : i === step ? 'active' : ''} `}>{i < step ? '✓' : i + 1}</div>
+                        <div className={`step-circle ${i < step ? 'done' : i === step ? 'active' : ''}`}>{i < step ? '✓' : i + 1}</div>
                     </div>
-                    {i < STEPS.length - 1 && <div className={`step - line ${i < step ? 'done' : ''} `} />}
+                    {i < STEPS.length - 1 && <div className={`step-line ${i < step ? 'done' : ''}`} />}
                 </React.Fragment>
             ))}
         </div>
@@ -55,7 +56,7 @@ const defaultReq = {
 };
 
 export function RequestsPage() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
     const [search, setSearch] = useState('');
@@ -105,7 +106,7 @@ export function RequestsPage() {
                     };
                     const handleEdit = (e) => {
                         e.stopPropagation();
-                        navigate(`/ requests / ${req.id}/edit`);
+                        navigate(`/requests/${req.id}/edit`);
                     };
                     return (
                         <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)}>
@@ -142,7 +143,7 @@ export function RequestsPage() {
 }
 
 export function RequestCardPage() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const id = window.location.pathname.split('/')[2];
     const req = state.requests.find(r => r.id === id);
@@ -156,7 +157,6 @@ export function RequestCardPage() {
 
     const urgencyLabel = { low: 'Низкая', medium: 'Средняя', high: 'Высокая' };
     const paymentLabel = { cash: 'Наличные', mortgage: 'Ипотека', matcapital: 'Маткапитал', certificate: 'Сертификат', mixed: 'Смешанная' };
-    const buildingTypeLabel = { panel: 'Панельный', brick: 'Кирпичный', mono: 'Монолитный', block: 'Блочный', wooden: 'Деревянный' };
     const pTypes = req.payment_types || ['mortgage'];
 
     return (
@@ -205,7 +205,7 @@ export function RequestCardPage() {
                         </span>
                     </div>
                     {req.balcony_required && <div className="info-row"><span className="info-key">Балкон</span><span className="info-val">Нужен</span></div>}
-                    {req.building_types?.length > 0 && <div className="info-row"><span className="info-key">Тип дома</span><span className="info-val">{req.building_types.map(bt => buildingTypeLabel[bt] || bt).join(', ')}</span></div>}
+                    {req.building_types?.length > 0 && <div className="info-row"><span className="info-key">Тип дома</span><span className="info-val">{req.building_types.map(bt => BUILDING_TYPES[bt] || bt).join(', ')}</span></div>}
                     {req.renovation_min && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Ремонт</span><span className="info-val">от {req.renovation_min}</span></div>}
                 </div>
 
