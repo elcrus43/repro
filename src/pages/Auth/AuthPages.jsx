@@ -3,21 +3,22 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 
+const ADMIN_EMAIL = 'yelchugin@gmail.com';
+
 export function LoginPage() {
     const { dispatch } = useApp();
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: '', password: '' });
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [pendingMsg, setPendingMsg] = useState('');
 
     async function handleGoogleLogin() {
         setError('');
         try {
             const { error: err } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
-                }
+                options: { redirectTo: window.location.origin }
             });
             if (err) setError(err.message);
         } catch (e) {
@@ -29,37 +30,59 @@ export function LoginPage() {
         e.preventDefault();
         setLoading(true);
         setError('');
+        setPendingMsg('');
         const { data, error: err } = await supabase.auth.signInWithPassword({
             email: form.email,
             password: form.password,
         });
         if (err) { setError(err.message === 'Invalid login credentials' ? 'Неверный email или пароль' : err.message); setLoading(false); return; }
 
+        const isAdmin = data.user.email === ADMIN_EMAIL;
+
         let { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single();
 
-        // If profile missing (could happen if registration was interrupted), create it
         if (!profile) {
             const newProfile = {
                 id: data.user.id,
                 full_name: data.user.user_metadata?.full_name || 'Пользователь',
                 phone: data.user.user_metadata?.phone || '',
                 agency_name: data.user.user_metadata?.agency_name || '',
-                role: 'realtor',
+                role: isAdmin ? 'admin' : 'realtor',
+                status: isAdmin ? 'approved' : 'pending',
             };
             const { data: createdProfile, error: createErr } = await supabase.from('profiles').insert(newProfile).select().single();
-            if (createErr) {
-                setError('Ошибка при получении профиля: ' + createErr.message);
-                setLoading(false);
-                return;
-            }
+            if (createErr) { setError('Ошибка при получении профиля: ' + createErr.message); setLoading(false); return; }
             profile = createdProfile;
+        }
+
+        // Ensure admin always has correct role/status
+        if (isAdmin && (profile.role !== 'admin' || profile.status !== 'approved')) {
+            await supabase.from('profiles').update({ role: 'admin', status: 'approved' }).eq('id', data.user.id);
+            profile = { ...profile, role: 'admin', status: 'approved' };
+        }
+
+        // Block pending users
+        if (profile.status === 'pending') {
+            await supabase.auth.signOut();
+            setPendingMsg('Ваш аккаунт ожидает подтверждения администратором. Мы сообщим вам, когда доступ будет открыт.');
+            setLoading(false);
+            return;
+        }
+
+        if (profile.status === 'rejected') {
+            await supabase.auth.signOut();
+            setError('В доступе к системе отказано. Обратитесь к администратору.');
+            setLoading(false);
+            return;
         }
 
         if (profile) {
             dispatch({ type: 'SET_USER', user: { ...profile, email: data.user.email } });
             const [clients, properties, requests, matches, showings, tasks] = await Promise.all([
-                supabase.from('clients').select('*').eq('realtor_id', data.user.id),
-                supabase.from('properties').select('*').eq('realtor_id', data.user.id),
+                isAdmin
+                    ? supabase.from('clients').select('*')
+                    : supabase.from('clients').select('*').eq('realtor_id', data.user.id),
+                supabase.from('properties').select('*'),  // All realtors see all properties
                 supabase.from('requests').select('*').eq('realtor_id', data.user.id),
                 supabase.from('matches').select('*').eq('realtor_id', data.user.id),
                 supabase.from('showings').select('*').eq('realtor_id', data.user.id),
@@ -82,13 +105,18 @@ export function LoginPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <h1>RE|PRO</h1>
+                <h1>REM</h1>
                 <p>Умная недвижимость</p>
             </div>
             <div className="auth-card">
                 <form onSubmit={handleSubmit}>
                     <h2>Вход</h2>
                     {error && <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 12 }}>{error}</div>}
+                    {pendingMsg && (
+                        <div style={{ color: 'var(--warning, #b45309)', fontSize: 14, background: 'var(--warning-light, #fef3c7)', padding: '12px', borderRadius: 'var(--radius-sm)', marginBottom: 12, lineHeight: 1.5 }}>
+                            ⏳ {pendingMsg}
+                        </div>
+                    )}
                     <div className="form-group">
                         <label className="form-label">Email</label>
                         <input className="form-input" type="email" value={form.email} placeholder="anna@novydom.ru"
@@ -121,7 +149,6 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
-    const { dispatch } = useApp();
     const navigate = useNavigate();
     const [form, setForm] = useState({ full_name: '', email: '', phone: '', password: '', agency_name: '' });
     const [error, setError] = useState('');
@@ -133,9 +160,7 @@ export function RegisterPage() {
         try {
             const { error: err } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
-                }
+                options: { redirectTo: window.location.origin }
             });
             if (err) setError(err.message);
         } catch (e) {
@@ -149,7 +174,6 @@ export function RegisterPage() {
         setError('');
         setSuccessMsg('');
 
-        // 1. Create auth user
         const { data, error: signUpErr } = await supabase.auth.signUp({
             email: form.email,
             password: form.password,
@@ -163,35 +187,41 @@ export function RegisterPage() {
         });
         if (signUpErr) { setError(signUpErr.message); setLoading(false); return; }
 
-        // If email confirmation is required, session will be null
         if (!data.session) {
-            setSuccessMsg('Аккаунт создан! Пожалуйста, проверьте почту и подтвердите email для входа.');
+            setSuccessMsg('Аккаунт создан! Пожалуйста, проверьте почту и подтвердите email. После этого администратор проверит и активирует ваш аккаунт.');
             setLoading(false);
             return;
         }
 
         const userId = data.user.id;
+        const isAdmin = form.email === ADMIN_EMAIL;
 
-        // 2. Create profile
         const profile = {
             id: userId,
             full_name: form.full_name,
             phone: form.phone,
             agency_name: form.agency_name,
-            role: 'realtor',
+            role: isAdmin ? 'admin' : 'realtor',
+            status: isAdmin ? 'approved' : 'pending',
         };
         const { error: profileErr } = await supabase.from('profiles').insert(profile);
         if (profileErr) { setError('Ошибка создания профиля: ' + profileErr.message); setLoading(false); return; }
 
-        dispatch({ type: 'SET_USER', user: { ...profile, email: form.email } });
-        dispatch({ type: 'SET_ALL', data: { clients: [], properties: [], requests: [], matches: [], showings: [], tasks: [] } });
+        if (!isAdmin) {
+            // Sign out pending user — they need admin approval first
+            await supabase.auth.signOut();
+            setSuccessMsg('Аккаунт создан! Ваш запрос отправлен администратору. Вы сможете войти после подтверждения.');
+            setLoading(false);
+            return;
+        }
+
         navigate('/');
     }
 
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <h1>RE|PRO</h1>
+                <h1>REM</h1>
                 <p>Умная недвижимость</p>
             </div>
             <div className="auth-card">
