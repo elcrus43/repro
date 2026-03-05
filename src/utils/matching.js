@@ -242,7 +242,7 @@ export function runMatchingForProperty(property, requests) {
   const results = [];
   for (const req of requests) {
     if (req.status !== 'active') continue;
-    if (req.realtor_id !== property.realtor_id) continue;
+
     const result = calculateMatch(property, req);
     if (result) {
       results.push({ request_id: req.id, property_id: property.id, ...result });
@@ -254,8 +254,8 @@ export function runMatchingForProperty(property, requests) {
 export function runMatchingForRequest(request, properties) {
   const results = [];
   for (const prop of properties) {
-    if (prop.status !== 'active') continue;
-    if (prop.realtor_id !== request.realtor_id) continue;
+    if (prop.status !== 'active' && prop.status !== 'advertising') continue;
+
     const result = calculateMatch(prop, request);
     if (result) {
       results.push({ property_id: prop.id, request_id: request.id, ...result });

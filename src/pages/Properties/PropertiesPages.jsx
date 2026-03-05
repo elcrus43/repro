@@ -138,6 +138,7 @@ export function PropertyCardPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const id = window.location.pathname.split('/')[2];
+    const user = state.currentUser;
     const prop = state.properties.find(p => p.id === id);
 
     if (!prop) return (
@@ -145,6 +146,7 @@ export function PropertyCardPage() {
     );
 
     const client = state.clients.find(c => c.id === prop.client_id);
+    const realtor = state.profiles?.find(p => p.id === prop.realtor_id);
     const matches = state.matches.filter(m => m.property_id === id);
 
     function handleDelete() {
@@ -178,7 +180,7 @@ export function PropertyCardPage() {
                 <div className="card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <span style={{ fontSize: 24, fontWeight: 800 }}>{formatPrice(prop.price)}</span>
-                        <span className={`badge badge-${prop.status === 'active' ? 'success' : 'muted'}`}>{prop.status === 'active' ? 'Активен' : prop.status}</span>
+                        <span className={`badge badge-${STATUS_COLORS[prop.status] || 'muted'}`}>{STATUS_LABELS[prop.status] || prop.status}</span>
                     </div>
                     {prop.price_min && prop.price_min < prop.price && (
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Торг до {formatPrice(prop.price_min)}</div>
@@ -189,6 +191,27 @@ export function PropertyCardPage() {
                     <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>г. {prop.city}, {prop.district && `${prop.district}, `}{prop.address}</div>
                     {prop.residential_complex && <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>ЖК: {prop.residential_complex}</div>}
                 </div>
+
+                {/* Realtor Info (Owner) */}
+                {realtor && realtor.id !== user?.id && (
+                    <div className="card" style={{ background: 'var(--primary-light)', borderColor: 'var(--primary-light)' }}>
+                        <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Этот объект ведет</div>
+                        <div className="flex items-center gap-12">
+                            <div className="avatar" style={{ background: 'var(--primary)', color: 'white', width: 44, height: 44, fontSize: 16 }}>
+                                {realtor.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || 'Р'}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 700, fontSize: 16 }}>{realtor.full_name}</div>
+                                {realtor.agency_name && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{realtor.agency_name}</div>}
+                                {realtor.phone && (
+                                    <a href={`tel:${realtor.phone}`} style={{ fontSize: 14, color: 'var(--primary)', fontWeight: 600, display: 'inline-block', marginTop: 4 }}>
+                                        {formatPhone(realtor.phone)}
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Params */}
                 <div className="card">
@@ -230,6 +253,23 @@ export function PropertyCardPage() {
                     <div className="card">
                         <div className="section-title" style={{ marginBottom: 6 }}>Описание</div>
                         <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{prop.description}</p>
+                    </div>
+                )}
+
+                {/* Funnel Switcher for Card */}
+                {user?.id === prop.realtor_id && (
+                    <div className="card" style={{ padding: '12px 16px' }}>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>Статус объекта</div>
+                        <div className="funnel-bar">
+                            {STATUS_FUNNEL.map(s => (
+                                <div key={s.id}
+                                    className={`funnel-item ${prop.status === s.id ? 'active' : ''}`}
+                                    onClick={() => dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, status: s.id } })}
+                                >
+                                    {s.label}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 

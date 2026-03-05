@@ -60,7 +60,6 @@ export function RequestsPage() {
     const navigate = useNavigate();
     const user = state.currentUser;
     const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState('all'); // all or mine
     const params = new URLSearchParams(window.location.search);
     const clientFilter = params.get('client');

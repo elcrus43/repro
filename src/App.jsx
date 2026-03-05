@@ -81,7 +81,10 @@ function AppLayout({ children }) {
   );
 }
 
+import { useMatchNotifications } from './hooks/useMatchNotifications';
+
 function AppRoutes() {
+  useMatchNotifications();
   return (
     <AppLayout>
       <Routes>

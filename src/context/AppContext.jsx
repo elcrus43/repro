@@ -120,7 +120,9 @@ async function loadUserData(userId, role) {
         supabase.from('showings').select('*').eq('realtor_id', userId),
         supabase.from('tasks').select('*').eq('realtor_id', userId),
     ]);
-    const pendingUsers = isAdmin ? await supabase.from('profiles').select('*').in('status', ['pending', 'rejected']) : { data: [] };
+    // All users need to see profiles for Realtor info on cards and matches
+    const { data: profiles } = await supabase.from('profiles').select('*');
+    const pendingUsers = isAdmin ? profiles?.filter(p => ['pending', 'rejected'].includes(p.status)) : [];
 
     return {
         clients: clients.data || [],
@@ -129,7 +131,8 @@ async function loadUserData(userId, role) {
         matches: matches.data || [],
         showings: showings.data || [],
         tasks: tasks.data || [],
-        pendingUsers: pendingUsers.data || [],
+        profiles: profiles || [],
+        pendingUsers: pendingUsers || [],
     };
 }
 
