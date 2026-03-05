@@ -10,8 +10,16 @@ export function ProfilePage() {
     const navigate = useNavigate();
     const [deferredPrompt, setDeferredPrompt] = React.useState(null);
     const [isInstalled, setIsInstalled] = React.useState(false);
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
 
     const user = state.currentUser;
+    const [editData, setEditData] = React.useState({
+        full_name: user?.full_name || '',
+        phone: user?.phone || '',
+        agency_name: user?.agency_name || ''
+    });
+
     const isAdmin = user?.role === 'admin';
     const pendingUsers = state.pendingUsers || [];
 
@@ -29,6 +37,16 @@ export function ProfilePage() {
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
+    React.useEffect(() => {
+        if (user) setEditData({
+            full_name: user.full_name || '',
+            phone: user.phone || '',
+            agency_name: user.agency_name || ''
+        });
+    }, [user]);
+
+    if (!user) return null;
+
     async function handleApprove(profileId) {
         dispatch({ type: 'APPROVE_USER', userId: profileId });
     }
@@ -44,23 +62,6 @@ export function ProfilePage() {
         if (outcome === 'accepted') setDeferredPrompt(null);
     }
 
-    const [isEditing, setIsEditing] = React.useState(false);
-    const [editData, setEditData] = React.useState({
-        full_name: user?.full_name || '',
-        phone: user?.phone || '',
-        agency_name: user?.agency_name || ''
-    });
-
-    React.useEffect(() => {
-        if (user) setEditData({
-            full_name: user.full_name || '',
-            phone: user.phone || '',
-            agency_name: user.agency_name || ''
-        });
-    }, [user]);
-
-    if (!user) return null;
-
     const handleSave = () => {
         dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
         setIsEditing(false);
@@ -72,8 +73,6 @@ export function ProfilePage() {
     const myMatches = state.matches.filter(m => m.realtor_id === user.id);
     const deals = myMatches.filter(m => m.status === 'deal').length;
     const conversion = myMatches.length > 0 ? ((deals / myMatches.length) * 100).toFixed(1) : 0;
-
-    const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
 
     const toggleTheme = () => {
         const root = document.documentElement;

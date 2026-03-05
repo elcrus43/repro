@@ -263,7 +263,7 @@ async function syncAction(rawAction) {
             }
         }
     } catch (err) {
-        console.error('[Supabase Critical Error]', action.type, err);
+        console.error('[Supabase Critical Error]', rawAction.type, err);
     }
 }
 
