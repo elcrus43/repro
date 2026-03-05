@@ -21,13 +21,15 @@ function BottomNav() {
   const { state } = useApp();
 
   const newMatchCount = state.matches.filter(m => m.realtor_id === state.currentUser?.id && m.status === 'new').length;
+  const isAdminUser = state.currentUser?.role === 'admin';
+  const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
 
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
     { path: '/matches', icon: <Sparkles size={22} />, label: 'Матчи', badge: newMatchCount > 0 },
     { path: '/tasks', icon: <CheckSquare size={22} />, label: 'Задачи' },
-    { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль' },
+    { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
 
   const isActive = (path) => pathname.startsWith(path);
