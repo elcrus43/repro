@@ -102,10 +102,15 @@ function reducer(state, action) {
 
 // ─── Supabase sync helpers ───────────────────────────────────────────────────
 
-async function loadUserData(userId) {
+const ADMIN_EMAIL = 'yelchugin@gmail.com';
+
+async function loadUserData(userId, role) {
+    const isAdmin = role === 'admin';
     const [clients, properties, requests, matches, showings, tasks] = await Promise.all([
-        supabase.from('clients').select('*').eq('realtor_id', userId),
-        supabase.from('properties').select('*').eq('realtor_id', userId),
+        isAdmin
+            ? supabase.from('clients').select('*')
+            : supabase.from('clients').select('*').eq('realtor_id', userId),
+        supabase.from('properties').select('*'),   // All realtors see all properties
         supabase.from('requests').select('*').eq('realtor_id', userId),
         supabase.from('matches').select('*').eq('realtor_id', userId),
         supabase.from('showings').select('*').eq('realtor_id', userId),
@@ -120,6 +125,7 @@ async function loadUserData(userId) {
         tasks: tasks.data || [],
     };
 }
+
 
 async function syncAction(rawAction) {
     try {
@@ -337,7 +343,6 @@ export function AppProvider({ children }) {
         let isInitial = true;
 
         async function loadProfileAndData(sessionUser) {
-            // Try to load the profile from DB
             const { data: profile, error: profileErr } = await supabase
                 .from('profiles')
                 .select('*')
@@ -345,11 +350,7 @@ export function AppProvider({ children }) {
                 .single();
 
             if (profileErr && profileErr.code !== 'PGRST116') {
-                // PGRST116 = "no rows returned" (profile just doesn't exist yet)
-                // Any other error (like RLS recursion 42P17) means something is wrong with the DB
                 console.error('[Profile load error]', profileErr);
-
-                // Fallback: use auth metadata to log the user in so the app is at least usable
                 const fallbackProfile = {
                     id: sessionUser.id,
                     full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
@@ -357,12 +358,11 @@ export function AppProvider({ children }) {
                     phone: sessionUser.user_metadata?.phone || '',
                     agency_name: '',
                     role: 'realtor',
+                    status: 'approved',
                 };
-                console.warn('[Profile] Using auth metadata fallback due to DB error');
                 dispatch({ type: 'SET_USER', user: fallbackProfile });
-                // Load data as best we can; individual loads may also fail if DB is broken
                 try {
-                    const data = await loadUserData(sessionUser.id);
+                    const data = await loadUserData(sessionUser.id, 'realtor');
                     dispatch({ type: 'SET_ALL', data });
                 } catch (e) {
                     console.error('[Data load error]', e);
@@ -371,41 +371,51 @@ export function AppProvider({ children }) {
                 return;
             }
 
-            // If profile missing (for example, first OAuth sign-in), create it automatically
             if (!profile) {
+                const isAdmin = sessionUser.email === ADMIN_EMAIL;
                 const newProfile = {
                     id: sessionUser.id,
                     full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
                     phone: sessionUser.user_metadata?.phone || '',
                     agency_name: '',
-                    role: 'realtor',
+                    role: isAdmin ? 'admin' : 'realtor',
+                    status: isAdmin ? 'approved' : 'pending',
                 };
-                console.log('[Profile] Creating new profile for', sessionUser.id);
                 const { data: createdProfile, error: createErr } = await supabase.from('profiles').insert(newProfile).select().single();
                 if (!createErr) {
-                    const data = await loadUserData(sessionUser.id);
+                    if (createdProfile.status === 'pending') {
+                        // Don't let pending users in — sign them out
+                        await supabase.auth.signOut();
+                        dispatch({ type: 'SET_LOADING', value: false });
+                        return;
+                    }
+                    const data = await loadUserData(sessionUser.id, createdProfile.role);
                     dispatch({ type: 'SET_USER', user: { ...createdProfile, email: sessionUser.email } });
                     dispatch({ type: 'SET_ALL', data });
                 } else {
                     console.error('[Profile creation error]', createErr);
-                    // Still let the user in with fallback
-                    const fallbackProfile = {
-                        id: sessionUser.id,
-                        full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
-                        email: sessionUser.email,
-                        phone: '',
-                        agency_name: '',
-                        role: 'realtor',
-                    };
-                    dispatch({ type: 'SET_USER', user: fallbackProfile });
                     dispatch({ type: 'SET_LOADING', value: false });
                 }
                 return;
             }
 
-            if (profile) {
-                dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
-                const data = await loadUserData(sessionUser.id);
+            // Enforce admin role for admin email
+            let resolvedProfile = profile;
+            if (sessionUser.email === ADMIN_EMAIL && (profile.role !== 'admin' || profile.status !== 'approved')) {
+                await supabase.from('profiles').update({ role: 'admin', status: 'approved' }).eq('id', sessionUser.id);
+                resolvedProfile = { ...profile, role: 'admin', status: 'approved' };
+            }
+
+            // Block pending/rejected users
+            if (resolvedProfile.status === 'pending' || resolvedProfile.status === 'rejected') {
+                await supabase.auth.signOut();
+                dispatch({ type: 'SET_LOADING', value: false });
+                return;
+            }
+
+            if (resolvedProfile) {
+                dispatch({ type: 'SET_USER', user: { ...resolvedProfile, email: sessionUser.email } });
+                const data = await loadUserData(sessionUser.id, resolvedProfile.role);
                 dispatch({ type: 'SET_ALL', data });
             } else {
                 dispatch({ type: 'SET_LOADING', value: false });

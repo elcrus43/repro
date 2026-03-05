@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
-import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2 } from 'lucide-react';
+import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2, UserCheck, UserX } from 'lucide-react';
 
 
 export function ProfilePage() {
@@ -10,6 +10,8 @@ export function ProfilePage() {
     const navigate = useNavigate();
     const [deferredPrompt, setDeferredPrompt] = React.useState(null);
     const [isInstalled, setIsInstalled] = React.useState(false);
+    const [pendingUsers, setPendingUsers] = React.useState([]);
+    const [loadingUsers, setLoadingUsers] = React.useState(false);
 
     React.useEffect(() => {
         const handler = (e) => {
@@ -17,28 +19,42 @@ export function ProfilePage() {
             setDeferredPrompt(e);
         };
         window.addEventListener('beforeinstallprompt', handler);
-
         window.addEventListener('appinstalled', () => {
             setIsInstalled(true);
             setDeferredPrompt(null);
         });
-
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            setIsInstalled(true);
-        }
-
+        if (window.matchMedia('(display-mode: standalone)').matches) setIsInstalled(true);
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
+
+    const user = state.currentUser;
+    const isAdmin = user?.role === 'admin';
+
+    React.useEffect(() => {
+        if (isAdmin) {
+            setLoadingUsers(true);
+            supabase.from('profiles').select('*').in('status', ['pending', 'rejected'])
+                .then(({ data }) => { setPendingUsers(data || []); setLoadingUsers(false); });
+        }
+    }, [isAdmin]);
+
+    async function handleApprove(profileId) {
+        await supabase.from('profiles').update({ status: 'approved' }).eq('id', profileId);
+        setPendingUsers(u => u.filter(p => p.id !== profileId));
+    }
+
+    async function handleReject(profileId) {
+        await supabase.from('profiles').update({ status: 'rejected' }).eq('id', profileId);
+        setPendingUsers(u => u.map(p => p.id === profileId ? { ...p, status: 'rejected' } : p));
+    }
 
     async function handleInstall() {
         if (!deferredPrompt) return;
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if (outcome === 'accepted') {
-            setDeferredPrompt(null);
-        }
+        if (outcome === 'accepted') setDeferredPrompt(null);
     }
-    const user = state.currentUser;
+
     if (!user) return null;
 
     const [isEditing, setIsEditing] = React.useState(false);
@@ -59,7 +75,6 @@ export function ProfilePage() {
     const myMatches = state.matches.filter(m => m.realtor_id === user.id);
     const deals = myMatches.filter(m => m.status === 'deal').length;
     const conversion = myMatches.length > 0 ? ((deals / myMatches.length) * 100).toFixed(1) : 0;
-    const initials = user.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?';
 
     const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
 
@@ -112,7 +127,6 @@ export function ProfilePage() {
                             <Edit2 size={18} />
                         </button>
                     )}
-
                     {isEditing ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
                             <input className="form-input" value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
@@ -134,11 +148,55 @@ export function ProfilePage() {
                     )}
                 </div>
 
+                {/* Admin panel: pending users */}
+                {isAdmin && (
+                    <div className="card">
+                        <div className="section-title" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            Управление пользователями
+                            {pendingUsers.filter(u => u.status === 'pending').length > 0 && (
+                                <span className="badge badge-danger">
+                                    {pendingUsers.filter(u => u.status === 'pending').length} ожидают
+                                </span>
+                            )}
+                        </div>
+                        {loadingUsers && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Загрузка...</div>}
+                        {!loadingUsers && pendingUsers.length === 0 && (
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Нет ожидающих запросов ✓</div>
+                        )}
+                        {pendingUsers.map(u => (
+                            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email || u.id}</div>
+                                    {u.agency_name && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.agency_name}</div>}
+                                    <span style={{
+                                        display: 'inline-block', marginTop: 4, fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600,
+                                        background: u.status === 'pending' ? 'var(--warning-light, #fef3c7)' : 'var(--danger-light)',
+                                        color: u.status === 'pending' ? 'var(--warning, #b45309)' : 'var(--danger)'
+                                    }}>
+                                        {u.status === 'pending' ? '⏳ Ожидает' : '✕ Отклонён'}
+                                    </span>
+                                </div>
+                                {u.status === 'pending' && (
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <button className="icon-btn" title="Одобрить" onClick={() => handleApprove(u.id)} style={{ color: 'var(--success)' }}>
+                                            <UserCheck size={20} />
+                                        </button>
+                                        <button className="icon-btn" title="Отклонить" onClick={() => handleReject(u.id)} style={{ color: 'var(--danger)' }}>
+                                            <UserX size={20} />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+
                 {/* PWA Install */}
                 {deferredPrompt && !isInstalled && (
                     <div className="card" style={{ background: 'var(--primary)', color: 'white', padding: '16px' }}>
                         <div style={{ fontWeight: 700, marginBottom: 4 }}>Установить приложение</div>
-                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте RE|PRO на рабочий стол для быстрого доступа</div>
+                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте REM на рабочий стол для быстрого доступа</div>
                         <button className="btn btn-full" style={{ background: 'white', color: 'var(--primary)' }} onClick={handleInstall}>
                             Установить
                         </button>
@@ -188,7 +246,7 @@ export function ProfilePage() {
                     ))}
                 </div>
 
-                {/* Dev */}
+                {/* Logout / Reset */}
                 <div className="card" style={{ padding: 0 }}>
                     <button onClick={clearData} style={{
                         display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
