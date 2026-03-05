@@ -10,8 +10,10 @@ export function ProfilePage() {
     const navigate = useNavigate();
     const [deferredPrompt, setDeferredPrompt] = React.useState(null);
     const [isInstalled, setIsInstalled] = React.useState(false);
-    const [pendingUsers, setPendingUsers] = React.useState([]);
-    const [loadingUsers, setLoadingUsers] = React.useState(false);
+
+    const user = state.currentUser;
+    const isAdmin = user?.role === 'admin';
+    const pendingUsers = state.pendingUsers || [];
 
     React.useEffect(() => {
         const handler = (e) => {
@@ -27,25 +29,12 @@ export function ProfilePage() {
         return () => window.removeEventListener('beforeinstallprompt', handler);
     }, []);
 
-    const user = state.currentUser;
-    const isAdmin = user?.role === 'admin';
-
-    React.useEffect(() => {
-        if (isAdmin) {
-            setLoadingUsers(true);
-            supabase.from('profiles').select('*').in('status', ['pending', 'rejected'])
-                .then(({ data }) => { setPendingUsers(data || []); setLoadingUsers(false); });
-        }
-    }, [isAdmin]);
-
     async function handleApprove(profileId) {
-        await supabase.from('profiles').update({ status: 'approved' }).eq('id', profileId);
-        setPendingUsers(u => u.filter(p => p.id !== profileId));
+        dispatch({ type: 'APPROVE_USER', userId: profileId });
     }
 
     async function handleReject(profileId) {
-        await supabase.from('profiles').update({ status: 'rejected' }).eq('id', profileId);
-        setPendingUsers(u => u.map(p => p.id === profileId ? { ...p, status: 'rejected' } : p));
+        dispatch({ type: 'REJECT_USER', userId: profileId });
     }
 
     async function handleInstall() {
@@ -55,14 +44,22 @@ export function ProfilePage() {
         if (outcome === 'accepted') setDeferredPrompt(null);
     }
 
-    if (!user) return null;
-
     const [isEditing, setIsEditing] = React.useState(false);
-    const [editData, setEditData] = React.useState({ full_name: user?.full_name || '', phone: user?.phone || '', agency_name: user?.agency_name || '' });
+    const [editData, setEditData] = React.useState({
+        full_name: user?.full_name || '',
+        phone: user?.phone || '',
+        agency_name: user?.agency_name || ''
+    });
 
     React.useEffect(() => {
-        if (user) setEditData({ full_name: user.full_name || '', phone: user.phone || '', agency_name: user.agency_name || '' });
+        if (user) setEditData({
+            full_name: user.full_name || '',
+            phone: user.phone || '',
+            agency_name: user.agency_name || ''
+        });
     }, [user]);
+
+    if (!user) return null;
 
     const handleSave = () => {
         dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
@@ -159,8 +156,7 @@ export function ProfilePage() {
                                 </span>
                             )}
                         </div>
-                        {loadingUsers && <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Загрузка...</div>}
-                        {!loadingUsers && pendingUsers.length === 0 && (
+                        {pendingUsers.length === 0 && (
                             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Нет ожидающих запросов ✓</div>
                         )}
                         {pendingUsers.map(u => (

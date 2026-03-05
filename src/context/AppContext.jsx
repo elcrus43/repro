@@ -15,6 +15,7 @@ const EMPTY_STATE = {
     matches: [],
     showings: [],
     tasks: [],
+    pendingUsers: [],
     loading: true,
 };
 
@@ -23,6 +24,9 @@ function reducer(state, action) {
         case 'SET_LOADING': return { ...state, loading: action.value };
         case 'SET_USER': return { ...state, currentUser: action.user };
         case 'UPDATE_PROFILE': return { ...state, currentUser: { ...state.currentUser, ...action.profile } };
+        case 'SET_PENDING_USERS': return { ...state, pendingUsers: action.users };
+        case 'APPROVE_USER': return { ...state, pendingUsers: state.pendingUsers.filter(u => u.id !== action.userId) };
+        case 'REJECT_USER': return { ...state, pendingUsers: state.pendingUsers.map(u => u.id === action.userId ? { ...u, status: 'rejected' } : u) };
         case 'LOGOUT': return { ...EMPTY_STATE, loading: false };
 
         case 'SET_ALL':
@@ -116,6 +120,8 @@ async function loadUserData(userId, role) {
         supabase.from('showings').select('*').eq('realtor_id', userId),
         supabase.from('tasks').select('*').eq('realtor_id', userId),
     ]);
+    const pendingUsers = isAdmin ? await supabase.from('profiles').select('*').in('status', ['pending', 'rejected']) : { data: [] };
+
     return {
         clients: clients.data || [],
         properties: properties.data || [],
@@ -123,6 +129,7 @@ async function loadUserData(userId, role) {
         matches: matches.data || [],
         showings: showings.data || [],
         tasks: tasks.data || [],
+        pendingUsers: pendingUsers.data || [],
     };
 }
 
@@ -239,6 +246,12 @@ async function syncAction(rawAction) {
                 break;
             case 'DELETE_TASK':
                 result = await supabase.from('tasks').delete().eq('id', action.id);
+                break;
+            case 'APPROVE_USER':
+                result = await supabase.from('profiles').update({ status: 'approved' }).eq('id', action.userId);
+                break;
+            case 'REJECT_USER':
+                result = await supabase.from('profiles').update({ status: 'rejected' }).eq('id', action.userId);
                 break;
         }
         if (result?.error) {
