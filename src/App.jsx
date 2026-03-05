@@ -11,6 +11,7 @@ import { PropertiesPage, PropertyCardPage, PropertyFormPage } from './pages/Prop
 import { RequestsPage, RequestCardPage, RequestFormPage } from './pages/Requests/RequestsPages';
 import { MatchesPage, MatchDetailPage } from './pages/Matches/MatchesPages';
 import { ShowingsPage } from './pages/Showings/ShowingsPage';
+import { ShowFormPage } from './pages/Showings/ShowFormPage';
 import { TasksPage } from './pages/Tasks/TasksPage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
 
@@ -52,8 +53,8 @@ function LoadingScreen() {
       color: 'var(--text)', gap: 16
     }}>
       <div className="sidebar-logo">
-        <div className="avatar" style={{ background: 'var(--primary)', color: 'white' }}>rp</div>
-        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>RE|PRO</div>
+        <div className="avatar" style={{ background: 'var(--primary)', color: 'white' }}>REM</div>
+        <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px' }}>REM</div>
       </div>
       <div style={{ fontSize: 14, opacity: 0.7 }}>Загрузка...</div>
     </div>
@@ -113,6 +114,7 @@ function AppRoutes() {
 
         {/* Showings */}
         <Route path="/showings" element={<RequireAuth><ShowingsPage /></RequireAuth>} />
+        <Route path="/showings/new" element={<RequireAuth><ShowFormPage /></RequireAuth>} />
 
         {/* Tasks */}
         <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />

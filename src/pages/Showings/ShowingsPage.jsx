@@ -56,7 +56,7 @@ export function ShowingsPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Показы</span>
-                <button className="icon-btn" onClick={() => navigate('/matches')}>+</button>
+                <button className="icon-btn" onClick={() => navigate('/showings/new')}>+</button>
             </div>
             <div className="page-content">
                 {/* Calendar */}

@@ -4,15 +4,19 @@ import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
-import { Edit2, Trash2, MapPin } from 'lucide-react';
+import { Edit2, Trash2, MapPin, Calendar, Eye, Activity } from 'lucide-react';
 
-const BUILDING_TYPES = { panel: 'Панель', brick: 'Кирпич', monolith: 'Монолит', wood: 'Дерево', block: 'Блок', other: 'Другой' };
-const RENOVATION_LABELS = { none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' };
-const BALCONY_LABELS = { none: 'Нет', balcony: 'Балкон', loggia: 'Лоджия', both: 'Балкон + лоджия' };
-const MARKET_LABELS = { secondary: 'Вторичка', new_building: 'Новостройка' };
+const STATUS_FUNNEL = [
+    { id: 'meeting', label: 'Встреча', color: 'primary' },
+    { id: 'agreement', label: 'АД', color: 'warning-alt' },
+    { id: 'advertising', label: 'В рекламе', color: 'success' },
+    { id: 'deposit', label: 'Задаток', color: 'warning' },
+    { id: 'deal', label: 'Сделка', color: 'success' },
+    { id: 'rejected', label: 'Отказ', color: 'danger' }
+];
 
 export function PropertiesPage() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
     const [search, setSearch] = useState('');
@@ -27,13 +31,31 @@ export function PropertiesPage() {
         .filter(p => {
             if (filter === 'apartment') return p.property_type === 'apartment';
             if (filter === 'house') return p.property_type === 'house';
-            if (filter === 'active') return p.status === 'active';
+            if (filter === 'active') return ['advertising', 'active'].includes(p.status); // handle legacy 'active'
             return true;
         })
         .filter(p => !search || p.address?.toLowerCase().includes(search.toLowerCase()) || p.district?.toLowerCase().includes(search.toLowerCase()));
 
-    const statusColors = { active: 'success', reserved: 'warning', sold: 'muted', withdrawn: 'danger' };
-    const statusLabels = { active: 'Активен', reserved: 'Резерв', sold: 'Продан', withdrawn: 'Снят' };
+    const statusLabels = {
+        meeting: 'Встреча',
+        agreement: 'АД',
+        advertising: 'В рекламе',
+        deposit: 'Задаток',
+        deal: 'Сделка',
+        rejected: 'Отказ',
+        // legacy
+        active: 'Активен', sold: 'Продан', reserved: 'Резерв', withdrawn: 'Снят'
+    };
+
+    const statusColors = {
+        meeting: 'primary',
+        agreement: 'warning-alt',
+        advertising: 'success',
+        deposit: 'warning',
+        deal: 'success',
+        rejected: 'danger',
+        active: 'success', sold: 'muted', reserved: 'warning', withdrawn: 'danger'
+    };
 
     return (
         <div className="page fade-in">
@@ -48,7 +70,7 @@ export function PropertiesPage() {
                 </div>
             </div>
             <div className="tab-filters">
-                {[['all', 'Все'], ['apartment', 'Квартиры'], ['house', 'Дома'], ['active', 'Активные']].map(([v, l]) => (
+                {[['all', 'Все'], ['apartment', 'Квартиры'], ['house', 'Дома'], ['active', 'В рекламе']].map(([v, l]) => (
                     <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
                 ))}
             </div>
@@ -64,6 +86,7 @@ export function PropertiesPage() {
                 {properties.map(prop => {
                     const client = state.clients.find(c => c.id === prop.client_id);
                     const matches = state.matches.filter(m => m.property_id === prop.id);
+
                     const handleDelete = (e) => {
                         e.stopPropagation();
                         if (window.confirm('Удалить объект?')) {
@@ -74,15 +97,24 @@ export function PropertiesPage() {
                         e.stopPropagation();
                         navigate(`/properties/${prop.id}/edit`);
                     };
+                    const handleShow = (e) => {
+                        e.stopPropagation();
+                        navigate(`/showings/new?propertyId=${prop.id}${client ? `&clientId=${client.id}` : ''}`);
+                    };
+                    const updateStatus = (e, newStatus) => {
+                        e.stopPropagation();
+                        dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, status: newStatus } });
+                    };
+
                     return (
-                        <div key={prop.id} className="card card-clickable" onClick={() => navigate(`/properties/${prop.id}`)}>
+                        <div key={prop.id} className="card card-clickable" style={{ marginBottom: 12 }} onClick={() => navigate(`/properties/${prop.id}`)}>
                             <div className="flex items-start gap-8" style={{ marginBottom: 10 }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>{formatPrice(prop.price)}</div>
-                                    <span className={`badge badge-${statusColors[prop.status]}`}>{statusLabels[prop.status]}</span>
+                                    <span className={`badge badge-${statusColors[prop.status] || 'muted'}`}>{statusLabels[prop.status] || prop.status}</span>
                                 </div>
-                                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                                    {matches.length > 0 && <span className="badge badge-primary">Матчей: {matches.length}</span>}
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <button className="icon-btn" title="Показ" onClick={handleShow} style={{ color: 'var(--primary)' }}><Calendar size={18} /></button>
                                     <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
                                     <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
                                 </div>
@@ -91,7 +123,18 @@ export function PropertiesPage() {
                                 {prop.rooms > 0 ? `${prop.rooms}-комн.` : 'Студия'} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт.
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.city}, {prop.district && `${prop.district}, `}{prop.address}</div>
-                            {client && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Продавец: {client.full_name}</div>}
+
+                            {/* Funnel Switcher */}
+                            <div className="funnel-bar">
+                                {STATUS_FUNNEL.map(s => (
+                                    <div key={s.id}
+                                        className={`funnel-item ${prop.status === s.id ? 'active' : ''}`}
+                                        onClick={(e) => updateStatus(e, s.id)}
+                                    >
+                                        {s.label}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     );
                 })}

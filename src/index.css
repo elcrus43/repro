@@ -599,10 +599,56 @@ select {
 
 .stat-card {
   background: var(--surface);
-  border-radius: var(--radius);
   padding: 16px;
+  border-radius: var(--radius);
   border: 1px solid var(--border-light);
-  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ===== Funnel Bar ===== */
+.funnel-bar {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-light);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.funnel-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.funnel-item {
+  padding: 4px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  background: var(--bg);
+  color: var(--text-muted);
+  transition: all 0.2s;
+}
+
+.funnel-item.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.badge-info {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.badge-warning-alt {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .stat-icon {
