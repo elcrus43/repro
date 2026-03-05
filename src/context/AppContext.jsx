@@ -115,7 +115,7 @@ async function loadUserData(userId, role) {
             ? supabase.from('clients').select('*')
             : supabase.from('clients').select('*').eq('realtor_id', userId),
         supabase.from('properties').select('*'),   // All realtors see all properties
-        supabase.from('requests').select('*').eq('realtor_id', userId),
+        supabase.from('requests').select('*'),     // All realtors see all requests for matching
         supabase.from('matches').select('*').eq('realtor_id', userId),
         supabase.from('showings').select('*').eq('realtor_id', userId),
         supabase.from('tasks').select('*').eq('realtor_id', userId),
