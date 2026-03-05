@@ -5,7 +5,7 @@ import { formatPhone, stripPhone } from '../../utils/format';
 import { Edit2, Trash2 } from 'lucide-react';
 
 export function ClientsPage() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
     const [search, setSearch] = useState('');
@@ -63,7 +63,6 @@ export function ClientsPage() {
                         const req = state.requests.find(r => r.id === m.request_id);
                         return prop?.client_id === client.id || req?.client_id === client.id;
                     });
-                    const initials = client.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?';
                     const handleDelete = (e) => {
                         e.stopPropagation();
                         if (window.confirm(`Удалить клиента ${client.full_name}?`)) {
@@ -131,8 +130,6 @@ export function ClientCardPage() {
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
     const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
-    const messengerIcons = { WhatsApp: '', Telegram: '', Viber: '', другой: '' };
-    const initials = client.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?';
 
     function handleDelete() {
         if (window.confirm(`Удалить клиента ${client.full_name}?`)) {
