@@ -1,11 +1,11 @@
 {
-    "name": "RE|PRO — Умная недвижимость",
-    "short_name": "RE|PRO",
-    "description": "RE|PRO — профессиональная платформа для управления недвижимостью",
+    "name": "REM — Умная недвижимость",
+    "short_name": "REM",
+    "description": "REM — профессиональная платформа для управления недвижимостью",
     "start_url": "/",
     "display": "standalone",
-    "background_color": "#f5f5f5",
-    "theme_color": "#212121",
+    "background_color": "#ffffff",
+    "theme_color": "#2563EB",
     "orientation": "portrait",
     "lang": "ru",
     "icons": [
