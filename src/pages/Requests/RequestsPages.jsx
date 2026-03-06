@@ -311,7 +311,7 @@ export function RequestFormPage() {
                             <label className="form-label">Покупатель</label>
                             <select className="form-select" value={form.client_id || ''} onChange={e => {
                                 if (e.target.value === 'new') {
-                                    navigate('/clients/new');
+                                    navigate(`/clients/new?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`);
                                 } else {
                                     setF('client_id', e.target.value);
                                 }

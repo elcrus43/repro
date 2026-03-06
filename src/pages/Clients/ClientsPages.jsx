@@ -311,7 +311,13 @@ export function ClientFormPage() {
             navigate(`/clients/${id}`);
         } else {
             dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
-            navigate('/clients');
+            const params = new URLSearchParams(window.location.search);
+            const returnTo = params.get('returnTo');
+            if (returnTo) {
+                navigate(returnTo);
+            } else {
+                navigate('/clients');
+            }
         }
     }
 

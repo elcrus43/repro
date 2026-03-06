@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -55,6 +55,7 @@ function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
 export function TasksPage() {
     const { state, dispatch } = useApp();
     const user = state.currentUser;
+    const navigate = useNavigate();
     const location = useLocation();
 
     const searchParams = new URLSearchParams(location.search);
@@ -64,8 +65,13 @@ export function TasksPage() {
     const [filter, setFilter] = useState('today');
     const [showForm, setShowForm] = useState(autoOpenForm);
     const [newTask, setNewTask] = useState({
-        title: '', description: '', due_date: '', priority: 'medium',
-        client_id: prefillClientId || '', property_id: '', task_type: ''
+        title: searchParams.get('title') || '',
+        description: searchParams.get('description') || '',
+        due_date: searchParams.get('due_date') || '',
+        priority: searchParams.get('priority') || 'medium',
+        client_id: prefillClientId || '',
+        property_id: '',
+        task_type: searchParams.get('task_type') || ''
     });
 
     const myClients = state.clients.filter(c => c.realtor_id === user?.id && c.status === 'active');
@@ -186,8 +192,23 @@ export function TasksPage() {
                         </select>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <select className="form-select" value={newTask.client_id || ''} onChange={e => handleFieldChange('client_id', e.target.value)}>
+                            <select className="form-select" value={newTask.client_id || ''} onChange={e => {
+                                if (e.target.value === 'new') {
+                                    const currentParams = new URLSearchParams();
+                                    currentParams.set('action', 'new');
+                                    if (newTask.title) currentParams.set('title', newTask.title);
+                                    if (newTask.due_date) currentParams.set('due_date', newTask.due_date);
+                                    if (newTask.priority) currentParams.set('priority', newTask.priority);
+                                    if (newTask.task_type) currentParams.set('task_type', newTask.task_type);
+                                    if (newTask.description) currentParams.set('description', newTask.description);
+
+                                    navigate(`/clients/new?returnTo=${encodeURIComponent(location.pathname + '?' + currentParams.toString())}`);
+                                } else {
+                                    handleFieldChange('client_id', e.target.value);
+                                }
+                            }}>
                                 <option value="">Без клиента</option>
+                                <option value="new">+ Создать нового клиента</option>
                                 {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                             </select>
                             <select className="form-select" value={newTask.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
@@ -205,7 +226,7 @@ export function TasksPage() {
                         </div>
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowForm(false)}>Отмена</button>
-                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
+                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Сохранить</button>
                         </div>
                     </form>
                 )}
