@@ -17,6 +17,7 @@ const EMPTY_STATE = {
     tasks: [],
     pendingUsers: [],
     loading: true,
+    error: null,
 };
 
 function reducer(state, action) {
@@ -131,6 +132,7 @@ async function loadUserData(userId, role) {
         tasks: tasksRes.data || [],
         profiles: profiles || [],
         pendingUsers: pendingUsers || [],
+        error: clientsRes.error?.message || propertiesRes.error?.message || requestsRes.error?.message || null,
     };
 }
 
