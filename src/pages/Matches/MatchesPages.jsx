@@ -13,7 +13,13 @@ export function MatchesPage() {
     const reqFilter = params.get('request');
 
     const matches = state.matches
-        .filter(m => m.realtor_id === user?.id)
+        .filter(m => {
+            if (user?.role === 'admin') return true;
+            // Show match if user is property owner OR request owner
+            const prop = state.properties.find(p => p.id === m.property_id);
+            const req = state.requests.find(r => r.id === m.request_id);
+            return prop?.realtor_id === user?.id || req?.realtor_id === user?.id;
+        })
         .filter(m => !propFilter || m.property_id === propFilter)
         .filter(m => !reqFilter || m.request_id === reqFilter)
         .filter(m => {

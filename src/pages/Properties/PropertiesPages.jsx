@@ -48,6 +48,10 @@ export function PropertiesPage() {
                 <span className="topbar-title">Объекты</span>
                 <button className="btn btn-sm btn-primary" onClick={() => navigate('/properties/new')}>+ Добавить</button>
             </div>
+            {/* Debug Info - only for dev/admin or during troubleshooting */}
+            <div style={{ padding: '4px 16px', fontSize: 10, opacity: 0.5, color: 'var(--text)' }}>
+                Всего в базе: {state.properties.length} | Отфильтровано: {properties.length} | Роль: {user?.role} | Scope: {scope}
+            </div>
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="search-bar">
                     <span className="search-icon">S</span>
