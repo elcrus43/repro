@@ -119,14 +119,19 @@ export function PropertiesPage() {
 
                             {/* Funnel Switcher */}
                             <div className="funnel-bar">
-                                {STATUS_FUNNEL.map(s => (
-                                    <div key={s.id}
-                                        className={`funnel-item ${prop.status === s.id ? 'active' : ''}`}
-                                        onClick={(e) => updateStatus(e, s.id)}
-                                    >
-                                        {s.label}
-                                    </div>
-                                ))}
+                                {STATUS_FUNNEL.map(s => {
+                                    const isActive = prop.status === s.id;
+                                    const isOwner = user?.id === prop.realtor_id;
+                                    return (
+                                        <div key={s.id}
+                                            className={`funnel-item ${isActive ? 'active' : ''}`}
+                                            style={{ opacity: !isOwner && !isActive ? 0.5 : 1, cursor: isOwner ? 'pointer' : 'default' }}
+                                            onClick={(e) => isOwner && updateStatus(e, s.id)}
+                                        >
+                                            {s.label}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     );
@@ -344,7 +349,9 @@ export function PropertyFormPage() {
             year_built: Number(form.year_built) || null,
             rooms: Number(form.rooms) || 0,
             client_id: form.client_id || null,
-            commission: Number(form.commission) || 0
+            commission: Number(form.commission) || 0,
+            district: form.district || null,
+            microdistrict: form.microdistrict || null
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } });
@@ -373,8 +380,15 @@ export function PropertyFormPage() {
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div className="form-group">
                             <label className="form-label">Продавец</label>
-                            <select className="form-select" value={form.client_id || ''} onChange={e => setF('client_id', e.target.value)}>
+                            <select className="form-select" value={form.client_id || ''} onChange={e => {
+                                if (e.target.value === 'new') {
+                                    navigate('/clients/new');
+                                } else {
+                                    setF('client_id', e.target.value);
+                                }
+                            }}>
                                 <option value="">— Выбрать клиента —</option>
+                                <option value="new">+ Создать нового клиента</option>
                                 {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                             </select>
                         </div>
