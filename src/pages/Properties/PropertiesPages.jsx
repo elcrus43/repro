@@ -333,7 +333,7 @@ export function PropertyCardPage() {
 
                 {/* Print Contract Button */}
                 <button className="btn btn-secondary btn-full" onClick={handleGenerateContract} style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
-                    <span>📄</span> Сгенерировать договор
+                    <span>📄</span> Создать АД
                 </button>
             </div>
         </div>
