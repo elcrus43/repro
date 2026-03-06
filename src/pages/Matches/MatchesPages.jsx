@@ -81,7 +81,7 @@ function MatchCard({ match: m, onClick }) {
                 {prop ? (
                     <>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{formatPrice(prop.price)} · {prop.rooms > 0 ? `${prop.rooms}к` : 'Студия'} · {prop.area_total}м²</div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.address}{seller ? ` · ${seller.full_name.split(' ')[0]}` : ''}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.address}{seller ? ` · ${seller.full_name.split(' ')[0]}` : prop.realtor_id !== user?.id ? ` · ${state.profiles.find(p => p.id === prop.realtor_id)?.full_name}` : ''}</div>
                     </>
                 ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Объект удалён</div>}
             </div>
@@ -91,8 +91,9 @@ function MatchCard({ match: m, onClick }) {
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Покупатель</div>
                 {buyer ? (
                     <>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>{buyer.full_name}</div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{buyer?.full_name || 'Контакт скрыт'}</div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{req?.rooms?.map(r => r === 0 ? 'Студия' : `${r}к`).join('/')} · до {formatPrice(req?.budget_max)}</div>
+                        {!buyer && req?.realtor_id !== user?.id && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 2 }}>Агент: {state.profiles.find(p => p.id === req.realtor_id)?.full_name}</div>}
                     </>
                 ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Запрос удалён</div>}
             </div>
@@ -185,7 +186,11 @@ export function MatchDetailPage() {
                         <div style={{ fontWeight: 800, fontSize: 16 }}>{formatPrice(prop.price)}</div>
                         <div style={{ fontSize: 14, marginTop: 2 }}>{prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} · {prop.area_total}м² · {prop.floor}/{prop.floors_total} эт.</div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{prop.address}</div>
-                        {seller && <div style={{ fontSize: 13, color: 'var(--primary)', marginTop: 4 }}>Продавец: {seller.full_name}</div>}
+                        {seller ? (
+                            <div style={{ fontSize: 13, color: 'var(--primary)', marginTop: 4 }}>Продавец: {seller.full_name}</div>
+                        ) : (
+                            prop.realtor_id !== user?.id && <div style={{ fontSize: 13, color: 'var(--primary)', marginTop: 4 }}>Агент продавца: {state.profiles.find(p => p.id === prop.realtor_id)?.full_name}</div>
+                        )}
                     </div>
                 )}
 
@@ -195,11 +200,14 @@ export function MatchDetailPage() {
                 {buyer && (
                     <div className="card card-clickable" onClick={() => navigate(`/clients/${buyer.id}`)}>
                         <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 12, marginBottom: 6 }}>ПОКУПАТЕЛЬ</div>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>{buyer.full_name}</div>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{buyer?.full_name || 'Контакт скрыт'}</div>
                         {req && (
                             <>
                                 <div style={{ fontSize: 14, marginTop: 2 }}>Бюджет: {req.budget_min ? `${formatPrice(req.budget_min)} — ` : ''}{formatPrice(req.budget_max)}</div>
                                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>Ищет: {req.rooms?.map(r => r === 0 ? 'студию' : `${r}к`).join('/')} · {req.city}</div>
+                                {!buyer && req.realtor_id !== user?.id && (
+                                    <div style={{ fontSize: 13, color: 'var(--primary)', marginTop: 4 }}>Агент покупателя: {state.profiles.find(p => p.id === req.realtor_id)?.full_name}</div>
+                                )}
                             </>
                         )}
                     </div>

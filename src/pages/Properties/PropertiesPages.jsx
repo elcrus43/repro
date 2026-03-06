@@ -121,7 +121,10 @@ export function PropertiesPage() {
                             <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, marginBottom: 2 }}>
                                 {prop.rooms > 0 ? `${prop.rooms}-комн.` : 'Студия'} · {formatNumber(prop.area_total)} м² · {prop.floor}/{prop.floors_total} эт.
                             </div>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.city}, {prop.district && `${prop.district}, `}{prop.address}</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                {prop.city}, {prop.district && `${prop.district}, `}{prop.address}
+                                {!client && prop.realtor_id !== user?.id && <div style={{ fontSize: 12, color: 'var(--primary)', marginTop: 2 }}>Владелец: {state.profiles.find(p => p.id === prop.realtor_id)?.full_name || 'Агент'}</div>}
+                            </div>
 
                             {/* Funnel Switcher */}
                             <div className="funnel-bar">
@@ -359,10 +362,12 @@ export function PropertyCardPage() {
                     Найти покупателей · Совпадений: {matches.length}
                 </button>
 
-                {/* Print Contract Button */}
-                <button className="btn btn-secondary btn-full" onClick={handleGenerateContract} style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
-                    <span>📄</span> Создать АД
-                </button>
+                {/* Print Contract Button - ONLY FOR OWNERS */}
+                {prop.realtor_id === user?.id && (
+                    <button className="btn btn-secondary btn-full" onClick={handleGenerateContract} style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+                        <span>📄</span> Создать АД
+                    </button>
+                )}
             </div>
         </div>
     );

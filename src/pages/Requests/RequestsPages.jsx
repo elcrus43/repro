@@ -124,8 +124,12 @@ export function RequestsPage() {
                                     {client?.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?'}
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <span style={{ fontWeight: 700, fontSize: 15 }}>{client?.full_name || '—'}</span>
-                                    {client && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatPhone(client.phone)}</div>}
+                                    <span style={{ fontWeight: 700, fontSize: 15 }}>{client?.full_name || 'Контакт скрыт'}</span>
+                                    {client ? (
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{formatPhone(client.phone)}</div>
+                                    ) : (
+                                        req.realtor_id !== user?.id && <div style={{ fontSize: 12, color: 'var(--primary)' }}>Владелец: {state.profiles.find(p => p.id === req.realtor_id)?.full_name || 'Агент'}</div>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                     <span className={`badge badge-${statusColors[req.status]}`}>{statusLabels[req.status]}</span>
@@ -181,20 +185,23 @@ export function RequestCardPage() {
             </div>
             <div className="page-content">
                 {/* Client */}
-                {client && (
-                    <div className="card card-clickable" onClick={() => navigate(`/clients/${client.id}`)}>
-                        <div className="flex items-center gap-12">
-                            <div className="avatar" style={{ background: 'linear-gradient(135deg,#2563EB,#7c3aed)' }}>
-                                {client.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('')}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700 }}>{client.full_name}</div>
-                                <a href={`tel:${client.phone}`} style={{ fontSize: 13, color: 'var(--primary)' }} onClick={e => e.stopPropagation()}>{formatPhone(client.phone)}</a>
-                            </div>
-                            <span className={`badge badge-${req.status === 'active' ? 'success' : 'muted'}`}>{req.status === 'active' ? 'Активен' : req.status}</span>
+                <div className="card" onClick={() => client ? navigate(`/clients/${client.id}`) : null} style={{ cursor: client ? 'pointer' : 'default' }}>
+                    <div className="flex items-center gap-12">
+                        <div className="avatar" style={{ background: 'linear-gradient(135deg,#2563EB,#7c3aed)' }}>
+                            {client?.full_name?.split(' ').slice(0, 2).map(w => w[0]).join('') || '?'}
                         </div>
+                        <div style={{ flex: 1 }}>
+                            <div style={{ fontWeight: 700 }}>{client?.full_name || 'Контакт скрыт'}</div>
+                            {client ? (
+                                <a href={`tel:${client.phone}`} style={{ fontSize: 13, color: 'var(--primary)' }} onClick={e => e.stopPropagation()}>{formatPhone(client.phone)}</a>
+                            ) : (
+                                req.realtor_id !== user?.id && <div style={{ fontSize: 13, color: 'var(--primary)' }}>Владелец: {state.profiles.find(p => p.id === req.realtor_id)?.full_name || 'Агент'}</div>
+                            )}
+                        </div>
+                        <span className={`badge badge-${req.status === 'active' ? 'success' : 'muted'}`}>{req.status === 'active' ? 'Активен' : req.status}</span>
+                        {client && <span style={{ color: 'var(--text-muted)' }}>›</span>}
                     </div>
-                )}
+                </div>
 
                 {/* What they want */}
                 <div className="card">
