@@ -309,8 +309,15 @@ export function RequestFormPage() {
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div className="form-group">
                             <label className="form-label">Покупатель</label>
-                            <select className="form-select" value={form.client_id || ''} onChange={e => setF('client_id', e.target.value)}>
+                            <select className="form-select" value={form.client_id || ''} onChange={e => {
+                                if (e.target.value === 'new') {
+                                    navigate('/clients/new');
+                                } else {
+                                    setF('client_id', e.target.value);
+                                }
+                            }}>
                                 <option value="">— Выбрать клиента —</option>
+                                <option value="new">+ Создать нового клиента</option>
                                 {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                             </select>
                         </div>
