@@ -112,19 +112,26 @@ export function ProfilePage() {
             }
 
             if (category === '2' || category === '3') {
-                const propsData = state.properties.map(p => ({
-                    'Тип': 'Объект',
-                    'Заголовок': p.title || p.property_type,
-                    'Цена': p.price,
-                    'Комиссия': p.commission || 0,
-                    'Адрес': p.address,
-                    'Район': p.district,
-                    'Комнат': p.rooms,
-                    'Площадь': p.area_total,
-                    'Этаж': `${p.floor}/${p.floors_total}`,
-                    'Статус': p.status,
-                    'Дата': new Date(p.created_at).toLocaleDateString()
-                }));
+                const propsData = state.properties.map(p => {
+                    const client = state.clients.find(c => c.id === p.client_id);
+                    return {
+                        'Тип': 'Объект',
+                        'Заголовок': p.title || (p.property_type === 'apartment' ? 'Квартира' : p.property_type === 'house' ? 'Дом' : p.property_type),
+                        'Цена': p.price,
+                        'Комиссия': p.commission || 0,
+                        'Адрес': p.address,
+                        'Район': p.district,
+                        'Микрорайон': p.microdistrict || '—',
+                        'Комнат': p.rooms,
+                        'Площадь': p.area_total,
+                        'Этаж': `${p.floor}/${p.floors_total}`,
+                        'Клиент': client?.full_name || '—',
+                        'Телефон клиента': client?.phone || '—',
+                        'Описание': p.description,
+                        'Статус': p.status,
+                        'Дата': new Date(p.created_at).toLocaleDateString()
+                    };
+                });
                 data = [...data, ...propsData];
                 if (category === '2') filename = 'properties.xlsx';
                 if (category === '3') filename = 'realtor_data.xlsx';
