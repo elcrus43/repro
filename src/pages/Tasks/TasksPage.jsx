@@ -101,10 +101,16 @@ export function TasksPage() {
     const tasks = state.tasks
         .filter(t => t.realtor_id === user?.id)
         .filter(t => {
-            if (filter === 'today') return t.due_date?.startsWith(today);
+            if (t.status === 'done' && filter !== 'all') return false;
+
+            const taskDate = t.due_date?.slice(0, 10);
+            if (filter === 'today') {
+                // For "today" we show today's tasks OR overdue tasks
+                return taskDate <= today;
+            }
             if (filter === 'week') {
-                const d = t.due_date?.slice(0, 10);
-                return d >= today && d <= weekEnd;
+                // For "week" we show everything up to end of week
+                return taskDate <= weekEnd;
             }
             return true;
         });

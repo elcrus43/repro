@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPhone, stripPhone } from '../../utils/format';
+import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
 import { Edit2, Trash2 } from 'lucide-react';
 
 export function ClientsPage() {
@@ -127,6 +127,7 @@ export function ClientCardPage() {
     const allMatches = [...new Map([...propMatches, ...reqMatches].map(m => [m.id, m])).values()];
     const myShowings = state.showings.filter(s => s.client_id === id);
     const myTasks = state.tasks.filter(t => t.client_id === id);
+    const totalCommission = [...myProps, ...myReqs].reduce((sum, item) => sum + (item.commission || 0), 0);
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
     const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
@@ -159,6 +160,33 @@ export function ClientCardPage() {
                         ))}
                         <span className={`badge badge-${client.status === 'active' ? 'success' : 'warning'}`}>{statusLabels[client.status]}</span>
                     </div>
+                </div>
+
+                {/* Finance Stats */}
+                <div className="card" style={{ background: 'var(--success-light)', borderColor: 'var(--success-light)' }}>
+                    <div style={{ fontSize: 13, color: 'var(--success)', fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>Финансовые показатели</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <div>
+                            <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success)' }}>{formatNumber(totalCommission)} ₽</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Общий потенциал комиссии</div>
+                        </div>
+                    </div>
+                    {totalCommission > 0 && (
+                        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {myProps.filter(p => p.commission > 0).map(p => (
+                                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Объект: {p.address || p.city}</span>
+                                    <span style={{ fontWeight: 600 }}>{formatNumber(p.commission)} ₽</span>
+                                </div>
+                            ))}
+                            {myReqs.filter(r => r.commission > 0).map(r => (
+                                <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Запрос: {r.property_types?.join('/')}</span>
+                                    <span style={{ fontWeight: 600 }}>{formatNumber(r.commission)} ₽</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Contacts */}
