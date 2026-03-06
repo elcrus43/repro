@@ -255,6 +255,45 @@ export function ClientCardPage() {
                     </div>
                 )}
 
+                {/* Passport Details */}
+                {client.passport_details && (client.passport_details.series || client.passport_details.number) && (
+                    <div className="card" style={{ marginTop: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 8 }}>Паспортные данные</div>
+                        <div className="info-grid">
+                            {client.passport_details.series && (
+                                <div className="info-row">
+                                    <span className="info-key">Серия и номер</span>
+                                    <span className="info-val" style={{ fontFamily: 'monospace' }}>{client.passport_details.series} {client.passport_details.number}</span>
+                                </div>
+                            )}
+                            {client.passport_details.unit_code && (
+                                <div className="info-row">
+                                    <span className="info-key">Код подразделения</span>
+                                    <span className="info-val">{client.passport_details.unit_code}</span>
+                                </div>
+                            )}
+                            {client.passport_details.issued_by && (
+                                <div className="info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
+                                    <span className="info-key">Кем выдан</span>
+                                    <span className="info-val" style={{ textAlign: 'left' }}>{client.passport_details.issued_by}</span>
+                                </div>
+                            )}
+                            {client.passport_details.issue_date && (
+                                <div className="info-row">
+                                    <span className="info-key">Дата выдачи</span>
+                                    <span className="info-val">{new Date(client.passport_details.issue_date).toLocaleDateString('ru-RU')}</span>
+                                </div>
+                            )}
+                            {client.passport_details.registration_address && (
+                                <div className="info-row" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2, borderBottom: 'none' }}>
+                                    <span className="info-key">Адрес регистрации</span>
+                                    <span className="info-val" style={{ textAlign: 'left' }}>{client.passport_details.registration_address}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {/* Links */}
                 {[
                     { label: 'Запросы на покупку', count: myReqs.length, path: `/requests?client=${id}`, action: () => navigate(`/requests/new?client=${id}`) },
@@ -284,6 +323,7 @@ export function ClientCardPage() {
 const defaultClient = {
     full_name: '', phone: '', email: '', messenger: '',
     client_types: ['buyer'], additional_contacts: [], source: '', status: 'active', notes: '',
+    passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '' }
 };
 
 export function ClientFormPage() {
@@ -292,9 +332,22 @@ export function ClientFormPage() {
     const path = window.location.pathname;
     const id = path.includes('/edit') ? path.split('/')[2] : null;
     const existing = id ? state.clients.find(c => c.id === id) : null;
-    const [form, setForm] = useState(existing || { ...defaultClient, realtor_id: state.currentUser?.id });
+    const initialForm = existing ? {
+        ...existing,
+        passport_details: existing.passport_details || defaultClient.passport_details
+    } : { ...defaultClient, realtor_id: state.currentUser?.id };
+
+    const [form, setForm] = useState(initialForm);
+    const [showPassport, setShowPassport] = useState(!!form.passport_details?.series);
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
+
+    function setPassport(key, val) {
+        setForm(f => ({
+            ...f,
+            passport_details: { ...(f.passport_details || defaultClient.passport_details), [key]: val }
+        }));
+    }
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -436,6 +489,50 @@ export function ClientFormPage() {
                     <div className="form-group">
                         <label className="form-label">Заметки</label>
                         <textarea className="form-textarea" value={form.notes || ''} onChange={e => setF('notes', e.target.value)} placeholder="Важная информация о клиенте..." />
+                    </div>
+
+                    {/* Passport Details Section */}
+                    <div style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: showPassport ? 'var(--bg)' : 'transparent' }}>
+                        <div
+                            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                            onClick={() => setShowPassport(!showPassport)}
+                        >
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>Паспортные данные</div>
+                            <div style={{ color: 'var(--text-muted)' }}>{showPassport ? '▼' : '▶'}</div>
+                        </div>
+
+                        {showPassport && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Серия</label>
+                                        <input className="form-input" value={form.passport_details?.series || ''} onChange={e => setPassport('series', e.target.value)} placeholder="1234" maxLength={4} />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Номер</label>
+                                        <input className="form-input" value={form.passport_details?.number || ''} onChange={e => setPassport('number', e.target.value)} placeholder="567890" maxLength={6} />
+                                    </div>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Кем выдан</label>
+                                    <textarea className="form-textarea" value={form.passport_details?.issued_by || ''} onChange={e => setPassport('issued_by', e.target.value)} placeholder="ГУ МВД России по г. Москве..." rows={2} />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Код подразделения</label>
+                                        <input className="form-input" value={form.passport_details?.unit_code || ''} onChange={e => setPassport('unit_code', e.target.value)} placeholder="123-456" />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Дата выдачи</label>
+                                        <input type="date" className="form-input" value={form.passport_details?.issue_date || ''} onChange={e => setPassport('issue_date', e.target.value)} />
+                                    </div>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Адрес регистрации</label>
+                                    <textarea className="form-textarea" value={form.passport_details?.registration_address || ''} onChange={e => setPassport('registration_address', e.target.value)} placeholder="г. Москва, ул..." rows={2} />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <button type="submit" className="btn btn-primary btn-full">{id ? 'Сохранить' : 'Добавить клиента'}</button>

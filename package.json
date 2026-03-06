@@ -11,7 +11,10 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
+    "docxtemplater": "^3.68.3",
+    "file-saver": "^2.0.5",
     "lucide-react": "^0.577.0",
+    "pizzip": "^3.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.1",

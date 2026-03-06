@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
 import { formatPhone, formatNumber } from '../../utils/format';
+import { generateDocx } from '../../utils/docxGenerator';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { Edit2, Trash2, MapPin, Calendar, Eye, Activity } from 'lucide-react';
 import { BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS, MARKET_LABELS, STATUS_LABELS, STATUS_COLORS } from '../../data/constants';
@@ -161,6 +162,47 @@ export function PropertyCardPage() {
         if (window.confirm('Удалить объект?')) { dispatch({ type: 'DELETE_PROPERTY', id }); navigate('/properties'); }
     }
 
+
+    const handleGenerateContract = async () => {
+        try {
+            const pd = client?.passport_details || {};
+            const data = {
+                // Основные данные объекта
+                property_city: prop.city || '',
+                property_district: prop.district || '',
+                property_address: prop.address || '',
+                property_cadastral: prop.cadastral_number || '',
+                property_area: String(prop.area_total || ''),
+                property_price: prop.price ? formatNumber(prop.price) : '',
+                property_rooms: String(prop.rooms || ''),
+
+                // Данные клиента-продавца
+                client_fullname: client?.full_name || '',
+                client_phone: client?.phone ? formatPhone(client?.phone) : '',
+
+                // Паспортные данные
+                passport_series: pd.series || '',
+                passport_number: pd.number || '',
+                passport_issued_by: pd.issued_by || '',
+                passport_unit_code: pd.unit_code || '',
+                passport_issue_date: pd.issue_date ? new Date(pd.issue_date).toLocaleDateString('ru-RU') : '',
+                passport_address: pd.registration_address || '',
+
+                // Данные риэлтора (исполнителя)
+                realtor_fullname: realtor?.full_name || '',
+                realtor_phone: realtor?.phone ? formatPhone(realtor?.phone) : '',
+                agency_name: realtor?.agency_name || '',
+
+                // Системные
+                current_date: new Date().toLocaleDateString('ru-RU')
+            };
+
+            await generateDocx('/doc/ДОГОВОР УСЛУГ продажа.docx', data, `Договор_${client?.full_name || 'Клиент'}.docx`);
+        } catch (e) {
+            alert('Ошибка генерации договора: ' + e.message);
+        }
+    };
+
     const rows = [
         ['Площадь', `${prop.area_total}${prop.area_living ? ' / ' + prop.area_living : ''}${prop.area_kitchen ? ' / ' + prop.area_kitchen : ''} м²`],
         ['Этаж', `${prop.floor} из ${prop.floors_total}`],
@@ -285,8 +327,13 @@ export function PropertyCardPage() {
                 )}
 
                 {/* Matches button */}
-                <button className="btn btn-success btn-full" onClick={() => navigate(`/matches?property=${id}`)}>
+                <button className="btn btn-success btn-full" onClick={() => navigate(`/matches?property=${id}`)} style={{ marginBottom: 8 }}>
                     Найти покупателей · Совпадений: {matches.length}
+                </button>
+
+                {/* Print Contract Button */}
+                <button className="btn btn-secondary btn-full" onClick={handleGenerateContract} style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+                    <span>📄</span> Сгенерировать договор
                 </button>
             </div>
         </div>
