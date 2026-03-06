@@ -47,6 +47,26 @@
   --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.5);
 }
 
+.dark .btn-primary {
+  background: var(--primary);
+  color: var(--bg);
+}
+
+.dark .fab {
+  background: var(--primary);
+  color: var(--bg);
+}
+
+.dark .funnel-item.active {
+  background: var(--primary);
+  color: var(--bg);
+}
+
+.dark .chip.active {
+  background: var(--primary);
+  color: var(--bg);
+}
+
 .dark .badge-info {
   background: #0c4a6e;
   color: #7dd3fc;
