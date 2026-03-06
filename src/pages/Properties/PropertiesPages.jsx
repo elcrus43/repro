@@ -179,6 +179,8 @@ export function PropertyCardPage() {
                 // Данные клиента-продавца
                 client_fullname: client?.full_name || '',
                 client_phone: client?.phone ? formatPhone(client?.phone) : '',
+                client_birth_date: pd.birth_date ? new Date(pd.birth_date).toLocaleDateString('ru-RU') : '',
+                client_snils: pd.snils || '',
 
                 // Паспортные данные
                 passport_series: pd.series || '',
@@ -192,9 +194,21 @@ export function PropertyCardPage() {
                 realtor_fullname: realtor?.full_name || '',
                 realtor_phone: realtor?.phone ? formatPhone(realtor?.phone) : '',
                 agency_name: realtor?.agency_name || '',
+                realtor_inn: realtor?.inn || '',
 
-                // Системные
-                current_date: new Date().toLocaleDateString('ru-RU')
+                // Данные паспорта Риэлтора
+                realtor_passport_series: realtor?.passport_details?.series || '',
+                realtor_passport_number: realtor?.passport_details?.number || '',
+                realtor_passport_issued_by: realtor?.passport_details?.issued_by || '',
+                realtor_passport_unit_code: realtor?.passport_details?.unit_code || '',
+                realtor_passport_issue_date: realtor?.passport_details?.issue_date ? new Date(realtor.passport_details.issue_date).toLocaleDateString('ru-RU') : '',
+                realtor_passport_address: realtor?.passport_details?.registration_address || '',
+
+                // Системные и доп поля объекта
+                current_date: new Date().toLocaleDateString('ru-RU'),
+                property_contract_endDate: prop.contract_end_date ? new Date(prop.contract_end_date).toLocaleDateString('ru-RU') : '',
+                property_commission: prop.commission ? formatNumber(prop.commission) : '',
+                property_commission_buyer: prop.commission_buyer ? formatNumber(prop.commission_buyer) : '',
             };
 
             await generateDocx('/doc/ДОГОВОР УСЛУГ продажа.docx', data, `Договор_${client?.full_name || 'Клиент'}.docx`);
@@ -232,8 +246,11 @@ export function PropertyCardPage() {
                         <span style={{ fontSize: 24, fontWeight: 800 }}>{formatNumber(prop.price)} ₽</span>
                         <span className={`badge badge-${STATUS_COLORS[prop.status] || 'muted'}`}>{STATUS_LABELS[prop.status] || prop.status}</span>
                     </div>
-                    {prop.commission > 0 && (
-                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--success)', marginBottom: 8 }}>Комиссия: {formatNumber(prop.commission)} ₽</div>
+                    {(prop.commission > 0 || prop.commission_buyer > 0) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                            {prop.commission > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>Комиссия (продавец): {formatNumber(prop.commission)} ₽</div>}
+                            {prop.commission_buyer > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>Комиссия (покупатель): {formatNumber(prop.commission_buyer)} ₽</div>}
+                        </div>
                     )}
                     {prop.price_min && prop.price_min < prop.price && (
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Торг до {formatNumber(prop.price_min)} ₽</div>
@@ -277,6 +294,12 @@ export function PropertyCardPage() {
                 {/* Legal */}
                 <div className="card">
                     <div className="section-title" style={{ marginBottom: 8 }}>Юридическое</div>
+                    {prop.contract_end_date && (
+                        <div className="info-row" style={{ borderBottom: '1px solid var(--border)', paddingBottom: 8, marginBottom: 8 }}>
+                            <span className="info-key">Договор до</span>
+                            <span className="info-val">{new Date(prop.contract_end_date).toLocaleDateString('ru-RU')}</span>
+                        </div>
+                    )}
                     <div className="check-item"><span className={prop.mortgage_available ? 'check-ok' : 'check-warn'}>{prop.mortgage_available ? 'Y' : 'N'}</span> Подходит под ипотеку</div>
                     <div className="check-item"><span className={prop.matcapital_available ? 'check-ok' : 'check-warn'}>{prop.matcapital_available ? 'Y' : 'N'}</span> Подходит под маткапитал</div>
                     {prop.ownership_type && <div className="check-item"><span></span> Собственность: {prop.ownership_type === 'individual' ? 'единоличная' : prop.ownership_type === 'shared' ? 'долевая' : 'совместная'}</div>}
@@ -397,8 +420,10 @@ export function PropertyFormPage() {
             rooms: Number(form.rooms) || 0,
             client_id: form.client_id || null,
             commission: Number(form.commission) || null,
+            commission_buyer: Number(form.commission_buyer) || null,
             district: form.district || null,
-            microdistrict: form.microdistrict || null
+            microdistrict: form.microdistrict || null,
+            contract_end_date: form.contract_end_date || null
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } });

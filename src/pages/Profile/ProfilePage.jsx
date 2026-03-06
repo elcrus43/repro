@@ -18,8 +18,13 @@ export function ProfilePage() {
     const [editData, setEditData] = React.useState({
         full_name: user?.full_name || '',
         phone: user?.phone || '',
-        agency_name: user?.agency_name || ''
+        agency_name: user?.agency_name || '',
+        inn: user?.inn || '',
+        passport_details: user?.passport_details || {}
     });
+
+    const [showPassport, setShowPassport] = React.useState(false);
+    const setPassport = (field, value) => setEditData(prev => ({ ...prev, passport_details: { ...prev.passport_details, [field]: value } }));
 
     const isAdmin = user?.role === 'admin';
     const pendingUsers = state.pendingUsers || [];
@@ -42,7 +47,9 @@ export function ProfilePage() {
         if (user) setEditData({
             full_name: user.full_name || '',
             phone: user.phone || '',
-            agency_name: user.agency_name || ''
+            agency_name: user.agency_name || '',
+            inn: user.inn || '',
+            passport_details: user.passport_details || {}
         });
     }, [user]);
 
@@ -186,6 +193,50 @@ export function ProfilePage() {
                             <input className="form-input" value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
                             <input className="form-input" value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
                             <input className="form-input" value={editData.phone} onChange={e => setEditData({ ...editData, phone: e.target.value })} placeholder="Телефон" />
+                            <input className="form-input" value={editData.inn} onChange={e => setEditData({ ...editData, inn: e.target.value })} placeholder="ИНН" />
+
+                            <div style={{ padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', background: showPassport ? 'var(--bg)' : 'transparent', marginTop: 8 }}>
+                                <div
+                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                                    onClick={() => setShowPassport(!showPassport)}
+                                >
+                                    <div style={{ fontWeight: 700, fontSize: 13 }}>Паспортные данные</div>
+                                    <div style={{ color: 'var(--text-muted)' }}>{showPassport ? '▼' : '▶'}</div>
+                                </div>
+                                {showPassport && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, textAlign: 'left' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label">Серия</label>
+                                                <input className="form-input" value={editData.passport_details?.series || ''} onChange={e => setPassport('series', e.target.value)} placeholder="1234" maxLength={4} />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label">Номер</label>
+                                                <input className="form-input" value={editData.passport_details?.number || ''} onChange={e => setPassport('number', e.target.value)} placeholder="567890" maxLength={6} />
+                                            </div>
+                                        </div>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label">Кем выдан</label>
+                                            <textarea className="form-textarea" value={editData.passport_details?.issued_by || ''} onChange={e => setPassport('issued_by', e.target.value)} placeholder="ГУ МВД..." rows={2} />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label">Код подразделения</label>
+                                                <input className="form-input" value={editData.passport_details?.unit_code || ''} onChange={e => setPassport('unit_code', e.target.value)} placeholder="123-456" />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label">Дата выдачи</label>
+                                                <input type="date" className="form-input" value={editData.passport_details?.issue_date || ''} onChange={e => setPassport('issue_date', e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label">Адрес регистрации</label>
+                                            <textarea className="form-textarea" value={editData.passport_details?.registration_address || ''} onChange={e => setPassport('registration_address', e.target.value)} placeholder="Адрес..." rows={2} />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
                             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                 <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setIsEditing(false)}>Отмена</button>
                                 <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSave}>Сохранить</button>

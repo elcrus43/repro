@@ -260,6 +260,18 @@ export function ClientCardPage() {
                     <div className="card" style={{ marginTop: 12 }}>
                         <div className="section-title" style={{ marginBottom: 8 }}>Паспортные данные</div>
                         <div className="info-grid">
+                            {client.passport_details.birth_date && (
+                                <div className="info-row">
+                                    <span className="info-key">Дата рождения</span>
+                                    <span className="info-val">{new Date(client.passport_details.birth_date).toLocaleDateString('ru-RU')}</span>
+                                </div>
+                            )}
+                            {client.passport_details.snils && (
+                                <div className="info-row">
+                                    <span className="info-key">СНИЛС</span>
+                                    <span className="info-val">{client.passport_details.snils}</span>
+                                </div>
+                            )}
                             {client.passport_details.series && (
                                 <div className="info-row">
                                     <span className="info-key">Серия и номер</span>
@@ -503,6 +515,16 @@ export function ClientFormPage() {
 
                         {showPassport && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Дата рождения</label>
+                                        <input type="date" className="form-input" value={form.passport_details?.birth_date || ''} onChange={e => setPassport('birth_date', e.target.value)} />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">СНИЛС</label>
+                                        <input className="form-input" value={form.passport_details?.snils || ''} onChange={e => setPassport('snils', e.target.value)} placeholder="000-000-000 00" />
+                                    </div>
+                                </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label">Серия</label>
