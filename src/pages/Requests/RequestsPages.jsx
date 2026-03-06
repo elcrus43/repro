@@ -396,12 +396,12 @@ export function RequestFormPage() {
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div className="input-row">
                             <div className="form-group">
-                                <label className="form-label">Бюджет от</label>
-                                <input className="form-input" type="number" value={form.budget_min || ''} onChange={e => setF('budget_min', e.target.value)} placeholder="3000000" />
+                                <label className="form-label">Бюджет от, ₽</label>
+                                <input className="form-input" value={form.budget_min ? formatNumber(form.budget_min) : ''} onChange={e => setF('budget_min', e.target.value.replace(/\s/g, ''))} placeholder="3 000 000" />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Бюджет до <span className="required">*</span></label>
-                                <input className="form-input" type="number" value={form.budget_max || ''} onChange={e => setF('budget_max', e.target.value)} placeholder="5000000" />
+                                <label className="form-label">Бюджет до, ₽ <span className="required">*</span></label>
+                                <input className="form-input" value={form.budget_max ? formatNumber(form.budget_max) : ''} onChange={e => setF('budget_max', e.target.value.replace(/\s/g, ''))} placeholder="5 000 000" />
                             </div>
                         </div>
                         <div className="form-group">
