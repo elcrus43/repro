@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, formatNumber } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { BUILDING_TYPES } from '../../data/constants';
 
@@ -53,6 +53,7 @@ const defaultReq = {
     must_have_notes: '',
     nice_to_have_notes: '',
     deal_breakers: '',
+    commission: 0,
 };
 
 export function RequestsPage() {
@@ -128,6 +129,7 @@ export function RequestsPage() {
                                 </div>
                                 <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                                     <span className={`badge badge-${statusColors[req.status]}`}>{statusLabels[req.status]}</span>
+                                    {req.commission > 0 && <span className="badge badge-success">Ком: {formatNumber(req.commission)} ₽</span>}
                                     <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
                                     <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
                                 </div>
@@ -135,7 +137,7 @@ export function RequestsPage() {
                             <div style={{ fontSize: 14, color: 'var(--text)', marginBottom: 2 }}>
                                 {req.property_types?.map(t => t === 'apartment' ? 'Квартира' : t === 'house' ? 'Дом' : t).join(', ')}
                                 {req.rooms?.length > 0 && ` · ${req.rooms.map(r => r === 0 ? 'Студия' : `${r}к`).join('/')}`}
-                                {req.budget_max && ` · до ${formatPrice(req.budget_max)}`}
+                                {req.budget_max && ` · до ${formatNumber(req.budget_max)} ₽`}
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                 {req.city}{req.districts?.length > 0 && ` · ${req.districts.join(', ')}`}
@@ -202,9 +204,10 @@ export function RequestCardPage() {
                     <div className="info-row"><span className="info-key">Комнаты</span><span className="info-val">{req.rooms?.map(r => r === 0 ? 'Студия' : `${r}к`).join(' или ')}</span></div>
                     <div className="info-row"><span className="info-key">Город</span><span className="info-val">{req.city}</span></div>
                     {req.districts?.length > 0 && <div className="info-row"><span className="info-key">Районы</span><span className="info-val">{req.districts.join(', ')}</span></div>}
-                    <div className="info-row"><span className="info-key">Бюджет</span><span className="info-val">{req.budget_min ? `${formatPrice(req.budget_min)} — ` : ''}{formatPrice(req.budget_max)}</span></div>
-                    {(req.area_min || req.area_max) && <div className="info-row"><span className="info-key">Площадь</span><span className="info-val">{req.area_min ? `от ${req.area_min} м²` : ''}{req.area_max ? ` до ${req.area_max} м²` : ''}</span></div>}
-                    {req.kitchen_area_min && <div className="info-row"><span className="info-key">Кухня</span><span className="info-val">от {req.kitchen_area_min} м²</span></div>}
+                    <div className="info-row"><span className="info-key">Бюджет</span><span className="info-val">{req.budget_min ? `${formatNumber(req.budget_min)} — ` : ''}{formatNumber(req.budget_max)} ₽</span></div>
+                    {req.commission > 0 && <div className="info-row"><span className="info-key">Комиссия</span><span className="info-val" style={{ color: 'var(--success)', fontWeight: 700 }}>{formatNumber(req.commission)} ₽</span></div>}
+                    {(req.area_min || req.area_max) && <div className="info-row"><span className="info-key">Площадь</span><span className="info-val">{req.area_min ? `от ${formatNumber(req.area_min)} м²` : ''}{req.area_max ? ` до ${formatNumber(req.area_max)} м²` : ''}</span></div>}
+                    {req.kitchen_area_min && <div className="info-row"><span className="info-key">Кухня</span><span className="info-val">от {formatNumber(req.kitchen_area_min)} м²</span></div>}
                     {(req.floor_min || req.floor_max) && <div className="info-row"><span className="info-key">Этаж</span><span className="info-val">{req.floor_min || 1}–{req.floor_max || '∞'}</span></div>}
                     <div className="info-row">
                         <span className="info-key">Ограничения</span>
@@ -223,7 +226,7 @@ export function RequestCardPage() {
                     <div className="info-row"><span className="info-key">Тип оплаты</span><span className="info-val">{pTypes.map(pt => paymentLabel[pt] || pt).join(', ')}</span></div>
                     {pTypes.includes('mortgage') && <div className="info-row"><span className="info-key">Ипотека одобрена</span><span className="info-val">{req.mortgage_approved ? 'Да' : 'Нет'}</span></div>}
                     {pTypes.includes('mortgage') && req.mortgage_bank && <div className="info-row"><span className="info-key">Банк</span><span className="info-val">{req.mortgage_bank}</span></div>}
-                    {pTypes.includes('mortgage') && req.mortgage_amount > 0 && <div className="info-row"><span className="info-key">Сумма ипотеки</span><span className="info-val">{formatPrice(req.mortgage_amount)}</span></div>}
+                    {pTypes.includes('mortgage') && req.mortgage_amount > 0 && <div className="info-row"><span className="info-key">Сумма ипотеки</span><span className="info-val">{formatNumber(req.mortgage_amount)} ₽</span></div>}
                     {req.urgency && <div className="info-row"><span className="info-key">Срочность</span><span className="info-val">{urgencyLabel[req.urgency]}</span></div>}
                     {req.desired_move_date && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Заселение до</span><span className="info-val">{new Date(req.desired_move_date).toLocaleDateString('ru-RU')}</span></div>}
                 </div>
@@ -277,7 +280,8 @@ export function RequestFormPage() {
             floor_min: Number(form.floor_min) || null,
             floor_max: Number(form.floor_max) || null,
             client_id: form.client_id || null,
-            desired_move_date: form.desired_move_date || null
+            desired_move_date: form.desired_move_date || null,
+            commission: Number(form.commission) || 0
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } });
@@ -477,12 +481,16 @@ export function RequestFormPage() {
                                         </div>
                                         <div className="form-group">
                                             <label className="form-label">Одобренная сумма</label>
-                                            <input className="form-input" value={form.mortgage_amount ? Number(form.mortgage_amount).toLocaleString('ru-RU') : ''} onChange={e => setF('mortgage_amount', e.target.value.replace(/\s/g, ''))} placeholder="4 200 000" />
+                                            <input className="form-input" value={form.mortgage_amount ? formatNumber(form.mortgage_amount) : ''} onChange={e => setF('mortgage_amount', e.target.value.replace(/\s/g, ''))} placeholder="4 200 000" />
                                         </div>
                                     </>
                                 )}
                             </>
                         )}
+                        <div className="form-group">
+                            <label className="form-label">Комиссия, ₽</label>
+                            <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="100 000" />
+                        </div>
                         <div className="form-group">
                             <label className="form-label">Срочность</label>
                             <div className="chip-group">

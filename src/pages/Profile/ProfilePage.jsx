@@ -99,11 +99,12 @@ export function ProfilePage() {
             if (category === '1' || category === '3') {
                 const clientsData = state.clients.map(c => ({
                     'Тип': 'Клиент',
-                    'Имя': c.name,
+                    'Имя': c.full_name,
                     'Телефон': c.phone,
-                    'Тип сделки': c.deal_type,
-                    'Бюджет': c.budget,
-                    'Район': c.district,
+                    'Бюджет': c.budget_max || c.budget,
+                    'Комиссия': c.commission || 0,
+                    'Заметки': c.notes,
+                    'Район': c.district || (c.districts ? c.districts.join(', ') : ''),
                     'Дата': new Date(c.created_at).toLocaleDateString()
                 }));
                 data = [...data, ...clientsData];
@@ -113,11 +114,14 @@ export function ProfilePage() {
             if (category === '2' || category === '3') {
                 const propsData = state.properties.map(p => ({
                     'Тип': 'Объект',
-                    'Заголовок': p.title,
+                    'Заголовок': p.title || p.property_type,
                     'Цена': p.price,
+                    'Комиссия': p.commission || 0,
                     'Адрес': p.address,
+                    'Район': p.district,
                     'Комнат': p.rooms,
-                    'Площадь': p.area,
+                    'Площадь': p.area_total,
+                    'Этаж': `${p.floor}/${p.floors_total}`,
                     'Статус': p.status,
                     'Дата': new Date(p.created_at).toLocaleDateString()
                 }));

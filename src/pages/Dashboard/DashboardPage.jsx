@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { formatNumber } from '../../utils/format';
 
 
 export function DashboardPage() {
@@ -41,19 +42,19 @@ export function DashboardPage() {
                 {/* Stats */}
                 <div className="stats-grid">
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/clients')}>
-                        <div className="stat-value">{myClients.length}</div>
+                        <div className="stat-value">{formatNumber(myClients.length)}</div>
                         <div className="stat-label">Клиентов</div>
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/properties')}>
-                        <div className="stat-value">{myProperties.length}</div>
+                        <div className="stat-value">{formatNumber(myProperties.length)}</div>
                         <div className="stat-label">Объектов</div>
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/requests')}>
-                        <div className="stat-value">{myRequests.length}</div>
+                        <div className="stat-value">{formatNumber(myRequests.length)}</div>
                         <div className="stat-label">Запросов</div>
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/matches')}>
-                        <div className="stat-value">{myMatches.length}</div>
+                        <div className="stat-value">{formatNumber(myMatches.length)}</div>
                         <div className="stat-label">Матчей</div>
                     </div>
                 </div>

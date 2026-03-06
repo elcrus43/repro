@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, formatNumber } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { Edit2, Trash2, MapPin, Calendar, Eye, Activity } from 'lucide-react';
 import { BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS, MARKET_LABELS, STATUS_LABELS, STATUS_COLORS } from '../../data/constants';
@@ -100,8 +100,11 @@ export function PropertiesPage() {
                         <div key={prop.id} className="card card-clickable" style={{ marginBottom: 12 }} onClick={() => navigate(`/properties/${prop.id}`)}>
                             <div className="flex items-start gap-8" style={{ marginBottom: 10 }}>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>{formatPrice(prop.price)}</div>
-                                    <span className={`badge badge-${statusColors[prop.status] || 'muted'}`}>{statusLabels[prop.status] || prop.status}</span>
+                                    <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--text)' }}>{formatNumber(prop.price)} ₽</div>
+                                    <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                                        <span className={`badge badge-${statusColors[prop.status] || 'muted'}`}>{statusLabels[prop.status] || prop.status}</span>
+                                        {prop.commission > 0 && <span className="badge badge-success">Ком: {formatNumber(prop.commission)} ₽</span>}
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                     <button className="icon-btn" title="Показ" onClick={handleShow} style={{ color: 'var(--primary)' }}><Calendar size={18} /></button>
@@ -110,7 +113,7 @@ export function PropertiesPage() {
                                 </div>
                             </div>
                             <div style={{ fontSize: 14, color: 'var(--text)', fontWeight: 600, marginBottom: 2 }}>
-                                {prop.rooms > 0 ? `${prop.rooms}-комн.` : 'Студия'} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт.
+                                {prop.rooms > 0 ? `${prop.rooms}-комн.` : 'Студия'} · {formatNumber(prop.area_total)} м² · {prop.floor}/{prop.floors_total} эт.
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.city}, {prop.district && `${prop.district}, `}{prop.address}</div>
 
@@ -179,11 +182,14 @@ export function PropertyCardPage() {
                 {/* Price + Status */}
                 <div className="card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ fontSize: 24, fontWeight: 800 }}>{formatPrice(prop.price)}</span>
+                        <span style={{ fontSize: 24, fontWeight: 800 }}>{formatNumber(prop.price)} ₽</span>
                         <span className={`badge badge-${STATUS_COLORS[prop.status] || 'muted'}`}>{STATUS_LABELS[prop.status] || prop.status}</span>
                     </div>
+                    {prop.commission > 0 && (
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--success)', marginBottom: 8 }}>Комиссия: {formatNumber(prop.commission)} ₽</div>
+                    )}
                     {prop.price_min && prop.price_min < prop.price && (
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Торг до {formatPrice(prop.price_min)}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Торг до {formatNumber(prop.price_min)} ₽</div>
                     )}
                     <div style={{ fontSize: 16, fontWeight: 600, marginTop: 6 }}>
                         {prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} {prop.property_type === 'apartment' ? 'квартира' : 'объект'}
@@ -292,7 +298,7 @@ const defaultProp = {
     renovation: 'cosmetic', bathroom: 'separate', balcony: 'none', parking: 'none',
     furniture: false, mortgage_available: true, matcapital_available: false,
     encumbrance: false, minor_owners: false, sale_type: 'free', docs_ready: false,
-    ownership_type: 'individual', urgency: 'medium', description: '',
+    ownership_type: 'individual', urgency: 'medium', description: '', commission: 0,
 };
 
 function PropertyStepDots({ step, steps }) {
@@ -337,7 +343,8 @@ export function PropertyFormPage() {
             floors_total: Number(form.floors_total) || 0,
             year_built: Number(form.year_built) || null,
             rooms: Number(form.rooms) || 0,
-            client_id: form.client_id || null
+            client_id: form.client_id || null,
+            commission: Number(form.commission) || 0
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } });
@@ -450,12 +457,16 @@ export function PropertyFormPage() {
                         <div className="input-row">
                             <div className="form-group">
                                 <label className="form-label">Цена, ₽ <span className="required">*</span></label>
-                                <input className="form-input" value={form.price ? Number(form.price).toLocaleString('ru-RU') : ''} onChange={e => setF('price', e.target.value.replace(/\s/g, ''))} placeholder="3 800 000" />
+                                <input className="form-input" value={form.price ? formatNumber(form.price) : ''} onChange={e => setF('price', e.target.value.replace(/\s/g, ''))} placeholder="3 800 000" />
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Мин. цена (торг)</label>
-                                <input className="form-input" value={form.price_min ? Number(form.price_min).toLocaleString('ru-RU') : ''} onChange={e => setF('price_min', e.target.value.replace(/\s/g, ''))} placeholder="3 600 000" />
+                                <input className="form-input" value={form.price_min ? formatNumber(form.price_min) : ''} onChange={e => setF('price_min', e.target.value.replace(/\s/g, ''))} placeholder="3 600 000" />
                             </div>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Комиссия, ₽</label>
+                            <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="100 000" />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Комнаты (0=студия) <span className="required">*</span></label>

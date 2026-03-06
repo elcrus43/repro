@@ -37,3 +37,15 @@ export function stripPhone(phone) {
     if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) return '7' + clean.substring(1);
     return clean;
 }
+
+/**
+ * Formats a number with space as thousands separator
+ * @param {number|string} num 
+ * @returns {string}
+ */
+export function formatNumber(num) {
+    if (num === null || num === undefined || num === '') return '0';
+    const val = typeof num === 'string' ? parseFloat(num) : num;
+    if (isNaN(val)) return '0';
+    return val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
