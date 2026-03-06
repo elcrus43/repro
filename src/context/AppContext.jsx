@@ -110,14 +110,12 @@ const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
 async function loadUserData(userId, role) {
     const isAdmin = role === 'admin';
-    const [clients, properties, requests, matches, showings, tasks] = await Promise.all([
-        isAdmin
-            ? supabase.from('clients').select('*')
-            : supabase.from('clients').select('*').eq('realtor_id', userId),
-        supabase.from('properties').select('*'),   // All realtors see all properties
-        supabase.from('requests').select('*'),     // All realtors see all requests for matching
-        supabase.from('matches').select('*').eq('realtor_id', userId),
-        supabase.from('showings').select('*').eq('realtor_id', userId),
+    const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes] = await Promise.all([
+        supabase.from('clients').select('*'),
+        supabase.from('properties').select('*'),
+        supabase.from('requests').select('*'),
+        supabase.from('matches').select('*'),
+        supabase.from('showings').select('*'),
         supabase.from('tasks').select('*').eq('realtor_id', userId),
     ]);
     // All users need to see profiles for Realtor info on cards and matches
@@ -125,12 +123,12 @@ async function loadUserData(userId, role) {
     const pendingUsers = isAdmin ? profiles?.filter(p => ['pending', 'rejected'].includes(p.status)) : [];
 
     return {
-        clients: clients.data || [],
-        properties: properties.data || [],
-        requests: requests.data || [],
-        matches: matches.data || [],
-        showings: showings.data || [],
-        tasks: tasks.data || [],
+        clients: clientsRes.data || [],
+        properties: propertiesRes.data || [],
+        requests: requestsRes.data || [],
+        matches: matchesRes.data || [],
+        showings: showingsRes.data || [],
+        tasks: tasksRes.data || [],
         profiles: profiles || [],
         pendingUsers: pendingUsers || [],
     };
@@ -217,12 +215,12 @@ async function syncAction(rawAction) {
                 return;
             }
             case 'ADD_SHOWING': {
-                const queries = [
-                    supabase.from('showings').upsert(action.showing),
-                    supabase.from('tasks').upsert(action.task)
-                ];
-                if (action.showing.match_id) {
-                    queries.push(supabase.from('matches').upsert(action.matches.find(m => m.id === action.showing.match_id)));
+                logData('showings', action.showing);
+                const queries = [supabase.from('showings').upsert(action.showing)];
+                if (action.task) queries.push(supabase.from('tasks').upsert(action.task));
+                if (action.matches && action.showing.match_id) {
+                    const match = action.matches.find(m => m.id === action.showing.match_id);
+                    if (match) queries.push(supabase.from('matches').upsert(match));
                 }
                 const results = await Promise.all(queries);
                 results.forEach((res, i) => {
@@ -231,10 +229,10 @@ async function syncAction(rawAction) {
                 return;
             }
             case 'UPDATE_SHOWING': {
-                const results = await Promise.all([
-                    supabase.from('showings').upsert(action.showing),
-                    supabase.from('matches').upsert(action.matches)
-                ]);
+                logData('showings_update', action.showing);
+                const queries = [supabase.from('showings').upsert(action.showing)];
+                if (action.matches) queries.push(supabase.from('matches').upsert(action.matches));
+                const results = await Promise.all(queries);
                 results.forEach((res, i) => {
                     if (res.error) console.error(`[Supabase Showing Update Error ${i}]`, res.error);
                 });

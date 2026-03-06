@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2, UserCheck, UserX } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 
 export function ProfilePage() {
@@ -87,11 +88,64 @@ export function ProfilePage() {
         }
     };
 
+    const handleExport = async () => {
+        const category = window.prompt('Что экспортировать? (1 - Клиенты, 2 - Объекты, 3 - Все)', '3');
+        if (!category) return;
+
+        try {
+            let data = [];
+            let filename = 'export.xlsx';
+
+            if (category === '1' || category === '3') {
+                const clientsData = state.clients.map(c => ({
+                    'Тип': 'Клиент',
+                    'Имя': c.name,
+                    'Телефон': c.phone,
+                    'Тип сделки': c.deal_type,
+                    'Бюджет': c.budget,
+                    'Район': c.district,
+                    'Дата': new Date(c.created_at).toLocaleDateString()
+                }));
+                data = [...data, ...clientsData];
+                if (category === '1') filename = 'clients.xlsx';
+            }
+
+            if (category === '2' || category === '3') {
+                const propsData = state.properties.map(p => ({
+                    'Тип': 'Объект',
+                    'Заголовок': p.title,
+                    'Цена': p.price,
+                    'Адрес': p.address,
+                    'Комнат': p.rooms,
+                    'Площадь': p.area,
+                    'Статус': p.status,
+                    'Дата': new Date(p.created_at).toLocaleDateString()
+                }));
+                data = [...data, ...propsData];
+                if (category === '2') filename = 'properties.xlsx';
+                if (category === '3') filename = 'realtor_data.xlsx';
+            }
+
+            if (data.length === 0) {
+                alert('Нет данных для экспорта');
+                return;
+            }
+
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Data");
+            XLSX.writeFile(wb, filename);
+        } catch (err) {
+            console.error('Export error:', err);
+            alert('Ошибка при экспорте');
+        }
+    };
+
     const menuItems = [
         { icon: isDark ? <Sun size={20} /> : <Moon size={20} />, label: isDark ? 'Светлая тема' : 'Темная тема', action: toggleTheme },
         { icon: <Settings size={20} />, label: 'Настройки', action: () => { } },
         { icon: <Bell size={20} />, label: 'Уведомления', action: () => { } },
-        { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: () => { } },
+        { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
         { icon: <CircleHelp size={20} />, label: 'Помощь', action: () => { } },
     ];
 
@@ -100,13 +154,6 @@ export function ProfilePage() {
             await supabase.auth.signOut();
             dispatch({ type: 'LOGOUT' });
             navigate('/login');
-        }
-    }
-
-    function clearData() {
-        if (window.confirm('Сбросить все данные? Это удалит всё и вернёт демо-данные.')) {
-            localStorage.removeItem('realtor-match-state');
-            window.location.reload();
         }
     }
 
@@ -144,35 +191,28 @@ export function ProfilePage() {
                     )}
                 </div>
 
-                {/* Admin panel: pending users */}
+                {/* Admin panel: users management */}
                 {isAdmin && (
                     <div className="card">
                         <div className="section-title" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            Управление пользователями
-                            {pendingUsers.filter(u => u.status === 'pending').length > 0 && (
-                                <span className="badge badge-danger">
-                                    {pendingUsers.filter(u => u.status === 'pending').length} ожидают
-                                </span>
-                            )}
+                            Управление риэлторами
                         </div>
-                        {pendingUsers.length === 0 && (
-                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Нет ожидающих запросов ✓</div>
-                        )}
-                        {pendingUsers.map(u => (
-                            <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email || u.id}</div>
-                                    {u.agency_name && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.agency_name}</div>}
-                                    <span style={{
-                                        display: 'inline-block', marginTop: 4, fontSize: 11, padding: '2px 8px', borderRadius: 99, fontWeight: 600,
-                                        background: u.status === 'pending' ? 'var(--warning-light, #fef3c7)' : 'var(--danger-light)',
-                                        color: u.status === 'pending' ? 'var(--warning, #b45309)' : 'var(--danger)'
-                                    }}>
-                                        {u.status === 'pending' ? '⏳ Ожидает' : '✕ Отклонён'}
-                                    </span>
-                                </div>
-                                {u.status === 'pending' && (
+
+                        {/* Pending Users */}
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                ⏳ Ожидают одобрения ({state.profiles.filter(u => u.status === 'pending').length})
+                            </div>
+                            {state.profiles.filter(u => u.status === 'pending').length === 0 && (
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>Нет новых запросов</div>
+                            )}
+                            {state.profiles.filter(u => u.status === 'pending').map(u => (
+                                <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email || u.phone}</div>
+                                        {u.agency_name && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.agency_name}</div>}
+                                    </div>
                                     <div style={{ display: 'flex', gap: 6 }}>
                                         <button className="icon-btn" title="Одобрить" onClick={() => handleApprove(u.id)} style={{ color: 'var(--success)' }}>
                                             <UserCheck size={20} />
@@ -181,9 +221,42 @@ export function ProfilePage() {
                                             <UserX size={20} />
                                         </button>
                                     </div>
-                                )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Approved/Rejected Users */}
+                        <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                Обработанные ({state.profiles.filter(u => u.status !== 'pending' && u.id !== user.id).length})
                             </div>
-                        ))}
+                            {state.profiles.filter(u => u.status !== 'pending' && u.id !== user.id).map(u => (
+                                <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border-light)', opacity: u.status === 'rejected' ? 0.6 : 1 }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 500, fontSize: 13 }}>{u.full_name}</div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{u.agency_name || u.email}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <span style={{
+                                            fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700,
+                                            background: u.status === 'approved' ? 'var(--success-light)' : 'var(--danger-light)',
+                                            color: u.status === 'approved' ? 'var(--success)' : 'var(--danger)'
+                                        }}>
+                                            {u.status === 'approved' ? 'АКТИВЕН' : 'ОТКЛОНЁН'}
+                                        </span>
+                                        {u.status === 'rejected' ? (
+                                            <button className="icon-btn" onClick={() => handleApprove(u.id)} title="Восстановить" style={{ color: 'var(--success)', padding: 4 }}>
+                                                <UserCheck size={16} />
+                                            </button>
+                                        ) : (
+                                            <button className="icon-btn" onClick={() => handleReject(u.id)} title="Заблокировать" style={{ color: 'var(--danger)', padding: 4 }}>
+                                                <UserX size={16} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -241,23 +314,15 @@ export function ProfilePage() {
                     ))}
                 </div>
 
-                {/* Logout / Reset */}
+                {/* Logout */}
                 <div className="card" style={{ padding: 0 }}>
-                    <button onClick={clearData} style={{
-                        display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
-                        border: 'none', background: 'none', cursor: 'pointer', borderBottom: '1px solid var(--border-light)', textAlign: 'left', fontSize: 15, color: 'var(--text)'
-                    }}>
-                        <span style={{ color: 'var(--text-muted)', display: 'flex' }}><RotateCcw size={20} /></span>
-                        <span style={{ flex: 1, fontWeight: 500 }}>Сбросить демо-данные</span>
-                        <span style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></span>
-                    </button>
                     <button onClick={handleLogout} style={{
-                        display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '14px 16px',
+                        display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '16px',
                         border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontSize: 15,
                         color: 'var(--danger)'
                     }}>
                         <span style={{ display: 'flex' }}><LogOut size={20} /></span>
-                        <span style={{ fontWeight: 500 }}>Выйти</span>
+                        <span style={{ fontWeight: 600 }}>Выйти из аккаунта</span>
                     </button>
                 </div>
             </div>
