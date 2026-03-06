@@ -341,15 +341,15 @@ export function PropertyFormPage() {
             ...form,
             price: cleanPrice(form.price),
             price_min: cleanPrice(form.price_min),
-            area_total: Number(form.area_total) || 0,
+            area_total: Number(form.area_total) || null,
             area_living: Number(form.area_living) || null,
             area_kitchen: Number(form.area_kitchen) || null,
-            floor: Number(form.floor) || 0,
-            floors_total: Number(form.floors_total) || 0,
+            floor: Number(form.floor) || null,
+            floors_total: Number(form.floors_total) || null,
             year_built: Number(form.year_built) || null,
             rooms: Number(form.rooms) || 0,
             client_id: form.client_id || null,
-            commission: Number(form.commission) || 0,
+            commission: Number(form.commission) || null,
             district: form.district || null,
             microdistrict: form.microdistrict || null
         };
@@ -606,7 +606,7 @@ export function PropertyFormPage() {
                     {step < STEPS.length - 1 ? (
                         <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(s => s + 1)}>Далее →</button>
                     ) : (
-                        <button className="btn btn-success" style={{ flex: 1 }} onClick={handleSubmit}>Сохранить и найти покупателей</button>
+                        <button className="btn btn-success" style={{ flex: 1 }} onClick={handleSubmit}>Сохранить</button>
                     )}
                 </div>
             </div>

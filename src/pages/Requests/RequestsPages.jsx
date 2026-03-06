@@ -281,7 +281,7 @@ export function RequestFormPage() {
             floor_max: Number(form.floor_max) || null,
             client_id: form.client_id || null,
             desired_move_date: form.desired_move_date || null,
-            commission: Number(form.commission) || 0
+            commission: Number(form.commission) || null
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } });
@@ -533,7 +533,7 @@ export function RequestFormPage() {
                     {step < STEPS.length - 1 ? (
                         <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setStep(s => s + 1)}>Далее →</button>
                     ) : (
-                        <button className="btn btn-success" style={{ flex: 1 }} onClick={handleSubmit}>Сохранить и найти объекты</button>
+                        <button className="btn btn-success" style={{ flex: 1 }} onClick={handleSubmit}>Сохранить</button>
                     )}
                 </div>
             </div>
