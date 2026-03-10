@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit2 } from 'lucide-react';
 
 export function ShowingsPage() {
     const { state, dispatch } = useApp();
@@ -123,6 +123,7 @@ export function ShowingsPage() {
                                     <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{time}</span>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                                         <span className="badge badge-primary">{statusLabels[s.status]}</span>
+                                        <button className="icon-btn" title="Редактировать" onClick={() => navigate(`/showings/new?id=${s.id}`)}><Edit2 size={16} /></button>
                                         <button className="icon-btn" onClick={() => { if (window.confirm('Удалить показ?')) dispatch({ type: 'DELETE_SHOWING', id: s.id }); }}><Trash2 size={16} /></button>
                                     </div>
                                 </div>
