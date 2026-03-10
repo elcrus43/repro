@@ -167,14 +167,27 @@ async function syncAction(rawAction) {
                 result = await supabase.from('profiles').update(profileData).eq('id', id);
                 break;
             }
-            case 'ADD_CLIENT':
+            case 'ADD_CLIENT': {
                 logData('clients_insert', action.client);
                 result = await supabase.from('clients').insert(action.client);
+                // If schema cache doesn't know passport_details yet, retry without it
+                if (result.error?.code === 'PGRST204' && result.error.message?.includes('passport_details')) {
+                    console.warn('[Schema cache] passport_details not in cache, saving without it');
+                    const { passport_details: _pd, ...clientWithout } = action.client;
+                    result = await supabase.from('clients').insert(clientWithout);
+                }
                 break;
+            }
             case 'UPDATE_CLIENT': {
                 const { id: cId, ...cData } = action.client;
                 logData('clients_update', { id: cId, ...cData });
                 result = await supabase.from('clients').update(cData).eq('id', cId);
+                // If schema cache doesn't know passport_details yet, retry without it
+                if (result.error?.code === 'PGRST204' && result.error.message?.includes('passport_details')) {
+                    console.warn('[Schema cache] passport_details not in cache, saving without it');
+                    const { passport_details: _pd, ...dataWithout } = cData;
+                    result = await supabase.from('clients').update(dataWithout).eq('id', cId);
+                }
                 break;
             }
             case 'DELETE_CLIENT':
