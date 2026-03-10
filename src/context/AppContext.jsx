@@ -388,6 +388,7 @@ export function AppProvider({ children }) {
             }
 
             if (!profile) {
+                // Brand new user — use email to determine if admin
                 const isAdmin = sessionUser.email === ADMIN_EMAIL;
                 const newProfile = {
                     id: sessionUser.id,
@@ -400,7 +401,6 @@ export function AppProvider({ children }) {
                 const { data: createdProfile, error: createErr } = await supabase.from('profiles').insert(newProfile).select().single();
                 if (!createErr) {
                     if (createdProfile.status === 'pending') {
-                        // Don't let pending users in — sign them out
                         await supabase.auth.signOut();
                         dispatch({ type: 'SET_LOADING', value: false });
                         return;
@@ -415,12 +415,9 @@ export function AppProvider({ children }) {
                 return;
             }
 
-            // Enforce admin role for admin email
-            let resolvedProfile = profile;
-            if (sessionUser.email === ADMIN_EMAIL && (profile.role !== 'admin' || profile.status !== 'approved')) {
-                await supabase.from('profiles').update({ role: 'admin', status: 'approved' }).eq('id', sessionUser.id);
-                resolvedProfile = { ...profile, role: 'admin', status: 'approved' };
-            }
+            // ✅ TRUST THE DB ROLE — do not override with email check
+            // The role in the profiles table is the source of truth
+            const resolvedProfile = profile;
 
             // Block pending/rejected users
             if (resolvedProfile.status === 'pending' || resolvedProfile.status === 'rejected') {
@@ -429,13 +426,9 @@ export function AppProvider({ children }) {
                 return;
             }
 
-            if (resolvedProfile) {
-                dispatch({ type: 'SET_USER', user: { ...resolvedProfile, email: sessionUser.email } });
-                const data = await loadUserData(sessionUser.id, resolvedProfile.role);
-                dispatch({ type: 'SET_ALL', data });
-            } else {
-                dispatch({ type: 'SET_LOADING', value: false });
-            }
+            dispatch({ type: 'SET_USER', user: { ...resolvedProfile, email: sessionUser.email } });
+            const data = await loadUserData(sessionUser.id, resolvedProfile.role);
+            dispatch({ type: 'SET_ALL', data });
         }
 
         async function init() {
