@@ -10,14 +10,14 @@ export function DashboardPage() {
     const user = state.currentUser;
     if (!user) return null;
 
-    const myClients = state.clients.filter(c => c.realtor_id === user.id);
-    const myProperties = state.properties.filter(p => p.realtor_id === user.id && p.status === 'active');
-    const myRequests = state.requests.filter(r => r.realtor_id === user.id && r.status === 'active');
-    const myMatches = state.matches.filter(m => m.realtor_id === user.id);
+    const myClients = state.clients.filter(c => user.role === 'admin' || c.realtor_id === user.id);
+    const myProperties = state.properties.filter(p => (user.role === 'admin' || p.realtor_id === user.id) && p.status === 'active');
+    const myRequests = state.requests.filter(r => (user.role === 'admin' || r.realtor_id === user.id) && r.status === 'active');
+    const myMatches = state.matches.filter(m => user.role === 'admin' || m.realtor_id === user.id);
     const newMatches = myMatches.filter(m => m.status === 'new').sort((a, b) => b.score - a.score).slice(0, 5);
 
     const today = new Date().toISOString().slice(0, 10);
-    const todayTasks = state.tasks.filter(t => t.realtor_id === user.id && t.due_date?.startsWith(today) && t.status === 'pending');
+    const todayTasks = state.tasks.filter(t => (user.role === 'admin' || t.realtor_id === user.id) && t.due_date?.startsWith(today) && t.status === 'pending');
 
     return (
         <div className="page fade-in">
