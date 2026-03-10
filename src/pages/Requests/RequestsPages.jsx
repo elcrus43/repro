@@ -60,8 +60,10 @@ export function RequestsPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
+    const isAdmin = user?.role === 'admin';
     const [search, setSearch] = useState('');
-    const [scope, setScope] = useState('all'); // all or mine
+    // Realtors see their own requests; admin sees all
+    const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
     const params = new URLSearchParams(window.location.search);
     const clientFilter = params.get('client');
 

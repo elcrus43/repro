@@ -15,10 +15,9 @@ export function MatchesPage() {
     const matches = state.matches
         .filter(m => {
             if (user?.role === 'admin') return true;
-            // Show match if user is property owner OR request owner
-            const prop = state.properties.find(p => p.id === m.property_id);
+            // Realtor: see matches where they own the REQUEST (matched against all properties)
             const req = state.requests.find(r => r.id === m.request_id);
-            return prop?.realtor_id === user?.id || req?.realtor_id === user?.id;
+            return req?.realtor_id === user?.id;
         })
         .filter(m => !propFilter || m.property_id === propFilter)
         .filter(m => !reqFilter || m.request_id === reqFilter)

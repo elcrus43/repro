@@ -10,14 +10,23 @@ export function DashboardPage() {
     const user = state.currentUser;
     if (!user) return null;
 
-    const myClients = state.clients.filter(c => user.role === 'admin' || c.realtor_id === user.id);
-    const myProperties = state.properties.filter(p => (user.role === 'admin' || p.realtor_id === user.id) && p.status === 'active');
-    const myRequests = state.requests.filter(r => (user.role === 'admin' || r.realtor_id === user.id) && r.status === 'active');
-    const myMatches = state.matches.filter(m => user.role === 'admin' || m.realtor_id === user.id);
+    const isAdmin = user.role === 'admin';
+    // All users see all active properties (shared base)
+    const myProperties = state.properties.filter(p => p.status === 'active');
+    // Clients: admin sees all, realtor sees own
+    const myClients = state.clients.filter(c => isAdmin || c.realtor_id === user.id);
+    // Requests: admin sees all, realtor sees own
+    const myRequests = state.requests.filter(r => (isAdmin || r.realtor_id === user.id) && r.status === 'active');
+    // Matches: admin sees all; realtor sees matches where they own the request
+    const myMatches = state.matches.filter(m => {
+        if (isAdmin) return true;
+        const req = state.requests.find(r => r.id === m.request_id);
+        return req?.realtor_id === user.id;
+    });
     const newMatches = myMatches.filter(m => m.status === 'new').sort((a, b) => b.score - a.score).slice(0, 5);
 
     const today = new Date().toISOString().slice(0, 10);
-    const todayTasks = state.tasks.filter(t => (user.role === 'admin' || t.realtor_id === user.id) && t.due_date?.startsWith(today) && t.status === 'pending');
+    const todayTasks = state.tasks.filter(t => (isAdmin || t.realtor_id === user.id) && t.due_date?.startsWith(today) && t.status === 'pending');
 
     return (
         <div className="page fade-in">
