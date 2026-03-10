@@ -159,11 +159,53 @@ export function ProfilePage() {
         }
     };
 
+    const handleSyncLocalData = async () => {
+        if (!window.confirm('Выполнить поиск старых локальных данных в вашем браузере и перенести их в общую базу?')) return;
+
+        try {
+            const keys = ['realtor_clients', 'realtor_properties', 'realtor_requests', 'realtor_matches', 'realtor_showings', 'realtor_tasks'];
+            let importedCount = 0;
+
+            for (const key of keys) {
+                const data = localStorage.getItem(key);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        importedCount += parsed.length;
+                        for (const item of parsed) {
+                            // Link to current user if missing
+                            const enriched = { ...item };
+                            if (!enriched.realtor_id) enriched.realtor_id = user.id;
+
+                            if (key === 'realtor_clients') dispatch({ type: 'ADD_CLIENT', client: enriched });
+                            else if (key === 'realtor_properties') dispatch({ type: 'ADD_PROPERTY', property: enriched });
+                            else if (key === 'realtor_requests') dispatch({ type: 'ADD_REQUEST', request: enriched });
+                            else if (key === 'realtor_showings') dispatch({ type: 'ADD_SHOWING', showing: enriched });
+                            else if (key === 'realtor_tasks') dispatch({ type: 'ADD_TASK', task: enriched });
+                        }
+                    }
+                }
+            }
+            if (importedCount > 0) {
+                alert(`Успешно перенесено записей: ${importedCount}.`);
+                if (window.confirm('Очистить старые локальные данные браузера, чтобы не переносить их повторно?')) {
+                    keys.forEach(k => localStorage.removeItem(k));
+                }
+            } else {
+                alert('Старых локальных данных в этом браузере не найдено.');
+            }
+        } catch (err) {
+            console.error('Sync error:', err);
+            alert('Ошибка при синхронизации: ' + err.message);
+        }
+    };
+
     const menuItems = [
         { icon: isDark ? <Sun size={20} /> : <Moon size={20} />, label: isDark ? 'Светлая тема' : 'Темная тема', action: toggleTheme },
         { icon: <Settings size={20} />, label: 'Настройки', action: () => { } },
         { icon: <Bell size={20} />, label: 'Уведомления', action: () => { } },
         { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
+        { icon: <RotateCcw size={20} />, label: 'Синхронизировать старые данные', action: handleSyncLocalData },
         { icon: <CircleHelp size={20} />, label: 'Помощь', action: () => { } },
     ];
 
