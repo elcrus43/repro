@@ -12,7 +12,7 @@ export function ShowingsPage() {
     const [feedbackId, setFeedbackId] = useState(null);
     const [feedbackComment, setFeedbackComment] = useState('');
 
-    const myShowings = state.showings.filter(s => s.realtor_id === user?.id);
+    const myShowings = state.showings.filter(s => user?.role === 'admin' || s.realtor_id === user?.id);
 
     // Calendar
     const now = new Date();
