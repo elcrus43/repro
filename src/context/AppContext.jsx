@@ -117,7 +117,7 @@ async function loadUserData(userId, role) {
         supabase.from('requests').select('*'),
         supabase.from('matches').select('*'),
         supabase.from('showings').select('*'),
-        supabase.from('tasks').select('*').eq('realtor_id', userId),
+        isAdmin ? supabase.from('tasks').select('*') : supabase.from('tasks').select('*').eq('realtor_id', userId),
     ]);
     // All users need to see profiles for Realtor info on cards and matches
     const { data: profiles } = await supabase.from('profiles').select('*');

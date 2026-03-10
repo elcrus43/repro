@@ -74,8 +74,8 @@ export function TasksPage() {
         task_type: searchParams.get('task_type') || ''
     });
 
-    const myClients = state.clients.filter(c => c.realtor_id === user?.id && c.status === 'active');
-    const myProperties = state.properties.filter(p => p.realtor_id === user?.id && p.status === 'active');
+    const myClients = state.clients.filter(c => (user?.role === 'admin' || c.realtor_id === user?.id) && c.status === 'active');
+    const myProperties = state.properties.filter(p => (user?.role === 'admin' || p.realtor_id === user?.id) && p.status === 'active');
 
     const TASK_TYPES = ['Позвонить', 'Встреча с собственником', 'Показ', 'Задаток', 'Сделка', 'Другое'];
 
@@ -105,7 +105,7 @@ export function TasksPage() {
     }
 
     const tasks = state.tasks
-        .filter(t => t.realtor_id === user?.id)
+        .filter(t => user?.role === 'admin' || t.realtor_id === user?.id)
         .filter(t => {
             if (t.status === 'done' && filter !== 'all') return false;
 

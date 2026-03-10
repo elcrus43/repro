@@ -81,7 +81,7 @@ function MatchCard({ match: m, onClick }) {
                 {prop ? (
                     <>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{formatPrice(prop.price)} · {prop.rooms > 0 ? `${prop.rooms}к` : 'Студия'} · {prop.area_total}м²</div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.address}{seller ? ` · ${seller.full_name.split(' ')[0]}` : prop.realtor_id !== user?.id ? ` · ${state.profiles.find(p => p.id === prop.realtor_id)?.full_name}` : ''}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{prop.address}{seller ? ` · ${seller.full_name.split(' ')[0]}` : prop.realtor_id !== user?.id ? ` · ${state.profiles.find(pr => pr.id === prop.realtor_id)?.full_name || 'Агент'}` : ''}</div>
                     </>
                 ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Объект удалён</div>}
             </div>
@@ -89,11 +89,11 @@ function MatchCard({ match: m, onClick }) {
             {/* Buyer */}
             <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Покупатель</div>
-                {buyer ? (
+                {buyer || req ? (
                     <>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{buyer?.full_name || 'Контакт скрыт'}</div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{req?.rooms?.map(r => r === 0 ? 'Студия' : `${r}к`).join('/')} · до {formatPrice(req?.budget_max)}</div>
-                        {!buyer && req?.realtor_id !== user?.id && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 2 }}>Агент: {state.profiles.find(p => p.id === req.realtor_id)?.full_name}</div>}
+                        {!buyer && req?.realtor_id !== user?.id && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 2 }}>Агент: {state.profiles.find(pr => pr.id === req.realtor_id)?.full_name || 'Агент'}</div>}
                     </>
                 ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Запрос удалён</div>}
             </div>
