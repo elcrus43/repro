@@ -168,22 +168,37 @@ async function syncAction(rawAction) {
                 break;
             }
             case 'ADD_CLIENT':
-            case 'UPDATE_CLIENT':
-                logData('clients', action.client);
-                result = await supabase.from('clients').upsert(action.client);
+                logData('clients_insert', action.client);
+                result = await supabase.from('clients').insert(action.client);
                 break;
+            case 'UPDATE_CLIENT': {
+                const { id: cId, ...cData } = action.client;
+                logData('clients_update', { id: cId, ...cData });
+                result = await supabase.from('clients').update(cData).eq('id', cId);
+                break;
+            }
             case 'DELETE_CLIENT':
                 result = await supabase.from('clients').delete().eq('id', action.id);
                 break;
-            case 'ADD_PROPERTY':
-            case 'UPDATE_PROPERTY':
-                logData('properties', action.property);
-                result = await supabase.from('properties').upsert(action.property);
+            case 'ADD_PROPERTY': {
+                logData('properties_insert', action.property);
+                result = await supabase.from('properties').insert(action.property);
                 if (!result.error && action.matches?.length > 0) {
                     const matchResult = await supabase.from('matches').upsert(action.matches);
                     if (matchResult.error) console.error('[Supabase Match Sync Error]', matchResult.error);
                 }
                 break;
+            }
+            case 'UPDATE_PROPERTY': {
+                const { id: pId, ...pData } = action.property;
+                logData('properties_update', { id: pId, ...pData });
+                result = await supabase.from('properties').update(pData).eq('id', pId);
+                if (!result.error && action.matches?.length > 0) {
+                    const matchResult = await supabase.from('matches').upsert(action.matches);
+                    if (matchResult.error) console.error('[Supabase Match Sync Error]', matchResult.error);
+                }
+                break;
+            }
             case 'DELETE_PROPERTY':
                 result = await supabase.from('properties').delete().eq('id', action.id);
                 break;

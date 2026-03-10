@@ -48,11 +48,7 @@ export function PropertiesPage() {
                 <span className="topbar-title">Объекты</span>
                 <button className="btn btn-sm btn-primary" onClick={() => navigate('/properties/new')}>+ Добавить</button>
             </div>
-            {/* Debug Info */}
-            <div style={{ padding: '4px 16px', fontSize: 10, opacity: 0.6, color: 'var(--text)', background: 'var(--bg-alt)', borderBottom: '1px solid var(--border)' }}>
-                <b>Debug:</b> Объектов: {state.properties.length} | Клиентов: {state.clients.length} | Запросов: {state.requests.length} | Роль: {user?.role} | Scope: {scope}
-                {state.error && <div style={{ color: 'var(--danger)', fontWeight: 'bold' }}>Ошибка: {state.error}</div>}
-            </div>
+
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="search-bar">
                     <span className="search-icon">S</span>
