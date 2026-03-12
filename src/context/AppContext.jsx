@@ -27,8 +27,18 @@ function reducer(state, action) {
         case 'SET_USER': return { ...state, currentUser: action.user };
         case 'UPDATE_PROFILE': return { ...state, currentUser: { ...state.currentUser, ...action.profile } };
         case 'SET_PENDING_USERS': return { ...state, pendingUsers: action.users };
-        case 'APPROVE_USER': return { ...state, pendingUsers: state.pendingUsers.filter(u => u.id !== action.userId) };
-        case 'REJECT_USER': return { ...state, pendingUsers: state.pendingUsers.map(u => u.id === action.userId ? { ...u, status: 'rejected' } : u) };
+        case 'APPROVE_USER':
+            return {
+                ...state,
+                profiles: state.profiles.map(p => p.id === action.userId ? { ...p, status: 'approved' } : p),
+                pendingUsers: state.pendingUsers.filter(u => u.id !== action.userId)
+            };
+        case 'REJECT_USER':
+            return {
+                ...state,
+                profiles: state.profiles.map(p => p.id === action.userId ? { ...p, status: 'rejected' } : p),
+                pendingUsers: state.pendingUsers.map(u => u.id === action.userId ? { ...u, status: 'rejected' } : u)
+            };
         case 'LOGOUT': return { ...EMPTY_STATE, loading: false };
 
         case 'SET_ALL':
