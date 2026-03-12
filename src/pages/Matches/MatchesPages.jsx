@@ -56,6 +56,7 @@ export function MatchesPage() {
 
 function MatchCard({ match: m, onClick }) {
     const { state } = useApp();
+    const user = state.currentUser;
     const prop = state.properties.find(p => p.id === m.property_id);
     const req = state.requests.find(r => r.id === m.request_id);
     const buyer = req ? state.clients.find(c => c.id === req.client_id) : null;
@@ -144,7 +145,7 @@ export function MatchDetailPage() {
 
     function handleDeal() {
         if (window.confirm('Закрыть сделку? Это обновит статус объекта, запроса и всех связанных матчей.')) {
-            dispatch({ type: 'CLOSE_DEAL', matchId: id });
+            dispatch({ type: 'CLOSE_DEAL', matchId: matchId });
             navigate('/matches');
         }
     }
@@ -153,7 +154,7 @@ export function MatchDetailPage() {
         if (!showingDate) return;
         dispatch({
             type: 'ADD_SHOWING',
-            showing: { match_id: id, property_id: match.property_id, client_id: req?.client_id, realtor_id: match.realtor_id, showing_date: showingDate, status: 'planned' }
+            showing: { match_id: matchId, property_id: match.property_id, client_id: req?.client_id, realtor_id: match.realtor_id, showing_date: showingDate, status: 'planned' }
         });
         dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
         setShowShowingForm(false);
