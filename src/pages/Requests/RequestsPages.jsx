@@ -54,6 +54,7 @@ const defaultReq = {
     nice_to_have_notes: '',
     deal_breakers: '',
     commission: 0,
+    deal_expenses: []
 };
 
 export function RequestsPage() {
@@ -214,7 +215,35 @@ export function RequestCardPage() {
                     <div className="info-row"><span className="info-key">Город</span><span className="info-val">{req.city}</span></div>
                     {req.districts?.length > 0 && <div className="info-row"><span className="info-key">Районы</span><span className="info-val">{req.districts.join(', ')}</span></div>}
                     <div className="info-row"><span className="info-key">Бюджет</span><span className="info-val">{req.budget_min ? `${formatNumber(req.budget_min)} — ` : ''}{formatNumber(req.budget_max)} ₽</span></div>
-                    {req.commission > 0 && <div className="info-row"><span className="info-key">Комиссия</span><span className="info-val" style={{ color: 'var(--success)', fontWeight: 700 }}>{formatNumber(req.commission)} ₽</span></div>}
+                    
+                    {/* BUDGET BREAKDOWN */}
+                    <div style={{ marginTop: 12, padding: 12, borderRadius: 'var(--radius-sm)', background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>Ваш бюджет (чистый)</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div className="info-row" style={{ fontSize: 12 }}>
+                                <span className="info-key">Максимальный бюджет</span>
+                                <span className="info-val">{formatNumber(req.budget_max)} ₽</span>
+                            </div>
+                            {req.commission > 0 && (
+                                <div className="info-row" style={{ fontSize: 12, color: 'var(--danger)' }}>
+                                    <span className="info-key">Комиссия</span>
+                                    <span className="info-val">− {formatNumber(req.commission)} ₽</span>
+                                </div>
+                            )}
+                            {req.deal_expenses?.map((ex, i) => (
+                                <div key={i} className="info-row" style={{ fontSize: 12, color: 'var(--danger)' }}>
+                                    <span className="info-key">{ex.name}</span>
+                                    <span className="info-val">− {formatNumber(ex.price)} ₽</span>
+                                </div>
+                            ))}
+                            <div className="info-row" style={{ fontWeight: 800, borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4 }}>
+                                <span className="info-key">Чистый бюджет</span>
+                                <span className="info-val" style={{ color: 'var(--success)' }}>
+                                    {formatNumber(Number(req.budget_max || 0) - Number(req.commission || 0) - (req.deal_expenses?.reduce((s, e) => s + (Number(e.price) || 0), 0) || 0))} ₽
+                                </span>
+                            </div>
+                        </div>
+                    </div>
                     {(req.area_min || req.area_max) && <div className="info-row"><span className="info-key">Площадь</span><span className="info-val">{req.area_min ? `от ${formatNumber(req.area_min)} м²` : ''}{req.area_max ? ` до ${formatNumber(req.area_max)} м²` : ''}</span></div>}
                     {req.kitchen_area_min && <div className="info-row"><span className="info-key">Кухня</span><span className="info-val">от {formatNumber(req.kitchen_area_min)} м²</span></div>}
                     {(req.floor_min || req.floor_max) && <div className="info-row"><span className="info-key">Этаж</span><span className="info-val">{req.floor_min || 1}–{req.floor_max || '∞'}</span></div>}
@@ -296,7 +325,8 @@ export function RequestFormPage() {
             floor_max: Number(form.floor_max) || null,
             client_id: form.client_id || null,
             desired_move_date: form.desired_move_date || null,
-            commission: Number(form.commission) || null
+            commission: Number(form.commission) || null,
+            deal_expenses: form.deal_expenses || []
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } });
@@ -523,6 +553,75 @@ export function RequestFormPage() {
                         <div className="form-group">
                             <label className="form-label">Комиссия, ₽</label>
                             <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="100 000" />
+                        </div>
+
+                        {/* TRANSACTION EXPENSES */}
+                        <div className="form-group">
+                            <label className="form-label" style={{ marginBottom: 8 }}>Расходы по сделке</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                                {state.pricelist.filter(item => item.show_in_purchase !== false).map(item => {
+                                    const isSelected = form.deal_expenses?.some(ex => ex.name === item.name);
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            className={`chip ${isSelected ? 'active' : ''}`}
+                                            onClick={() => {
+                                                const current = form.deal_expenses || [];
+                                                if (isSelected) {
+                                                    setF('deal_expenses', current.filter(ex => ex.name !== item.name));
+                                                } else {
+                                                    setF('deal_expenses', [...current, { name: item.name, price: item.price }]);
+                                                }
+                                            }}
+                                        >
+                                            {item.name} ({item.price.toLocaleString()} ₽)
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    type="button"
+                                    className="chip"
+                                    onClick={() => {
+                                        const name = window.prompt('Название расхода:');
+                                        const price = window.prompt('Сумма:');
+                                        if (name && price) {
+                                            setF('deal_expenses', [...(form.deal_expenses || []), { name, price: Number(price) }]);
+                                        }
+                                    }}
+                                >
+                                    + Добавить расход
+                                </button>
+                            </div>
+
+                            {form.deal_expenses?.length > 0 && (
+                                <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: 12 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>Предварительный расчет</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                        <div className="info-row" style={{ fontSize: 12 }}>
+                                            <span className="info-key">Макс. бюджет</span>
+                                            <span className="info-val">{formatNumber(form.budget_max || 0)} ₽</span>
+                                        </div>
+                                        <div className="info-row" style={{ fontSize: 12, color: 'var(--danger)' }}>
+                                            <span className="info-key">Комиссия</span>
+                                            <span className="info-val">− {formatNumber(form.commission || 0)} ₽</span>
+                                        </div>
+                                        {form.deal_expenses.map((ex, i) => (
+                                            <div key={i} className="info-row" style={{ fontSize: 12, color: 'var(--danger)' }}>
+                                                <span className="info-key">{ex.name}</span>
+                                                <span className="info-val">− {formatNumber(ex.price)} ₽</span>
+                                                <button type="button" onClick={() => setF('deal_expenses', form.deal_expenses.filter((_, idx) => idx !== i))} style={{ border: 'none', background: 'none', color: 'var(--danger)', marginLeft: 8, cursor: 'pointer' }}>✕</button>
+                                            </div>
+                                        ))}
+                                        <div className="info-row" style={{ fontWeight: 800, borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4 }}>
+                                            <span className="info-key">Чистый бюджет</span>
+                                            <span className="info-val" style={{ color: 'var(--success)' }}>
+                                                {formatNumber(Number(form.budget_max || 0) - Number(form.commission || 0) - form.deal_expenses.reduce((s, e) => s + (Number(e.price) || 0), 0))} ₽
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div className="form-group">
                             <label className="form-label">Срочность</label>
