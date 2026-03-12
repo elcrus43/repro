@@ -221,7 +221,7 @@ export function MatchDetailPage() {
                     if (!sellProp || !targetProp || sellProp.realtor_id !== user?.id) return null;
 
                     const expensesTotal = (sellProp.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0);
-                    const commissionTotal = Number(sellProp.commission || 0) + Number(sellProp.commission_buyer || 0);
+                    const commissionTotal = Number(sellProp.commission || 0);
                     const availableBudget = Number(sellProp.price || 0) - commissionTotal - expensesTotal + Number(sellProp.surcharge || 0);
                     const targetPrice = Number(targetProp.price || 0);
                     const gap = targetPrice - availableBudget;
@@ -235,7 +235,7 @@ export function MatchDetailPage() {
                                     <span className="info-val">{formatPrice(sellProp.price)}</span>
                                 </div>
                                 <div className="info-row" style={{ color: 'var(--danger)' }}>
-                                    <span className="info-key">Комиссия (продажа + покупка)</span>
+                                    <span className="info-key">Комиссия</span>
                                     <span className="info-val">− {formatPrice(commissionTotal)}</span>
                                 </div>
                                 {sellProp.deal_expenses?.map((ex, i) => (
