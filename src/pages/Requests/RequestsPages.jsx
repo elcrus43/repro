@@ -162,6 +162,7 @@ export function RequestsPage() {
 export function RequestCardPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const user = state.currentUser;
     const id = window.location.pathname.split('/')[2];
     const req = state.requests.find(r => r.id === id);
 
@@ -312,7 +313,13 @@ export function RequestFormPage() {
         setForm(f => ({ ...f, [key]: f[key]?.includes(val) ? f[key].filter(x => x !== val) : [...(f[key] || []), val] }));
     }
 
-    function handleSubmit() {
+    async function handleSubmit() {
+        if (!form.client_id) {
+            alert('Пожалуйста, выберите клиента');
+            setStep(0);
+            return;
+        }
+
         const req = {
             ...form,
             budget_min: cleanPrice(form.budget_min),
@@ -328,12 +335,17 @@ export function RequestFormPage() {
             commission: Number(form.commission) || null,
             deal_expenses: form.deal_expenses || []
         };
-        if (isEdit) {
-            dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } });
-            navigate(`/requests/${id}`);
-        } else {
-            dispatch({ type: 'ADD_REQUEST', request: { ...req, realtor_id: state.currentUser?.id } });
-            navigate('/requests');
+        try {
+            if (isEdit) {
+                await dispatch({ type: 'UPDATE_REQUEST', request: { ...req, id } });
+                navigate(`/requests/${id}`);
+            } else {
+                await dispatch({ type: 'ADD_REQUEST', request: { ...req, realtor_id: state.currentUser?.id } });
+                navigate('/requests');
+            }
+        } catch (err) {
+            console.error('Save error:', err);
+            alert('Ошибка при сохранении: ' + err.message);
         }
     }
 

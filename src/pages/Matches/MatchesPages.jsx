@@ -108,8 +108,9 @@ function MatchCard({ match: m, onClick }) {
 export function MatchDetailPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
-    const id = window.location.pathname.split('/')[2];
-    const match = state.matches.find(m => m.id === id);
+    const user = state.currentUser;
+    const matchId = window.location.pathname.split('/')[2];
+    const match = state.matches.find(m => m.id === matchId);
 
     // Хуки ДОЛЖНЫ быть до любого раннего return
     const [comment, setComment] = useState(match?.realtor_comment || '');
