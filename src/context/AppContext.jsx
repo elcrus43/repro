@@ -426,6 +426,12 @@ export function AppProvider({ children }) {
             enhancedAction.matches = matches;
         } else if (action.type === 'ADD_TASK') {
             enhancedAction.task = { ...action.task, id: action.task.id || nanoid(), created_at: now };
+        } else if (action.type === 'ADD_PRICE_ITEM') {
+            enhancedAction.item = { ...action.item, id: action.item.id || nanoid(), created_at: now };
+        } else if (action.type === 'UPDATE_PRICE_ITEM') {
+            enhancedAction.item = { ...action.item };
+        } else if (action.type === 'DELETE_PRICE_ITEM') {
+            enhancedAction.id = action.id;
         }
 
         dispatch(enhancedAction);
