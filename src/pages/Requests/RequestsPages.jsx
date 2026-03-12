@@ -5,7 +5,7 @@ import { formatPrice, cleanPrice } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
 import { formatPhone, formatNumber } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
-import { BUILDING_TYPES } from '../../data/constants';
+import { BUILDING_TYPES, RENOVATION_LABELS } from '../../data/constants';
 
 const STEPS = ['Основное', 'Параметры', 'Оплата', 'Дополнительно'];
 
@@ -226,7 +226,7 @@ export function RequestCardPage() {
                     </div>
                     {req.balcony_required && <div className="info-row"><span className="info-key">Балкон</span><span className="info-val">Нужен</span></div>}
                     {req.building_types?.length > 0 && <div className="info-row"><span className="info-key">Тип дома</span><span className="info-val">{req.building_types.map(bt => BUILDING_TYPES[bt] || bt).join(', ')}</span></div>}
-                    {req.renovation_min && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Ремонт</span><span className="info-val">от {req.renovation_min}</span></div>}
+                    {req.renovation_min && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Ремонт</span><span className="info-val">от {RENOVATION_LABELS[req.renovation_min] || req.renovation_min}</span></div>}
                 </div>
 
                 {/* Payment */}
