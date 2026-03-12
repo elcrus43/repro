@@ -596,7 +596,7 @@ export function PropertyFormPage() {
                         <div className="form-group">
                             <label className="form-label" style={{ marginBottom: 8 }}>Расходы по сделке</label>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                                {state.pricelist.map(item => {
+                                {state.pricelist.filter(item => item.show_in_sale !== false).map(item => {
                                     const isSelected = form.deal_expenses?.some(ex => ex.name === item.name);
                                     return (
                                         <button

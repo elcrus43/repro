@@ -220,23 +220,28 @@ export function MatchDetailPage() {
 
                     if (!sellProp || !targetProp || sellProp.realtor_id !== user?.id) return null;
 
-                    const expensesTotal = (sellProp.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0);
-                    const commissionTotal = Number(sellProp.commission || 0);
-                    const availableBudget = Number(sellProp.price || 0) - commissionTotal - expensesTotal + Number(sellProp.surcharge || 0);
+                    const sellExpenses = (sellProp.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0);
+                    const sellCommission = Number(sellProp.commission || 0);
+                    const availableBudget = Number(sellProp.price || 0) - sellCommission - sellExpenses + Number(sellProp.surcharge || 0);
+                    
+                    const buyExpenses = (req.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0);
+                    const buyCommission = Number(req.commission || 0);
+                    
                     const targetPrice = Number(targetProp.price || 0);
-                    const gap = targetPrice - availableBudget;
+                    const gap = (targetPrice + buyCommission + buyExpenses) - availableBudget;
 
                     return (
                         <div className="card" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
                             <div className="section-title" style={{ marginBottom: 12 }}>Расчет по сделке (Альтернатива)</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>Продажа (№{sellProp.id.slice(0, 4)})</div>
                                 <div className="info-row">
-                                    <span className="info-key">Цена продажи (№{sellProp.id.slice(0, 4)})</span>
+                                    <span className="info-key">Цена продажи</span>
                                     <span className="info-val">{formatPrice(sellProp.price)}</span>
                                 </div>
                                 <div className="info-row" style={{ color: 'var(--danger)' }}>
                                     <span className="info-key">Комиссия</span>
-                                    <span className="info-val">− {formatPrice(commissionTotal)}</span>
+                                    <span className="info-val">− {formatPrice(sellCommission)}</span>
                                 </div>
                                 {sellProp.deal_expenses?.map((ex, i) => (
                                     <div key={i} className="info-row" style={{ color: 'var(--danger)', fontSize: 13 }}>
@@ -255,11 +260,23 @@ export function MatchDetailPage() {
                                     <span className="info-val">{formatPrice(availableBudget)}</span>
                                 </div>
 
-                                <div className="info-row" style={{ marginTop: 12 }}>
-                                    <span className="info-key">Цена покупки (№{targetProp.id.slice(0, 4)})</span>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginTop: 12 }}>Покупка (№{targetProp.id.slice(0, 4)})</div>
+                                <div className="info-row">
+                                    <span className="info-key">Цена объекта</span>
                                     <span className="info-val">{formatPrice(targetPrice)}</span>
                                 </div>
-
+                                {buyCommission > 0 && (
+                                    <div className="info-row" style={{ color: 'var(--danger)' }}>
+                                        <span className="info-key">Комиссия (покупка)</span>
+                                        <span className="info-val">+ {formatPrice(buyCommission)}</span>
+                                    </div>
+                                )}
+                                {req.deal_expenses?.map((ex, i) => (
+                                    <div key={i} className="info-row" style={{ color: 'var(--danger)', fontSize: 13 }}>
+                                        <span className="info-key">{ex.name}</span>
+                                        <span className="info-val">+ {formatPrice(ex.price)}</span>
+                                    </div>
+                                ))}
                                 <div style={{
                                     marginTop: 10,
                                     padding: '12px',

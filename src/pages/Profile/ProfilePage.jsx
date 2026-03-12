@@ -342,27 +342,39 @@ export function ProfilePage() {
                             <div className="section-title" style={{ marginBottom: 12 }}>Прейскурант услуг</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {state.pricelist.map(item => (
-                                    <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border-light)' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{item.price.toLocaleString()} ₽</div>
+                                    <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
+                                                <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{item.price.toLocaleString()} ₽</div>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: 4 }}>
+                                                <button className="icon-btn" onClick={() => {
+                                                    const newName = window.prompt('Название услуги', item.name);
+                                                    const newPrice = window.prompt('Стоимость', item.price);
+                                                    if (newName && newPrice) dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, name: newName, price: Number(newPrice) } });
+                                                }}><Edit2 size={16} /></button>
+                                                <button className="icon-btn" onClick={() => {
+                                                    if (window.confirm('Удалить услугу из прейскуранта?')) dispatch({ type: 'DELETE_PRICE_ITEM', id: item.id });
+                                                }} style={{ color: 'var(--danger)' }}><UserX size={16} /></button>
+                                            </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            <button className="icon-btn" onClick={() => {
-                                                const newName = window.prompt('Название услуги', item.name);
-                                                const newPrice = window.prompt('Стоимость', item.price);
-                                                if (newName && newPrice) dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, name: newName, price: Number(newPrice) } });
-                                            }}><Edit2 size={16} /></button>
-                                            <button className="icon-btn" onClick={() => {
-                                                if (window.confirm('Удалить услугу из прейскуранта?')) dispatch({ type: 'DELETE_PRICE_ITEM', id: item.id });
-                                            }} style={{ color: 'var(--danger)' }}><UserX size={16} /></button>
+                                        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+                                                <input type="checkbox" checked={item.show_in_sale !== false} onChange={e => dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, show_in_sale: e.target.checked } })} />
+                                                Объект (Продажа)
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
+                                                <input type="checkbox" checked={item.show_in_purchase !== false} onChange={e => dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, show_in_purchase: e.target.checked } })} />
+                                                Запрос (Покупка)
+                                            </label>
                                         </div>
                                     </div>
                                 ))}
                                 <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => {
                                     const name = window.prompt('Название новой услуги');
                                     const price = window.prompt('Стоимость');
-                                    if (name && price) dispatch({ type: 'ADD_PRICE_ITEM', item: { name, price: Number(price) } });
+                                    if (name && price) dispatch({ type: 'ADD_PRICE_ITEM', item: { name, price: Number(price), show_in_sale: true, show_in_purchase: true } });
                                 }}>+ Добавить услугу</button>
                             </div>
                         </div>

@@ -310,7 +310,14 @@ async function syncAction(rawAction) {
                 result = await supabase.from('pricelist').insert(action.item);
                 break;
             case 'UPDATE_PRICE_ITEM':
-                result = await supabase.from('pricelist').update({ name: action.item.name, price: action.item.price }).eq('id', action.item.id);
+                result = await supabase.from('pricelist')
+                    .update({
+                        name: action.item.name,
+                        price: action.item.price,
+                        show_in_sale: action.item.show_in_sale,
+                        show_in_purchase: action.item.show_in_purchase
+                    })
+                    .eq('id', action.item.id);
                 break;
             case 'DELETE_PRICE_ITEM':
                 result = await supabase.from('pricelist').delete().eq('id', action.id);
@@ -427,7 +434,13 @@ export function AppProvider({ children }) {
         } else if (action.type === 'ADD_TASK') {
             enhancedAction.task = { ...action.task, id: action.task.id || nanoid(), created_at: now };
         } else if (action.type === 'ADD_PRICE_ITEM') {
-            enhancedAction.item = { ...action.item, id: action.item.id || nanoid(), created_at: now };
+            enhancedAction.item = {
+                ...action.item,
+                id: action.item.id || nanoid(),
+                created_at: now,
+                show_in_sale: action.item.show_in_sale ?? true,
+                show_in_purchase: action.item.show_in_purchase ?? true
+            };
         } else if (action.type === 'UPDATE_PRICE_ITEM') {
             enhancedAction.item = { ...action.item };
         } else if (action.type === 'DELETE_PRICE_ITEM') {
