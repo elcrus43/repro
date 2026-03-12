@@ -237,7 +237,13 @@ export function RequestCardPage() {
                     {pTypes.includes('mortgage') && req.mortgage_bank && <div className="info-row"><span className="info-key">Банк</span><span className="info-val">{req.mortgage_bank}</span></div>}
                     {pTypes.includes('mortgage') && req.mortgage_amount > 0 && <div className="info-row"><span className="info-key">Сумма ипотеки</span><span className="info-val">{formatNumber(req.mortgage_amount)} ₽</span></div>}
                     {req.urgency && <div className="info-row"><span className="info-key">Срочность</span><span className="info-val">{urgencyLabel[req.urgency]}</span></div>}
-                    {req.desired_move_date && <div className="info-row" style={{ borderBottom: 'none' }}><span className="info-key">Заселение до</span><span className="info-val">{new Date(req.desired_move_date).toLocaleDateString('ru-RU')}</span></div>}
+                    {req.desired_move_date && <div className="info-row"><span className="info-key">Заселение до</span><span className="info-val">{new Date(req.desired_move_date).toLocaleDateString('ru-RU')}</span></div>}
+                    {req.parent_property_id && (
+                        <div className="info-row" style={{ borderBottom: 'none', color: 'var(--primary)', fontWeight: 600 }} onClick={() => navigate(`/properties/${req.parent_property_id}`)}>
+                            <span className="info-key">Связан с продажей</span>
+                            <span className="info-val">Объект #{req.parent_property_id.slice(0, 4)} ›</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Notes */}
@@ -328,6 +334,17 @@ export function RequestFormPage() {
                                 <option value="">— Выбрать клиента —</option>
                                 <option value="new">+ Создать нового клиента</option>
                                 {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Связан с продажей объекта (Цепочка)</label>
+                            <select className="form-select" value={form.parent_property_id || ''} onChange={e => setF('parent_property_id', e.target.value)}>
+                                <option value="">— Не связан (чистая покупка) —</option>
+                                {state.properties
+                                    .filter(p => !form.client_id || p.client_id === form.client_id)
+                                    .map(p => (
+                                        <option key={p.id} value={p.id}>{p.address || `Объект ${p.id.slice(0, 4)}`} ({formatNumber(p.price)} ₽)</option>
+                                    ))}
                             </select>
                         </div>
                         <div className="form-group">
