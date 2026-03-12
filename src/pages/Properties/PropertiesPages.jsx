@@ -250,10 +250,18 @@ export function PropertyCardPage() {
                         <span style={{ fontSize: 24, fontWeight: 800 }}>{formatNumber(prop.price)} ₽</span>
                         <span className={`badge badge-${STATUS_COLORS[prop.status] || 'muted'}`}>{STATUS_LABELS[prop.status] || prop.status}</span>
                     </div>
-                    {(prop.commission > 0 || prop.commission_buyer > 0) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                            {prop.commission > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>Комиссия (продавец): {formatNumber(prop.commission)} ₽</div>}
-                            {prop.commission_buyer > 0 && <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>Комиссия (покупатель): {formatNumber(prop.commission_buyer)} ₽</div>}
+                    {(prop.commission > 0 || prop.commission_buyer > 0 || prop.surcharge !== 0) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8, padding: '10px', background: 'var(--success-light)', borderRadius: 'var(--radius-sm)' }}>
+                            {prop.commission > 0 && <div style={{ fontSize: 13 }}><strong>Комиссия (продавец):</strong> {formatNumber(prop.commission)} ₽</div>}
+                            {prop.commission_buyer > 0 && <div style={{ fontSize: 13 }}><strong>Комиссия (покупатель):</strong> {formatNumber(prop.commission_buyer)} ₽</div>}
+                            {prop.surcharge !== 0 && (
+                                <div style={{ fontSize: 13 }}>
+                                    <strong>{prop.surcharge > 0 ? 'Доплата клиента:' : 'Остаток клиенту:'}</strong> {formatNumber(Math.abs(prop.surcharge))} ₽
+                                </div>
+                            )}
+                            <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed var(--success)', fontSize: 13, fontWeight: 700 }}>
+                                Чистый бюджет на обмен: {formatNumber(Number(prop.price || 0) - Number(prop.commission || 0) + Number(prop.surcharge || 0))} ₽
+                            </div>
                         </div>
                     )}
                     {prop.price_min && prop.price_min < prop.price && (
@@ -378,8 +386,9 @@ const defaultProp = {
     floor: '', floors_total: '', building_type: 'brick', year_built: '',
     renovation: 'cosmetic', bathroom: 'separate', balcony: 'none', parking: 'none',
     furniture: false, mortgage_available: true, matcapital_available: false,
-    encumbrance: false, minor_owners: false, sale_type: 'free', docs_ready: false,
-    ownership_type: 'individual', urgency: 'medium', description: '', commission: 0,
+    minor_owners: false, sale_type: 'free', docs_ready: false,
+    ownership_type: 'individual', urgency: 'medium', description: '',
+    commission: 0, commission_buyer: 0, surcharge: 0
 };
 
 function PropertyStepDots({ step, steps }) {
@@ -556,9 +565,20 @@ export function PropertyFormPage() {
                                 <input className="form-input" value={form.price_min ? formatNumber(form.price_min) : ''} onChange={e => setF('price_min', e.target.value.replace(/\s/g, ''))} placeholder="3 600 000" />
                             </div>
                         </div>
+                        <div className="input-row">
+                            <div className="form-group">
+                                <label className="form-label">Комиссия (с этого объекта), ₽</label>
+                                <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="150 000" />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Комиссия (с покупки), ₽</label>
+                                <input className="form-input" value={form.commission_buyer ? formatNumber(form.commission_buyer) : ''} onChange={e => setF('commission_buyer', e.target.value.replace(/\s/g, ''))} placeholder="50 000" />
+                            </div>
+                        </div>
                         <div className="form-group">
-                            <label className="form-label">Комиссия, ₽</label>
-                            <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="100 000" />
+                            <label className="form-label">Доплата наличными (если есть), ₽</label>
+                            <input className="form-input" value={form.surcharge ? formatNumber(form.surcharge) : ''} onChange={e => setF('surcharge', e.target.value.replace(/\s/g, ''))} placeholder="500 000" />
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Укажите положительное число (доплата от клиента) или отрицательное (сумма, которую клиент хочет оставить себе).</div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Комнаты (0=студия) <span className="required">*</span></label>

@@ -212,23 +212,64 @@ export function MatchDetailPage() {
                     </div>
                 )}
 
-                {/* Matched / mismatched params */}
-                {match.matched_params?.length > 0 && (
-                    <div className="card">
-                        <div className="section-title" style={{ marginBottom: 8, color: 'var(--success)' }}>Что совпало ({match.matched_params.length})</div>
-                        {match.matched_params.map((p, i) => (
-                            <div key={i} className="check-item"><span className="check-ok">✓</span><span style={{ fontSize: 13 }}>{p}</span></div>
-                        ))}
-                    </div>
-                )}
-                {match.mismatched_params?.length > 0 && (
-                    <div className="card">
-                        <div className="section-title" style={{ marginBottom: 8, color: 'var(--warning)' }}>Что не совпало ({match.mismatched_params.length})</div>
-                        {match.mismatched_params.map((p, i) => (
-                            <div key={i} className="check-item"><span className="check-warn">!</span><span style={{ fontSize: 13 }}>{p}</span></div>
-                        ))}
-                    </div>
-                )}
+                {/* Financial Breakdown (Alternative Deal Calculator) */}
+                {(() => {
+                    const sellProp = req?.parent_property_id ? state.properties.find(p => p.id === req.parent_property_id) : null;
+                    const targetProp = prop; // matched property
+
+                    if (!sellProp || !targetProp || sellProp.realtor_id !== user?.id) return null;
+
+                    const commissionTotal = Number(sellProp.commission || 0) + Number(sellProp.commission_buyer || 0);
+                    const availableBudget = Number(sellProp.price || 0) - commissionTotal + Number(sellProp.surcharge || 0);
+                    const targetPrice = Number(targetProp.price || 0);
+                    const gap = targetPrice - availableBudget;
+
+                    return (
+                        <div className="card" style={{ background: 'var(--bg)', border: '1px solid var(--border)' }}>
+                            <div className="section-title" style={{ marginBottom: 12 }}>Расчет по сделке (Альтернатива)</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div className="info-row">
+                                    <span className="info-key">Цена продажи (№{sellProp.id.slice(0, 4)})</span>
+                                    <span className="info-val">{formatNumber(sellProp.price)} ₽</span>
+                                </div>
+                                <div className="info-row" style={{ color: 'var(--danger)' }}>
+                                    <span className="info-key">Комиссия (продажа + покупка)</span>
+                                    <span className="info-val">− {formatNumber(commissionTotal)} ₽</span>
+                                </div>
+                                {sellProp.surcharge !== 0 && (
+                                    <div className="info-row" style={{ color: sellProp.surcharge > 0 ? 'var(--success)' : 'var(--danger)' }}>
+                                        <span className="info-key">{sellProp.surcharge > 0 ? 'Доплата клиента' : 'Остаток на руки'}</span>
+                                        <span className="info-val">{sellProp.surcharge > 0 ? '+' : '−'} {formatNumber(Math.abs(sellProp.surcharge))} ₽</span>
+                                    </div>
+                                )}
+                                <div className="info-row" style={{ fontWeight: 700, borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4 }}>
+                                    <span className="info-key">Доступный бюджет</span>
+                                    <span className="info-val">{formatNumber(availableBudget)} ₽</span>
+                                </div>
+
+                                <div className="info-row" style={{ marginTop: 12 }}>
+                                    <span className="info-key">Цена покупки (№{targetProp.id.slice(0, 4)})</span>
+                                    <span className="info-val">{formatNumber(targetPrice)} ₽</span>
+                                </div>
+
+                                <div style={{
+                                    marginTop: 10,
+                                    padding: '12px',
+                                    borderRadius: 'var(--radius-sm)',
+                                    background: gap > 0 ? 'var(--warning-light)' : 'var(--success-light)',
+                                    textAlign: 'center'
+                                }}>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                        {gap > 0 ? 'Необходимо доплатить:' : 'Останется после покупки:'}
+                                    </div>
+                                    <div style={{ fontSize: 20, fontWeight: 800, color: gap > 0 ? '#92400E' : 'var(--success)' }}>
+                                        {formatNumber(Math.abs(gap))} ₽
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
 
                 {/* Comment */}
                 <div className="card">
