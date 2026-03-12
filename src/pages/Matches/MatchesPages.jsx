@@ -220,8 +220,9 @@ export function MatchDetailPage() {
 
                     if (!sellProp || !targetProp || sellProp.realtor_id !== user?.id) return null;
 
+                    const expensesTotal = (sellProp.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0);
                     const commissionTotal = Number(sellProp.commission || 0) + Number(sellProp.commission_buyer || 0);
-                    const availableBudget = Number(sellProp.price || 0) - commissionTotal + Number(sellProp.surcharge || 0);
+                    const availableBudget = Number(sellProp.price || 0) - commissionTotal - expensesTotal + Number(sellProp.surcharge || 0);
                     const targetPrice = Number(targetProp.price || 0);
                     const gap = targetPrice - availableBudget;
 
@@ -231,26 +232,32 @@ export function MatchDetailPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <div className="info-row">
                                     <span className="info-key">Цена продажи (№{sellProp.id.slice(0, 4)})</span>
-                                    <span className="info-val">{formatNumber(sellProp.price)} ₽</span>
+                                    <span className="info-val">{formatPrice(sellProp.price)}</span>
                                 </div>
                                 <div className="info-row" style={{ color: 'var(--danger)' }}>
                                     <span className="info-key">Комиссия (продажа + покупка)</span>
-                                    <span className="info-val">− {formatNumber(commissionTotal)} ₽</span>
+                                    <span className="info-val">− {formatPrice(commissionTotal)}</span>
                                 </div>
+                                {sellProp.deal_expenses?.map((ex, i) => (
+                                    <div key={i} className="info-row" style={{ color: 'var(--danger)', fontSize: 13 }}>
+                                        <span className="info-key">{ex.name}</span>
+                                        <span className="info-val">− {formatPrice(ex.price)}</span>
+                                    </div>
+                                ))}
                                 {sellProp.surcharge !== 0 && (
                                     <div className="info-row" style={{ color: sellProp.surcharge > 0 ? 'var(--success)' : 'var(--danger)' }}>
                                         <span className="info-key">{sellProp.surcharge > 0 ? 'Доплата клиента' : 'Остаток на руки'}</span>
-                                        <span className="info-val">{sellProp.surcharge > 0 ? '+' : '−'} {formatNumber(Math.abs(sellProp.surcharge))} ₽</span>
+                                        <span className="info-val">{sellProp.surcharge > 0 ? '+' : '−'} {formatPrice(Math.abs(sellProp.surcharge))}</span>
                                     </div>
                                 )}
                                 <div className="info-row" style={{ fontWeight: 700, borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 4 }}>
                                     <span className="info-key">Доступный бюджет</span>
-                                    <span className="info-val">{formatNumber(availableBudget)} ₽</span>
+                                    <span className="info-val">{formatPrice(availableBudget)}</span>
                                 </div>
 
                                 <div className="info-row" style={{ marginTop: 12 }}>
                                     <span className="info-key">Цена покупки (№{targetProp.id.slice(0, 4)})</span>
-                                    <span className="info-val">{formatNumber(targetPrice)} ₽</span>
+                                    <span className="info-val">{formatPrice(targetPrice)}</span>
                                 </div>
 
                                 <div style={{
@@ -264,7 +271,7 @@ export function MatchDetailPage() {
                                         {gap > 0 ? 'Необходимо доплатить:' : 'Останется после покупки:'}
                                     </div>
                                     <div style={{ fontSize: 20, fontWeight: 800, color: gap > 0 ? '#92400E' : 'var(--success)' }}>
-                                        {formatNumber(Math.abs(gap))} ₽
+                                        {formatPrice(Math.abs(gap))}
                                     </div>
                                 </div>
                             </div>

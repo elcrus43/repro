@@ -250,17 +250,34 @@ export function PropertyCardPage() {
                         <span style={{ fontSize: 24, fontWeight: 800 }}>{formatNumber(prop.price)} ₽</span>
                         <span className={`badge badge-${STATUS_COLORS[prop.status] || 'muted'}`}>{STATUS_LABELS[prop.status] || prop.status}</span>
                     </div>
-                    {(prop.commission > 0 || prop.commission_buyer > 0 || prop.surcharge !== 0) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8, padding: '10px', background: 'var(--success-light)', borderRadius: 'var(--radius-sm)' }}>
-                            {prop.commission > 0 && <div style={{ fontSize: 13 }}><strong>Комиссия (продавец):</strong> {formatNumber(prop.commission)} ₽</div>}
-                            {prop.commission_buyer > 0 && <div style={{ fontSize: 13 }}><strong>Комиссия (покупатель):</strong> {formatNumber(prop.commission_buyer)} ₽</div>}
+                    {(prop.commission > 0 || (prop.deal_expenses && prop.deal_expenses.length > 0) || prop.surcharge !== 0) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 8, padding: '12px', background: 'var(--success-light)', borderRadius: 'var(--radius-sm)' }}>
+                            <div style={{ fontSize: 13, borderBottom: '1px solid var(--success-light)', paddingBottom: 4, marginBottom: 4, fontWeight: 700 }}>Финансовый расчет</div>
+                            {prop.commission > 0 && <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between' }}><span>Комиссия:</span> <span>-{formatNumber(prop.commission)} ₽</span></div>}
+                            
+                            {prop.deal_expenses?.map((ex, i) => (
+                                <div key={i} style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                                    <span>{ex.name}:</span> <span>-{formatNumber(ex.price)} ₽</span>
+                                </div>
+                            ))}
+
                             {prop.surcharge !== 0 && (
-                                <div style={{ fontSize: 13 }}>
-                                    <strong>{prop.surcharge > 0 ? 'Доплата клиента:' : 'Остаток клиенту:'}</strong> {formatNumber(Math.abs(prop.surcharge))} ₽
+                                <div style={{ fontSize: 13, display: 'flex', justifyContent: 'space-between', fontWeight: 600 }}>
+                                    <span>{prop.surcharge > 0 ? 'Доплата клиента:' : 'Остаток клиенту:'}</span>
+                                    <span>{formatNumber(prop.surcharge)} ₽</span>
                                 </div>
                             )}
-                            <div style={{ marginTop: 4, paddingTop: 4, borderTop: '1px dashed var(--success)', fontSize: 13, fontWeight: 700 }}>
-                                Чистый бюджет на обмен: {formatNumber(Number(prop.price || 0) - Number(prop.commission || 0) + Number(prop.surcharge || 0))} ₽
+
+                            <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed var(--success)', fontSize: 14, fontWeight: 800, color: 'var(--primary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>Чистый бюджет на поиск:</span>
+                                    <span>{formatNumber(
+                                        Number(prop.price || 0) - 
+                                        Number(prop.commission || 0) - 
+                                        (prop.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0) + 
+                                        Number(prop.surcharge || 0)
+                                    )} ₽</span>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -388,7 +405,7 @@ const defaultProp = {
     furniture: false, mortgage_available: true, matcapital_available: false,
     minor_owners: false, sale_type: 'free', docs_ready: false,
     ownership_type: 'individual', urgency: 'medium', description: '',
-    commission: 0, commission_buyer: 0, surcharge: 0
+    commission: 0, commission_buyer: 0, surcharge: 0, deal_expenses: []
 };
 
 function PropertyStepDots({ step, steps }) {
@@ -438,7 +455,8 @@ export function PropertyFormPage() {
             commission_buyer: Number(form.commission_buyer) || null,
             district: form.district || null,
             microdistrict: form.microdistrict || null,
-            contract_end_date: form.contract_end_date || null
+            contract_end_date: form.contract_end_date || null,
+            deal_expenses: form.deal_expenses || []
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } });
@@ -579,6 +597,88 @@ export function PropertyFormPage() {
                             <label className="form-label">Доплата наличными (если есть), ₽</label>
                             <input className="form-input" value={form.surcharge ? formatNumber(form.surcharge) : ''} onChange={e => setF('surcharge', e.target.value.replace(/\s/g, ''))} placeholder="500 000" />
                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>Укажите положительное число (доплата от клиента) или отрицательное (сумма, которую клиент хочет оставить себе).</div>
+                        </div>
+
+                        {/* TRANSACTION EXPENSES */}
+                        <div className="form-group">
+                            <label className="form-label" style={{ marginBottom: 8 }}>Расходы по сделке</label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                                {state.pricelist.map(item => {
+                                    const isSelected = form.deal_expenses?.some(ex => ex.name === item.name);
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            className={`chip ${isSelected ? 'active' : ''}`}
+                                            onClick={() => {
+                                                const newExpenses = isSelected
+                                                    ? form.deal_expenses.filter(ex => ex.name !== item.name)
+                                                    : [...(form.deal_expenses || []), { name: item.name, price: item.price }];
+                                                setF('deal_expenses', newExpenses);
+                                            }}
+                                        >
+                                            {item.name}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    type="button"
+                                    className="chip"
+                                    onClick={() => {
+                                        const name = window.prompt('Название расхода');
+                                        const price = window.prompt('Сумма');
+                                        if (name && price) {
+                                            setF('deal_expenses', [...(form.deal_expenses || []), { name, price: Number(price), manual: true }]);
+                                        }
+                                    }}
+                                    style={{ border: '1px dashed var(--primary)', color: 'var(--primary)' }}
+                                >
+                                    + Свой расход
+                                </button>
+                            </div>
+
+                            {form.deal_expenses?.length > 0 && (
+                                <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                                    {form.deal_expenses.map((ex, idx) => (
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: idx < form.deal_expenses.length - 1 ? '1px solid var(--border-light)' : 'none' }}>
+                                            <span style={{ fontSize: 13 }}>{ex.name}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span style={{ fontSize: 13, fontWeight: 700 }}>{ex.price.toLocaleString()} ₽</span>
+                                                <button type="button" onClick={() => setF('deal_expenses', form.deal_expenses.filter((_, i) => i !== idx))} style={{ border: 'none', background: 'none', color: 'var(--danger)', padding: 4, cursor: 'pointer' }}>×</button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* BUDGET BREAKDOWNPREVIEW */}
+                            <div style={{ padding: '12px', background: 'var(--primary-light)', borderRadius: 12 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, opacity: 0.8 }}>
+                                    <span>Цена продажи:</span>
+                                    <span>{formatNumber(cleanPrice(form.price))} ₽</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: 'var(--danger)' }}>
+                                    <span>Комиссия:</span>
+                                    <span>-{formatNumber(form.commission)} ₽</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 13, color: 'var(--danger)' }}>
+                                    <span>Расходы:</span>
+                                    <span>-{formatNumber(form.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0))} ₽</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, color: form.surcharge >= 0 ? 'var(--success)' : 'var(--danger)' }}>
+                                    <span>{form.surcharge >= 0 ? 'Доплата клиента:' : 'Остаток клиенту:'}</span>
+                                    <span>{form.surcharge >= 0 ? '+' : ''}{formatNumber(form.surcharge)} ₽</span>
+                                </div>
+                                <div style={{ borderTop: '1px solid var(--primary)', paddingTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 800, color: 'var(--primary)' }}>
+                                    <span style={{ fontSize: 14 }}>Чистый бюджет на обмен:</span>
+                                    <span style={{ fontSize: 16 }}>{formatNumber(
+                                        Number(cleanPrice(form.price) || 0) -
+                                        Number(form.commission || 0) -
+                                        Number(form.deal_expenses?.reduce((sum, ex) => sum + (Number(ex.price) || 0), 0) || 0) +
+                                        Number(form.surcharge || 0)
+                                    )} ₽</span>
+                                </div>
+                            </div>
                         </div>
                         <div className="form-group">
                             <label className="form-label">Комнаты (0=студия) <span className="required">*</span></label>
