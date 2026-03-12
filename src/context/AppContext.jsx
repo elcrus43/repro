@@ -17,6 +17,7 @@ const EMPTY_STATE = {
     tasks: [],
     pendingUsers: [],
     profiles: [],
+    pricelist: [],
     loading: true,
     error: null,
 };
@@ -110,6 +111,14 @@ function reducer(state, action) {
             return { ...state, tasks: state.tasks.map(t => t.id === action.task.id ? action.task : t) };
         case 'DELETE_TASK':
             return { ...state, tasks: state.tasks.filter(t => t.id !== action.id) };
+        case 'SET_PRICELIST':
+            return { ...state, pricelist: action.data };
+        case 'ADD_PRICE_ITEM':
+            return { ...state, pricelist: [...state.pricelist, action.item] };
+        case 'UPDATE_PRICE_ITEM':
+            return { ...state, pricelist: state.pricelist.map(i => i.id === action.item.id ? action.item : i) };
+        case 'DELETE_PRICE_ITEM':
+            return { ...state, pricelist: state.pricelist.filter(i => i.id !== action.id) };
 
         default:
             return state;
@@ -129,6 +138,7 @@ async function loadUserData(userId, role) {
         supabase.from('matches').select('*'),
         supabase.from('showings').select('*'),
         isAdmin ? supabase.from('tasks').select('*') : supabase.from('tasks').select('*').eq('realtor_id', userId),
+        supabase.from('pricelist').select('*'),
     ]);
     // All users need to see profiles for Realtor info on cards and matches
     const { data: profiles } = await supabase.from('profiles').select('*');
@@ -143,7 +153,8 @@ async function loadUserData(userId, role) {
         tasks: tasksRes.data || [],
         profiles: profiles || [],
         pendingUsers: pendingUsers || [],
-        error: clientsRes.error?.message || propertiesRes.error?.message || requestsRes.error?.message || null,
+        pricelist: results[6]?.data || [],
+        error: clientsRes.error?.message || propertiesRes.error?.message || requestsRes.error?.message || results[6]?.error?.message || null,
     };
 }
 
@@ -294,6 +305,15 @@ async function syncAction(rawAction) {
                 break;
             case 'REJECT_USER':
                 result = await supabase.from('profiles').update({ status: 'rejected' }).eq('id', action.userId);
+                break;
+            case 'ADD_PRICE_ITEM':
+                result = await supabase.from('pricelist').insert(action.item);
+                break;
+            case 'UPDATE_PRICE_ITEM':
+                result = await supabase.from('pricelist').update({ name: action.item.name, price: action.item.price }).eq('id', action.item.id);
+                break;
+            case 'DELETE_PRICE_ITEM':
+                result = await supabase.from('pricelist').delete().eq('id', action.id);
                 break;
         }
         if (result?.error) {
