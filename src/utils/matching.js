@@ -1,4 +1,5 @@
 // Matching algorithm per TZ §4.1
+import { RENOVATION_LABELS, BUILDING_TYPES, MARKET_LABELS, PROPERTY_TYPES } from '../data/constants';
 
 const RENOVATION_RANK = { none: 0, cosmetic: 1, euro: 2, designer: 3 };
 
@@ -125,9 +126,9 @@ export function calculateMatch(property, request) {
   if (request.building_types && request.building_types.length > 0 && property.building_type) {
     if (request.building_types.includes(property.building_type)) {
       score += 5;
-      matched.push(`Тип дома: ${property.building_type}`);
+      matched.push(`Тип дома: ${BUILDING_TYPES[property.building_type] || property.building_type}`);
     } else {
-      mismatched.push(`Тип дома: ${property.building_type} не в запросе`);
+      mismatched.push(`Тип дома: ${BUILDING_TYPES[property.building_type] || property.building_type} не в запросе`);
     }
   } else {
     score += 5;
@@ -137,9 +138,9 @@ export function calculateMatch(property, request) {
   if (request.market_types && request.market_types.length > 0) {
     if (request.market_types.includes(property.market_type)) {
       score += 5;
-      matched.push(`Рынок: ${property.market_type}`);
+      matched.push(`Рынок: ${MARKET_LABELS[property.market_type] || property.market_type}`);
     } else {
-      mismatched.push(`Рынок: объект ${property.market_type}, запрос [${request.market_types.join(',')}]`);
+      mismatched.push(`Рынок: объект ${MARKET_LABELS[property.market_type] || property.market_type}, запрос [${request.market_types.map(t => MARKET_LABELS[t] || t).join(',')}]`);
     }
   } else {
     score += 5;
@@ -149,11 +150,13 @@ export function calculateMatch(property, request) {
   if (request.renovation_min && property.renovation) {
     const propRank = RENOVATION_RANK[property.renovation] ?? 0;
     const reqRank = RENOVATION_RANK[request.renovation_min] ?? 0;
+    const propLabel = RENOVATION_LABELS[property.renovation] || property.renovation;
+    const reqLabel = RENOVATION_LABELS[request.renovation_min] || request.renovation_min;
     if (propRank >= reqRank) {
       score += 5;
-      matched.push(`Ремонт: ${property.renovation} ≥ ${request.renovation_min}`);
+      matched.push(`Ремонт: ${propLabel} ≥ ${reqLabel}`);
     } else {
-      mismatched.push(`Ремонт: ${property.renovation} < ${request.renovation_min}`);
+      mismatched.push(`Ремонт: ${propLabel} < ${reqLabel}`);
     }
   } else {
     score += 5;

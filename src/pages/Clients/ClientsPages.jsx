@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
 import { Edit2, Trash2 } from 'lucide-react';
+import { PROPERTY_TYPES } from '../../data/constants';
 
 export function ClientsPage() {
     const { state, dispatch } = useApp();
@@ -189,7 +190,7 @@ export function ClientCardPage() {
                             ))}
                             {myReqs.filter(r => r.commission > 0).map(r => (
                                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Запрос: {r.property_types?.join('/')}</span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Запрос: {r.property_types?.map(t => PROPERTY_TYPES[t] || t).join('/')}</span>
                                     <span style={{ fontWeight: 600 }}>{formatNumber(r.commission)} ₽</span>
                                 </div>
                             ))}
