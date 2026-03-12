@@ -16,6 +16,7 @@ const EMPTY_STATE = {
     showings: [],
     tasks: [],
     pendingUsers: [],
+    profiles: [],
     loading: true,
     error: null,
 };

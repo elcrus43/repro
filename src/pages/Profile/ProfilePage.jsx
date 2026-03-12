@@ -75,10 +75,10 @@ export function ProfilePage() {
         setIsEditing(false);
     };
 
-    const myClients = state.clients.filter(c => c.realtor_id === user.id);
-    const myProperties = state.properties.filter(p => p.realtor_id === user.id);
-    const myRequests = state.requests.filter(r => r.realtor_id === user.id);
-    const myMatches = state.matches.filter(m => m.realtor_id === user.id);
+    const myClients = state.clients.filter(c => isAdmin || c.realtor_id === user.id);
+    const myProperties = state.properties.filter(p => isAdmin || p.realtor_id === user.id);
+    const myRequests = state.requests.filter(r => isAdmin || r.realtor_id === user.id);
+    const myMatches = state.matches.filter(m => isAdmin || m.realtor_id === user.id);
     const deals = myMatches.filter(m => m.status === 'deal').length;
     const conversion = myMatches.length > 0 ? ((deals / myMatches.length) * 100).toFixed(1) : 0;
 
@@ -205,7 +205,6 @@ export function ProfilePage() {
         { icon: <Settings size={20} />, label: 'Настройки', action: () => { } },
         { icon: <Bell size={20} />, label: 'Уведомления', action: () => { } },
         { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
-        { icon: <RotateCcw size={20} />, label: 'Синхронизировать старые данные', action: handleSyncLocalData },
         { icon: <CircleHelp size={20} />, label: 'Помощь', action: () => { } },
     ];
 

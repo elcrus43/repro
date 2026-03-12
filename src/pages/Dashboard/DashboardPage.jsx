@@ -140,6 +140,7 @@ export function DashboardPage() {
                                         <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Кл.</th>
                                         <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Об.</th>
                                         <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Зап.</th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Конв.</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -155,6 +156,11 @@ export function DashboardPage() {
                                                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>{cCount}</td>
                                                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>{pCount}</td>
                                                     <td style={{ padding: '8px 12px', textAlign: 'center' }}>{rCount}</td>
+                                                    <td style={{ padding: '8px 12px', textAlign: 'center', color: 'var(--primary)', fontWeight: 600 }}>
+                                                        {state.matches.filter(m => m.realtor_id === p.id).length > 0
+                                                            ? (state.matches.filter(m => m.realtor_id === p.id && m.status === 'deal').length / state.matches.filter(m => m.realtor_id === p.id).length * 100).toFixed(1)
+                                                            : 0}%
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
