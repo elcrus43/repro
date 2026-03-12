@@ -405,7 +405,7 @@ const defaultProp = {
     furniture: false, mortgage_available: true, matcapital_available: false,
     minor_owners: false, sale_type: 'free', docs_ready: false,
     ownership_type: 'individual', urgency: 'medium', description: '',
-    commission: 0, commission_buyer: 0, surcharge: 0, deal_expenses: []
+    commission: 0, surcharge: 0, deal_expenses: []
 };
 
 function PropertyStepDots({ step, steps }) {
@@ -452,7 +452,6 @@ export function PropertyFormPage() {
             rooms: Number(form.rooms) || 0,
             client_id: form.client_id || null,
             commission: Number(form.commission) || null,
-            commission_buyer: Number(form.commission_buyer) || null,
             district: form.district || null,
             microdistrict: form.microdistrict || null,
             contract_end_date: form.contract_end_date || null,
@@ -583,15 +582,9 @@ export function PropertyFormPage() {
                                 <input className="form-input" value={form.price_min ? formatNumber(form.price_min) : ''} onChange={e => setF('price_min', e.target.value.replace(/\s/g, ''))} placeholder="3 600 000" />
                             </div>
                         </div>
-                        <div className="input-row">
-                            <div className="form-group">
-                                <label className="form-label">Комиссия (с этого объекта), ₽</label>
-                                <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="150 000" />
-                            </div>
-                            <div className="form-group">
-                                <label className="form-label">Комиссия (с покупки), ₽</label>
-                                <input className="form-input" value={form.commission_buyer ? formatNumber(form.commission_buyer) : ''} onChange={e => setF('commission_buyer', e.target.value.replace(/\s/g, ''))} placeholder="50 000" />
-                            </div>
+                        <div className="form-group">
+                            <label className="form-label">Комиссия (с этого объекта), ₽</label>
+                            <input className="form-input" value={form.commission ? formatNumber(form.commission) : ''} onChange={e => setF('commission', e.target.value.replace(/\s/g, ''))} placeholder="150 000" />
                         </div>
                         <div className="form-group">
                             <label className="form-label">Доплата наличными (если есть), ₽</label>
