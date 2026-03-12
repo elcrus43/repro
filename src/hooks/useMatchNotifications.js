@@ -66,4 +66,29 @@ export function useMatchNotifications() {
         }
 
     }, [state.matches, user, state.requests, state.properties]);
+
+    // Pending users notifications for Admins
+    const notifiedUsersRef = useRef(new Set());
+    useEffect(() => {
+        if (!user || user.role !== 'admin' || !state.pendingUsers) return;
+
+        const newPending = state.pendingUsers.filter(u =>
+            u.status === 'pending' &&
+            !notifiedUsersRef.current.has(u.id)
+        );
+
+        if (newPending.length > 0) {
+            if ('Notification' in window && Notification.permission === 'granted') {
+                newPending.forEach(u => {
+                    new Notification('Новая заявка риэлтора', {
+                        body: `${u.full_name} ожидает одобрения`,
+                        icon: '/icons/icon-192.png',
+                    });
+                    notifiedUsersRef.current.add(u.id);
+                });
+            } else {
+                newPending.forEach(u => notifiedUsersRef.current.add(u.id));
+            }
+        }
+    }, [state.pendingUsers, user]);
 }
