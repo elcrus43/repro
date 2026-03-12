@@ -326,11 +326,22 @@ export function AppProvider({ children }) {
                 updated_at: now
             };
             enhancedAction.property = prop;
-            enhancedAction.matches = runMatchingForProperty(prop, stateRef.current.requests).map(m => ({
-                id: nanoid(), ...m, realtor_id: prop.realtor_id,
-                status: 'new', rejection_reason: '', realtor_comment: '',
-                created_at: now, updated_at: now,
-            }));
+            enhancedAction.matches = runMatchingForProperty(prop, stateRef.current.requests).map(m => {
+                const existing = stateRef.current.matches.find(ex => ex.property_id === prop.id && ex.request_id === m.request_id);
+                // Realtor ID for match should be the owner of the REQUEST (buyer side)
+                // so they see it in their "Matches" tab under RLS
+                const request = stateRef.current.requests.find(r => r.id === m.request_id);
+                return {
+                    id: existing?.id || nanoid(),
+                    ...m,
+                    realtor_id: request?.realtor_id || prop.realtor_id,
+                    status: existing?.status || 'new',
+                    rejection_reason: existing?.rejection_reason || '',
+                    realtor_comment: existing?.realtor_comment || '',
+                    created_at: existing?.created_at || now,
+                    updated_at: now,
+                };
+            });
         } else if (action.type === 'ADD_REQUEST' || action.type === 'UPDATE_REQUEST') {
             const req = {
                 ...action.request,
@@ -339,11 +350,19 @@ export function AppProvider({ children }) {
                 updated_at: now
             };
             enhancedAction.request = req;
-            enhancedAction.matches = runMatchingForRequest(req, stateRef.current.properties).map(m => ({
-                id: nanoid(), ...m, realtor_id: req.realtor_id,
-                status: 'new', rejection_reason: '', realtor_comment: '',
-                created_at: now, updated_at: now,
-            }));
+            enhancedAction.matches = runMatchingForRequest(req, stateRef.current.properties).map(m => {
+                const existing = stateRef.current.matches.find(ex => ex.request_id === req.id && ex.property_id === m.property_id);
+                return {
+                    id: existing?.id || nanoid(),
+                    ...m,
+                    realtor_id: req.realtor_id, // request owner
+                    status: existing?.status || 'new',
+                    rejection_reason: existing?.rejection_reason || '',
+                    realtor_comment: existing?.realtor_comment || '',
+                    created_at: existing?.created_at || now,
+                    updated_at: now,
+                };
+            });
         } else if (action.type === 'UPDATE_MATCH') {
             enhancedAction.match = { ...action.match, updated_at: now };
         } else if (action.type === 'CLOSE_DEAL') {

@@ -121,7 +121,8 @@ create table if not exists matches (
   rejection_reason text,
   realtor_comment text,
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  updated_at timestamptz default now(),
+  unique(property_id, request_id)
 );
 
 -- Showings
