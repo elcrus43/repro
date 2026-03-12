@@ -39,7 +39,7 @@ export function LoginPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <div className="logo-icon">REM</div>
+                <div className="logo-r logo-r-lg" style={{ margin: '0 auto 12px' }}>R</div>
                 <p>Умная недвижимость</p>
             </div>
             <div className="auth-card">

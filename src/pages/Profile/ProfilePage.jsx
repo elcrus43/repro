@@ -368,7 +368,7 @@ export function ProfilePage() {
                 {deferredPrompt && !isInstalled && (
                     <div className="card" style={{ background: 'var(--primary)', color: 'white', padding: '16px' }}>
                         <div style={{ fontWeight: 700, marginBottom: 4 }}>Установить приложение</div>
-                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте REM на рабочий стол для быстрого доступа</div>
+                        <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 12 }}>Добавьте R Match на рабочий стол для быстрого доступа</div>
                         <button className="btn btn-full" style={{ background: 'white', color: 'var(--primary)' }} onClick={handleInstall}>
                             Установить
                         </button>

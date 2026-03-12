@@ -54,9 +54,7 @@ function LoadingScreen() {
       background: 'var(--bg)',
       color: 'var(--text)', gap: 16
     }}>
-      <div className="sidebar-logo">
-        <div style={{ fontSize: 32, fontWeight: 900, letterSpacing: '-1.5px', color: 'var(--primary)' }}>REM</div>
-      </div>
+      <div className="logo-r logo-r-lg">R</div>
       <div style={{ fontSize: 14, opacity: 0.7 }}>Загрузка...</div>
     </div>
   );

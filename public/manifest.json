@@ -1,7 +1,7 @@
 {
-    "name": "REM — Умная недвижимость",
-    "short_name": "REM",
-    "description": "REM — профессиональная платформа для управления недвижимостью",
+    "name": "R Match — Умная недвижимость",
+    "short_name": "R Match",
+    "description": "R Match — профессиональная платформа для управления недвижимостью",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",

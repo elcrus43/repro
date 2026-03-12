@@ -597,6 +597,32 @@ select {
   border-color: var(--border);
 }
 
+/* ===== Logo ===== */
+.logo-r {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--text);
+  color: var(--surface);
+  border-radius: 10px;
+  font-weight: 900;
+  font-size: 28px;
+  letter-spacing: -1px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  user-select: none;
+  font-family: 'Roboto', sans-serif;
+}
+
+.logo-r-lg {
+  width: 72px;
+  height: 72px;
+  font-size: 48px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 /* ===== Search ===== */
 .search-bar {
   position: relative;
