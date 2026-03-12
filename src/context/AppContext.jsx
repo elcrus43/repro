@@ -131,7 +131,7 @@ const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
 async function loadUserData(userId, role) {
     const isAdmin = role === 'admin';
-    const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes] = await Promise.all([
+    const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes] = await Promise.all([
         supabase.from('clients').select('*'),
         supabase.from('properties').select('*'),
         supabase.from('requests').select('*'),
@@ -153,8 +153,8 @@ async function loadUserData(userId, role) {
         tasks: tasksRes.data || [],
         profiles: profiles || [],
         pendingUsers: pendingUsers || [],
-        pricelist: results[6]?.data || [],
-        error: clientsRes.error?.message || propertiesRes.error?.message || requestsRes.error?.message || results[6]?.error?.message || null,
+        pricelist: priceRes?.data || [],
+        error: clientsRes.error?.message || propertiesRes.error?.message || requestsRes.error?.message || priceRes?.error?.message || null,
     };
 }
 
