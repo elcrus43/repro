@@ -115,6 +115,7 @@ export function MatchDetailPage() {
     const [comment, setComment] = useState(match?.realtor_comment || '');
     const [showShowingForm, setShowShowingForm] = useState(false);
     const [showingDate, setShowingDate] = useState('');
+    const [saved, setSaved] = useState(false);
 
     // Mark as viewed when opened
     React.useEffect(() => {
@@ -275,7 +276,14 @@ export function MatchDetailPage() {
                 <div className="card">
                     <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>Комментарий</div>
                     <textarea className="form-textarea" value={comment} onChange={e => setComment(e.target.value)} placeholder="Заметки по этому совпадению..." rows={3} />
-                    <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => dispatch({ type: 'UPDATE_MATCH', match: { ...match, realtor_comment: comment } })}>Сохранить</button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                            dispatch({ type: 'UPDATE_MATCH', match: { ...match, realtor_comment: comment } });
+                            setSaved(true);
+                            setTimeout(() => setSaved(false), 2000);
+                        }}>Сохранить</button>
+                        {saved && <span style={{ color: 'var(--success)', fontSize: 13, fontWeight: 600 }}>Сохранено!</span>}
+                    </div>
                 </div>
 
                 {/* Showing form */}
@@ -305,9 +313,11 @@ export function MatchDetailPage() {
                     </div>
                 )}
 
-                <div style={{ textAlign: 'center', padding: 24, background: 'var(--success-light)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--success)' }}>
-                    <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--success)' }}>Сделка закрыта!</div>
-                </div>
+                {match.status === 'deal' && (
+                    <div style={{ textAlign: 'center', padding: 24, background: 'var(--success-light)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--success)' }}>
+                        <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--success)' }}>Сделка закрыта!</div>
+                    </div>
+                )}
             </div>
         </div>
     );
