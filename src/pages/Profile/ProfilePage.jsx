@@ -96,7 +96,7 @@ export function ProfilePage() {
     };
 
     const handleExport = async () => {
-        const category = window.prompt('Что экспортировать? (1 - Клиенты, 2 - Объекты, 3 - Все)', '3');
+        const category = window.prompt('Что экспортировать? (1 - Клиенты, 2 - Продажи, 3 - Все)', '3');
         if (!category) return;
 
         try {
@@ -122,7 +122,7 @@ export function ProfilePage() {
                 const propsData = state.properties.map(p => {
                     const client = state.clients.find(c => c.id === p.client_id);
                     return {
-                        'Тип': 'Объект',
+                        'Тип': 'Продажа',
                         'Заголовок': p.title || (p.property_type === 'apartment' ? 'Квартира' : p.property_type === 'house' ? 'Дом' : p.property_type),
                         'Цена': p.price,
                         'Комиссия': p.commission || 0,
@@ -402,11 +402,11 @@ export function ProfilePage() {
                         </div>
                         <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
                             <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)' }}>{myProperties.length}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Объектов</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Продаж</div>
                         </div>
                         <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
                             <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)' }}>{myRequests.length}</div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Запросов</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Покупок</div>
                         </div>
                         <div style={{ padding: '12px', background: 'var(--bg)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
                             <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success)' }}>{deals}</div>

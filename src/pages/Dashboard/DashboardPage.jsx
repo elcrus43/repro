@@ -138,8 +138,8 @@ export function DashboardPage() {
                                     <tr>
                                         <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Риэлтор</th>
                                         <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Кл.</th>
-                                        <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Об.</th>
-                                        <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Зап.</th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Пр.</th>
+                                        <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Пок.</th>
                                         <th style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 600 }}>Конв.</th>
                                     </tr>
                                 </thead>
@@ -182,7 +182,7 @@ export function DashboardPage() {
                 {newMatches.length === 0 && todayTasks.length === 0 && (
                     <div className="empty-state" style={{ marginTop: 24 }}>
                         <div className="empty-title">Начните работу!</div>
-                        <div className="empty-desc">Добавьте клиентов, объекты и запросы — система автоматически найдёт совпадения</div>
+                        <div className="empty-desc">Добавьте клиентов, продажи и покупки — система автоматически найдёт совпадения</div>
                     </div>
                 )}
             </div>

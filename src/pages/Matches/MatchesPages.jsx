@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
+import { stripPhone } from '../../utils/format';
 
 export function MatchesPage() {
     const { state } = useApp();
@@ -95,7 +96,7 @@ function MatchCard({ match: m, onClick }) {
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{req?.rooms?.map(r => r === 0 ? 'Студия' : `${r}к`).join('/')} · до {formatPrice(req?.budget_max)}</div>
                         {!buyer && req?.realtor_id !== user?.id && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 2 }}>Агент: {state.profiles.find(pr => pr.id === req.realtor_id)?.full_name || 'Агент'}</div>}
                     </>
-                ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Запрос удалён</div>}
+                ) : <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Покупка удалена</div>}
             </div>
             {m.mismatched_params?.length > 0 && (
                 <div style={{ marginTop: 8, padding: '6px 10px', background: 'var(--warning-light)', borderRadius: 'var(--radius-sm)', fontSize: 12, color: '#92400E' }}>

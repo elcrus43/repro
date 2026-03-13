@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, cleanPrice } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
-import { formatPhone, formatNumber } from '../../utils/format';
+import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { BUILDING_TYPES, RENOVATION_LABELS } from '../../data/constants';
 
@@ -83,7 +83,7 @@ export function RequestsPage() {
     return (
         <div className="page fade-in">
             <div className="topbar">
-                <span className="topbar-title">Запросы</span>
+                <span className="topbar-title">Покупки</span>
                 <button className="icon-btn" onClick={() => navigate('/requests/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
             <div style={{ padding: '12px 16px 0' }}>
@@ -95,15 +95,15 @@ export function RequestsPage() {
             <div style={{ padding: '0 16px', marginTop: 8 }}>
                 <div style={{ display: 'flex', background: 'var(--bg)', padding: 4, borderRadius: 8, gap: 4 }}>
                     <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'all' ? 'white' : 'transparent', boxShadow: scope === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'all' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('all')}>Общая база</button>
-                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои запросы</button>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои покупки</button>
                 </div>
             </div>
 
             <div className="page-content" style={{ paddingTop: 12 }}>
                 {requests.length === 0 && (
                     <div className="empty-state">
-                        <div className="empty-title">Нет запросов</div>
-                        <div className="empty-desc">Добавьте запрос покупателя</div>
+                        <div className="empty-title">Нет покупок</div>
+                        <div className="empty-desc">Добавьте покупку покупателя</div>
                         <button className="btn btn-primary" onClick={() => navigate('/requests/new')}>+</button>
                     </div>
                 )}
@@ -112,7 +112,7 @@ export function RequestsPage() {
                     const matches = state.matches.filter(m => m.request_id === req.id);
                     const handleDelete = (e) => {
                         e.stopPropagation();
-                        if (window.confirm('Удалить запрос?')) {
+                        if (window.confirm('Удалить покупку?')) {
                             dispatch({ type: 'DELETE_REQUEST', id: req.id });
                         }
                     };
@@ -184,7 +184,7 @@ export function RequestCardPage() {
                 <span className="topbar-title">Покупка</span>
                 <div className="topbar-actions">
                     <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}><Edit2 size={18} /></button>
-                    <button className="icon-btn" onClick={() => { if (window.confirm('Удалить запрос?')) { dispatch({ type: 'DELETE_REQUEST', id }); navigate('/requests'); } }}><Trash2 size={18} /></button>
+                    <button className="icon-btn" onClick={() => { if (window.confirm('Удалить покупку?')) { dispatch({ type: 'DELETE_REQUEST', id }); navigate('/requests'); } }}><Trash2 size={18} /></button>
                 </div>
             </div>
             <div className="page-content">
@@ -363,7 +363,7 @@ export function RequestFormPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => step > 0 ? setStep(s => s - 1) : navigate(isEdit ? `/requests/${id}` : '/requests')}>←</button>
-                <span className="topbar-title">{isEdit ? 'Редактировать запрос' : 'Новый запрос'}</span>
+                <span className="topbar-title">{isEdit ? 'Редактировать покупку' : 'Новая покупка'}</span>
             </div>
             <StepDots step={step} />
 

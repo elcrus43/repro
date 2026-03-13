@@ -61,7 +61,7 @@ export function ShowFormPage() {
     function handleSubmit(e) {
         e.preventDefault();
         if (!form.property_id || !form.client_id || !form.showing_date) {
-            alert('Пожалуйста, выберите объект, клиента и дату/время');
+            alert('Пожалуйста, выберите продажу, клиента и дату/время');
             return;
         }
 
@@ -88,9 +88,9 @@ export function ShowFormPage() {
                 <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {/* Property */}
                     <div className="form-group">
-                        <label className="form-label"><Home size={14} style={{ marginRight: 4 }} /> Объект <span className="required">*</span></label>
+                        <label className="form-label"><Home size={14} style={{ marginRight: 4 }} /> Продажа <span className="required">*</span></label>
                         <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id}>
-                            <option value="">— Выбрать объект —</option>
+                            <option value="">— Выбрать продажу —</option>
                             {allProperties.map(p => (
                                 <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
                             ))}
