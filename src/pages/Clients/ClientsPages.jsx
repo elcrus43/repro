@@ -129,14 +129,15 @@ export function ClientCardPage() {
         <div className="page"><div className="topbar"><button className="topbar-back" onClick={() => navigate('/clients')}>←</button><span className="topbar-title">Клиент не найден</span></div></div>
     );
 
-    const myProps = state.properties.filter(p => p.client_id === id);
-    const myReqs = state.requests.filter(r => r.client_id === id);
+    const myProperties = state.properties.filter(p => p.client_id === id);
+    const myPropertyIds = myProperties.map(p => p.id);
+    const myRequests = state.requests.filter(r => r.client_id === id);
     const propMatches = state.matches.filter(m => state.properties.find(p => p.id === m.property_id && p.client_id === id));
     const reqMatches = state.matches.filter(m => state.requests.find(r => r.id === m.request_id && r.client_id === id));
     const allMatches = [...new Map([...propMatches, ...reqMatches].map(m => [m.id, m])).values()];
-    const myShowings = state.showings.filter(s => s.client_id === id);
+    const myShowings = state.showings.filter(s => s.client_id === id || myPropertyIds.includes(s.property_id));
     const myTasks = state.tasks.filter(t => t.client_id === id);
-    const totalCommission = [...myProps, ...myReqs].reduce((sum, item) => sum + (item.commission || 0), 0);
+    const totalCommission = [...myProperties, ...myRequests].reduce((sum, item) => sum + (item.commission || 0), 0);
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
     const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
@@ -267,7 +268,7 @@ export function ClientCardPage() {
                 {/* Requests */}
                 <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Запросы</div>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Покупки</div>
                         <button className="icon-btn" onClick={() => navigate(`/requests/new?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
                     </div>
                     {myReqs.length === 0 ? (
@@ -290,7 +291,7 @@ export function ClientCardPage() {
                 {/* Properties */}
                 <div className="card">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Объекты</div>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Продажи</div>
                         <button className="icon-btn" onClick={() => navigate(`/properties/new?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
                     </div>
                     {myProps.length === 0 ? (

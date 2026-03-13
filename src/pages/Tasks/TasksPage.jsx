@@ -212,7 +212,7 @@ export function TasksPage() {
                                 {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                             </select>
                             <select className="form-select" value={newTask.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
-                                <option value="">Без объекта</option>
+                                <option value="">Без продажи</option>
                                 {myProperties.map(p => <option key={p.id} value={p.id}>{p.address || p.city}</option>)}
                             </select>
                         </div>

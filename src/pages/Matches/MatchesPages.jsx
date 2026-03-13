@@ -77,7 +77,7 @@ function MatchCard({ match: m, onClick }) {
             </div>
             {/* Property */}
             <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: 8 }}>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Объект</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Продажа</div>
                 {prop ? (
                     <>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{formatPrice(prop.price)} · {prop.rooms > 0 ? `${prop.rooms}к` : 'Студия'} · {prop.area_total}м²</div>
@@ -88,7 +88,7 @@ function MatchCard({ match: m, onClick }) {
             <div style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-muted)', margin: '4px 0' }}>⇕</div>
             {/* Buyer */}
             <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Покупатель</div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Покупка / Клиент</div>
                 {buyer || req ? (
                     <>
                         <div style={{ fontWeight: 600, fontSize: 14 }}>{buyer?.full_name || 'Контакт скрыт'}</div>
@@ -184,7 +184,7 @@ export function MatchDetailPage() {
                 {/* Property */}
                 {prop && (
                     <div className="card card-clickable" onClick={() => navigate(`/properties/${prop.id}`)}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 12, marginBottom: 6 }}>ОБЪЕКТ</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 12, marginBottom: 6 }}>ПРОДАЖА</div>
                         <div style={{ fontWeight: 800, fontSize: 16 }}>{formatPrice(prop.price)}</div>
                         <div style={{ fontSize: 14, marginTop: 2 }}>{prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} · {prop.area_total}м² · {prop.floor}/{prop.floors_total} эт.</div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{prop.address}</div>
@@ -201,7 +201,7 @@ export function MatchDetailPage() {
                 {/* Buyer */}
                 {buyer && (
                     <div className="card card-clickable" onClick={() => navigate(`/clients/${buyer.id}`)}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 12, marginBottom: 6 }}>ПОКУПАТЕЛЬ</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 12, marginBottom: 6 }}>ПОКУПКА</div>
                         <div style={{ fontWeight: 700, fontSize: 15 }}>{buyer?.full_name || 'Контакт скрыт'}</div>
                         {req && (
                             <>

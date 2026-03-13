@@ -25,7 +25,7 @@ function BottomNav() {
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
 
   const tabs = [
-    { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
+    { path: '/properties', icon: <Building2 size={22} />, label: 'Продажи' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
     { path: '/matches', icon: <Sparkles size={22} />, label: 'Матчи', badge: newMatchCount > 0 },
     { path: '/tasks', icon: <CheckSquare size={22} />, label: 'Задачи' },

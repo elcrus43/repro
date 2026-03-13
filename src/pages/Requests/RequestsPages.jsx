@@ -181,7 +181,7 @@ export function RequestCardPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate('/requests')}>←</button>
-                <span className="topbar-title">Запрос</span>
+                <span className="topbar-title">Покупка</span>
                 <div className="topbar-actions">
                     <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}><Edit2 size={18} /></button>
                     <button className="icon-btn" onClick={() => { if (window.confirm('Удалить запрос?')) { dispatch({ type: 'DELETE_REQUEST', id }); navigate('/requests'); } }}><Trash2 size={18} /></button>
@@ -279,7 +279,7 @@ export function RequestCardPage() {
                     {req.parent_property_id && (
                         <div className="info-row" style={{ borderBottom: 'none', color: 'var(--primary)', fontWeight: 600 }} onClick={() => navigate(`/properties/${req.parent_property_id}`)}>
                             <span className="info-key">Связан с продажей</span>
-                            <span className="info-val">Объект #{req.parent_property_id.slice(0, 4)} ›</span>
+                            <span className="info-val">Продажа #{req.parent_property_id.slice(0, 4)} ›</span>
                         </div>
                     )}
                 </div>
