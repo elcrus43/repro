@@ -161,6 +161,7 @@ export function PropertyCardPage() {
     const client = state.clients.find(c => c.id === prop.client_id);
     const realtor = state.profiles?.find(p => p.id === prop.realtor_id);
     const matches = state.matches.filter(m => m.property_id === id);
+    const myShowings = state.showings.filter(s => s.property_id === id);
 
     function handleDelete() {
         if (window.confirm('Удалить продажу?')) { dispatch({ type: 'DELETE_PROPERTY', id }); navigate('/properties'); }
@@ -368,6 +369,35 @@ export function PropertyCardPage() {
                         </div>
                     </div>
                 )}
+
+                {/* Showings History */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 0 }}>История показов</div>
+                        <button className="icon-btn" onClick={() => navigate(`/showings/new?property_id=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                    </div>
+                    {myShowings.length === 0 ? (
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Показов еще не было</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {myShowings.sort((a,b) => new Date(b.showing_date) - new Date(a.showing_date)).map(s => {
+                                const propClient = state.clients.find(c => c.id === s.client_id);
+                                const statusLabels = { planned: 'Запланирован', completed: 'Проведен', failed: 'Не состоялся' };
+                                const statusColors = { planned: 'warning', completed: 'success', failed: 'danger' };
+                                return (
+                                    <div key={s.id} onClick={() => navigate('/showings')} style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                            <span style={{ fontSize: 12, fontWeight: 700 }}>{new Date(s.showing_date).toLocaleDateString('ru-RU')} {new Date(s.showing_date).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</span>
+                                            <span className={`badge badge-${statusColors[s.status] || 'muted'}`} style={{ fontSize: 10 }}>{statusLabels[s.status] || s.status}</span>
+                                        </div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Покупатель: {propClient?.full_name || 'Неизвестно'}</div>
+                                        {s.client_feedback && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>«{s.client_feedback}»</div>}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
 
                 {/* Description */}
                 {prop.description && (

@@ -8,8 +8,8 @@ export function ShowFormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const params = new URLSearchParams(window.location.search);
-    const prePropId = params.get('propertyId');
-    const preClientId = params.get('clientId');
+    const prePropId = params.get('propertyId') || params.get('property_id');
+    const preClientId = params.get('clientId') || params.get('client_id');
     const editId = params.get('id'); // edit mode
 
     const existingShowing = editId ? state.showings.find(s => s.id === editId) : null;
