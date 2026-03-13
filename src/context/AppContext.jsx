@@ -192,9 +192,9 @@ async function syncAction(rawAction) {
             case 'ADD_CLIENT': {
                 logData('clients_insert', action.client);
                 result = await supabase.from('clients').insert(action.client);
-                // Handle missing passport_details column (SQL code 42703)
-                if (result.error?.code === '42703' && result.error.message?.includes('passport_details')) {
-                    console.warn('[Supabase] passport_details column missing, retrying without it');
+                // Handle missing passport_details column (SQL 42703 or PGRST204)
+                if ((result.error?.code === '42703' || result.error?.code === 'PGRST204') && result.error.message?.includes('passport_details')) {
+                    console.warn('[Supabase] passport_details column missing/cache error, retrying without it');
                     const { passport_details: _pd, ...clientWithout } = action.client;
                     result = await supabase.from('clients').insert(clientWithout);
                 }
@@ -204,9 +204,9 @@ async function syncAction(rawAction) {
                 const { id: cId, ...cData } = action.client;
                 logData('clients_update', { id: cId, ...cData });
                 result = await supabase.from('clients').update(cData).eq('id', cId);
-                // Handle missing passport_details column (SQL code 42703)
-                if (result.error?.code === '42703' && result.error.message?.includes('passport_details')) {
-                    console.warn('[Supabase] passport_details column missing, retrying without it');
+                // Handle missing passport_details column (SQL 42703 or PGRST204)
+                if ((result.error?.code === '42703' || result.error?.code === 'PGRST204') && result.error.message?.includes('passport_details')) {
+                    console.warn('[Supabase] passport_details column missing/cache error, retrying without it');
                     const { passport_details: _pd, ...dataWithout } = cData;
                     result = await supabase.from('clients').update(dataWithout).eq('id', cId);
                 }
