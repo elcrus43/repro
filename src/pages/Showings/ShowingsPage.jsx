@@ -134,7 +134,7 @@ export function ShowingsPage() {
                                         )}
                                     </div>
                                 </div>
-                                {prop && <div style={{ fontWeight: 600, fontSize: 14 }}>Объект: {prop.address}</div>}
+                                {prop && <div style={{ fontWeight: 600, fontSize: 14 }}>Продажа: {prop.address}</div>}
                                 {client && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Клиент: {client.full_name} · {formatPhone(client.phone)}</div>}
                                 {s.client_feedback && (
                                     <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)' }}>

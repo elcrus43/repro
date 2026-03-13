@@ -30,7 +30,7 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                 </div>
                 {task.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{task.description}</div>}
                 {client && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>}
-                {prop && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Объект: {prop.address}</div>}
+                {prop && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Продажа: {prop.address}</div>}
                 {task.due_date && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(task.due_date).toLocaleDateString('ru-RU')}</div>}
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
