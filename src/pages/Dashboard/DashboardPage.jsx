@@ -56,11 +56,11 @@ export function DashboardPage() {
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/properties')}>
                         <div className="stat-value">{formatNumber(myProperties.length)}</div>
-                        <div className="stat-label">Объектов</div>
+                        <div className="stat-label">Продаж</div>
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/requests')}>
                         <div className="stat-value">{formatNumber(myRequests.length)}</div>
-                        <div className="stat-label">Запросов</div>
+                        <div className="stat-label">Покупок</div>
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/matches')}>
                         <div className="stat-value">{formatNumber(myMatches.length)}</div>
@@ -174,7 +174,7 @@ export function DashboardPage() {
                 <div style={{ marginTop: 24 }}>
                     <div className="section-title" style={{ marginBottom: 8 }}>Быстрые действия</div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <button className="btn btn-ghost" onClick={() => navigate('/properties/new')}>+ Объект</button>
+                        <button className="btn btn-ghost" onClick={() => navigate('/properties/new')}>+ Продажа</button>
                         <button className="btn btn-ghost" onClick={() => navigate('/clients/new')}>+ Клиент</button>
                     </div>
                 </div>
