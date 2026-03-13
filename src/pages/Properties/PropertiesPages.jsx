@@ -46,7 +46,7 @@ export function PropertiesPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Объекты</span>
-                <button className="btn btn-sm btn-primary" onClick={() => navigate('/properties/new')}>+ Добавить</button>
+                <button className="icon-btn" onClick={() => navigate('/properties/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -73,7 +73,7 @@ export function PropertiesPage() {
                     <div className="empty-state">
                         <div className="empty-title">Нет объектов</div>
                         <div className="empty-desc">Добавьте первый объект</div>
-                        <button className="btn btn-primary" onClick={() => navigate('/properties/new')}>+ Добавить объект</button>
+                        <button className="btn btn-primary" onClick={() => navigate('/properties/new')}>+</button>
                     </div>
                 )}
                 {properties.map(prop => {

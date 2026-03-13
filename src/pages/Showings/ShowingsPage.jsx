@@ -56,7 +56,7 @@ export function ShowingsPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Показы</span>
-                <button className="icon-btn" onClick={() => navigate('/showings/new')}>+</button>
+                <button className="icon-btn" onClick={() => navigate('/showings/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
             <div className="page-content">
                 {/* Calendar */}
