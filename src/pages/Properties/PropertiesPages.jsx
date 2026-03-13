@@ -45,7 +45,7 @@ export function PropertiesPage() {
     return (
         <div className="page fade-in">
             <div className="topbar">
-                <span className="topbar-title">Объекты</span>
+                <span className="topbar-title">Продажи</span>
                 <button className="icon-btn" onClick={() => navigate('/properties/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
 
@@ -71,8 +71,8 @@ export function PropertiesPage() {
             <div className="page-content" style={{ paddingTop: 8 }}>
                 {properties.length === 0 && (
                     <div className="empty-state">
-                        <div className="empty-title">Нет объектов</div>
-                        <div className="empty-desc">Добавьте первый объект</div>
+                        <div className="empty-title">Нет продаж</div>
+                        <div className="empty-desc">Добавьте первую продажу</div>
                         <button className="btn btn-primary" onClick={() => navigate('/properties/new')}>+</button>
                     </div>
                 )}
@@ -81,7 +81,7 @@ export function PropertiesPage() {
 
                     const handleDelete = (e) => {
                         e.stopPropagation();
-                        if (window.confirm('Удалить объект?')) {
+                        if (window.confirm('Удалить продажу?')) {
                             dispatch({ type: 'DELETE_PROPERTY', id: prop.id });
                         }
                     };
@@ -163,7 +163,7 @@ export function PropertyCardPage() {
     const matches = state.matches.filter(m => m.property_id === id);
 
     function handleDelete() {
-        if (window.confirm('Удалить объект?')) { dispatch({ type: 'DELETE_PROPERTY', id }); navigate('/properties'); }
+        if (window.confirm('Удалить продажу?')) { dispatch({ type: 'DELETE_PROPERTY', id }); navigate('/properties'); }
     }
 
 
@@ -237,7 +237,7 @@ export function PropertyCardPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
-                <span className="topbar-title">Объект</span>
+                <span className="topbar-title">Продажа</span>
                 <div className="topbar-actions">
                     <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}><Edit2 size={18} /></button>
                     <button className="icon-btn" onClick={handleDelete}><Trash2 size={18} /></button>
@@ -285,7 +285,7 @@ export function PropertyCardPage() {
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Торг до {formatNumber(prop.price_min)} ₽</div>
                     )}
                     <div style={{ fontSize: 16, fontWeight: 600, marginTop: 6 }}>
-                        {prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} {prop.property_type === 'apartment' ? 'квартира' : 'объект'}
+                        {prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} {prop.property_type === 'apartment' ? 'квартира' : 'продажа'}
                     </div>
                     <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>г. {prop.city}, {prop.district && `${prop.district}, `}{prop.address}</div>
                     {prop.residential_complex && <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>ЖК: {prop.residential_complex}</div>}
@@ -380,7 +380,7 @@ export function PropertyCardPage() {
                 {/* Funnel Switcher for Card */}
                 {user?.id === prop.realtor_id && (
                     <div className="card" style={{ padding: '12px 16px' }}>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>Статус объекта</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8, fontWeight: 600 }}>Статус продажи</div>
                         <div className="funnel-bar">
                             {STATUS_FUNNEL.map(s => (
                                 <div key={s.id}
@@ -488,7 +488,7 @@ export function PropertyFormPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => step > 0 ? setStep(s => s - 1) : navigate(isEdit ? `/properties/${id}` : '/properties')}>←</button>
-                <span className="topbar-title">{isEdit ? 'Редактировать объект' : 'Новый объект'}</span>
+                <span className="topbar-title">{isEdit ? 'Редактировать продажу' : 'Новая продажа'}</span>
             </div>
 
             <PropertyStepDots step={step} steps={STEPS} />
