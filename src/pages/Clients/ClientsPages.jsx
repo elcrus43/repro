@@ -37,7 +37,7 @@ export function ClientsPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Клиенты</span>
-                <button className="btn btn-sm btn-primary" onClick={() => navigate('/clients/new')}>+ Добавить</button>
+                <button className="icon-btn" onClick={() => navigate('/clients/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -223,12 +223,6 @@ export function ClientCardPage() {
                             <span className="info-val">{client.email}</span>
                         </div>
                     )}
-                    {client.messenger && (
-                        <div className="info-row">
-                            <span className="info-key">Мессенджер</span>
-                            <span className="info-val">{client.messenger}</span>
-                        </div>
-                    )}
 
                     {client.additional_contacts?.map((contact, idx) => (
                         <React.Fragment key={idx}>
@@ -258,12 +252,6 @@ export function ClientCardPage() {
                                     <span className="info-val">{contact.email}</span>
                                 </div>
                             )}
-                            {contact.messenger && (
-                                <div className="info-row">
-                                    <span className="info-key">Мессенджер</span>
-                                    <span className="info-val">{contact.messenger}</span>
-                                </div>
-                            )}
                         </React.Fragment>
                     ))}
                     <div className="info-row">
@@ -276,9 +264,86 @@ export function ClientCardPage() {
                     </div>
                 </div>
                 
+                {/* Requests */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Запросы</div>
+                        <button className="icon-btn" onClick={() => navigate(`/requests/new?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                    </div>
+                    {myReqs.length === 0 ? (
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Запросов еще не было</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {myReqs.map(r => (
+                                <div key={r.id} onClick={() => navigate(`/requests/${r.id}`)} style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span style={{ fontSize: 13, fontWeight: 700 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ')}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>{formatNumber(r.budget_max)} ₽</span>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Районы: {r.districts?.join(', ') || '—'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Properties */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Объекты</div>
+                        <button className="icon-btn" onClick={() => navigate(`/properties/new?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                    </div>
+                    {myProps.length === 0 ? (
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Объектов еще не было</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {myProps.map(p => (
+                                <div key={p.id} onClick={() => navigate(`/properties/${p.id}`)} style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                        <span style={{ fontSize: 13, fontWeight: 700 }}>{PROPERTY_TYPES[p.property_type] || p.property_type}</span>
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--primary)' }}>{formatNumber(p.price)} ₽</span>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{p.address || p.city || '—'}</div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Matches */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Матчи</div>
+                        <button className="icon-btn" onClick={() => navigate(`/matches?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                    </div>
+                    {allMatches.length === 0 ? (
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Матчей пока нет</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {allMatches.slice(0, 3).map(m => {
+                                const prop = state.properties.find(p => p.id === m.property_id);
+                                return (
+                                    <div key={m.id} onClick={() => navigate(`/matches/${m.id}`)} style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: 13, fontWeight: 600 }}>{prop?.address || 'Объект'}</span>
+                                            <span className="badge badge-primary" style={{ fontSize: 10 }}>{Math.round(m.score * 100)}%</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {allMatches.length > 3 && (
+                                <button className="btn btn-link btn-sm" onClick={() => navigate(`/matches?client=${id}`)}>Смотреть все ({allMatches.length})</button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* Showings History */}
                 <div className="card">
-                    <div className="section-title" style={{ marginBottom: 12 }}>История показов</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 0 }}>История показов</div>
+                        <button className="icon-btn" onClick={() => navigate(`/showings`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                    </div>
                     {myShowings.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Показов еще не было</div>
                     ) : (
@@ -304,7 +369,10 @@ export function ClientCardPage() {
 
                 {/* Related Tasks */}
                 <div className="card">
-                    <div className="section-title" style={{ marginBottom: 12 }}>Задачи</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Задачи</div>
+                        <button className="icon-btn" onClick={() => navigate(`/tasks?client=${id}&action=new`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                    </div>
                     {myTasks.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Нет активных задач</div>
                     ) : (
@@ -381,27 +449,6 @@ export function ClientCardPage() {
                     </div>
                 )}
 
-                {/* Links */}
-                {[
-                    { label: 'Запросы на покупку', count: myReqs.length, path: `/requests?client=${id}`, action: () => navigate(`/requests/new?client=${id}`) },
-                    { label: 'Объекты на продажу', count: myProps.length, path: `/properties?client=${id}`, action: () => navigate(`/properties/new?client=${id}`) },
-                    { label: 'Матчи', count: allMatches.length, path: `/matches?client=${id}` },
-                    { label: 'Показы', count: myShowings.length, path: `/showings` },
-                    { label: 'Задачи', count: myTasks.length, path: `/tasks?client=${id}` },
-                ].map(item => (
-                    <div key={item.label} className="list-row" onClick={() => navigate(item.path)}>
-                        <span style={{ flex: 1, fontWeight: 600, fontSize: 15 }}>{item.label}</span>
-                        <span className="badge badge-primary">{item.count}</span>
-                        <span style={{ color: 'var(--text-muted)', fontSize: 18, marginLeft: 4 }}>›</span>
-                    </div>
-                ))}
-
-                {/* Quick add buttons */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                    <button className="btn btn-secondary" onClick={() => navigate(`/requests/new?client=${id}`)}>+ Запрос</button>
-                    <button className="btn btn-secondary" onClick={() => navigate(`/properties/new?client=${id}`)}>+ Объект</button>
-                    <button className="btn btn-secondary" onClick={() => navigate(`/tasks?client=${id}&action=new`)}>+ Задача</button>
-                </div>
             </div>
         </div>
     );
