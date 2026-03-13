@@ -184,13 +184,13 @@ export function ClientCardPage() {
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {myProps.filter(p => p.commission > 0).map(p => (
                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Объект: {p.address || p.city}</span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Продажа: {p.address || p.city}</span>
                                     <span style={{ fontWeight: 600 }}>{formatNumber(p.commission)} ₽</span>
                                 </div>
                             ))}
                             {myReqs.filter(r => r.commission > 0).map(r => (
                                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Запрос: {r.property_types?.map(t => PROPERTY_TYPES[t] || t).join('/')}</span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Покупка: {r.property_types?.map(t => PROPERTY_TYPES[t] || t).join('/')}</span>
                                     <span style={{ fontWeight: 600 }}>{formatNumber(r.commission)} ₽</span>
                                 </div>
                             ))}
@@ -358,7 +358,7 @@ export function ClientCardPage() {
                                             <span style={{ fontSize: 12, fontWeight: 700 }}>{new Date(s.showing_date).toLocaleDateString('ru-RU')} {new Date(s.showing_date).toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</span>
                                             <span className={`badge badge-${statusColors[s.status] || 'muted'}`} style={{ fontSize: 10 }}>{statusLabels[s.status] || s.status}</span>
                                         </div>
-                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Объект: {prop?.address || prop?.city || '—'}</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Продажа: {prop?.address || prop?.city || '—'}</div>
                                         {s.client_feedback && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontStyle: 'italic' }}>«{s.client_feedback}»</div>}
                                     </div>
                                 );
