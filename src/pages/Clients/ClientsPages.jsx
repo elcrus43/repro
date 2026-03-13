@@ -184,13 +184,13 @@ export function ClientCardPage() {
                     </div>
                     {totalCommission > 0 && (
                         <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {myProps.filter(p => p.commission > 0).map(p => (
+                            {myProperties.filter(p => p.commission > 0).map(p => (
                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                                     <span style={{ color: 'var(--text-secondary)' }}>Продажа: {p.address || p.city}</span>
                                     <span style={{ fontWeight: 600 }}>{formatNumber(p.commission)} ₽</span>
                                 </div>
                             ))}
-                            {myReqs.filter(r => r.commission > 0).map(r => (
+                            {myRequests.filter(r => r.commission > 0).map(r => (
                                 <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
                                     <span style={{ color: 'var(--text-secondary)' }}>Покупка: {r.property_types?.map(t => PROPERTY_TYPES[t] || t).join('/')}</span>
                                     <span style={{ fontWeight: 600 }}>{formatNumber(r.commission)} ₽</span>
@@ -272,11 +272,11 @@ export function ClientCardPage() {
                         <div className="section-title" style={{ marginBottom: 0 }}>Покупки</div>
                         <button className="icon-btn" onClick={() => navigate(`/requests/new?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
                     </div>
-                    {myReqs.length === 0 ? (
+                    {myRequests.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Запросов еще не было</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {myReqs.map(r => (
+                            {myRequests.map(r => (
                                 <div key={r.id} onClick={() => navigate(`/requests/${r.id}`)} style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                         <span style={{ fontSize: 13, fontWeight: 700 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ')}</span>
@@ -295,11 +295,11 @@ export function ClientCardPage() {
                         <div className="section-title" style={{ marginBottom: 0 }}>Продажи</div>
                         <button className="icon-btn" onClick={() => navigate(`/properties/new?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
                     </div>
-                    {myProps.length === 0 ? (
+                    {myProperties.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>Объектов еще не было</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {myProps.map(p => (
+                            {myProperties.map(p => (
                                 <div key={p.id} onClick={() => navigate(`/properties/${p.id}`)} style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                         <span style={{ fontSize: 13, fontWeight: 700 }}>{PROPERTY_TYPES[p.property_type] || p.property_type}</span>
