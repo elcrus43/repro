@@ -23,8 +23,10 @@ export function formatPhone(phone, inputMode = false) {
     const part3 = match.substring(6, 8);
     const part4 = match.substring(8, 10);
 
-    const prefix = inputMode ? '' : '+7 ';
-    return `${prefix}(${part1}) ${part2}-${part3}-${part4}`;
+    if (inputMode) {
+        return `(${part1}) ${part2}-${part3}-${part4}`;
+    }
+    return `+7 (${part1}) ${part2}-${part3}-${part4}`;
 }
 
 /**

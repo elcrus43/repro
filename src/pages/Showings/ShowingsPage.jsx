@@ -31,7 +31,7 @@ export function ShowingsPage() {
 
     const showingsOnDate = myShowings.filter(s => s.showing_date?.startsWith(selectedDate));
 
-    const statusLabels = { planned: 'Запланирован', completed: 'Проведён', cancelled: 'Отменён', no_show: 'Не пришёл' };
+    const statusLabels = { planned: 'Запланирован', completed: 'Проведен', failed: 'Не состоялся' };
     const feedbackOptions = [
         { val: 'liked', label: 'Понравилось' },
         { val: 'thinking', label: 'Думает' },
@@ -112,7 +112,10 @@ export function ShowingsPage() {
                                         ))}
                                     </div>
                                     <textarea className="form-textarea" value={feedbackComment} onChange={e => setFeedbackComment(e.target.value)} placeholder="Комментарий после показа..." rows={3} />
-                                    <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => setFeedbackId(null)}>Отмена</button>
+                                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                        <button className="btn btn-primary btn-sm" onClick={() => saveFeedback(s, 'failed')}>Не состоялся</button>
+                                        <button className="btn btn-secondary btn-sm" onClick={() => setFeedbackId(null)}>Отмена</button>
+                                    </div>
                                 </div>
                             );
                         }
@@ -122,9 +125,13 @@ export function ShowingsPage() {
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                     <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{time}</span>
                                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                                        <span className="badge badge-primary">{statusLabels[s.status]}</span>
-                                        <button className="icon-btn" title="Редактировать" onClick={() => navigate(`/showings/new?id=${s.id}`)}><Edit2 size={16} /></button>
-                                        <button className="icon-btn" onClick={() => { if (window.confirm('Удалить показ?')) dispatch({ type: 'DELETE_SHOWING', id: s.id }); }}><Trash2 size={16} /></button>
+                                        <span className="badge badge-primary">{statusLabels[s.status] || s.status}</span>
+                                        {s.realtor_id === user?.id && (
+                                            <>
+                                                <button className="icon-btn" title="Редактировать" onClick={() => navigate(`/showings/new?id=${s.id}`)}><Edit2 size={16} /></button>
+                                                <button className="icon-btn" onClick={() => { if (window.confirm('Удалить показ?')) dispatch({ type: 'DELETE_SHOWING', id: s.id }); }}><Trash2 size={16} /></button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                                 {prop && <div style={{ fontWeight: 600, fontSize: 14 }}>Объект: {prop.address}</div>}
@@ -135,7 +142,7 @@ export function ShowingsPage() {
                                         {s.feedback_comment && ` · ${s.feedback_comment}`}
                                     </div>
                                 )}
-                                {s.status === 'planned' && (
+                                {s.status === 'planned' && s.realtor_id === user?.id && (
                                     <button className="btn btn-success btn-sm" style={{ marginTop: 8 }} onClick={() => completShowing(s)}>Записать результат</button>
                                 )}
                             </div>
