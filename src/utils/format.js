@@ -4,29 +4,30 @@
  * @returns {string}
  */
 export function formatPhone(phone, inputMode = false) {
-    if (!phone) return '';
+    if (!phone) return inputMode ? '' : '';
+    
     // Clean all non-digits
-    const clean = phone.replace(/\D/g, '');
+    let clean = phone.replace(/\D/g, '');
 
-    // If it starts with 7 or 8, we strip it to get the 10 digits
-    let match = clean;
-    if (clean.length === 11 && (clean.startsWith('7') || clean.startsWith('8'))) {
-        match = clean.substring(1);
-    } else if (clean.length > 10) {
-        match = clean.slice(-10);
+    // Handle the case where user starts typing with 8 or 7
+    if (clean.startsWith('8') || clean.startsWith('7')) {
+        clean = clean.substring(1);
     }
 
-    if (match.length < 10) return phone; // Return as is if format is unknown
+    // Limit to 10 digits
+    const match = clean.substring(0, 10);
+    const len = match.length;
 
-    const part1 = match.substring(0, 3);
-    const part2 = match.substring(3, 6);
-    const part3 = match.substring(6, 8);
-    const part4 = match.substring(8, 10);
+    if (len === 0) return inputMode ? '' : '+7 ';
 
-    if (inputMode) {
-        return `(${part1}) ${part2}-${part3}-${part4}`;
-    }
-    return `+7 (${part1}) ${part2}-${part3}-${part4}`;
+    const prefix = '+7 ';
+    let result = prefix;
+    if (len > 0) result += `(${match.substring(0, 3)}`;
+    if (len > 3) result += `) ${match.substring(3, 6)}`;
+    if (len > 6) result += `-${match.substring(6, 8)}`;
+    if (len > 8) result += `-${match.substring(8, 10)}`;
+
+    return result;
 }
 
 /**
