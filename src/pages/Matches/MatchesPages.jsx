@@ -142,6 +142,7 @@ export function MatchDetailPage() {
     function handleReject() {
         const reason = window.prompt('Причина отказа (необязательно):') || '';
         dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'rejected', rejection_reason: reason } });
+        navigate('/matches');
     }
 
     function handleDeal() {

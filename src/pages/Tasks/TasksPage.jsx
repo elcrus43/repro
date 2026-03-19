@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { addEventToCalendar } from '../../lib/googleCalendar';
 
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10);
@@ -64,6 +65,7 @@ export function TasksPage() {
 
     const [filter, setFilter] = useState('today');
     const [showForm, setShowForm] = useState(autoOpenForm);
+    const [calendarStatus, setCalendarStatus] = useState(null); // null | 'loading' | 'ok' | 'error'
     const [newTask, setNewTask] = useState({
         title: searchParams.get('title') || '',
         description: searchParams.get('description') || '',
@@ -131,7 +133,7 @@ export function TasksPage() {
         dispatch({ type: 'UPDATE_TASK', task: { ...task, status: task.status === 'done' ? 'pending' : 'done' } });
     }
 
-    function addTask(e) {
+    async function addTask(e) {
         e.preventDefault();
         const taskToSave = { ...newTask, client_id: newTask.client_id || null, property_id: newTask.property_id || null, due_date: newTask.due_date || null };
         delete taskToSave.task_type;
@@ -154,6 +156,25 @@ export function TasksPage() {
                 dispatch({ type: 'ADD_TASK', task: { ...taskToSave, realtor_id: user?.id, status: 'pending' } });
             }
         }
+
+        // Add to Google Calendar
+        if (taskToSave.due_date) {
+            setCalendarStatus('loading');
+            try {
+                await addEventToCalendar({
+                    title: taskToSave.title,
+                    description: taskToSave.description || '',
+                    startDateTime: taskToSave.due_date,
+                });
+                setCalendarStatus('ok');
+                setTimeout(() => setCalendarStatus(null), 3000);
+            } catch (err) {
+                console.warn('[Google Calendar Sync Error]', err.message);
+                setCalendarStatus('error');
+                setTimeout(() => setCalendarStatus(null), 4000);
+            }
+        }
+
         setNewTask({ title: '', description: '', due_date: '', priority: 'medium', client_id: '', property_id: '', task_type: '' });
         setShowForm(false);
     }
@@ -182,6 +203,25 @@ export function TasksPage() {
                 ))}
             </div>
             <div className="page-content" style={{ paddingTop: 8 }}>
+                {calendarStatus && (
+                    <div style={{
+                        margin: '0 0 12px 0',
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        background: calendarStatus === 'ok' ? '#e8f5e9' : calendarStatus === 'error' ? '#fdecea' : '#e3f2fd',
+                        color: calendarStatus === 'ok' ? '#2e7d32' : calendarStatus === 'error' ? '#c62828' : '#1565c0',
+                    }}>
+                        {calendarStatus === 'loading' && '🔄 Синхронизация с Google Календарем...'}
+                        {calendarStatus === 'ok' && '✅ Добавлено в Google Календарь'}
+                        {calendarStatus === 'error' && '⚠️ Ошибка календаря (задача сохранена локально)'}
+                    </div>
+                )}
                 {showForm && (
                     <form className="card" onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                         <div style={{ fontWeight: 700, marginBottom: 4 }}>{newTask.id ? 'Редактировать задачу' : 'Новая задача'}</div>
