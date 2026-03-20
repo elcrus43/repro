@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPrice, cleanPrice } from '../../utils/matching';
+import { cleanPrice } from '../../utils/matching';
 import { Edit2, Trash2 } from 'lucide-react';
 import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';

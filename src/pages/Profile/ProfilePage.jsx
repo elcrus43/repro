@@ -27,6 +27,7 @@ export function ProfilePage() {
     const setPassport = (field, value) => setEditData(prev => ({ ...prev, passport_details: { ...prev.passport_details, [field]: value } }));
 
     const isAdmin = user?.role === 'admin';
+    // eslint-disable-next-line no-unused-vars
     const pendingUsers = state.pendingUsers || [];
 
     React.useEffect(() => {
@@ -159,6 +160,7 @@ export function ProfilePage() {
         }
     };
 
+    // eslint-disable-next-line no-unused-vars
     const handleSyncLocalData = async () => {
         if (!window.confirm('Выполнить поиск старых локальных данных в вашем браузере и перенести их в общую базу?')) return;
 
