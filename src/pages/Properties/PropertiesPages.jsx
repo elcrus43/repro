@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { cleanPrice } from '../../utils/matching';
@@ -232,6 +232,7 @@ export function PropertyCardPage() {
         ['Санузел', prop.bathroom === 'separate' ? 'Раздельный' : prop.bathroom === 'combined' ? 'Совмещённый' : '—'],
         ['Парковка', prop.parking === 'none' || !prop.parking ? 'Нет' : prop.parking === 'yard' ? 'Двор' : prop.parking === 'underground' ? 'Подземная' : 'Гараж'],
         ['Рынок', prop.market_type ? MARKET_LABELS[prop.market_type] : '—'],
+        ['Источник', prop.source_url ? <a href={prop.source_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{color: 'var(--primary)'}}>Открыть объявление ↗</a> : null],
     ].filter(([, v]) => v && v !== '—');
 
     return (
@@ -451,7 +452,7 @@ const defaultProp = {
     furniture: false, mortgage_available: true, matcapital_available: false,
     minor_owners: false, sale_type: 'free', docs_ready: false,
     ownership_type: 'individual', urgency: 'medium', description: '',
-    commission: 0, surcharge: 0, deal_expenses: []
+    commission: 0, surcharge: 0, deal_expenses: [], source_url: ''
 };
 
 function PropertyStepDots({ step, steps }) {
@@ -484,6 +485,33 @@ export function PropertyFormPage() {
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
+    useEffect(() => {
+        function handleMessage(event) {
+            if (event.data?.type === 'PROPERTY_IMPORT_DATA') {
+                const data = event.data.payload;
+                setForm(prev => {
+                    const next = { ...prev };
+                    if (data.price) next.price = String(data.price);
+                    if (data.description) next.description = data.description;
+                    if (data.area_total) next.area_total = String(data.area_total);
+                    if (data.area_living) next.area_living = String(data.area_living);
+                    if (data.area_kitchen) next.area_kitchen = String(data.area_kitchen);
+                    if (data.rooms !== undefined) next.rooms = Number(data.rooms);
+                    if (data.floor) next.floor = String(data.floor);
+                    if (data.floors_total) next.floors_total = String(data.floors_total);
+                    if (data.address) next.address = data.address;
+                    if (data.city) next.city = data.city;
+                    if (data.year_built) next.year_built = String(data.year_built);
+                    if (data.source_url) next.source_url = data.source_url;
+                    return next;
+                });
+                alert('Объявление успешно распознано и перенесено! Пожалуйста, проверьте и скорректируйте данные перед сохранением.');
+            }
+        }
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
     function handleSubmit() {
         const prop = {
             ...form,
@@ -501,7 +529,8 @@ export function PropertyFormPage() {
             district: form.district || null,
             microdistrict: form.microdistrict || null,
             contract_end_date: form.contract_end_date || null,
-            deal_expenses: form.deal_expenses || []
+            deal_expenses: form.deal_expenses || [],
+            source_url: form.source_url || null
         };
         if (isEdit) {
             dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, id } });
