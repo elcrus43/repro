@@ -52,6 +52,13 @@ export function ShowingsPage() {
         return `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
 
+    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+    const pendingFeedbackShowings = myShowings.filter(s => {
+        if (s.status !== 'planned' || !s.showing_date) return false;
+        const showingTime = new Date(s.showing_date).getTime();
+        return (now.getTime() - showingTime) > TWENTY_FOUR_HOURS;
+    }).sort((a, b) => new Date(b.showing_date).getTime() - new Date(a.showing_date).getTime());
+
     return (
         <div className="page fade-in">
             <div className="topbar">
@@ -59,6 +66,56 @@ export function ShowingsPage() {
                 <button className="icon-btn" onClick={() => navigate('/showings/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
             <div className="page-content">
+                {/* Pending Feedback Prompt */}
+                {pendingFeedbackShowings.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                        <div className="section-title" style={{ marginBottom: 12, color: 'var(--danger)' }}>
+                            📋 Ожидают подтверждения ({pendingFeedbackShowings.length})
+                        </div>
+                        {pendingFeedbackShowings.map(s => {
+                            const prop = state.properties.find(p => p.id === s.property_id);
+                            const client = state.clients.find(c => c.id === s.client_id);
+                            const timeStr = new Date(s.showing_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                            
+                            if (feedbackId === s.id) {
+                                return (
+                                    <div key={s.id} className="card" style={{ border: '2px solid var(--danger-light)' }}>
+                                        <div style={{ fontWeight: 700, marginBottom: 12 }}>Как прошёл показ?</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>{prop?.address} · {client?.full_name}</div>
+                                        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                                            {feedbackOptions.map(f => (
+                                                <button key={f.val} className="btn btn-secondary" style={{ flex: 1, flexDirection: 'column', gap: 4, padding: '12px 8px' }} onClick={() => saveFeedback(s, f.val)}>
+                                                    <span style={{ fontSize: 12 }}>{f.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                        <textarea className="form-textarea" value={feedbackComment} onChange={e => setFeedbackComment(e.target.value)} placeholder="Комментарий после показа..." rows={3} />
+                                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                            <button className="btn btn-primary btn-sm" onClick={() => saveFeedback(s, 'failed')}>Не состоялся</button>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => setFeedbackId(null)}>Отмена</button>
+                                        </div>
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div key={s.id} className="card" style={{ borderLeft: '4px solid var(--danger)', marginBottom: 12 }}>
+                                    <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>Прошло 24 часа</div>
+                                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Встреча с {client?.full_name}</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                                        📅 {timeStr} · {prop?.address}
+                                    </div>
+                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Событие состоялось?</div>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => completShowing(s)}>✅ Да</button>
+                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => saveFeedback(s, 'failed')}>❌ Нет</button>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
                 {/* Calendar */}
                 <div className="card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
