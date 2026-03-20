@@ -9,7 +9,9 @@
   ],
   "host_permissions": [
     "*://*.avito.ru/*",
-    "*://*.cian.ru/*"
+    "*://*.cian.ru/*",
+    "*://localhost/*",
+    "*://*.vercel.app/*"
   ],
   "action": {
     "default_popup": "popup.html",

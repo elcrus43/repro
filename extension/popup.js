@@ -24,19 +24,22 @@ document.getElementById('importBtn').addEventListener('click', async () => {
 
         statusEl.innerHTML = 'Открываем CRM...';
         
-        // Open CRM in a new tab (Hardcoded localhost for now, can be prod URL)
-        // const PROD_URL = 'https://realtor-match-demo.vercel.app/properties/new';
+        // Open CRM in a new tab. Change this to your Vercel URL if testing on production.
+        const crmUrl = 'https://repro-five-sable.vercel.app/properties/new'; // fallback
         const crmTab = await chrome.tabs.create({ url: 'http://localhost:5173/properties/new' });
 
         // Wait for tab to complete loading to inject postMessage
-        chrome.tabs.onUpdated.addListener(function listener(tabId, info) {
+        chrome.tabs.onUpdated.addListener(function listener(tabId, info, updatedTab) {
             if (tabId === crmTab.id && info.status === 'complete') {
                 chrome.tabs.onUpdated.removeListener(listener); // clean up
                 
                 chrome.scripting.executeScript({
                     target: { tabId: tabId },
                     func: (payload) => {
-                        window.postMessage({ type: 'PROPERTY_IMPORT_DATA', payload }, '*');
+                        // Wait for React to mount and attach the event listener
+                        setTimeout(() => {
+                            window.postMessage({ type: 'PROPERTY_IMPORT_DATA', payload }, '*');
+                        }, 1500);
                     },
                     args: [data]
                 });
