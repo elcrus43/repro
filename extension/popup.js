@@ -26,7 +26,7 @@ document.getElementById('importBtn').addEventListener('click', async () => {
         
         // Encode data into base64 to pass securely via URL hash
         const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-        const urlWithData = 'http://localhost:5173/properties/new#import=' + encodedData;
+        const urlWithData = 'https://realtor-match.vercel.app/properties/new#import=' + encodedData;
         
         // Open CRM in a new tab
         await chrome.tabs.create({ url: urlWithData });
