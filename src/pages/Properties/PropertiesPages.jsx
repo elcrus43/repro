@@ -508,7 +508,20 @@ export function PropertyFormPage() {
             }, 100);
         }
 
-        // 1. Сначала проверяем localStorage (если расширение успело записать данные до монтирования)
+        // 1. Сначала проверяем URL hash (самый надежный способ передачи)
+        const hash = window.location.hash;
+        if (hash.startsWith('#import=')) {
+            try {
+                const b64 = hash.replace('#import=', '');
+                const dec = JSON.parse(decodeURIComponent(escape(atob(b64))));
+                processData(dec);
+                window.history.replaceState(null, null, window.location.pathname + window.location.search); // убираем хэш
+            } catch (e) {
+                console.error("Hash import error:", e);
+            }
+        }
+
+        // 2. Затем проверяем localStorage (резерв)
         const stored = localStorage.getItem('property_import_data');
         if (stored) {
             try {
@@ -519,7 +532,7 @@ export function PropertyFormPage() {
             }
         }
 
-        // 2. И слушаем сообщения (если расширение прислало данные после монтирования)
+        // 3. И слушаем сообщения (если расширение прислало данные после монтирования)
         function handleMessage(event) {
             if (event.data?.type === 'PROPERTY_IMPORT_DATA') {
                 processData(event.data.payload);
