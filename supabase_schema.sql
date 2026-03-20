@@ -26,6 +26,7 @@ create table if not exists clients (
   source text,
   status text default 'active',
   notes text,
+  passport_details jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
