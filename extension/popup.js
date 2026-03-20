@@ -36,10 +36,8 @@ document.getElementById('importBtn').addEventListener('click', async () => {
                 chrome.scripting.executeScript({
                     target: { tabId: tabId },
                     func: (payload) => {
-                        // Wait for React to mount and attach the event listener
-                        setTimeout(() => {
-                            window.postMessage({ type: 'PROPERTY_IMPORT_DATA', payload }, '*');
-                        }, 1500);
+                        localStorage.setItem('property_import_data', JSON.stringify(payload));
+                        window.postMessage({ type: 'PROPERTY_IMPORT_DATA', payload }, '*');
                     },
                     args: [data]
                 });

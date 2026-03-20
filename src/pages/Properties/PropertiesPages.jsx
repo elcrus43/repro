@@ -486,26 +486,43 @@ export function PropertyFormPage() {
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
     useEffect(() => {
+        function processData(data) {
+            setForm(prev => {
+                const next = { ...prev };
+                if (data.price) next.price = String(data.price);
+                if (data.description) next.description = data.description;
+                if (data.area_total) next.area_total = String(data.area_total);
+                if (data.area_living) next.area_living = String(data.area_living);
+                if (data.area_kitchen) next.area_kitchen = String(data.area_kitchen);
+                if (data.rooms !== undefined) next.rooms = Number(data.rooms);
+                if (data.floor) next.floor = String(data.floor);
+                if (data.floors_total) next.floors_total = String(data.floors_total);
+                if (data.address) next.address = data.address;
+                if (data.city) next.city = data.city;
+                if (data.year_built) next.year_built = String(data.year_built);
+                if (data.source_url) next.source_url = data.source_url;
+                return next;
+            });
+            setTimeout(() => {
+                alert('Объявление успешно распознано и перенесено! Пожалуйста, проверьте и скорректируйте данные перед сохранением.');
+            }, 100);
+        }
+
+        // 1. Сначала проверяем localStorage (если расширение успело записать данные до монтирования)
+        const stored = localStorage.getItem('property_import_data');
+        if (stored) {
+            try {
+                processData(JSON.parse(stored));
+                localStorage.removeItem('property_import_data');
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // 2. И слушаем сообщения (если расширение прислало данные после монтирования)
         function handleMessage(event) {
             if (event.data?.type === 'PROPERTY_IMPORT_DATA') {
-                const data = event.data.payload;
-                setForm(prev => {
-                    const next = { ...prev };
-                    if (data.price) next.price = String(data.price);
-                    if (data.description) next.description = data.description;
-                    if (data.area_total) next.area_total = String(data.area_total);
-                    if (data.area_living) next.area_living = String(data.area_living);
-                    if (data.area_kitchen) next.area_kitchen = String(data.area_kitchen);
-                    if (data.rooms !== undefined) next.rooms = Number(data.rooms);
-                    if (data.floor) next.floor = String(data.floor);
-                    if (data.floors_total) next.floors_total = String(data.floors_total);
-                    if (data.address) next.address = data.address;
-                    if (data.city) next.city = data.city;
-                    if (data.year_built) next.year_built = String(data.year_built);
-                    if (data.source_url) next.source_url = data.source_url;
-                    return next;
-                });
-                alert('Объявление успешно распознано и перенесено! Пожалуйста, проверьте и скорректируйте данные перед сохранением.');
+                processData(event.data.payload);
             }
         }
         window.addEventListener('message', handleMessage);
