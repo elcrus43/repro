@@ -39,23 +39,24 @@ async function getTokenClient() {
 
 /** Request access token (shows Google consent popup if needed) */
 export function requestAccessToken() {
-    return new Promise(async (resolve, reject) => {
-        const client = await getTokenClient();
-        client.callback = (response) => {
-            if (response.error) {
-                reject(new Error(response.error));
-            } else {
-                accessToken = response.access_token;
-                tokenExpiry = Date.now() + (response.expires_in - 60) * 1000;
+    return new Promise((resolve, reject) => {
+        getTokenClient().then(client => {
+            client.callback = (response) => {
+                if (response.error) {
+                    reject(new Error(response.error));
+                } else {
+                    accessToken = response.access_token;
+                    tokenExpiry = Date.now() + (response.expires_in - 60) * 1000;
+                    resolve(accessToken);
+                }
+            };
+            // If we have a valid token, skip popup
+            if (accessToken && Date.now() < tokenExpiry) {
                 resolve(accessToken);
+                return;
             }
-        };
-        // If we have a valid token, skip popup
-        if (accessToken && Date.now() < tokenExpiry) {
-            resolve(accessToken);
-            return;
-        }
-        client.requestAccessToken({ prompt: '' });
+            client.requestAccessToken({ prompt: '' });
+        }).catch(reject);
     });
 }
 
@@ -106,4 +107,77 @@ export async function addEventToCalendar({ title, description = '', startDateTim
     }
 
     return response.json();
+}
+
+/**
+ * Update an existing event in the user's primary Google Calendar
+ * @param {string} eventId - Google Calendar event ID
+ * @param {Object} params - Event data (title, description, startDateTime, durationMinutes)
+ */
+export async function updateEventInCalendar(eventId, { title, description = '', startDateTime, durationMinutes = 60 }) {
+    if (!eventId) throw new Error('Google Event ID is required for update');
+    const token = await requestAccessToken();
+
+    const start = new Date(startDateTime);
+    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
+
+    const event = {
+        summary: title,
+        description,
+        start: {
+            dateTime: start.toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+        end: {
+            dateTime: end.toISOString(),
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        },
+    };
+
+    const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+        {
+            method: 'PATCH',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify(event),
+        }
+    );
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'Google Calendar API update error');
+    }
+
+    return response.json();
+}
+
+/**
+ * Delete an event from the user's primary Google Calendar
+ * @param {string} eventId - Google Calendar event ID
+ */
+export async function deleteEventFromCalendar(eventId) {
+    if (!eventId) return; // Silent return if no ID
+    const token = await requestAccessToken();
+
+    const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
+        {
+            method: 'DELETE',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Accept': 'application/json',
+            },
+        }
+    );
+
+    if (!response.ok && response.status !== 404) { // Ignore 404 if already deleted
+        const err = await response.json();
+        throw new Error(err.error?.message || 'Google Calendar API deletion error');
+    }
+
+    return true;
 }

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { addEventToCalendar } from '../../lib/googleCalendar';
+import { addEventToCalendar, updateEventInCalendar, deleteEventFromCalendar } from '../../lib/googleCalendar';
+import { nanoid } from '../../utils/nanoid';
 
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10);
@@ -135,7 +136,8 @@ export function TasksPage() {
 
     async function addTask(e) {
         e.preventDefault();
-        const taskToSave = { ...newTask, client_id: newTask.client_id || null, property_id: newTask.property_id || null, due_date: newTask.due_date || null };
+        const taskId = newTask.id || nanoid();
+        const taskToSave = { ...newTask, id: taskId, client_id: newTask.client_id || null, property_id: newTask.property_id || null, due_date: newTask.due_date || null };
         delete taskToSave.task_type;
         if (newTask.id) {
             dispatch({ type: 'UPDATE_TASK', task: taskToSave });
@@ -157,15 +159,32 @@ export function TasksPage() {
             }
         }
 
-        // Add to Google Calendar
-        if (taskToSave.due_date) {
+        // Sync with Google Calendar
+        if (taskToSave.due_date || taskToSave.google_event_id) {
             setCalendarStatus('loading');
             try {
-                await addEventToCalendar({
-                    title: taskToSave.title,
-                    description: taskToSave.description || '',
-                    startDateTime: taskToSave.due_date,
-                });
+                if (taskToSave.google_event_id && !taskToSave.due_date) {
+                    // Date removed -> Delete event
+                    await deleteEventFromCalendar(taskToSave.google_event_id);
+                    dispatch({ type: 'UPDATE_TASK', task: { ...taskToSave, google_event_id: null } });
+                } else if (taskToSave.google_event_id) {
+                    // Has ID and Date -> Update event
+                    await updateEventInCalendar(taskToSave.google_event_id, {
+                        title: taskToSave.title,
+                        description: taskToSave.description || '',
+                        startDateTime: taskToSave.due_date,
+                    });
+                } else if (taskToSave.due_date) {
+                    // No ID but has Date -> Add new event
+                    const calEvent = await addEventToCalendar({
+                        title: taskToSave.title,
+                        description: taskToSave.description || '',
+                        startDateTime: taskToSave.due_date,
+                    });
+                    if (calEvent?.id) {
+                        dispatch({ type: 'UPDATE_TASK', task: { ...taskToSave, google_event_id: calEvent.id } });
+                    }
+                }
                 setCalendarStatus('ok');
                 setTimeout(() => setCalendarStatus(null), 3000);
             } catch (err) {
@@ -179,8 +198,20 @@ export function TasksPage() {
         setShowForm(false);
     }
 
-    function deleteTask(task) {
+    async function deleteTask(task) {
         if (window.confirm('Удалить задачу?')) {
+            if (task.google_event_id) {
+                setCalendarStatus('loading');
+                try {
+                    await deleteEventFromCalendar(task.google_event_id);
+                    setCalendarStatus('ok');
+                    setTimeout(() => setCalendarStatus(null), 3000);
+                } catch (err) {
+                    console.warn('[Google Calendar Sync Deletion Error]', err.message);
+                    setCalendarStatus('error');
+                    setTimeout(() => setCalendarStatus(null), 4000);
+                }
+            }
             dispatch({ type: 'DELETE_TASK', id: task.id });
         }
     }
