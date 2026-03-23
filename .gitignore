@@ -24,3 +24,11 @@ dist-ssr
 *.sw?
 
 .vercel
+.env
+
+# Python (Backend)
+backend/venv/
+backend/__pycache__/
+backend/*.db
+backend/.env
+backend/verify_estimation.py

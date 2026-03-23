@@ -14,6 +14,8 @@ import { ShowingsPage } from './pages/Showings/ShowingsPage';
 import { ShowFormPage } from './pages/Showings/ShowFormPage';
 import { TasksPage } from './pages/Tasks/TasksPage';
 import { ProfilePage } from './pages/Profile/ProfilePage';
+import { EstimationPage } from './pages/Properties/EstimationPage';
+import { TemplatesPage } from './pages/Messaging/TemplatesPage';
 
 function BottomNav() {
   const navigate = useNavigate();
@@ -103,6 +105,7 @@ function AppRoutes() {
         <Route path="/properties/new" element={<RequireAuth><PropertyFormPage /></RequireAuth>} />
         <Route path="/properties/:id" element={<RequireAuth><PropertyCardPage /></RequireAuth>} />
         <Route path="/properties/:id/edit" element={<RequireAuth><PropertyFormPage /></RequireAuth>} />
+        <Route path="/estimation" element={<RequireAuth><EstimationPage /></RequireAuth>} />
 
         {/* Requests */}
         <Route path="/requests" element={<RequireAuth><RequestsPage /></RequireAuth>} />
@@ -120,6 +123,9 @@ function AppRoutes() {
 
         {/* Tasks */}
         <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
+
+        {/* Messaging */}
+        <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
 
         {/* Profile */}
         <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
