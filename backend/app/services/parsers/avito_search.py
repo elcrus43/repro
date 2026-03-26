@@ -18,24 +18,32 @@ class AvitoSearchParser:
         logger.info(f"Searching Avito: {search_url}")
         
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-            )
-            page = await context.new_page()
-            
+            logger.info("AvitoSearchParser: Launching Chromium...")
             try:
-                await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
+                browser = await p.chromium.launch(headless=True, timeout=60000)
+                logger.info("AvitoSearchParser: Chromium launched successfully.")
+                context = await browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                )
+                page = await context.new_page()
+                
+                logger.info(f"AvitoSearchParser: Navigating to {search_url}...")
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
+                logger.info("AvitoSearchParser: Page loaded. Waiting for items...")
+                
                 # Wait for any item to appear
                 try:
-                    await page.wait_for_selector("[data-marker='item']", timeout=15000)
+                    await page.wait_for_selector("[data-marker='item']", timeout=20000)
+                    logger.info("AvitoSearchParser: Items found on page.")
                 except:
-                    # Fallback if the above fails
+                    logger.warning("AvitoSearchParser: Selector '[data-marker='item']' not found in time. Proceeding with raw content.")
                     await asyncio.sleep(5)
                 
                 content = await page.content()
+                logger.info(f"AvitoSearchParser: Content retrieved ({len(content)} bytes). Parsing with BeautifulSoup...")
                 soup = BeautifulSoup(content, 'html.parser')
                 items = soup.select("[data-marker='item']")
+                logger.info(f"AvitoSearchParser: BS4 found {len(items)} items matching selector.")
                 
                 results = []
                 for item in items[:20]:

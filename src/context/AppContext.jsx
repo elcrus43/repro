@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { nanoid } from '../utils/nanoid';
 import { runMatchingForProperty, runMatchingForRequest } from '../utils/matching';
 import { supabase } from '../lib/supabase';
+import { addEventToCalendar, updateEventInCalendar, deleteEventFromCalendar } from '../lib/googleCalendar';
 
 const AppContext = createContext(null);
 
@@ -20,6 +21,7 @@ const EMPTY_STATE = {
     pricelist: [],
     loading: true,
     error: null,
+    calendarStatus: null, // null | 'loading' | 'ok' | 'error'
 };
 
 function reducer(state, action) {
@@ -119,6 +121,8 @@ function reducer(state, action) {
             return { ...state, pricelist: state.pricelist.map(i => i.id === action.item.id ? action.item : i) };
         case 'DELETE_PRICE_ITEM':
             return { ...state, pricelist: state.pricelist.filter(i => i.id !== action.id) };
+        case 'SET_CALENDAR_STATUS':
+            return { ...state, calendarStatus: action.status };
 
         default:
             return state;
@@ -449,6 +453,62 @@ export function AppProvider({ children }) {
 
         dispatch(enhancedAction);
         await syncAction(enhancedAction);
+
+        // ─── Google Calendar Sync ───────────────────────────────────────────
+        const syncCalendar = async (type, item) => {
+            if (!item.due_date && !item.showing_date && !item.google_event_id) return;
+            
+            dispatch({ type: 'SET_CALENDAR_STATUS', status: 'loading' });
+            try {
+                const date = item.due_date || item.showing_date;
+                const title = item.title || `Показ: ${item.showing_date}`;
+                const description = item.description || '';
+
+                if (item.google_event_id && !date) {
+                    await deleteEventFromCalendar(item.google_event_id);
+                    // Update DB to remove ID
+                    const table = type.includes('SHOWING') ? 'showings' : 'tasks';
+                    await supabase.from(table).update({ google_event_id: null }).eq('id', item.id);
+                    dispatch({ type: type.includes('SHOWING') ? 'UPDATE_SHOWING' : 'UPDATE_TASK', [type.includes('SHOWING') ? 'showing' : 'task']: { ...item, google_event_id: null } });
+                } else if (item.google_event_id) {
+                    await updateEventInCalendar(item.google_event_id, { title, description, startDateTime: date });
+                } else if (date) {
+                    const calEvent = await addEventToCalendar({ title, description, startDateTime: date });
+                    if (calEvent?.id) {
+                        const table = type.includes('SHOWING') ? 'showings' : 'tasks';
+                        await supabase.from(table).update({ google_event_id: calEvent.id }).eq('id', item.id);
+                        dispatch({ type: type.includes('SHOWING') ? 'UPDATE_SHOWING' : 'UPDATE_TASK', [type.includes('SHOWING') ? 'showing' : 'task']: { ...item, google_event_id: calEvent.id } });
+                    }
+                }
+                dispatch({ type: 'SET_CALENDAR_STATUS', status: 'ok' });
+                setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null }), 3000);
+            } catch (err) {
+                console.warn('[Google Calendar Sync Error]', err.message);
+                dispatch({ type: 'SET_CALENDAR_STATUS', status: 'error' });
+                setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null }), 4000);
+            }
+        };
+
+        if (action.type === 'ADD_TASK' || action.type === 'UPDATE_TASK') {
+            syncCalendar(action.type, enhancedAction.task);
+        } else if (action.type === 'ADD_SHOWING' || action.type === 'UPDATE_SHOWING') {
+            syncCalendar(action.type, enhancedAction.showing);
+        } else if (action.type === 'DELETE_TASK' || action.type === 'DELETE_SHOWING') {
+            const item = action.type === 'DELETE_TASK' 
+                ? stateRef.current.tasks.find(t => t.id === action.id)
+                : stateRef.current.showings.find(s => s.id === action.id);
+            if (item?.google_event_id) {
+                dispatch({ type: 'SET_CALENDAR_STATUS', status: 'loading' });
+                deleteEventFromCalendar(item.google_event_id).then(() => {
+                    dispatch({ type: 'SET_CALENDAR_STATUS', status: 'ok' });
+                    setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null }), 3000);
+                }).catch(err => {
+                    console.warn('[Calendar Deletion Error]', err);
+                    dispatch({ type: 'SET_CALENDAR_STATUS', status: 'error' });
+                    setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null }), 4000);
+                });
+            }
+        }
     }, []);
 
     // On mount: check session and load data

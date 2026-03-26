@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     # Redis for Celery
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
+    model_config = {
+        "case_sensitive": True,
+        "env_file": ".env",
+        "extra": "ignore"
+    }
 
 settings = Settings()

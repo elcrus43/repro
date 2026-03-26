@@ -20,8 +20,7 @@ class SearchService:
         ]
 
     async def search_all(self, params: Dict[str, Any]) -> List[AnalogListing]:
-        """Run all parsers in parallel and return combined results as AnalogListing objects"""
-        # area_min/max logic for parsers
+        """Run all parsers sequentially to save memory and return combined results"""
         parser_params = {
             "city": params.get("city"),
             "district": params.get("district"),
@@ -31,21 +30,33 @@ class SearchService:
             "deal_type": params.get("deal_type", "SALE")
         }
 
-        tasks = [parser.search(parser_params) for parser in self.parsers]
-        results_lists = await asyncio.gather(*tasks, return_exceptions=True)
-        
         all_new_analogs = []
-        for results in results_lists:
-            if isinstance(results, list):
-                for item in results:
-                    analog = self._map_to_model(item, params)
-                    if analog:
-                        all_new_analogs.append(analog)
-            elif isinstance(results, Exception):
-                logger.error(f"Parser error during search: {results}")
+        
+        for parser in self.parsers:
+            parser_name = parser.__class__.__name__
+            logger.info(f"Starting {parser_name}...")
+            try:
+                # Add a small delay between parsers to ensure previous browser instances are fully closed
+                if all_new_analogs:
+                    await asyncio.sleep(2)
+                
+                results = await parser.search(parser_params)
+                
+                if isinstance(results, list):
+                    logger.info(f"{parser_name} found {len(results)} results.")
+                    for item in results:
+                        analog = self._map_to_model(item, params)
+                        if analog:
+                            all_new_analogs.append(analog)
+                else:
+                    logger.warning(f"{parser_name} returned non-list result: {type(results)}")
+            except Exception as e:
+                logger.error(f"Error in {parser_name}: {str(e)}", exc_info=True)
 
         # Save to DB for caching
-        self._save_analogs(all_new_analogs)
+        if all_new_analogs:
+            logger.info(f"Saving {len(all_new_analogs)} total new analogs to database.")
+            self._save_analogs(all_new_analogs)
         
         return all_new_analogs
 

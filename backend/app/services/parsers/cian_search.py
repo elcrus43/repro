@@ -19,18 +19,24 @@ class CianSearchParser:
         logger.info(f"Searching CIAN: {search_url}")
         
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            context = await browser.new_context(
-                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-            )
-            page = await context.new_page()
-            
+            logger.info("CianSearchParser: Launching Chromium...")
             try:
-                await page.goto(search_url, wait_until="domcontentloaded", timeout=30000)
+                browser = await p.chromium.launch(headless=True, timeout=60000)
+                logger.info("CianSearchParser: Chromium launched successfully.")
+                context = await browser.new_context(
+                    user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+                )
+                page = await context.new_page()
+                
+                logger.info(f"CianSearchParser: Navigating to {search_url}...")
+                await page.goto(search_url, wait_until="domcontentloaded", timeout=45000)
+                logger.info("CianSearchParser: Page loaded. Waiting for dynamic content...")
+                
                 # CIAN might have captcha or complex loading
-                await asyncio.sleep(2) # Brief wait for dynamic content
+                await asyncio.sleep(3) 
                 
                 content = await page.content()
+                logger.info(f"CianSearchParser: Content retrieved ({len(content)} bytes). Parsing with BeautifulSoup...")
                 soup = BeautifulSoup(content, 'html.parser')
                 
                 # CIAN selectors (using broad search as they change frequently)

@@ -85,6 +85,25 @@ export function ShowFormPage() {
                 <span className="topbar-title">{editId ? 'Редактировать показ' : 'Новый показ'}</span>
             </div>
             <div className="page-content">
+                {state.calendarStatus && (
+                    <div style={{
+                        margin: '0 0 16px 0',
+                        padding: '12px 16px',
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        background: state.calendarStatus === 'ok' ? '#e8f5e9' : state.calendarStatus === 'error' ? '#fdecea' : '#e3f2fd',
+                        color: state.calendarStatus === 'ok' ? '#2e7d32' : state.calendarStatus === 'error' ? '#c62828' : '#1565c0',
+                    }}>
+                        {state.calendarStatus === 'loading' && '🔄 Синхронизация...'}
+                        {state.calendarStatus === 'ok' && '✅ Синхронизировано'}
+                        {state.calendarStatus === 'error' && '⚠️ Ошибка синхронизации'}
+                    </div>
+                )}
                 <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {/* Property */}
                     <div className="form-group">

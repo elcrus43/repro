@@ -66,6 +66,25 @@ export function ShowingsPage() {
                 <button className="icon-btn" onClick={() => navigate('/showings/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
             <div className="page-content">
+                {state.calendarStatus && (
+                    <div style={{
+                        margin: '0 0 16px 0',
+                        padding: '12px 16px',
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        background: state.calendarStatus === 'ok' ? '#e8f5e9' : state.calendarStatus === 'error' ? '#fdecea' : '#e3f2fd',
+                        color: state.calendarStatus === 'ok' ? '#2e7d32' : state.calendarStatus === 'error' ? '#c62828' : '#1565c0',
+                    }}>
+                        {state.calendarStatus === 'loading' && '🔄 Синхронизация с Google Календарем...'}
+                        {state.calendarStatus === 'ok' && '✅ Обновлено в Google Календаре'}
+                        {state.calendarStatus === 'error' && '⚠️ Ошибка синхронизации (сохранено локально)'}
+                    </div>
+                )}
                 {/* Pending Feedback Prompt */}
                 {pendingFeedbackShowings.length > 0 && (
                     <div style={{ marginBottom: 24 }}>
