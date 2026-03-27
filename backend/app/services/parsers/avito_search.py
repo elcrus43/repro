@@ -33,11 +33,25 @@ class AvitoSearchParser:
                 
                 # Wait for any item to appear
                 try:
-                    await page.wait_for_selector("[data-marker='item']", timeout=20000)
-                    logger.info("AvitoSearchParser: Items found on page.")
-                except:
-                    logger.warning("AvitoSearchParser: Selector '[data-marker='item']' not found in time. Proceeding with raw content.")
-                    await asyncio.sleep(5)
+                    # Try multiple selectors for better robustness
+                    selectors = ["[data-marker='item']", "div[data-marker='item']", "[class*='iva-item-root']"]
+                    found = False
+                    for selector in selectors:
+                        try:
+                            await page.wait_for_selector(selector, timeout=10000)
+                            logger.info(f"AvitoSearchParser: Items found with selector '{selector}'.")
+                            found = True
+                            break
+                        except:
+                            continue
+                    
+                    if not found:
+                        logger.warning("AvitoSearchParser: Standard selectors not found. Proceeding with raw content.")
+                except Exception as e:
+                    logger.warning(f"AvitoSearchParser: Error while waiting for selectors: {e}")
+                
+                # Small human-like delay
+                await asyncio.sleep(2)
                 
                 content = await page.content()
                 logger.info(f"AvitoSearchParser: Content retrieved ({len(content)} bytes). Parsing with BeautifulSoup...")

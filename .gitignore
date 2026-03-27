@@ -1,35 +1,81 @@
-# Logs
-logs
-*.log
+# ═══════════════════════════════════════════════════════════════
+# .gitignore для RE-PRO CRM
+# ═══════════════════════════════════════════════════════════════
+
+# ─── КРИТИЧНО: секреты никогда не должны попадать в репозиторий ───
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+
+# ─── Зависимости ──────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+backend/venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# ─── Сборка ───────────────────────────────────────────────────
+dist/
+dist-ssr/
+build/
+*.local
+
+# ─── Кеши сборщика ────────────────────────────────────────────
+.vite/
+.cache/
+
+# ─── Логи ─────────────────────────────────────────────────────
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-lerna-debug.log*
+*.log
 
-node_modules
-dist
-dist-ssr
-*.local
-
-# Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-.idea
+# ─── Редакторы ────────────────────────────────────────────────
 .DS_Store
+.idea/
+.vscode/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
 
-.vercel
-.env
+# ─── TypeScript ───────────────────────────────────────────────
+*.tsbuildinfo
 
-# Python (Backend)
-**/__pycache__/
-**/*.py[cod]
-**/*.db
-backend/venv/
-backend/.env
-backend/verify_estimation.py
+# ─── Тесты ────────────────────────────────────────────────────
+coverage/
+
+# ─── SQL патчи (хаотичные hotfix'ы) ──────────────────────────
+# Вместо этих файлов используйте нормальные миграции через supabase CLI
+# Если нужно сохранить историю — перенесите в supabase/migrations/
+ADD_PASSPORT_COLUMN.sql
+FINAL_DATABASE_FIX.sql
+FIX_ADMIN_ROLE.sql
+*.patch.sql

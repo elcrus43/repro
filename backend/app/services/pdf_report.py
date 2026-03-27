@@ -1,5 +1,3 @@
-from weasyprint import HTML
-from jinja2 import Template
 from datetime import datetime
 from typing import Optional
 from .estimation_service import EstimationResult
@@ -110,6 +108,8 @@ class EstimationReportGenerator:
     """
 
     def generate(self, params: dict, result: EstimationResult) -> bytes:
+        from weasyprint import HTML
+        from jinja2 import Template
         template = Template(self.TEMPLATE)
         html_content = template.render(
             params=params,

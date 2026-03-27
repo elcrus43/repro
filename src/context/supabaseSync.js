@@ -1,0 +1,334 @@
+/**
+ * supabaseSync.js — вся логика синхронизации с Supabase.
+ *
+ * Вынесена из AppContext.jsx для:
+ *  - разделения ответственности (SRP)
+ *  - удобного тестирования
+ *  - устранения God Object
+ *
+ * ИЗМЕНЕНИЯ vs оригинала:
+ *  1. Убран alert() — заменён на onError callback (передаётся из AppContext)
+ *  2. Добавлен rollback callback — вызывается при критической ошибке
+ *     чтобы откатить optimistic update
+ *  3. Добавлен retry с экспоненциальной задержкой для сетевых ошибок
+ */
+
+import { supabase } from '../lib/supabase';
+
+/* ─── Helpers ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Рекурсивно заменяет пустые строки на null перед отправкой в БД.
+ * Supabase/PostgreSQL воспринимает '' и NULL по-разному в NOT NULL полях.
+ */
+export function sanitizeObj(obj) {
+  if (obj === '') return null;
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeObj);
+
+  const sanitized = { ...obj };
+  for (const key in sanitized) {
+    if (sanitized[key] === '') {
+      sanitized[key] = null;
+    } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
+      sanitized[key] = sanitizeObj(sanitized[key]);
+    }
+  }
+  return sanitized;
+}
+
+/**
+ * Retry-обёртка для сетевых сбоев.
+ * Не повторяет запрос при ошибках доступа (RLS) или схемы.
+ */
+async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
+  const NON_RETRYABLE_CODES = ['42501', 'PGRST301', 'PGRST116', '42703', 'PGRST204'];
+  let lastError;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await fn();
+      // Supabase возвращает error внутри объекта, а не бросает исключение
+      if (result?.error && NON_RETRYABLE_CODES.includes(result.error.code)) {
+        return result; // не ретраим — это не сетевая ошибка
+      }
+      if (result?.error && attempt < retries) {
+        await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
+        lastError = result;
+        continue;
+      }
+      return result;
+    } catch (err) {
+      lastError = { error: err };
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
+      }
+    }
+  }
+  return lastError;
+}
+
+/* ─── Loader ───────────────────────────────────────────────────────────────── */
+
+/**
+ * Загружает все данные пользователя из Supabase параллельно.
+ */
+export async function loadUserData(userId, role) {
+  const isAdmin = role === 'admin';
+
+  const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes] =
+    await Promise.all([
+      supabase.from('clients').select('*'),
+      supabase.from('properties').select('*'),
+      supabase.from('requests').select('*'),
+      supabase.from('matches').select('*'),
+      supabase.from('showings').select('*'),
+      isAdmin
+        ? supabase.from('tasks').select('*')
+        : supabase.from('tasks').select('*').eq('realtor_id', userId),
+      supabase.from('pricelist').select('*'),
+    ]);
+
+  const { data: profiles } = await supabase.from('profiles').select('*');
+
+  const pendingUsers = isAdmin
+    ? profiles?.filter(p => ['pending', 'rejected'].includes(p.status)) ?? []
+    : [];
+
+  return {
+    clients:      clientsRes.data      ?? [],
+    properties:   propertiesRes.data   ?? [],
+    requests:     requestsRes.data     ?? [],
+    matches:      matchesRes.data      ?? [],
+    showings:     showingsRes.data     ?? [],
+    tasks:        tasksRes.data        ?? [],
+    profiles:     profiles             ?? [],
+    pendingUsers,
+    pricelist:    priceRes?.data       ?? [],
+    error:
+      clientsRes.error?.message    ||
+      propertiesRes.error?.message ||
+      requestsRes.error?.message   ||
+      priceRes?.error?.message     ||
+      null,
+  };
+}
+
+/* ─── Sync ─────────────────────────────────────────────────────────────────── */
+
+/**
+ * syncAction — отправляет изменение в Supabase.
+ *
+ * @param {object} rawAction      — действие после enhance (из useDbDispatch)
+ * @param {function} onError      — (message: string) => void  — заменяет alert()
+ * @param {function} onRollback   — (action: object) => void   — откат optimistic update
+ */
+export async function syncAction(rawAction, { onError, onRollback } = {}) {
+  const handleError = onError ?? ((msg) => console.error('[Supabase]', msg));
+
+  try {
+    const action = sanitizeObj(rawAction);
+    let result;
+
+    switch (action.type) {
+
+      /* ── Профиль ─────────────────────────────────────────────────────── */
+      case 'UPDATE_PROFILE': {
+        const { id, full_name, phone, agency_name } = action.profile;
+        result = await withRetry(() =>
+          supabase.from('profiles').update({ full_name: full_name || '', phone: phone || '', agency_name: agency_name || '' }).eq('id', id)
+        );
+        break;
+      }
+
+      /* ── Клиенты ─────────────────────────────────────────────────────── */
+      case 'ADD_CLIENT': {
+        result = await withRetry(() => supabase.from('clients').insert(action.client));
+
+        // Ретрай без passport_details при ошибке схемы (hotfix для старых БД)
+        if (_isPassportColumnError(result?.error)) {
+          console.warn('[Supabase] passport_details column missing, retrying without it');
+          const { passport_details: _pd, ...clientWithout } = action.client;
+          result = await withRetry(() => supabase.from('clients').insert(clientWithout));
+        }
+        break;
+      }
+
+      case 'UPDATE_CLIENT': {
+        const { id: cId, ...cData } = action.client;
+        result = await withRetry(() => supabase.from('clients').update(cData).eq('id', cId));
+
+        if (_isPassportColumnError(result?.error)) {
+          console.warn('[Supabase] passport_details column missing, retrying without it');
+          const { passport_details: _pd, ...dataWithout } = cData;
+          result = await withRetry(() => supabase.from('clients').update(dataWithout).eq('id', cId));
+        }
+        break;
+      }
+
+      case 'DELETE_CLIENT':
+        result = await withRetry(() => supabase.from('clients').delete().eq('id', action.id));
+        break;
+
+      /* ── Объекты ─────────────────────────────────────────────────────── */
+      case 'ADD_PROPERTY': {
+        result = await withRetry(() => supabase.from('properties').insert(action.property));
+        if (!result?.error && action.matches?.length > 0) {
+          const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
+          if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
+        }
+        break;
+      }
+
+      case 'UPDATE_PROPERTY': {
+        const { id: pId, ...pData } = action.property;
+        result = await withRetry(() => supabase.from('properties').update(pData).eq('id', pId));
+        if (!result?.error && action.matches?.length > 0) {
+          const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
+          if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
+        }
+        break;
+      }
+
+      case 'DELETE_PROPERTY':
+        result = await withRetry(() => supabase.from('properties').delete().eq('id', action.id));
+        break;
+
+      /* ── Запросы ─────────────────────────────────────────────────────── */
+      case 'ADD_REQUEST':
+      case 'UPDATE_REQUEST':
+        result = await withRetry(() => supabase.from('requests').upsert(action.request));
+        if (!result?.error && action.matches?.length > 0) {
+          const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
+          if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
+        }
+        break;
+
+      case 'DELETE_REQUEST':
+        result = await withRetry(() => supabase.from('requests').delete().eq('id', action.id));
+        break;
+
+      /* ── Матчи ───────────────────────────────────────────────────────── */
+      case 'UPDATE_MATCH':
+        result = await withRetry(() => supabase.from('matches').upsert(action.match));
+        break;
+
+      /* ── Закрытие сделки ─────────────────────────────────────────────── */
+      case 'CLOSE_DEAL': {
+        const { matchId, propertyId, requestId, now } = action;
+        const results = await Promise.all([
+          supabase.from('matches').update({ status: 'deal', updated_at: now }).eq('id', matchId),
+          supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('property_id', propertyId).neq('id', matchId),
+          supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('request_id', requestId).neq('id', matchId),
+          supabase.from('properties').update({ status: 'sold', updated_at: now }).eq('id', propertyId),
+          supabase.from('requests').update({ status: 'found', updated_at: now }).eq('id', requestId),
+        ]);
+        results.forEach((res, i) => {
+          if (res.error) console.error(`[Supabase Deal Sync Error ${i}]`, res.error);
+        });
+        return; // Ранний выход — нет единственного result для проверки
+      }
+
+      /* ── Показы ──────────────────────────────────────────────────────── */
+      case 'ADD_SHOWING': {
+        const queries = [withRetry(() => supabase.from('showings').upsert(action.showing))];
+        if (action.task)   queries.push(withRetry(() => supabase.from('tasks').upsert(action.task)));
+        if (action.matches && action.showing.match_id) {
+          const match = action.matches.find(m => m.id === action.showing.match_id);
+          if (match) queries.push(withRetry(() => supabase.from('matches').upsert(match)));
+        }
+        const results = await Promise.all(queries);
+        results.forEach((res, i) => {
+          if (res?.error) console.error(`[Supabase Showing Sync Error ${i}]`, res.error);
+        });
+        return;
+      }
+
+      case 'UPDATE_SHOWING': {
+        const queries = [withRetry(() => supabase.from('showings').upsert(action.showing))];
+        if (action.matches) queries.push(withRetry(() => supabase.from('matches').upsert(action.matches)));
+        const results = await Promise.all(queries);
+        results.forEach((res, i) => {
+          if (res?.error) console.error(`[Supabase Showing Update Error ${i}]`, res.error);
+        });
+        return;
+      }
+
+      case 'DELETE_SHOWING':
+        result = await withRetry(() => supabase.from('showings').delete().eq('id', action.id));
+        break;
+
+      /* ── Задачи ──────────────────────────────────────────────────────── */
+      case 'ADD_TASK':
+      case 'UPDATE_TASK':
+        result = await withRetry(() => supabase.from('tasks').upsert(action.task));
+        break;
+
+      case 'DELETE_TASK':
+        result = await withRetry(() => supabase.from('tasks').delete().eq('id', action.id));
+        break;
+
+      /* ── Пользователи (admin) ────────────────────────────────────────── */
+      case 'APPROVE_USER':
+        result = await withRetry(() => supabase.from('profiles').update({ status: 'approved' }).eq('id', action.userId));
+        break;
+
+      case 'REJECT_USER':
+        result = await withRetry(() => supabase.from('profiles').update({ status: 'rejected' }).eq('id', action.userId));
+        break;
+
+      /* ── Прайс-лист ──────────────────────────────────────────────────── */
+      case 'ADD_PRICE_ITEM':
+        result = await withRetry(() => supabase.from('pricelist').insert(action.item));
+        break;
+
+      case 'UPDATE_PRICE_ITEM':
+        result = await withRetry(() =>
+          supabase.from('pricelist')
+            .update({ name: action.item.name, price: action.item.price, show_in_sale: action.item.show_in_sale, show_in_purchase: action.item.show_in_purchase })
+            .eq('id', action.item.id)
+        );
+        break;
+
+      case 'DELETE_PRICE_ITEM':
+        result = await withRetry(() => supabase.from('pricelist').delete().eq('id', action.id));
+        break;
+
+      default:
+        return; // Неизвестный тип — ничего не делаем
+    }
+
+    /* ── Обработка финальной ошибки ──────────────────────────────────── */
+    if (result?.error) {
+      console.error('[Supabase Sync Error]', action.type, result.error);
+
+      if (result.error.code === '42501') {
+        // RLS — ошибка доступа. Откат не нужен, просто сообщаем
+        handleError('Ошибка доступа (RLS): у вашей роли нет прав на это действие.');
+      } else {
+        // Прочие ошибки — откат optimistic update
+        handleError(`Ошибка сохранения: ${result.error.message}`);
+        if (typeof onRollback === 'function') {
+          onRollback(action);
+        }
+      }
+    }
+
+  } catch (err) {
+    console.error('[Supabase Critical Error]', rawAction.type, err);
+    handleError('Критическая ошибка соединения с базой данных. Проверьте подключение к интернету.');
+    if (typeof onRollback === 'function') {
+      onRollback(rawAction);
+    }
+  }
+}
+
+/* ─── Private Helpers ──────────────────────────────────────────────────────── */
+
+function _isPassportColumnError(error) {
+  return (
+    error &&
+    (error.code === '42703' || error.code === 'PGRST204') &&
+    error.message?.includes('passport_details')
+  );
+}

@@ -12,21 +12,24 @@ class DomClickSearchParser:
         # DomClick API uses a JSON filter
         url = self.BASE_URL.rstrip('/')
         
-        # Example filters (simplified)
+        # Example filters (refined based on browser observation)
         query_params = {
             "address": params.get("city", "Москва"),
             "sale_type": "flats",
+            "offer_type": "sale" if params.get("deal_type") == "SALE" else "rent",
+            "category": "living",
             "offset": 0,
             "limit": 20,
             "rooms": params.get("rooms", 1),
-            "area__gte": params.get("area_min", 30),
-            "area__lte": params.get("area_max", 100),
+            "area__gte": int(params.get("area_min", 30)),
+            "area__lte": int(params.get("area_max", 100)),
         }
         
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "Referer": "https://domclick.ru/search",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
         }
         
         logger.info(f"Searching DomClick API with params: {query_params}")

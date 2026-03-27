@@ -1,0 +1,27 @@
+﻿
+> re-pro@0.0.0 lint
+> eslint .
+
+
+C:\Users\Office-40\.gemini\antigravity\scratch\realtor-match\list_profiles.js
+  5:36  error  'process' is not defined  no-undef
+  7:21  error  'process' is not defined  no-undef
+  8:21  error  'process' is not defined  no-undef
+
+C:\Users\Office-40\.gemini\antigravity\scratch\realtor-match\src\context\AppContext.jsx
+  253:52  error  'action' is not defined  no-undef
+
+C:\Users\Office-40\.gemini\antigravity\scratch\realtor-match\src\pages\Clients\ClientsPages.jsx
+   66:27  error  'initials' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u        no-unused-vars
+   70:29  error  'dispatch' is not defined                                                                       no-undef
+  134:11  error  'messengerIcons' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u  no-unused-vars
+  135:11  error  'initials' is assigned a value but never used. Allowed unused vars must match /^[A-Z_]/u        no-unused-vars
+
+C:\Users\Office-40\.gemini\antigravity\scratch\realtor-match\src\pages\Profile\ProfilePage.jsx
+  60:39  error  React Hook "React.useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                  react-hooks/rules-of-hooks
+  61:37  error  React Hook "React.useState" is called conditionally. React Hooks must be called in the exact same order in every component render                                                                  react-hooks/rules-of-hooks
+  63:5   error  React Hook "React.useEffect" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?  react-hooks/rules-of-hooks
+  79:33  error  React Hook "React.useState" is called conditionally. React Hooks must be called in the exact same order in every component render. Did you accidentally call a React Hook after an early return?   react-hooks/rules-of-hooks
+
+тЬЦ 12 problems (12 errors, 0 warnings)
+

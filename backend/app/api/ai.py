@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import Optional
 from ..core.database import get_db
 from ..services.ai_service import AIService
 from pydantic import BaseModel

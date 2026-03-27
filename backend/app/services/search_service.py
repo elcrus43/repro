@@ -13,11 +13,13 @@ logger = logging.getLogger(__name__)
 class SearchService:
     def __init__(self, db: Session):
         self.db = db
+        import os
         self.parsers = [
             AvitoSearchParser(),
-            CianSearchParser(),
-            DomClickSearchParser()
+            CianSearchParser()
         ]
+        if os.getenv("SKIP_DOMCLICK") != "true":
+            self.parsers.append(DomClickSearchParser())
 
     async def search_all(self, params: Dict[str, Any]) -> List[AnalogListing]:
         """Run all parsers sequentially to save memory and return combined results"""
