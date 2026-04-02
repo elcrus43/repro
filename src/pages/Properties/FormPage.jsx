@@ -45,7 +45,7 @@ export function FormPage() {
         area_kitchen: 0,
         rooms: 1,
         floor: 1,
-        floor_total: 9,
+        floors_total: 9,
         build_year: new Date().getFullYear(),
         status: 'active',
         commission: 0,
@@ -163,7 +163,7 @@ export function FormPage() {
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Всего этажей</label>
-                                    <input type="number" className="form-input" value={form.floor_total || ''} onChange={e => setF('floor_total', Number(e.target.value))} />
+                                    <input type="number" className="form-input" value={form.floors_total || ''} onChange={e => setF('floors_total', Number(e.target.value))} />
                                 </div>
                             </div>
                         </>

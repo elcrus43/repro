@@ -177,6 +177,10 @@ function EstimationWidget({ prop }) {
                                 rel="noopener noreferrer"
                                 className="btn btn-secondary"
                                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, textDecoration: 'none' }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    window.open(result.avito_url, '_blank');
+                                }}
                             >
                                 <ExternalLink size={16} />
                                 Смотреть объявления на Авито
@@ -188,33 +192,29 @@ function EstimationWidget({ prop }) {
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 {result.analogs.map(a => (
-                                    <a
+                                    <div
                                         key={a.id}
-                                        href={a.source_url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ textDecoration: 'none' }}
+                                        className="list-row"
+                                        onClick={() => window.open(a.source_url, '_blank')}
                                     >
-                                        <div className="list-row" style={{ cursor: 'pointer' }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                                                    {a.price.toLocaleString()} ₽
-                                                    {params.deal_type === 'RENT' ? '/мес' : ''}
-                                                </div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                                    {typeof a.rooms === 'number' ? `${a.rooms}к` : a.rooms} · {a.total_area} м² · {a.district}
-                                                </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                                                {a.price.toLocaleString()} ₽
+                                                {params.deal_type === 'RENT' ? '/мес' : ''}
                                             </div>
-                                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>
-                                                    {a.price_per_m2.toLocaleString()} ₽/м²
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
-                                                    {a.source} <ExternalLink size={10} />
-                                                </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                {typeof a.rooms === 'number' ? `${a.rooms}к` : a.rooms} · {a.total_area} м² · {a.district}
                                             </div>
                                         </div>
-                                    </a>
+                                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>
+                                                {a.price_per_m2.toLocaleString()} ₽/м²
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
+                                                {a.source} <ExternalLink size={10} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 ))}
                             </div>
 
@@ -347,7 +347,7 @@ export function DetailsPage() {
                         </div>
                         <div className="info-row">
                             <span className="info-key">Этаж</span>
-                            <span className="info-val">{prop.floor} из {prop.floor_total}</span>
+                            <span className="info-val">{prop.floor} из {prop.floors_total || 9}</span>
                         </div>
                         <div className="info-row">
                             <span className="info-key">Год постройки</span>
