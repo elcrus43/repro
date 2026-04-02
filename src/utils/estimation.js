@@ -98,37 +98,50 @@ function buildAvitoUrl({ city, district, rooms, deal_type, total_area, price }) 
         params.set('roomsCount', String(rooms));
     }
 
-    // District via search query
+    // Price range (±15%)
+    if (price) {
+        const minPrice = Math.round(price * 0.85 / 1000) * 1000;
+        const maxPrice = Math.round(price * 1.15 / 1000) * 1000;
+        params.set('price', `${minPrice}-A${maxPrice}`);
+    }
+
+    // Total area range (±10%)
+    if (total_area) {
+        const minArea = Math.round(total_area * 0.9);
+        const maxArea = Math.round(total_area * 1.1);
+        params.set('area', `${minArea}-${maxArea}`);
+    }
+
+    // District via search query (more reliable than pca)
     if (district) {
-        params.set('pca', district);
+        params.set('district', district);
     }
 
     return `https://www.avito.ru/${citySlug}/${categoryPath}?${params.toString()}`;
 }
 
 /**
- * Generate synthetic analog listings with Avito search links.
+ * Generate analog search links for Avito.
+ * Returns real search URLs, not fake listings.
  */
 function generateAnalogs({ city, district, rooms, total_area, deal_type, pricePerM2, basePrice }) {
     const roomKey = rooms === 0 ? 'studio' : rooms;
     const area = total_area || TYPICAL_AREAS[roomKey] || 50;
     const base = basePrice || Math.round(pricePerM2 * area);
 
-    // Variate analogs + build avito links with individual prices
-    const variations = [
-        { deltaPct: -0.08, areaAdj: -3, districtLabel: district || city, priceAdj: -0.08 },
-        { deltaPct: 0.00, areaAdj: 0, districtLabel: district || city, priceAdj: 0.00 },
-        { deltaPct: 0.06, areaAdj: +4, districtLabel: district || city, priceAdj: 0.06 },
-        { deltaPct: -0.12, areaAdj: -6, districtLabel: district ? `${district} (рядом)` : city, priceAdj: -0.12 },
-        { deltaPct: 0.10, areaAdj: +5, districtLabel: district || city, priceAdj: 0.10 },
+    // Generate 3 search links with different price ranges
+    const variants = [
+        { label: 'Эконом', priceAdj: -0.15, areaAdj: -5 },
+        { label: 'Средний', priceAdj: 0, areaAdj: 0 },
+        { label: 'Премиум', priceAdj: 0.15, areaAdj: +5 },
     ];
 
-    return variations.map((v, i) => {
+    return variants.map((v, i) => {
         const analogPrice = Math.round(base * (1 + v.priceAdj) / 1000) * 1000;
         const analogArea = area + v.areaAdj;
         const avitoLink = buildAvitoUrl({
             city,
-            district: v.districtLabel,
+            district: district || '',
             rooms,
             deal_type,
             total_area: analogArea,
@@ -140,10 +153,11 @@ function generateAnalogs({ city, district, rooms, total_area, deal_type, pricePe
             price: analogPrice,
             rooms: roomKey === 'studio' ? 'Студия' : rooms,
             total_area: analogArea,
-            district: v.districtLabel,
-            price_per_m2: Math.round(pricePerM2 * (1 + v.deltaPct)),
+            district: district || city,
+            price_per_m2: Math.round(pricePerM2 * (1 + v.priceAdj)),
             source: 'Авито',
             source_url: avitoLink,
+            label: v.label,
         };
     });
 }

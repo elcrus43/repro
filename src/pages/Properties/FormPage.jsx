@@ -172,6 +172,10 @@ export function FormPage() {
                     {step === 3 && (
                         <>
                             <div className="form-group">
+                                <label className="form-label">Год постройки</label>
+                                <input type="number" className="form-input" value={form.build_year || ''} onChange={e => setF('build_year', Number(e.target.value))} placeholder={new Date().getFullYear().toString()} />
+                            </div>
+                            <div className="form-group">
                                 <label className="form-label">Ваша комиссия (₽)</label>
                                 <input type="number" className="form-input" value={form.commission || ''} onChange={e => setF('commission', Number(e.target.value))} />
                             </div>

@@ -188,7 +188,7 @@ function EstimationWidget({ prop }) {
 
                             {/* Analogs list */}
                             <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                                Аналогичные объявления
+                                Поиск аналогов на Авито
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 {result.analogs.map(a => (
@@ -198,21 +198,19 @@ function EstimationWidget({ prop }) {
                                         onClick={() => window.open(a.source_url, '_blank')}
                                     >
                                         <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
-                                                {a.price.toLocaleString()} ₽
-                                                {params.deal_type === 'RENT' ? '/мес' : ''}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                                <span className="badge badge-subtle" style={{ fontSize: 11 }}>{a.label}</span>
+                                                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                                                    {a.price.toLocaleString()} ₽
+                                                    {params.deal_type === 'RENT' ? '/мес' : ''}
+                                                </span>
                                             </div>
                                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                                                 {typeof a.rooms === 'number' ? `${a.rooms}к` : a.rooms} · {a.total_area} м² · {a.district}
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>
-                                                {a.price_per_m2.toLocaleString()} ₽/м²
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
-                                                {a.source} <ExternalLink size={10} />
-                                            </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
+                                            {a.source} <ExternalLink size={10} />
                                         </div>
                                     </div>
                                 ))}

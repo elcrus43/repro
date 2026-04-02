@@ -125,20 +125,22 @@ export function EstimationPage() {
                         </div>
 
                         <div className="section-header" style={{ marginTop: 24 }}>
-                            <span className="section-title">Ближайшие аналоги</span>
+                            <span className="section-title">Поиск аналогов</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {result.analogs.map((a, i) => (
                                 <div key={i} className="list-row" onClick={() => window.open(a.source_url, '_blank')}>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 600 }}>{a.price.toLocaleString()} ₽</div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                                            <span className="badge badge-subtle" style={{ fontSize: 11 }}>{a.label || 'Авито'}</span>
+                                            <span style={{ fontWeight: 600 }}>{a.price.toLocaleString()} ₽</span>
+                                        </div>
                                         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                            {a.rooms}к • {a.total_area}м² • {a.floor}/{a.total_floors} эт.
+                                            {a.rooms}к • {a.total_area}м²
                                         </div>
                                     </div>
-                                    <div style={{ textAlign: 'right', fontSize: 11 }}>
-                                        <div className="badge badge-subtle">{a.source}</div>
-                                        <ExternalLink size={12} style={{ marginLeft: 6, opacity: 0.5 }} />
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
+                                        {a.source} <ExternalLink size={12} />
                                     </div>
                                 </div>
                             ))}
