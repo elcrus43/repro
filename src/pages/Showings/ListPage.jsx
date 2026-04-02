@@ -104,7 +104,7 @@ export function ListPage() {
                             const prop = state.properties.find(p => p.id === s.property_id);
                             const client = state.clients.find(c => c.id === s.client_id);
                             const timeStr = new Date(s.showing_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-                            
+
                             if (feedbackId === s.id) {
                                 return (
                                     <div key={s.id} className="card" style={{ border: '2px solid var(--danger-light)' }}>
@@ -260,7 +260,7 @@ export function ListPage() {
                 {myShowings.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-title">Нет показов</div>
-                        <div className="empty-desc">Назначьте показ из карточки матча</div>
+                        <div className="empty-desc">Назначьте показ из карточки совпадения</div>
                     </div>
                 )}
             </div>

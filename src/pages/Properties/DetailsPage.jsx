@@ -377,16 +377,17 @@ export function DetailsPage() {
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет показов</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {showings.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3).map(s => {
+                            {showings.sort((a, b) => new Date(b.showing_date) - new Date(a.showing_date)).slice(0, 3).map(s => {
                                 const buyer = state.clients.find(c => c.id === s.client_id);
+                                const showingDate = s.showing_date ? new Date(s.showing_date) : null;
                                 return (
                                     <div key={s.id} onClick={() => navigate('/showings')} style={{ padding: '10px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <span style={{ fontSize: 13, fontWeight: 700 }}>{buyer?.full_name || 'Покупатель'}</span>
-                                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(s.date).toLocaleDateString('ru-RU')}</span>
+                                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showingDate ? showingDate.toLocaleDateString('ru-RU') : '—'}</span>
                                         </div>
-                                        <div style={{ fontSize: 12, color: s.feedback ? 'var(--text)' : 'var(--text-muted)', fontStyle: s.feedback ? 'normal' : 'italic' }}>
-                                            {s.feedback || 'Без отзыва'}
+                                        <div style={{ fontSize: 12, color: s.client_feedback ? 'var(--text)' : 'var(--text-muted)', fontStyle: s.client_feedback ? 'normal' : 'italic' }}>
+                                            {s.feedback_comment || 'Без отзыва'}
                                         </div>
                                     </div>
                                 );

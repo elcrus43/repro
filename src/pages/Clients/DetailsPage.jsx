@@ -202,11 +202,11 @@ export function DetailsPage() {
                 {/* Matches */}
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Матчи ({allMatches.length})</div>
+                        <div className="section-title" style={{ marginBottom: 0 }}>Совпадения ({allMatches.length})</div>
                         <button className="icon-btn" onClick={() => navigate(`/matches?client=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
                     </div>
                     {allMatches.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Матчей пока нет</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Совпадений пока нет</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {allMatches.slice(0, 3).map(m => {

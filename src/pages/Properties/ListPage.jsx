@@ -90,7 +90,7 @@ export function ListPage() {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: 8 }}>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    {client?.full_name} · <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{matches.length} матчей</span>
+                                    {client?.full_name} · <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{matches.length} совпадений</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>
                                     <button className="icon-btn" onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}><Edit2 size={16} /></button>

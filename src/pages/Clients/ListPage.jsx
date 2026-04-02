@@ -100,7 +100,7 @@ export function ListPage() {
                                     </div>
                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                                         {client.additional_contacts?.length > 0 && `+${client.additional_contacts.length} чел. · `}
-                                        {matches.length > 0 && `Матчей: ${matches.length}`}
+                                        {matches.length > 0 && `Совпадений: ${matches.length}`}
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>

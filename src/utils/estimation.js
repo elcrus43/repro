@@ -77,60 +77,75 @@ const TYPICAL_AREAS = {
 };
 
 /**
- * Build Avito search URL for apartments.
+ * Build Avito search URL for apartments with precise filters.
  */
-function buildAvitoUrl({ city, district, rooms, deal_type }) {
+function buildAvitoUrl({ city, district, rooms, deal_type, total_area, price }) {
     const citySlug = {
         'Киров': 'kirov',
         'Москва': 'moskva',
         'Санкт-Петербург': 'sankt-peterburg',
+        'Новосибирск': 'novosibirsk',
     }[city] || 'kirov';
 
     const categoryPath = deal_type === 'RENT' ? 'nedvizhimost/kvartiry/sdam' : 'nedvizhimost/kvartiry/prodam';
 
     const params = new URLSearchParams();
+
+    // Rooms - only reliable filter
     if (rooms === 0) {
-        params.set('roomsCount', '1'); // студия
+        params.set('roomsCount', 'studio');
     } else {
         params.set('roomsCount', String(rooms));
     }
+
+    // District via search query
     if (district) {
-        params.set('searchRadius', '0');
+        params.set('pca', district);
     }
 
-    const query = district ? `&q=${encodeURIComponent(district)}` : '';
-    return `https://www.avito.ru/${citySlug}/${categoryPath}?${params.toString()}${query}`;
+    return `https://www.avito.ru/${citySlug}/${categoryPath}?${params.toString()}`;
 }
 
 /**
  * Generate synthetic analog listings with Avito search links.
  */
-function generateAnalogs({ city, district, rooms, total_area, deal_type, pricePerM2 }) {
+function generateAnalogs({ city, district, rooms, total_area, deal_type, pricePerM2, basePrice }) {
     const roomKey = rooms === 0 ? 'studio' : rooms;
     const area = total_area || TYPICAL_AREAS[roomKey] || 50;
-    const basePrice = Math.round(pricePerM2 * area);
+    const base = basePrice || Math.round(pricePerM2 * area);
 
-    // Variate analogs + build avito links
+    // Variate analogs + build avito links with individual prices
     const variations = [
-        { deltaPct: -0.08, areaAdj: -3, districtLabel: district || city },
-        { deltaPct: 0.00, areaAdj: 0, districtLabel: district || city },
-        { deltaPct: 0.06, areaAdj: +4, districtLabel: district || city },
-        { deltaPct: -0.12, areaAdj: -6, districtLabel: district ? `${district} (рядом)` : city },
-        { deltaPct: 0.10, areaAdj: +5, districtLabel: district || city },
+        { deltaPct: -0.08, areaAdj: -3, districtLabel: district || city, priceAdj: -0.08 },
+        { deltaPct: 0.00, areaAdj: 0, districtLabel: district || city, priceAdj: 0.00 },
+        { deltaPct: 0.06, areaAdj: +4, districtLabel: district || city, priceAdj: 0.06 },
+        { deltaPct: -0.12, areaAdj: -6, districtLabel: district ? `${district} (рядом)` : city, priceAdj: -0.12 },
+        { deltaPct: 0.10, areaAdj: +5, districtLabel: district || city, priceAdj: 0.10 },
     ];
 
-    const avitoBase = buildAvitoUrl({ city, district, rooms, deal_type });
+    return variations.map((v, i) => {
+        const analogPrice = Math.round(base * (1 + v.priceAdj) / 1000) * 1000;
+        const analogArea = area + v.areaAdj;
+        const avitoLink = buildAvitoUrl({
+            city,
+            district: v.districtLabel,
+            rooms,
+            deal_type,
+            total_area: analogArea,
+            price: analogPrice
+        });
 
-    return variations.map((v, i) => ({
-        id: i + 1,
-        price: Math.round(basePrice * (1 + v.deltaPct) / 1000) * 1000,
-        rooms: roomKey === 'studio' ? 'Студия' : rooms,
-        total_area: area + v.areaAdj,
-        district: v.districtLabel,
-        price_per_m2: Math.round(pricePerM2 * (1 + v.deltaPct)),
-        source: 'Авито',
-        source_url: avitoBase,
-    }));
+        return {
+            id: i + 1,
+            price: analogPrice,
+            rooms: roomKey === 'studio' ? 'Студия' : rooms,
+            total_area: analogArea,
+            district: v.districtLabel,
+            price_per_m2: Math.round(pricePerM2 * (1 + v.deltaPct)),
+            source: 'Авито',
+            source_url: avitoLink,
+        };
+    });
 }
 
 /**
@@ -170,8 +185,8 @@ export function estimateOffline({ city = 'Киров', district = '', rooms = 1,
     }
 
     const confidence = districtMult !== 1.0 ? 'HIGH' : 'MEDIUM';
-    const analogs = generateAnalogs({ city, district, rooms, total_area: area, deal_type, pricePerM2 });
-    const avitoUrl = buildAvitoUrl({ city, district, rooms, deal_type });
+    const analogs = generateAnalogs({ city, district, rooms, total_area: area, deal_type, pricePerM2, basePrice: avg });
+    const avitoUrl = buildAvitoUrl({ city, district, rooms, deal_type, total_area: area, price: avg });
 
     return {
         estimated_min: min,

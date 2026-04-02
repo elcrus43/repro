@@ -26,7 +26,7 @@ import { useToastContext } from '../components/Toast';
 
 /* ─── Context ──────────────────────────────────────────────────────────────── */
 
-const AppContext = createContext(null);
+export const AppContext = createContext(null);
 
 const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
@@ -57,13 +57,13 @@ export function AppProvider({ children }) {
       if (profileErr && profileErr.code !== 'PGRST116') {
         console.error('[Profile load error]', profileErr);
         const fallbackProfile = {
-          id:          sessionUser.id,
-          full_name:   sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
-          email:       sessionUser.email,
-          phone:       sessionUser.user_metadata?.phone || '',
+          id: sessionUser.id,
+          full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+          email: sessionUser.email,
+          phone: sessionUser.user_metadata?.phone || '',
           agency_name: '',
-          role:        'realtor',
-          status:      'approved',
+          role: 'realtor',
+          status: 'approved',
         };
         dispatch({ type: 'SET_USER', user: fallbackProfile });
         try {
@@ -80,12 +80,12 @@ export function AppProvider({ children }) {
       if (!profile) {
         const isAdmin = sessionUser.email === ADMIN_EMAIL;
         const newProfile = {
-          id:          sessionUser.id,
-          full_name:   sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
-          phone:       sessionUser.user_metadata?.phone || '',
+          id: sessionUser.id,
+          full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+          phone: sessionUser.user_metadata?.phone || '',
           agency_name: '',
-          role:        isAdmin ? 'admin' : 'realtor',
-          status:      isAdmin ? 'approved' : 'pending',
+          role: isAdmin ? 'admin' : 'realtor',
+          status: isAdmin ? 'approved' : 'pending',
         };
 
         const { data: createdProfile, error: createErr } = await supabase
@@ -163,7 +163,7 @@ export function AppProvider({ children }) {
     });
 
     return () => subscription.unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

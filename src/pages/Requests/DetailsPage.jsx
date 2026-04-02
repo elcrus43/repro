@@ -61,7 +61,7 @@ export function DetailsPage() {
                     </div>
 
                     <button className="btn btn-primary btn-full flex items-center justify-center gap-8" onClick={() => navigate(`/matches?request_id=${id}`)}>
-                        <Sparkles size={18} /> Смотреть матчи ({matches.length})
+                        <Sparkles size={18} /> Смотреть совпадения ({matches.length})
                     </button>
                 </div>
 

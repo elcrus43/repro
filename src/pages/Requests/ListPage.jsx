@@ -88,7 +88,7 @@ export function ListPage() {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    Матчей: <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{matches.length}</span>
+                                    Совпадений: <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{matches.length}</span>
                                     {req.districts?.length > 0 && ` · ${req.districts.join(', ')}`}
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>

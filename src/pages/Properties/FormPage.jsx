@@ -87,32 +87,32 @@ export function FormPage() {
             <form className="page-content" onSubmit={handleSubmit}>
                 <PropertyStepDots steps={steps} current={step} onJump={setStep} />
 
-                <div className="card flex flex-column gap-16">
+                <div className="card" style={{ display: 'block' }}>
                     {step === 0 && (
                         <>
-                            <div className="form-group">
+                            <div className="form-group" style={{ marginBottom: 16, display: 'block' }}>
                                 <label className="form-label">Собственник <span className="required">*</span></label>
                                 <select className="form-select" value={form.client_id} onChange={e => setF('client_id', e.target.value)} disabled={!!id} required>
                                     <option value="">Выберите клиента</option>
                                     {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name} ({c.phone})</option>)}
                                 </select>
                             </div>
-                            <div className="form-group">
+                            <div className="form-group" style={{ marginBottom: 16, display: 'block' }}>
                                 <label className="form-label">Тип сделки</label>
-                                <div className="chip-group">
+                                <div className="chip-group" style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                     <button type="button" className={`chip ${form.deal_type === 'sale' ? 'active' : ''}`} onClick={() => setF('deal_type', 'sale')}>Продажа</button>
                                     <button type="button" className={`chip ${form.deal_type === 'rent' ? 'active' : ''}`} onClick={() => setF('deal_type', 'rent')}>Аренда</button>
                                 </div>
                             </div>
-                            <div className="form-group">
+                            <div className="form-group" style={{ marginBottom: 16, display: 'block' }}>
                                 <label className="form-label">Тип недвижимости</label>
-                                <select className="form-select" value={form.property_type} onChange={e => setF('property_type', e.target.value)}>
+                                <select className="form-select" value={form.property_type} onChange={e => setF('property_type', e.target.value)} style={{ marginTop: 8 }}>
                                     {Object.entries(PROPERTY_TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                                 </select>
                             </div>
-                            <div className="form-group">
+                            <div className="form-group" style={{ marginBottom: 0, display: 'block' }}>
                                 <label className="form-label">Цена (₽)</label>
-                                <input type="number" className="form-input" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }} value={form.price || ''} onChange={e => setF('price', Number(e.target.value))} placeholder="0" />
+                                <input type="number" className="form-input" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)', marginTop: 8 }} value={form.price || ''} onChange={e => setF('price', Number(e.target.value))} placeholder="0" />
                             </div>
                         </>
                     )}
