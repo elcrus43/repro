@@ -96,20 +96,20 @@ export async function loadUserData(userId, role) {
     : [];
 
   return {
-    clients:      clientsRes.data      ?? [],
-    properties:   propertiesRes.data   ?? [],
-    requests:     requestsRes.data     ?? [],
-    matches:      matchesRes.data      ?? [],
-    showings:     showingsRes.data     ?? [],
-    tasks:        tasksRes.data        ?? [],
-    profiles:     profiles             ?? [],
+    clients: clientsRes.data ?? [],
+    properties: propertiesRes.data ?? [],
+    requests: requestsRes.data ?? [],
+    matches: matchesRes.data ?? [],
+    showings: showingsRes.data ?? [],
+    tasks: tasksRes.data ?? [],
+    profiles: profiles ?? [],
     pendingUsers,
-    pricelist:    priceRes?.data       ?? [],
+    pricelist: priceRes?.data ?? [],
     error:
-      clientsRes.error?.message    ||
+      clientsRes.error?.message ||
       propertiesRes.error?.message ||
-      requestsRes.error?.message   ||
-      priceRes?.error?.message     ||
+      requestsRes.error?.message ||
+      priceRes?.error?.message ||
       null,
   };
 }
@@ -172,7 +172,21 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
 
       /* ── Объекты ─────────────────────────────────────────────────────── */
       case 'ADD_PROPERTY': {
-        result = await withRetry(() => supabase.from('properties').insert(action.property));
+        // Normalize property data - handle missing columns gracefully
+        const propertyData = {
+          ...action.property,
+          // Ensure required fields exist
+          deal_type: action.property.deal_type || 'sale',
+          property_type: action.property.property_type || 'apartment',
+          floors_total: action.property.floors_total || 9,
+          build_year: action.property.build_year || new Date().getFullYear(),
+        };
+        // Remove undefined fields to avoid schema errors
+        Object.keys(propertyData).forEach(key => {
+          if (propertyData[key] === undefined) delete propertyData[key];
+        });
+
+        result = await withRetry(() => supabase.from('properties').insert(propertyData));
         if (!result?.error && action.matches?.length > 0) {
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
           if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
@@ -182,7 +196,20 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
 
       case 'UPDATE_PROPERTY': {
         const { id: pId, ...pData } = action.property;
-        result = await withRetry(() => supabase.from('properties').update(pData).eq('id', pId));
+        // Normalize and clean property data
+        const normalizedData = {
+          ...pData,
+          deal_type: pData.deal_type || 'sale',
+          property_type: pData.property_type || 'apartment',
+          floors_total: pData.floors_total || 9,
+          build_year: pData.build_year || new Date().getFullYear(),
+        };
+        // Remove undefined fields
+        Object.keys(normalizedData).forEach(key => {
+          if (normalizedData[key] === undefined) delete normalizedData[key];
+        });
+
+        result = await withRetry(() => supabase.from('properties').update(normalizedData).eq('id', pId));
         if (!result?.error && action.matches?.length > 0) {
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
           if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
@@ -232,7 +259,7 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
       /* ── Показы ──────────────────────────────────────────────────────── */
       case 'ADD_SHOWING': {
         const queries = [withRetry(() => supabase.from('showings').upsert(action.showing))];
-        if (action.task)   queries.push(withRetry(() => supabase.from('tasks').upsert(action.task)));
+        if (action.task) queries.push(withRetry(() => supabase.from('tasks').upsert(action.task)));
         if (action.matches && action.showing.match_id) {
           const match = action.matches.find(m => m.id === action.showing.match_id);
           if (match) queries.push(withRetry(() => supabase.from('matches').upsert(match)));
@@ -302,11 +329,22 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
     if (result?.error) {
       console.error('[Supabase Sync Error]', action.type, result.error);
 
+      // Check for missing column error
+      const missingColumnMatch = result.error.message.match(/Could not find the '(\w+)' column/);
+
       if (result.error.code === '42501') {
-        // RLS — ошибка доступа. Откат не нужен, просто сообщаем
+        // RLS — ошибка доступа
         handleError('Ошибка доступа (RLS): у вашей роли нет прав на это действие.');
+      } else if (missingColumnMatch) {
+        // Missing column - provide helpful message
+        const columnName = missingColumnMatch[1];
+        handleError(
+          `Отсутствует колонка "${columnName}" в базе данных. ` +
+          `Необходимо выполнить миграцию БД. ` +
+          `Обратитесь к файлу: backend/migrations/check_and_fix_properties.sql`
+        );
       } else {
-        // Прочие ошибки — откат optimistic update
+        // Прочие ошибки
         handleError(`Ошибка сохранения: ${result.error.message}`);
         if (typeof onRollback === 'function') {
           onRollback(action);

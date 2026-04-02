@@ -20,8 +20,9 @@ export function ListPage() {
         return state.properties
             .filter(p => scope === 'all' || p.realtor_id === user?.id)
             .filter(p => {
-                if (filter === 'sale') return p.deal_type === 'sale';
-                if (filter === 'rent') return p.deal_type === 'rent';
+                const dealType = p.deal_type || 'sale'; // Default to sale if missing
+                if (filter === 'sale') return dealType === 'sale';
+                if (filter === 'rent') return dealType === 'rent';
                 if (filter === 'active') return p.status === 'active';
                 return true;
             })
