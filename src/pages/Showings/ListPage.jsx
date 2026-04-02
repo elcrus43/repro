@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
 import { Trash2, Edit2 } from 'lucide-react';
 
-export function ShowingsPage() {
+export function ListPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
@@ -43,9 +43,18 @@ export function ShowingsPage() {
         setFeedbackComment('');
     }
 
-    function saveFeedback(showing, feed) {
-        dispatch({ type: 'UPDATE_SHOWING', showing: { ...showing, status: 'completed', client_feedback: feed, feedback_comment: feedbackComment } });
+    function saveFeedback(showing, result) {
+        let updatedShowing = { ...showing };
+        if (result === 'failed') {
+            updatedShowing.status = 'failed';
+        } else {
+            updatedShowing.status = 'completed';
+            updatedShowing.client_feedback = result;
+            updatedShowing.feedback_comment = feedbackComment;
+        }
+        dispatch({ type: 'UPDATE_SHOWING', showing: updatedShowing });
         setFeedbackId(null);
+        setFeedbackComment('');
     }
 
     function dStr(date, d) {
@@ -119,15 +128,15 @@ export function ShowingsPage() {
 
                             return (
                                 <div key={s.id} className="card" style={{ borderLeft: '4px solid var(--danger)', marginBottom: 12 }}>
-                                    <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>Прошло 24 часа</div>
-                                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Встреча с {client?.full_name}</div>
+                                    <div style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 600, marginBottom: 4 }}>Прошло более 24 часов</div>
+                                    <div style={{ fontWeight: 700, marginBottom: 4 }}>Встреча с {client?.full_name || 'клиентом'}</div>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                                        📅 {timeStr} · {prop?.address}
+                                        📅 {timeStr} · {prop?.address || 'Объект не указан'}
                                     </div>
-                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Событие состоялось?</div>
+                                    <div style={{ fontWeight: 600, marginBottom: 8, fontSize: 15 }}>Событие состоялось?</div>
                                     <div style={{ display: 'flex', gap: 8 }}>
                                         <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => completShowing(s)}>✅ Да</button>
-                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => saveFeedback(s, 'failed')}>❌ Нет</button>
+                                        <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { if (window.confirm('Отметить как "Не состоялся"?')) saveFeedback(s, 'failed'); }}>❌ Нет</button>
                                     </div>
                                 </div>
                             );

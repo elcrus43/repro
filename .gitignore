@@ -79,3 +79,7 @@ ADD_PASSPORT_COLUMN.sql
 FINAL_DATABASE_FIX.sql
 FIX_ADMIN_ROLE.sql
 *.patch.sql
+
+# ─── Vercel & Notes ───────────────────────────────────────────
+.vercel/
+.notes/

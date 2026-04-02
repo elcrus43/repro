@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { Calendar, User, Home, Save, UserPlus, X } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
-export function ShowFormPage() {
+export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const params = new URLSearchParams(window.location.search);

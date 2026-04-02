@@ -2,7 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
-import { stripPhone } from '../../utils/format';
+import { stripPhone, formatNumber } from '../../utils/format';
+import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
+import { Share2, Send } from 'lucide-react';
+import { API_BASE } from '../../config';
 
 export function MatchesPage() {
     const { state } = useApp();
@@ -119,6 +122,9 @@ export function MatchDetailPage() {
     const [showShowingForm, setShowShowingForm] = useState(false);
     const [showingDate, setShowingDate] = useState('');
     const [saved, setSaved] = useState(false);
+    const [publicLink, setPublicLink] = useState(null);
+    const [isMsgModalOpen, setIsMsgModalOpen] = useState(false);
+    const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
     // Mark as viewed when opened
     React.useEffect(() => {
@@ -161,6 +167,27 @@ export function MatchDetailPage() {
         dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
         setShowShowingForm(false);
         navigate('/showings');
+    }
+
+    async function handleGeneratePublicLink() {
+        if (!prop) return;
+        setIsGeneratingLink(true);
+        try {
+            const res = await fetch(`${API_BASE}/p/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ property_id: prop.id, user_id: user?.id })
+            });
+            const data = await res.json();
+            const link = `${window.location.origin}/p/${data.slug}`;
+            setPublicLink(link);
+            navigator.clipboard.writeText(link);
+            alert('Публичная ссылка скопирована в буфер обмена!');
+        } catch (_e) {
+            alert('Ошибка при генерации ссылки');
+        } finally {
+            setIsGeneratingLink(false);
+        }
     }
 
     return (
@@ -341,6 +368,9 @@ export function MatchDetailPage() {
                                 <a href={`https://t.me/+${stripPhone(buyer.phone)}`} target="_blank" rel="noopener noreferrer" className="btn btn-ghost" style={{ color: '#0088cc', padding: '0 12px' }}>
                                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z"/></svg>
                                 </a>
+                                <button className="btn btn-ghost" style={{ flex: 1, color: 'var(--primary)', fontWeight: 700 }} onClick={() => setIsMsgModalOpen(true)}>
+                                    <Send size={18} style={{ marginRight: 6 }} /> По шаблону
+                                </button>
                             </div>
                         )}
                         {seller && (
@@ -357,6 +387,9 @@ export function MatchDetailPage() {
                         {match.status === 'showing_done' && (
                             <button className="btn btn-success btn-full" onClick={handleDeal}>Закрыть сделку</button>
                         )}
+                        <button className="btn btn-secondary btn-full" onClick={handleGeneratePublicLink} disabled={isGeneratingLink}>
+                            <Share2 size={18} style={{ marginRight: 6 }} /> {isGeneratingLink ? 'Генерация...' : 'Публичная ссылка'}
+                        </button>
                         <button className="btn btn-danger btn-full" onClick={handleReject}>Отклонить</button>
                     </div>
                 )}
@@ -367,6 +400,19 @@ export function MatchDetailPage() {
                     </div>
                 )}
             </div>
+
+            <MessageTemplateModal 
+                isOpen={isMsgModalOpen} 
+                onClose={() => setIsMsgModalOpen(false)}
+                context={{
+                    client_name: buyer?.full_name || 'Клиент',
+                    property_address: prop?.address || prop?.city || 'Объект',
+                    property_price: formatNumber(prop?.price || 0),
+                    property_link: publicLink || 'Ссылка будет здесь',
+                    agent_name: user?.full_name || 'Ваш риелтор',
+                    phone: buyer?.phone || ''
+                }}
+            />
         </div>
     );
 }

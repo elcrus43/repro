@@ -41,12 +41,32 @@ async def get_public_property(slug: str, request: Request, db: Session = Depends
         "custom_note": link.custom_note
     }
 
-@router.post("/{slug}/track")
-async def track_engagement(slug: str, data: dict, db: Session = Depends(get_db)):
-    """Endpoint for tracking engagement (duration, clicks) from the frontend"""
-    link = db.query(PropertyLink).filter(PropertyLink.slug == slug).first()
-    if not link:
-        return {"status": "ignored"}
+@router.post("/generate")
+async def generate_link(data: dict, db: Session = Depends(get_db)):
+    """Create a new public link for a property"""
+    property_id = data.get("property_id")
+    user_id = data.get("user_id", "00000000-0000-0000-0000-000000000000")
+    
+    if not property_id:
+        raise HTTPException(status_code=400, detail="property_id is required")
         
-    # Engagement logic...
-    return {"status": "ok"}
+    # Check if link already exists
+    existing = db.query(PropertyLink).filter(PropertyLink.property_id == property_id).first()
+    if existing:
+        return {"slug": existing.slug}
+        
+    # Generate a simple short slug
+    import string
+    import random
+    new_slug = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    
+    link = PropertyLink(
+        property_id=property_id,
+        user_id=user_id,
+        slug=new_slug,
+        is_active=True
+    )
+    db.add(link)
+    db.commit()
+    
+    return {"slug": new_slug}

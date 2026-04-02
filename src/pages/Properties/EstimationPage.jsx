@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Calculator, FileText, ExternalLink, Activity } from 'lucide-react';
+import { ChevronLeft, Calculator, FileText, ExternalLink } from 'lucide-react';
+import { API_BASE } from '../../config';
 
 export function EstimationPage() {
     const navigate = useNavigate();
@@ -21,7 +22,7 @@ export function EstimationPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await fetch('http://localhost:8000/api/v1/estimation/calculate', {
+            const response = await fetch(`${API_BASE}/api/v1/estimation/calculate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params)
@@ -38,7 +39,7 @@ export function EstimationPage() {
 
     const downloadPdf = async () => {
         try {
-            const response = await fetch('http://localhost:8000/api/v1/estimation/pdf', {
+            const response = await fetch(`${API_BASE}/api/v1/estimation/pdf`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(params)
@@ -49,7 +50,7 @@ export function EstimationPage() {
             a.href = url;
             a.download = 'estimation_report.pdf';
             a.click();
-        } catch (err) {
+        } catch (_err) {
             alert('Ошибка при скачивании PDF');
         }
     };

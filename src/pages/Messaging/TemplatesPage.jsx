@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, MessageSquare, Plus, Send, Trash2, Loader2 } from 'lucide-react';
+import { API_BASE as API_ROOT } from '../../config';
 
-const API_BASE = 'http://localhost:8000/api/v1/messaging';
+const API_BASE = `${API_ROOT}/api/v1/messaging`;
 
 export function TemplatesPage() {
     const navigate = useNavigate();
@@ -38,7 +39,7 @@ export function TemplatesPage() {
             setShowNew(false);
             setNewTpl({ name: '', category: 'Common', body: '', channels: ['whatsapp'] });
             fetchTemplates();
-        } catch (e) {
+        } catch (_e) {
             alert('Ошибка при создании шаблона');
         }
     };
@@ -48,7 +49,7 @@ export function TemplatesPage() {
         try {
             await fetch(`${API_BASE}/templates/${id}`, { method: 'DELETE' });
             fetchTemplates();
-        } catch (e) {
+        } catch (_e) {
             alert('Ошибка при удалении');
         }
     };
@@ -81,7 +82,7 @@ export function TemplatesPage() {
                         <div className="form-group">
                             <label>Текст сообщения</label>
                             <textarea rows="4" value={newTpl.body} onChange={e => setNewTpl({...newTpl, body: e.target.value})} placeholder="Здравствуйте, {{client_name}}..." />
-                            <small style={{ color: 'var(--text-secondary)' }}>Используйте {{variable}} для подстановки данных</small>
+                            <small style={{ color: 'var(--text-secondary)' }}>Используйте {'{{variable}}'} для подстановки данных</small>
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                             <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreate}>Создать</button>

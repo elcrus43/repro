@@ -8,12 +8,11 @@ import { Building2, Users, Sparkles, CheckSquare, UserCircle } from 'lucide-reac
 // Pages
 import { LoginPage, RegisterPage }                                from './pages/Auth/AuthPages';
 import { DashboardPage }                                          from './pages/Dashboard/DashboardPage';
-import { ClientsPage, ClientCardPage, ClientFormPage }            from './pages/Clients/ClientsPages';
-import { PropertiesPage, PropertyCardPage, PropertyFormPage }     from './pages/Properties/PropertiesPages';
-import { RequestsPage, RequestCardPage, RequestFormPage }         from './pages/Requests/RequestsPages';
+import { ClientsPage, ClientCardPage, ClientFormPage }            from './pages/Clients';
+import { PropertiesPage, PropertyCardPage, PropertyFormPage, PublicPropertyPage }     from './pages/Properties';
+import { RequestsPage, RequestCardPage, RequestFormPage }         from './pages/Requests';
 import { MatchesPage, MatchDetailPage }                           from './pages/Matches/MatchesPages';
-import { ShowingsPage }                                           from './pages/Showings/ShowingsPage';
-import { ShowFormPage }                                           from './pages/Showings/ShowFormPage';
+import { ShowingsPage, ShowFormPage, ShowDetailsPage }       from './pages/Showings';
 import { TasksPage }                                              from './pages/Tasks/TasksPage';
 import { ProfilePage }                                            from './pages/Profile/ProfilePage';
 import { EstimationPage }                                         from './pages/Properties/EstimationPage';
@@ -84,7 +83,7 @@ function RequireAuth({ children }) {
 
 function AppLayout({ children }) {
   const { pathname } = useLocation();
-  const noNav = ['/login', '/register'].includes(pathname);
+  const noNav = ['/login', '/register'].includes(pathname) || pathname.startsWith('/p/');
 
   return (
     <div className="app-layout">
@@ -135,12 +134,14 @@ function AppRoutes() {
         {/* Showings */}
         <Route path="/showings"             element={<RequireAuth><ShowingsPage /></RequireAuth>} />
         <Route path="/showings/new"         element={<RequireAuth><ShowFormPage /></RequireAuth>} />
+        <Route path="/showings/:id"         element={<RequireAuth><ShowDetailsPage /></RequireAuth>} />
 
         {/* Tasks */}
         <Route path="/tasks"                element={<RequireAuth><TasksPage /></RequireAuth>} />
 
         {/* Messaging */}
         <Route path="/templates"            element={<RequireAuth><TemplatesPage /></RequireAuth>} />
+        <Route path="/p/:slug"              element={<PublicPropertyPage />} />
 
         {/* Profile */}
         <Route path="/profile"              element={<RequireAuth><ProfilePage /></RequireAuth>} />
