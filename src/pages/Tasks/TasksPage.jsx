@@ -270,3 +270,6 @@ export function TasksPage() {
         </div>
     );
 }
+
+// Default export for lazy loading
+export { TasksPage as default };

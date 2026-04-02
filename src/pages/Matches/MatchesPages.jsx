@@ -416,3 +416,6 @@ export function MatchDetailPage() {
         </div>
     );
 }
+
+// Default export for lazy loading
+export { MatchesPage as default };

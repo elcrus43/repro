@@ -211,3 +211,6 @@ export function TemplatesPage() {
         </div>
     );
 }
+
+// Default export for lazy loading
+export { TemplatesPage as default };

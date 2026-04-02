@@ -457,3 +457,6 @@ export function ProfilePage() {
         </div>
     );
 }
+
+// Default export for lazy loading
+export { ProfilePage as default };

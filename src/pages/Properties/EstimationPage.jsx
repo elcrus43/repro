@@ -66,30 +66,30 @@ export function EstimationPage() {
                 <div className="card">
                     <div className="form-group">
                         <label>Город</label>
-                        <input type="text" value={params.city} onChange={e => setParams({...params, city: e.target.value})} />
+                        <input type="text" value={params.city} onChange={e => setParams({ ...params, city: e.target.value })} />
                     </div>
                     <div className="form-group">
                         <label>Район</label>
-                        <input type="text" value={params.district} onChange={e => setParams({...params, district: e.target.value})} placeholder="Например, Пресненский" />
+                        <input type="text" value={params.district} onChange={e => setParams({ ...params, district: e.target.value })} placeholder="Например, Пресненский" />
                     </div>
                     <div className="form-row">
                         <div className="form-group" style={{ flex: 1 }}>
                             <label>Комнат</label>
-                            <input type="number" value={params.rooms} onChange={e => setParams({...params, rooms: parseInt(e.target.value)})} />
+                            <input type="number" value={params.rooms} onChange={e => setParams({ ...params, rooms: parseInt(e.target.value) })} />
                         </div>
                         <div className="form-group" style={{ flex: 1 }}>
                             <label>Площадь (м²)</label>
-                            <input type="number" value={params.total_area} onChange={e => setParams({...params, total_area: parseFloat(e.target.value)})} />
+                            <input type="number" value={params.total_area} onChange={e => setParams({ ...params, total_area: parseFloat(e.target.value) })} />
                         </div>
                     </div>
                     <div className="form-row">
                         <div className="form-group" style={{ flex: 1 }}>
                             <label>Этаж</label>
-                            <input type="number" value={params.floor} onChange={e => setParams({...params, floor: parseInt(e.target.value)})} />
+                            <input type="number" value={params.floor} onChange={e => setParams({ ...params, floor: parseInt(e.target.value) })} />
                         </div>
                         <div className="form-group" style={{ flex: 1 }}>
                             <label>Всего этажей</label>
-                            <input type="number" value={params.total_floors} onChange={e => setParams({...params, total_floors: parseInt(e.target.value)})} />
+                            <input type="number" value={params.total_floors} onChange={e => setParams({ ...params, total_floors: parseInt(e.target.value) })} />
                         </div>
                     </div>
                     <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={calculate} disabled={loading}>
@@ -149,3 +149,6 @@ export function EstimationPage() {
         </div>
     );
 }
+
+// Default export for lazy loading
+export { EstimationPage as default };
