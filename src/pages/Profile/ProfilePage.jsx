@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2, UserCheck, UserX } from 'lucide-react';
-import * as XLSX from 'xlsx';
+
+// Lazy load XLSX for code splitting - loaded only when export is needed
+const loadXLSX = () => import('xlsx');
 
 
 export function ProfilePage() {
@@ -101,6 +103,9 @@ export function ProfilePage() {
         if (!category) return;
 
         try {
+            // Lazy load XLSX library
+            const XLSX = await loadXLSX();
+
             let data = [];
             let filename = 'export.xlsx';
 

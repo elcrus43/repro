@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, MapPin } from 'lucide-react';
+import { Edit2, Trash2, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 
 export function ListPage() {
@@ -14,21 +15,27 @@ export function ListPage() {
     const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
 
-    const properties = state.properties
-        .filter(p => scope === 'all' || p.realtor_id === user?.id)
-        .filter(p => {
-            if (filter === 'sale') return p.deal_type === 'sale';
-            if (filter === 'rent') return p.deal_type === 'rent';
-            if (filter === 'active') return p.status === 'active';
-            return true;
-        })
-        .filter(p => {
-            if (!search) return true;
-            const client = state.clients.find(c => c.id === p.client_id);
-            return (p.address || '').toLowerCase().includes(search.toLowerCase()) ||
-                (p.city || '').toLowerCase().includes(search.toLowerCase()) ||
-                (client?.full_name || '').toLowerCase().includes(search.toLowerCase());
-        });
+    // Memoized filtered properties
+    const filteredProperties = useMemo(() => {
+        return state.properties
+            .filter(p => scope === 'all' || p.realtor_id === user?.id)
+            .filter(p => {
+                if (filter === 'sale') return p.deal_type === 'sale';
+                if (filter === 'rent') return p.deal_type === 'rent';
+                if (filter === 'active') return p.status === 'active';
+                return true;
+            })
+            .filter(p => {
+                if (!search) return true;
+                const client = state.clients.find(c => c.id === p.client_id);
+                return (p.address || '').toLowerCase().includes(search.toLowerCase()) ||
+                    (p.city || '').toLowerCase().includes(search.toLowerCase()) ||
+                    (client?.full_name || '').toLowerCase().includes(search.toLowerCase());
+            });
+    }, [state.properties, scope, user?.id, filter, search, state.clients]);
+
+    // Pagination - show 20 items per page
+    const { paginatedItems: properties, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filteredProperties, 20);
 
     const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
@@ -100,6 +107,31 @@ export function ListPage() {
                         </div>
                     );
                 })}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, paddingBottom: 80 }}>
+                        <button
+                            className="btn btn-outline"
+                            onClick={prevPage}
+                            disabled={!hasPrev}
+                            style={{ padding: '8px 16px', opacity: hasPrev ? 1 : 0.5 }}
+                        >
+                            <ChevronLeft size={18} /> Назад
+                        </button>
+                        <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                            Страница {currentPage} из {totalPages}
+                        </span>
+                        <button
+                            className="btn btn-outline"
+                            onClick={nextPage}
+                            disabled={!hasNext}
+                            style={{ padding: '8px 16px', opacity: hasNext ? 1 : 0.5 }}
+                        >
+                            Вперёд <ChevronRight size={18} />
+                        </button>
+                    </div>
+                )}
             </div>
             <button className="fab" onClick={() => navigate('/properties/new')}>+</button>
         </div>

@@ -1,9 +1,18 @@
-import Docxtemplater from "docxtemplater";
-import PizZip from "pizzip";
-import { saveAs } from "file-saver";
+// Lazy load docxtemplater and dependencies - loaded only when document generation is needed
+const loadDocxtemplater = async () => {
+    const [{ default: Docxtemplater }, { default: PizZip }, { saveAs }] = await Promise.all([
+        import('docxtemplater'),
+        import('pizzip'),
+        import('file-saver')
+    ]);
+    return { Docxtemplater, PizZip, saveAs };
+};
 
 export async function generateDocx(templateUrl, data, outputName) {
     try {
+        // Lazy load dependencies
+        const { Docxtemplater, PizZip, saveAs } = await loadDocxtemplater();
+
         // Fetch the template document
         const response = await fetch(templateUrl);
         if (!response.ok) {

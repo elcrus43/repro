@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
@@ -11,18 +11,44 @@ export function DashboardPage() {
     if (!user) return null;
 
     const isAdmin = user.role === 'admin';
-    const myProperties = state.properties.filter(p => p.status === 'active');
-    const myClients = state.clients.filter(c => isAdmin || c.realtor_id === user.id);
-    const myRequests = state.requests.filter(r => (isAdmin || r.realtor_id === user.id) && r.status === 'active');
-    const myMatches = state.matches.filter(m => {
-        if (isAdmin) return true;
-        const req = state.requests.find(r => r.id === m.request_id);
-        return req?.realtor_id === user.id;
-    });
-    const newMatches = myMatches.filter(m => m.status === 'new').sort((a, b) => b.score - a.score).slice(0, 5);
+
+    // Memoized calculations to prevent re-computation on every render
+    const myProperties = useMemo(() =>
+        state.properties.filter(p => p.status === 'active'),
+        [state.properties]
+    );
+
+    const myClients = useMemo(() =>
+        state.clients.filter(c => isAdmin || c.realtor_id === user.id),
+        [state.clients, isAdmin, user.id]
+    );
+
+    const myRequests = useMemo(() =>
+        state.requests.filter(r => (isAdmin || r.realtor_id === user.id) && r.status === 'active'),
+        [state.requests, isAdmin, user.id]
+    );
+
+    const myMatches = useMemo(() => {
+        if (isAdmin) return state.matches;
+        return state.matches.filter(m => {
+            const req = state.requests.find(r => r.id === m.request_id);
+            return req?.realtor_id === user.id;
+        });
+    }, [state.matches, state.requests, isAdmin, user.id]);
+
+    const newMatches = useMemo(() =>
+        myMatches
+            .filter(m => m.status === 'new')
+            .sort((a, b) => b.score - a.score)
+            .slice(0, 5),
+        [myMatches]
+    );
 
     const today = new Date().toISOString().slice(0, 10);
-    const todayTasks = state.tasks.filter(t => (isAdmin || t.realtor_id === user.id) && t.due_date?.startsWith(today) && t.status === 'pending');
+    const todayTasks = useMemo(() =>
+        state.tasks.filter(t => (isAdmin || t.realtor_id === user.id) && t.due_date?.startsWith(today) && t.status === 'pending'),
+        [state.tasks, isAdmin, user.id, today]
+    );
 
     return (
         <div className="page fade-in">
@@ -148,18 +174,18 @@ export function DashboardPage() {
                                 <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Сред. цикл сделки</div>
                             </div>
                         </div>
-                        
+
                         {/* CSS-only Chart Simulation */}
                         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 60, marginTop: 8 }}>
-                             {[40, 70, 45, 90, 65, 80, 50].map((h, i) => (
-                                 <div key={i} style={{ 
-                                     flex: 1, 
-                                     height: `${h}%`, 
-                                     background: i === 3 ? 'var(--primary)' : 'var(--primary-light)', 
-                                     borderRadius: '4px 4px 0 0',
-                                     transition: 'height 1s ease'
-                                 }} />
-                             ))}
+                            {[40, 70, 45, 90, 65, 80, 50].map((h, i) => (
+                                <div key={i} style={{
+                                    flex: 1,
+                                    height: `${h}%`,
+                                    background: i === 3 ? 'var(--primary)' : 'var(--primary-light)',
+                                    borderRadius: '4px 4px 0 0',
+                                    transition: 'height 1s ease'
+                                }} />
+                            ))}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: 'var(--text-secondary)' }}>
                             <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span>
@@ -168,7 +194,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* Admin stats... (skipped for brevity but keeps structure) */}
-                
+
                 {/* Quick actions */}
                 <div style={{ marginTop: 24 }}>
                     <div className="section-title" style={{ marginBottom: 8 }}>Быстрые действия</div>

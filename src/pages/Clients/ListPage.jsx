@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
-import { Edit2, Trash2 } from 'lucide-react';
+import { usePagination } from '../../hooks/usePagination';
+import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -11,22 +12,27 @@ export function ListPage() {
     const isAdmin = user?.role === 'admin';
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
-    // Admin sees all clients by default; realtors see only their own
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
 
-    const clients = state.clients
-        .filter(c => scope === 'all' || c.realtor_id === user?.id)
-        .filter(c => {
-            if (filter === 'buyer') return c.client_types?.includes('buyer');
-            if (filter === 'seller') return c.client_types?.includes('seller');
-            if (filter === 'landlord') return c.client_types?.includes('landlord');
-            if (filter === 'tenant') return c.client_types?.includes('tenant');
-            if (filter === 'active') return c.status === 'active';
-            return true;
-        })
-        .filter(c =>
-            !search || c.full_name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
-        );
+    // Memoized filtered clients
+    const filteredClients = useMemo(() => {
+        return state.clients
+            .filter(c => scope === 'all' || c.realtor_id === user?.id)
+            .filter(c => {
+                if (filter === 'buyer') return c.client_types?.includes('buyer');
+                if (filter === 'seller') return c.client_types?.includes('seller');
+                if (filter === 'landlord') return c.client_types?.includes('landlord');
+                if (filter === 'tenant') return c.client_types?.includes('tenant');
+                if (filter === 'active') return c.status === 'active';
+                return true;
+            })
+            .filter(c =>
+                !search || c.full_name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
+            );
+    }, [state.clients, scope, user?.id, filter, search]);
+
+    // Pagination - show 20 items per page
+    const { paginatedItems: clients, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filteredClients, 20);
 
     const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
@@ -111,6 +117,31 @@ export function ListPage() {
                         </div>
                     );
                 })}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, paddingBottom: 80 }}>
+                        <button
+                            className="btn btn-outline"
+                            onClick={prevPage}
+                            disabled={!hasPrev}
+                            style={{ padding: '8px 16px', opacity: hasPrev ? 1 : 0.5 }}
+                        >
+                            <ChevronLeft size={18} /> Назад
+                        </button>
+                        <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                            Страница {currentPage} из {totalPages}
+                        </span>
+                        <button
+                            className="btn btn-outline"
+                            onClick={nextPage}
+                            disabled={!hasNext}
+                            style={{ padding: '8px 16px', opacity: hasNext ? 1 : 0.5 }}
+                        >
+                            Вперёд <ChevronRight size={18} />
+                        </button>
+                    </div>
+                )}
             </div>
 
             <button className="fab" onClick={() => navigate('/clients/new')}>+</button>

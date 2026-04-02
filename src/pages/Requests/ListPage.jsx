@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 
 export function ListPage() {
@@ -14,19 +15,25 @@ export function ListPage() {
     const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
 
-    const requests = state.requests
-        .filter(r => scope === 'all' || r.realtor_id === user?.id)
-        .filter(r => {
-            if (filter === 'active') return r.status === 'active';
-            if (filter === 'paused') return r.status === 'paused';
-            return true;
-        })
-        .filter(r => {
-            if (!search) return true;
-            const client = state.clients.find(c => c.id === r.client_id);
-            return client?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-                r.property_types?.some(t => PROPERTY_TYPES[t]?.toLowerCase().includes(search.toLowerCase()));
-        });
+    // Memoized filtered requests
+    const filteredRequests = useMemo(() => {
+        return state.requests
+            .filter(r => scope === 'all' || r.realtor_id === user?.id)
+            .filter(r => {
+                if (filter === 'active') return r.status === 'active';
+                if (filter === 'paused') return r.status === 'paused';
+                return true;
+            })
+            .filter(r => {
+                if (!search) return true;
+                const client = state.clients.find(c => c.id === r.client_id);
+                return client?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+                    r.property_types?.some(t => PROPERTY_TYPES[t]?.toLowerCase().includes(search.toLowerCase()));
+            });
+    }, [state.requests, scope, user?.id, filter, search, state.clients]);
+
+    // Pagination - show 20 items per page
+    const { paginatedItems: requests, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filteredRequests, 20);
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
@@ -99,6 +106,31 @@ export function ListPage() {
                         </div>
                     );
                 })}
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, paddingBottom: 80 }}>
+                        <button
+                            className="btn btn-outline"
+                            onClick={prevPage}
+                            disabled={!hasPrev}
+                            style={{ padding: '8px 16px', opacity: hasPrev ? 1 : 0.5 }}
+                        >
+                            <ChevronLeft size={18} /> Назад
+                        </button>
+                        <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
+                            Страница {currentPage} из {totalPages}
+                        </span>
+                        <button
+                            className="btn btn-outline"
+                            onClick={nextPage}
+                            disabled={!hasNext}
+                            style={{ padding: '8px 16px', opacity: hasNext ? 1 : 0.5 }}
+                        >
+                            Вперёд <ChevronRight size={18} />
+                        </button>
+                    </div>
+                )}
             </div>
             <button className="fab" onClick={() => navigate('/requests/new')}>+</button>
         </div>
