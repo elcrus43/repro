@@ -1,10 +1,185 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, Sparkles, User, MapPin, Building2, Calendar, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Edit2, Trash2, Sparkles, MapPin, Building2, TrendingUp, Calculator, FileText, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
+import { API_BASE } from '../../config';
 
+/* ─── Inline Estimation Widget ──────────────────────────────────────────────── */
+function EstimationWidget({ prop }) {
+    const [open, setOpen] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [result, setResult] = useState(null);
+    const [params, setParams] = useState({
+        city: prop?.city || 'Киров',
+        district: prop?.district || '',
+        rooms: prop?.rooms || 1,
+        total_area: prop?.area_total || 40,
+        floor: prop?.floor || 1,
+        total_floors: prop?.floors_total || prop?.floor_total || 9,
+        deal_type: prop?.deal_type === 'rent' ? 'RENT' : 'SALE',
+    });
+
+    const calculate = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await fetch(`${API_BASE}/api/v1/estimation/calculate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(params),
+            });
+            if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
+            const data = await response.json();
+            setResult(data);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const downloadPdf = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/api/v1/estimation/pdf`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(params),
+            });
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `estimation_${prop?.address || 'report'}.pdf`;
+            a.click();
+        } catch (_err) {
+            alert('Ошибка при скачивании PDF');
+        }
+    };
+
+    return (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+            <button
+                style={{
+                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'inherit',
+                }}
+                onClick={() => setOpen(o => !o)}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ background: 'var(--primary-light)', padding: 8, borderRadius: 8, color: 'var(--primary)' }}>
+                        <Calculator size={18} />
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                        <div style={{ fontWeight: 700, fontSize: 14 }}>Оценка по аналогам</div>
+                        {result ? (
+                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
+                                {result.estimated_avg.toLocaleString()} ₽
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Нажмите для расчёта</div>
+                        )}
+                    </div>
+                </div>
+                {open ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
+            </button>
+
+            {open && (
+                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-light)' }}>
+                    {/* Params — editable */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
+                        <div className="form-group">
+                            <label className="form-label">Город</label>
+                            <input className="form-input" value={params.city} onChange={e => setParams({ ...params, city: e.target.value })} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Район</label>
+                            <input className="form-input" value={params.district} onChange={e => setParams({ ...params, district: e.target.value })} placeholder="Октябрьский" />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Комнат</label>
+                            <input className="form-input" type="number" value={params.rooms} onChange={e => setParams({ ...params, rooms: parseInt(e.target.value) || 0 })} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Площадь м²</label>
+                            <input className="form-input" type="number" value={params.total_area} onChange={e => setParams({ ...params, total_area: parseFloat(e.target.value) || 0 })} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Этаж</label>
+                            <input className="form-input" type="number" value={params.floor} onChange={e => setParams({ ...params, floor: parseInt(e.target.value) || 1 })} />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label">Всего этажей</label>
+                            <input className="form-input" type="number" value={params.total_floors} onChange={e => setParams({ ...params, total_floors: parseInt(e.target.value) || 1 })} />
+                        </div>
+                    </div>
+
+                    <button
+                        className="btn btn-primary"
+                        style={{ width: '100%', marginTop: 12 }}
+                        onClick={calculate}
+                        disabled={loading}
+                    >
+                        {loading ? 'Идёт расчёт...' : <><Calculator size={16} /> Рассчитать стоимость</>}
+                    </button>
+
+                    {error && (
+                        <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--danger-light)', borderRadius: 8, fontSize: 13, color: 'var(--danger)' }}>
+                            {error}
+                        </div>
+                    )}
+
+                    {result && (
+                        <div style={{ marginTop: 16 }} className="fade-in">
+                            <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '16px', textAlign: 'center', marginBottom: 12 }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Оценочная стоимость</div>
+                                <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--primary)' }}>
+                                    {result.estimated_avg.toLocaleString()} ₽
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                                    <span>от {result.estimated_min.toLocaleString()}</span>
+                                    <span>до {result.estimated_max.toLocaleString()}</span>
+                                </div>
+                                <div style={{ marginTop: 10 }}>
+                                    <span className={`badge badge-${result.confidence === 'HIGH' ? 'success' : 'warning'}`} style={{ fontSize: 11 }}>
+                                        {result.confidence === 'HIGH' ? 'Высокая точность' : 'Средняя точность'} · {result.analogs_count} аналогов
+                                    </span>
+                                </div>
+                            </div>
+
+                            <button className="btn btn-secondary" style={{ width: '100%', marginBottom: 12 }} onClick={downloadPdf}>
+                                <FileText size={16} /> Скачать PDF отчёт
+                            </button>
+
+                            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>Аналоги</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                {result.analogs.map((a, i) => (
+                                    <div key={i} className="list-row" onClick={() => window.open(a.source_url, '_blank')}>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontWeight: 600, fontSize: 14 }}>{a.price.toLocaleString()} ₽</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                {a.rooms}к · {a.total_area}м² · {a.floor}/{a.total_floors} эт.
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>{a.source}</div>
+                                            <ExternalLink size={12} style={{ marginTop: 4, opacity: 0.4 }} />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─── DetailsPage ────────────────────────────────────────────────────────────── */
 export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
@@ -64,20 +239,17 @@ export function DetailsPage() {
                         </div>
                     </div>
 
-                    <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
-                        <button className="btn btn-primary flex-1 flex items-center justify-center gap-8" onClick={() => navigate(`/matches?property_id=${id}`)}>
-                            <Sparkles size={18} /> Матчи ({matches.length})
-                        </button>
-                        <button className="btn btn-outline flex items-center justify-center gap-8" onClick={() => navigate(`/properties/${id}/estimate`)}>
-                            <TrendingUp size={18} /> Оценка
+                    <div style={{ padding: '0 16px 0', display: 'flex', gap: 8 }}>
+                        <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => navigate(`/matches?property_id=${id}`)}>
+                            <Sparkles size={18} /> Совпадения ({matches.length})
                         </button>
                     </div>
                 </div>
 
                 {/* Client Link */}
-                <div className="card" onClick={() => navigate(`/clients/${client?.id}`)}>
+                <div className="card" onClick={() => navigate(`/clients/${client?.id}`)} style={{ cursor: 'pointer' }}>
                     <div className="section-title">Собственник</div>
-                    <div className="flex items-center gap-12">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
                         <div className="avatar">{(client?.full_name || '?')[0]}</div>
                         <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 700 }}>{client?.full_name}</div>
@@ -90,7 +262,7 @@ export function DetailsPage() {
                 {/* Features */}
                 <div className="card">
                     <div className="section-title">Параметры</div>
-                    <div className="info-grid">
+                    <div className="info-grid" style={{ marginTop: 8 }}>
                         <div className="info-row">
                             <span className="info-key"><Building2 size={14} /> Тип объекта</span>
                             <span className="info-val">{PROPERTY_TYPES[prop.property_type]}</span>
@@ -118,6 +290,9 @@ export function DetailsPage() {
                     </div>
                 </div>
 
+                {/* Estimation Widget — встроено в карточку */}
+                <EstimationWidget prop={prop} />
+
                 {/* Showings */}
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
@@ -131,7 +306,7 @@ export function DetailsPage() {
                             {showings.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3).map(s => {
                                 const buyer = state.clients.find(c => c.id === s.client_id);
                                 return (
-                                    <div key={s.id} onClick={() => navigate('/showings')} style={{ padding: '10px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border-light)' }}>
+                                    <div key={s.id} onClick={() => navigate('/showings')} style={{ padding: '10px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                                             <span style={{ fontSize: 13, fontWeight: 700 }}>{buyer?.full_name || 'Покупатель'}</span>
                                             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(s.date).toLocaleDateString('ru-RU')}</span>
@@ -143,7 +318,7 @@ export function DetailsPage() {
                                 );
                             })}
                             {showings.length > 3 && (
-                                <button className="btn btn-link btn-sm" onClick={() => navigate('/showings')}>Смотреть всю историю</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/showings')}>Смотреть всю историю</button>
                             )}
                         </div>
                     )}
@@ -161,7 +336,7 @@ export function DetailsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {tasks.map(t => (
                                 <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)' }}>
-                                    <div style={{ width: 14, height: 14, borderRadius: 10, border: `2px solid ${t.status === 'done' ? 'var(--success)' : '#ccc'}`, background: t.status === 'done' ? 'var(--success)' : 'transparent' }} />
+                                    <div style={{ width: 14, height: 14, borderRadius: 10, border: `2px solid ${t.status === 'done' ? 'var(--success)' : '#ccc'}`, background: t.status === 'done' ? 'var(--success)' : 'transparent', flexShrink: 0 }} />
                                     <div style={{ fontSize: 13, fontWeight: 600, textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? 'var(--text-muted)' : 'var(--text)' }}>{t.title}</div>
                                 </div>
                             ))}
@@ -173,7 +348,7 @@ export function DetailsPage() {
                 {prop.notes && (
                     <div className="card">
                         <div className="section-title">Описание</div>
-                        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)' }}>{prop.notes}</div>
+                        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', marginTop: 8 }}>{prop.notes}</div>
                     </div>
                 )}
             </div>

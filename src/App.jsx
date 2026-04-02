@@ -33,7 +33,7 @@ function BottomNav() {
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Продажи' },
     { path: '/clients',    icon: <Users size={22} />,     label: 'Клиенты' },
-    { path: '/matches',    icon: <Sparkles size={22} />,  label: 'Матчи',   badge: newMatchCount > 0 },
+    { path: '/matches',    icon: <Sparkles size={22} />,  label: 'Совпадения', badge: newMatchCount > 0 },
     { path: '/tasks',      icon: <CheckSquare size={22} />, label: 'Задачи' },
     { path: '/profile',    icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
@@ -45,7 +45,7 @@ function BottomNav() {
       {tabs.map(tab => (
         <button
           key={tab.path}
-          className={`nav-tab ${isActive(tab.path) ? 'active' : ''}`}
+          className={`nav-item ${isActive(tab.path) ? 'active' : ''}`}
           onClick={() => navigate(tab.path)}
         >
           <span className="nav-icon">
@@ -64,8 +64,8 @@ function BottomNav() {
 function LoadingScreen() {
   return (
     <div className="loading-screen">
-      <div className="loading-logo">R</div>
-      <p>Загрузка...</p>
+      <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, color: 'var(--primary)' }}>REM</div>
+      <p style={{ marginTop: 8, color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</p>
     </div>
   );
 }

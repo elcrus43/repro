@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Calculator, MessageSquare, Sparkles, TrendingUp, CheckSquare, UserCircle } from 'lucide-react';
+import { MessageSquare, Sparkles, TrendingUp, CheckSquare } from 'lucide-react';
 
 export function DashboardPage() {
     const { state } = useApp();
@@ -60,23 +60,14 @@ export function DashboardPage() {
                     </div>
                     <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/matches')}>
                         <div className="stat-value">{formatNumber(myMatches.length)}</div>
-                        <div className="stat-label">Матчей</div>
+                        <div className="stat-label">Совпадений</div>
                     </div>
                 </div>
 
                 {/* New CRM Modules Quick Access */}
-                <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div className="card" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => navigate('/estimation')}>
-                        <div style={{ background: 'var(--primary-light)', padding: 10, borderRadius: 10, color: 'var(--primary)' }}>
-                            <Calculator size={22} />
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 13, fontWeight: 700 }}>Оценка</div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>По аналогам</div>
-                        </div>
-                    </div>
+                <div style={{ marginTop: 16 }}>
                     <div className="card" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => navigate('/templates')}>
-                        <div style={{ background: 'var(--bg-secondary)', padding: 10, borderRadius: 10, color: 'var(--text)' }}>
+                        <div style={{ background: 'var(--primary-light)', padding: 10, borderRadius: 10, color: 'var(--primary)' }}>
                             <MessageSquare size={22} />
                         </div>
                         <div>
