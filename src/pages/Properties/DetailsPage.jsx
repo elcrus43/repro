@@ -2,62 +2,34 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, Sparkles, MapPin, Building2, TrendingUp, Calculator, FileText, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Trash2, Sparkles, Building2, Calculator, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
-import { API_BASE } from '../../config';
+import { CITIES, KIROV_DISTRICTS } from '../../data/location';
+import { estimateOffline } from '../../utils/estimation';
 
-/* ─── Inline Estimation Widget ──────────────────────────────────────────────── */
+/* ─── Inline Estimation Widget (offline, no backend needed) ─────────────────── */
 function EstimationWidget({ prop }) {
     const [open, setOpen] = useState(false);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
     const [result, setResult] = useState(null);
     const [params, setParams] = useState({
         city: prop?.city || 'Киров',
-        district: prop?.district || '',
-        rooms: prop?.rooms || 1,
-        total_area: prop?.area_total || 40,
-        floor: prop?.floor || 1,
-        total_floors: prop?.floors_total || prop?.floor_total || 9,
+        district: prop?.district || prop?.microdistrict || '',
+        rooms: prop?.rooms ?? 1,
+        total_area: prop?.area_total || 0,
         deal_type: prop?.deal_type === 'rent' ? 'RENT' : 'SALE',
     });
 
-    const calculate = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const response = await fetch(`${API_BASE}/api/v1/estimation/calculate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params),
-            });
-            if (!response.ok) throw new Error(`Ошибка сервера: ${response.status}`);
-            const data = await response.json();
-            setResult(data);
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
+    // Get all districts + microdistricts for current city
+    const districtOptions = params.city === 'Киров'
+        ? KIROV_DISTRICTS.flatMap(d => [d.name, ...d.microdistricts])
+        : [];
+
+    const calculate = () => {
+        const res = estimateOffline(params);
+        setResult(res);
     };
 
-    const downloadPdf = async () => {
-        try {
-            const response = await fetch(`${API_BASE}/api/v1/estimation/pdf`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(params),
-            });
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `estimation_${prop?.address || 'report'}.pdf`;
-            a.click();
-        } catch (_err) {
-            alert('Ошибка при скачивании PDF');
-        }
-    };
+    const avgPerM2 = result?.price_per_m2;
 
     return (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -76,8 +48,10 @@ function EstimationWidget({ prop }) {
                     <div style={{ textAlign: 'left' }}>
                         <div style={{ fontWeight: 700, fontSize: 14 }}>Оценка по аналогам</div>
                         {result ? (
-                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
+                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 700 }}>
                                 {result.estimated_avg.toLocaleString()} ₽
+                                {params.deal_type === 'RENT' ? '/мес' : ''}
+                                &nbsp;·&nbsp;{avgPerM2?.toLocaleString()} ₽/м²
                             </div>
                         ) : (
                             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Нажмите для расчёта</div>
@@ -89,31 +63,75 @@ function EstimationWidget({ prop }) {
 
             {open && (
                 <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-light)' }}>
-                    {/* Params — editable */}
+                    {/* Compact 3-field form */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
-                        <div className="form-group">
+                        {/* City */}
+                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                             <label className="form-label">Город</label>
-                            <input className="form-input" value={params.city} onChange={e => setParams({ ...params, city: e.target.value })} />
+                            <select
+                                className="form-select"
+                                value={params.city}
+                                onChange={e => setParams({ ...params, city: e.target.value, district: '' })}
+                            >
+                                {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
                         </div>
-                        <div className="form-group">
-                            <label className="form-label">Район</label>
-                            <input className="form-input" value={params.district} onChange={e => setParams({ ...params, district: e.target.value })} placeholder="Октябрьский" />
+
+                        {/* District / Location */}
+                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                            <label className="form-label">Район / Локация</label>
+                            {districtOptions.length > 0 ? (
+                                <select
+                                    className="form-select"
+                                    value={params.district}
+                                    onChange={e => setParams({ ...params, district: e.target.value })}
+                                >
+                                    <option value="">— Выбрать район —</option>
+                                    {KIROV_DISTRICTS.map(d => (
+                                        <optgroup key={d.name} label={d.name}>
+                                            <option value={d.name}>{d.name} (весь район)</option>
+                                            {d.microdistricts.map(m => (
+                                                <option key={m} value={m}>{m}</option>
+                                            ))}
+                                        </optgroup>
+                                    ))}
+                                </select>
+                            ) : (
+                                <input
+                                    className="form-input"
+                                    value={params.district}
+                                    onChange={e => setParams({ ...params, district: e.target.value })}
+                                    placeholder="Район (необязательно)"
+                                />
+                            )}
                         </div>
+
+                        {/* Rooms */}
                         <div className="form-group">
                             <label className="form-label">Комнат</label>
-                            <input className="form-input" type="number" value={params.rooms} onChange={e => setParams({ ...params, rooms: parseInt(e.target.value) || 0 })} />
+                            <select
+                                className="form-select"
+                                value={params.rooms}
+                                onChange={e => setParams({ ...params, rooms: parseInt(e.target.value) })}
+                            >
+                                <option value={0}>Студия</option>
+                                <option value={1}>1</option>
+                                <option value={2}>2</option>
+                                <option value={3}>3</option>
+                                <option value={4}>4+</option>
+                            </select>
                         </div>
+
+                        {/* Area — optional, use typical if blank */}
                         <div className="form-group">
-                            <label className="form-label">Площадь м²</label>
-                            <input className="form-input" type="number" value={params.total_area} onChange={e => setParams({ ...params, total_area: parseFloat(e.target.value) || 0 })} />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Этаж</label>
-                            <input className="form-input" type="number" value={params.floor} onChange={e => setParams({ ...params, floor: parseInt(e.target.value) || 1 })} />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label">Всего этажей</label>
-                            <input className="form-input" type="number" value={params.total_floors} onChange={e => setParams({ ...params, total_floors: parseInt(e.target.value) || 1 })} />
+                            <label className="form-label">Площадь м² <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)' }}>(необ.)</span></label>
+                            <input
+                                className="form-input"
+                                type="number"
+                                value={params.total_area || ''}
+                                onChange={e => setParams({ ...params, total_area: parseFloat(e.target.value) || 0 })}
+                                placeholder="Авто"
+                            />
                         </div>
                     </div>
 
@@ -121,55 +139,87 @@ function EstimationWidget({ prop }) {
                         className="btn btn-primary"
                         style={{ width: '100%', marginTop: 12 }}
                         onClick={calculate}
-                        disabled={loading}
                     >
-                        {loading ? 'Идёт расчёт...' : <><Calculator size={16} /> Рассчитать стоимость</>}
+                        <Calculator size={16} /> Рассчитать стоимость
                     </button>
-
-                    {error && (
-                        <div style={{ marginTop: 12, padding: '10px 12px', background: 'var(--danger-light)', borderRadius: 8, fontSize: 13, color: 'var(--danger)' }}>
-                            {error}
-                        </div>
-                    )}
 
                     {result && (
                         <div style={{ marginTop: 16 }} className="fade-in">
+                            {/* Result block */}
                             <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '16px', textAlign: 'center', marginBottom: 12 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>Оценочная стоимость</div>
-                                <div style={{ fontSize: 26, fontWeight: 900, color: 'var(--primary)' }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                                    Оценочная стоимость {params.deal_type === 'RENT' ? '(аренда/мес)' : '(продажа)'}
+                                </div>
+                                <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', letterSpacing: -1 }}>
                                     {result.estimated_avg.toLocaleString()} ₽
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'center', gap: 16, marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
                                     <span>от {result.estimated_min.toLocaleString()}</span>
                                     <span>до {result.estimated_max.toLocaleString()}</span>
                                 </div>
-                                <div style={{ marginTop: 10 }}>
+                                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
                                     <span className={`badge badge-${result.confidence === 'HIGH' ? 'success' : 'warning'}`} style={{ fontSize: 11 }}>
-                                        {result.confidence === 'HIGH' ? 'Высокая точность' : 'Средняя точность'} · {result.analogs_count} аналогов
+                                        {result.confidence === 'HIGH' ? '✓ Высокая точность' : '~ Средняя точность'}
                                     </span>
+                                    <span className="badge badge-muted" style={{ fontSize: 11 }}>
+                                        {result.price_per_m2.toLocaleString()} ₽/м²
+                                    </span>
+                                </div>
+                                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Расчёт на основе средних цен {new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
                                 </div>
                             </div>
 
-                            <button className="btn btn-secondary" style={{ width: '100%', marginBottom: 12 }} onClick={downloadPdf}>
-                                <FileText size={16} /> Скачать PDF отчёт
-                            </button>
+                            {/* Avito search link */}
+                            <a
+                                href={result.avito_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="btn btn-secondary"
+                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, textDecoration: 'none' }}
+                            >
+                                <ExternalLink size={16} />
+                                Смотреть объявления на Авито
+                            </a>
 
-                            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>Аналоги</div>
+                            {/* Analogs list */}
+                            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                                Аналогичные объявления
+                            </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {result.analogs.map((a, i) => (
-                                    <div key={i} className="list-row" onClick={() => window.open(a.source_url, '_blank')}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600, fontSize: 14 }}>{a.price.toLocaleString()} ₽</div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                                {a.rooms}к · {a.total_area}м² · {a.floor}/{a.total_floors} эт.
+                                {result.analogs.map(a => (
+                                    <a
+                                        key={a.id}
+                                        href={a.source_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ textDecoration: 'none' }}
+                                    >
+                                        <div className="list-row" style={{ cursor: 'pointer' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                                                    {a.price.toLocaleString()} ₽
+                                                    {params.deal_type === 'RENT' ? '/мес' : ''}
+                                                </div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                    {typeof a.rooms === 'number' ? `${a.rooms}к` : a.rooms} · {a.total_area} м² · {a.district}
+                                                </div>
+                                            </div>
+                                            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>
+                                                    {a.price_per_m2.toLocaleString()} ₽/м²
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
+                                                    {a.source} <ExternalLink size={10} />
+                                                </div>
                                             </div>
                                         </div>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', background: 'var(--bg)', padding: '2px 8px', borderRadius: 99 }}>{a.source}</div>
-                                            <ExternalLink size={12} style={{ marginTop: 4, opacity: 0.4 }} />
-                                        </div>
-                                    </div>
+                                    </a>
                                 ))}
+                            </div>
+
+                            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
+                                * Оценка носит справочный характер. Ссылки ведут на поиск Авито по аналогичным параметрам.
                             </div>
                         </div>
                     )}
@@ -190,7 +240,14 @@ export function DetailsPage() {
     const showings = state.showings.filter(s => s.property_id === id);
     const tasks = state.tasks.filter(t => t.property_id === id);
 
-    if (!prop) return <div className="page"><div className="topbar"><button className="topbar-back" onClick={() => navigate('/properties')}>←</button><span className="topbar-title">Объект не найден</span></div></div>;
+    if (!prop) return (
+        <div className="page">
+            <div className="topbar">
+                <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
+                <span className="topbar-title">Объект не найден</span>
+            </div>
+        </div>
+    );
 
     const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
@@ -201,6 +258,9 @@ export function DetailsPage() {
             navigate('/properties');
         }
     }
+
+    // Initials helper
+    const initials = (name) => name ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
 
     return (
         <div className="page fade-in">
@@ -240,31 +300,45 @@ export function DetailsPage() {
                     </div>
 
                     <div style={{ padding: '0 16px 0', display: 'flex', gap: 8 }}>
-                        <button className="btn btn-primary" style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }} onClick={() => navigate(`/matches?property_id=${id}`)}>
+                        <button
+                            className="btn btn-primary"
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                            onClick={() => navigate(`/matches?property_id=${id}`)}
+                        >
                             <Sparkles size={18} /> Совпадения ({matches.length})
                         </button>
                     </div>
                 </div>
 
-                {/* Client Link */}
-                <div className="card" onClick={() => navigate(`/clients/${client?.id}`)} style={{ cursor: 'pointer' }}>
-                    <div className="section-title">Собственник</div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                        <div className="avatar">{(client?.full_name || '?')[0]}</div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700 }}>{client?.full_name}</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{client?.phone}</div>
+                {/* Client */}
+                {client && (
+                    <div className="card" onClick={() => navigate(`/clients/${client.id}`)} style={{ cursor: 'pointer' }}>
+                        <div className="section-title">Собственник</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                            {/* Initials only — no photo */}
+                            <div style={{
+                                width: 40, height: 40, borderRadius: '50%',
+                                background: 'var(--border)', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 15, fontWeight: 700, flexShrink: 0, letterSpacing: 0.5,
+                            }}>
+                                {initials(client.full_name)}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontWeight: 700 }}>{client.full_name}</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{client.phone}</div>
+                            </div>
+                            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
                         </div>
-                        <span style={{ color: 'var(--primary)', fontSize: 14 }}>➔</span>
                     </div>
-                </div>
+                )}
 
                 {/* Features */}
                 <div className="card">
                     <div className="section-title">Параметры</div>
                     <div className="info-grid" style={{ marginTop: 8 }}>
                         <div className="info-row">
-                            <span className="info-key"><Building2 size={14} /> Тип объекта</span>
+                            <span className="info-key"><Building2 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Тип объекта</span>
                             <span className="info-val">{PROPERTY_TYPES[prop.property_type]}</span>
                         </div>
                         <div className="info-row">
@@ -290,17 +364,17 @@ export function DetailsPage() {
                     </div>
                 </div>
 
-                {/* Estimation Widget — встроено в карточку */}
+                {/* Estimation Widget */}
                 <EstimationWidget prop={prop} />
 
                 {/* Showings */}
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <div className="section-title" style={{ marginBottom: 0 }}>Показы ({showings.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/showings/new?property_id=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                        <button className="icon-btn" onClick={() => navigate(`/showings/new?property_id=${id}`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
                     </div>
                     {showings.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>На этот объект пока не было назначено показов</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет показов</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {showings.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3).map(s => {
@@ -312,14 +386,11 @@ export function DetailsPage() {
                                             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{new Date(s.date).toLocaleDateString('ru-RU')}</span>
                                         </div>
                                         <div style={{ fontSize: 12, color: s.feedback ? 'var(--text)' : 'var(--text-muted)', fontStyle: s.feedback ? 'normal' : 'italic' }}>
-                                            {s.feedback || 'Обратная связь не оставлена'}
+                                            {s.feedback || 'Без отзыва'}
                                         </div>
                                     </div>
                                 );
                             })}
-                            {showings.length > 3 && (
-                                <button className="btn btn-ghost btn-sm" onClick={() => navigate('/showings')}>Смотреть всю историю</button>
-                            )}
                         </div>
                     )}
                 </div>
@@ -328,10 +399,10 @@ export function DetailsPage() {
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <div className="section-title" style={{ marginBottom: 0 }}>Задачи ({tasks.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/tasks?property_id=${id}&action=new`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
+                        <button className="icon-btn" onClick={() => navigate(`/tasks?property_id=${id}&action=new`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
                     </div>
                     {tasks.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет задач по этому объекту</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет задач</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {tasks.map(t => (
@@ -344,7 +415,6 @@ export function DetailsPage() {
                     )}
                 </div>
 
-                {/* Notes */}
                 {prop.notes && (
                     <div className="card">
                         <div className="section-title">Описание</div>

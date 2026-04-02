@@ -854,14 +854,15 @@ select {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  background: var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
-  color: white;
+  color: var(--text-secondary);
   flex-shrink: 0;
+  letter-spacing: 0.5px;
 }
 
 .avatar-lg {
