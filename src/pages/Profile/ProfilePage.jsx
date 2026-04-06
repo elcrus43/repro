@@ -422,12 +422,33 @@ export function ProfilePage() {
                 )}
 
                 {/* Google Calendar Integration */}
-                {gcalConfigured && (
-                    <div className="card">
-                        <div className="section-title" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Calendar size={18} />
-                            Google Календарь
+                <div className="card">
+                    <div className="section-title" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Calendar size={18} />
+                        Google Календарь
+                    </div>
+                    {!gcalConfigured ? (
+                        <div style={{
+                            padding: '16px',
+                            borderRadius: 12,
+                            background: 'var(--warning-light)',
+                        }}>
+                            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--warning)', marginBottom: 4 }}>
+                                Не настроен
+                            </div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                Для работы Google Календаря добавьте <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>VITE_GOOGLE_CLIENT_ID</code> в файл <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>.env</code>
+                            </div>
+                            <a
+                                href="https://console.cloud.google.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: 12, color: 'var(--primary)', textDecoration: 'underline' }}
+                            >
+                                Получить Client ID →
+                            </a>
                         </div>
+                    ) : (
                         <div style={{
                             display: 'flex',
                             alignItems: 'center',
@@ -454,8 +475,8 @@ export function ProfilePage() {
                                 {gcalConnected ? 'Отключить' : 'Подключить'}
                             </button>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* PWA Install */}
                 {deferredPrompt && !isInstalled && (
