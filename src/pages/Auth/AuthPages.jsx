@@ -97,12 +97,38 @@ export function LoginPage() {
                         {mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
                     </button>
                     <div style={{ textAlign: 'center', marginTop: 8 }}>
-                        <button
-                            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13 }}
-                            onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}
-                        >
-                            {mode === 'login' ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Войти'}
-                        </button>
+                        {mode === 'login' ? (
+                            <>
+                                <button
+                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13 }}
+                                    onClick={() => { setMode('register'); setError(''); }}
+                                >
+                                    Нет аккаунта? Регистрация
+                                </button>
+                                <div style={{ marginTop: 6 }}>
+                                    <button
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 12, textDecoration: 'underline' }}
+                                        onClick={async () => {
+                                            if (!email) { setError('Введите email для сброса пароля'); return; }
+                                            setLoading(true);
+                                            const { error: err } = await supabase.auth.resetPasswordForEmail(email);
+                                            setLoading(false);
+                                            if (err) setError(err.message);
+                                            else alert('Ссылка для сброса пароля отправлена на ' + email);
+                                        }}
+                                    >
+                                        Забыли пароль?
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <button
+                                style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: 13 }}
+                                onClick={() => { setMode('login'); setError(''); }}
+                            >
+                                Уже есть аккаунт? Войти
+                            </button>
+                        )}
                     </div>
                 </div>
 
