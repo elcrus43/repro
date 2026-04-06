@@ -231,7 +231,22 @@ export function TasksPage() {
             </div>
             <div className="page-content" style={{ paddingTop: 8 }}>
                 {/* Google Calendar connection status */}
-                {gcalConfigured && (
+                {!gcalConfigured ? (
+                    <div style={{
+                        margin: '0 0 12px 0',
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        fontSize: 12,
+                        background: '#fff3e0',
+                        color: '#e65100',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                    }}>
+                        <Calendar size={16} />
+                        <span>Google Календарь не настроен — перейдите в <a href="#/profile" style={{ color: '#e65100', fontWeight: 600 }}>Профиль</a> для настройки</span>
+                    </div>
+                ) : (
                     <div style={{
                         margin: '0 0 12px 0',
                         padding: '10px 14px',
