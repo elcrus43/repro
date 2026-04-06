@@ -1,8 +1,15 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Edit2, Trash2 } from 'lucide-react';
+import { Edit2, Trash2, Calendar } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
+import {
+    isCalendarConfigured,
+    isCalendarConnected,
+    requestAccessToken,
+    disconnectCalendar,
+} from '../../lib/googleCalendar';
 
 const today = new Date().toISOString().slice(0, 10);
 const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10);
@@ -55,29 +62,27 @@ function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
 
 export function TasksPage() {
     const { state, dispatch } = useApp();
+    const { toast } = useToastContext();
     const user = state.currentUser;
     const navigate = useNavigate();
     const location = useLocation();
 
     const searchParams = new URLSearchParams(location.search);
     const prefillClientId = searchParams.get('client');
-    const autoOpenForm = searchParams.get('action') === 'new';
 
     const [filter, setFilter] = useState('today');
-    const [showForm, setShowForm] = useState(autoOpenForm);
     const calendarStatus = state.calendarStatus;
+    const [gcalConnected, setGcalConnected] = useState(() => isCalendarConnected());
+    const gcalConfigured = isCalendarConfigured();
     const [newTask, setNewTask] = useState({
         title: searchParams.get('title') || '',
         description: searchParams.get('description') || '',
         due_date: searchParams.get('due_date') || '',
-        priority: searchParams.get('priority') || 'medium',
         client_id: prefillClientId || '',
-        property_id: '',
         task_type: searchParams.get('task_type') || ''
     });
 
     const myClients = state.clients.filter(c => (user?.role === 'admin' || c.realtor_id === user?.id) && c.status === 'active');
-    const myProperties = state.properties.filter(p => (user?.role === 'admin' || p.realtor_id === user?.id) && p.status === 'active');
 
     const TASK_TYPES = ['Позвонить', 'Встреча с собственником', 'Показ', 'Задаток', 'Сделка', 'Другое'];
 
@@ -85,20 +90,14 @@ export function TasksPage() {
         setNewTask(prev => {
             const updated = { ...prev, [field]: value };
 
-            if (field === 'task_type' || field === 'client_id' || field === 'property_id') {
+            if (field === 'task_type' || field === 'client_id') {
                 const type = field === 'task_type' ? value : prev.task_type;
                 if (type && type !== 'Другое') {
                     const cid = field === 'client_id' ? value : prev.client_id;
-                    const pid = field === 'property_id' ? value : prev.property_id;
                     const client = state.clients.find(c => c.id === cid);
-                    const prop = state.properties.find(p => p.id === pid);
 
                     const parts = [type];
                     if (client) parts.push(client.full_name);
-                    if (prop) {
-                        const shortAddr = prop.address ? prop.address.split(',')[0] : prop.city;
-                        if (shortAddr) parts.push(shortAddr);
-                    }
                     updated.title = parts.join(' ');
                 }
             }
@@ -135,56 +134,143 @@ export function TasksPage() {
 
     async function addTask(e) {
         e.preventDefault();
-        const taskId = newTask.id || nanoid();
-        const taskToSave = { ...newTask, id: taskId, client_id: newTask.client_id || null, property_id: newTask.property_id || null, due_date: newTask.due_date || null };
-        if (newTask.id) {
-            dispatch({ type: 'UPDATE_TASK', task: taskToSave });
-        } else {
-            if (newTask.task_type === 'Показ') {
-                dispatch({
-                    type: 'ADD_SHOWING',
-                    showing: {
-                        realtor_id: user?.id,
-                        client_id: taskToSave.client_id,
-                        property_id: taskToSave.property_id,
-                        showing_date: taskToSave.due_date || new Date().toISOString(),
-                        status: 'planned'
-                    },
-                    customTask: { ...taskToSave, realtor_id: user?.id, status: 'pending' }
-                });
-            } else {
-                dispatch({ type: 'ADD_TASK', task: { ...taskToSave, realtor_id: user?.id, status: 'pending' } });
-            }
+
+        // Validation: ensure user is authenticated
+        if (!user?.id) {
+            toast.error('Ошибка: пользователь не авторизован. Перезагрузите страницу.');
+            return;
         }
 
-        setNewTask({ title: '', description: '', due_date: '', priority: 'medium', client_id: '', property_id: '', task_type: '' });
-        setShowForm(false);
+        // Validation: ensure title is present
+        if (!newTask.title?.trim()) {
+            toast.error('Укажите название задачи');
+            return;
+        }
+
+        const taskId = newTask.id || nanoid();
+        const taskToSave = {
+            ...newTask,
+            id: taskId,
+            realtor_id: user.id,
+            client_id: newTask.client_id || null,
+            property_id: null,
+            due_date: newTask.due_date || null,
+            status: newTask.status || 'pending',
+            priority: 'medium',
+        };
+
+        try {
+            if (newTask.id) {
+                dispatch({ type: 'UPDATE_TASK', task: taskToSave });
+                toast.success('Задача обновлена');
+            } else {
+                if (newTask.task_type === 'Показ') {
+                    dispatch({
+                        type: 'ADD_SHOWING',
+                        showing: {
+                            realtor_id: user.id,
+                            client_id: taskToSave.client_id,
+                            property_id: taskToSave.property_id,
+                            showing_date: taskToSave.due_date || new Date().toISOString(),
+                            status: 'planned'
+                        },
+                        customTask: { ...taskToSave, realtor_id: user.id, status: 'pending' }
+                    });
+                    toast.success('Показ и задача созданы');
+                } else {
+                    dispatch({ type: 'ADD_TASK', task: taskToSave });
+                    toast.success('Задача создана');
+                }
+            }
+
+            setNewTask({ title: '', description: '', due_date: '', client_id: '', task_type: '' });
+        } catch (err) {
+            console.error('[Task save error]', err);
+            toast.error('Ошибка при сохранении задачи');
+        }
     }
 
     async function deleteTask(task) {
         if (window.confirm('Удалить задачу?')) {
             dispatch({ type: 'DELETE_TASK', id: task.id });
+            toast.success('Задача удалена');
         }
     }
 
     function editTask(task) {
         setNewTask({ ...task, task_type: task.task_type || '' });
-        setShowForm(true);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    async function handleConnectCalendar() {
+        try {
+            await requestAccessToken(true);
+            setGcalConnected(true);
+            toast.success('Google Календарь подключен');
+        } catch (err) {
+            console.warn('[Calendar Connect Error]', err);
+            toast.error('Не удалось подключить Google Календарь');
+        }
+    }
+
+    async function handleDisconnectCalendar() {
+        if (!window.confirm('Отключить Google Календарь? События не будут синхронизироваться.')) return;
+        try {
+            await disconnectCalendar();
+            setGcalConnected(false);
+            toast.success('Google Календарь отключен');
+        } catch (err) {
+            console.warn('[Calendar Disconnect Error]', err);
+            toast.error('Ошибка при отключении календаря');
+        }
     }
 
     return (
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Задачи</span>
-                <button className="btn btn-sm btn-primary" onClick={() => setShowForm(f => !f)}>+ Добавить</button>
-            </div>
-            <div className="tab-filters">
-                {[['today', 'Сегодня'], ['week', 'Неделя'], ['all', 'Все']].map(([v, l]) => (
-                    <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
-                ))}
             </div>
             <div className="page-content" style={{ paddingTop: 8 }}>
+                {/* Google Calendar connection status */}
+                {gcalConfigured && (
+                    <div style={{
+                        margin: '0 0 12px 0',
+                        padding: '10px 14px',
+                        borderRadius: 12,
+                        fontSize: 13,
+                        fontWeight: 500,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                        background: gcalConnected ? '#e8f5e9' : '#fff3e0',
+                        color: gcalConnected ? '#2e7d32' : '#e65100',
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Calendar size={18} />
+                            <span>
+                                {gcalConnected
+                                    ? 'Google Календарь подключен'
+                                    : 'Подключите Google Календарь для синхронизации задач'}
+                            </span>
+                        </div>
+                        <button
+                            onClick={gcalConnected ? handleDisconnectCalendar : handleConnectCalendar}
+                            style={{
+                                background: 'none',
+                                border: `1px solid ${gcalConnected ? '#2e7d32' : '#e65100'}`,
+                                borderRadius: 8,
+                                padding: '4px 12px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: gcalConnected ? '#2e7d32' : '#e65100',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {gcalConnected ? 'Отключить' : 'Подключить'}
+                        </button>
+                    </div>
+                )}
+
                 {calendarStatus && (
                     <div style={{
                         margin: '0 0 12px 0',
@@ -204,54 +290,54 @@ export function TasksPage() {
                         {calendarStatus === 'error' && '⚠️ Ошибка календаря (задача сохранена локально)'}
                     </div>
                 )}
-                {showForm && (
-                    <form className="card" onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{newTask.id ? 'Редактировать задачу' : 'Новая задача'}</div>
 
-                        <select className="form-select" value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
-                            <option value="">Шаблон задачи...</option>
-                            {TASK_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                        </select>
+                {/* Inline task form - always visible */}
+                <form className="card" onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{newTask.id ? 'Редактировать задачу' : 'Новая задача'}</div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <select className="form-select" value={newTask.client_id || ''} onChange={e => {
-                                if (e.target.value === 'new') {
-                                    const currentParams = new URLSearchParams();
-                                    currentParams.set('action', 'new');
-                                    if (newTask.title) currentParams.set('title', newTask.title);
-                                    if (newTask.due_date) currentParams.set('due_date', newTask.due_date);
-                                    if (newTask.priority) currentParams.set('priority', newTask.priority);
-                                    if (newTask.task_type) currentParams.set('task_type', newTask.task_type);
-                                    if (newTask.description) currentParams.set('description', newTask.description);
+                    <select className="form-select" value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
+                        <option value="">Шаблон задачи...</option>
+                        {TASK_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
 
-                                    navigate(`/clients/new?returnTo=${encodeURIComponent(location.pathname + '?' + currentParams.toString())}`);
-                                } else {
-                                    handleFieldChange('client_id', e.target.value);
-                                }
-                            }}>
-                                <option value="">Без клиента</option>
-                                <option value="new">+ Создать нового клиента</option>
-                                {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                            </select>
-                            <select className="form-select" value={newTask.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
-                                <option value="">Без продажи</option>
-                                {myProperties.map(p => <option key={p.id} value={p.id}>{p.address || p.city}</option>)}
-                            </select>
-                        </div>
+                    <select className="form-select" value={newTask.client_id || ''} onChange={e => {
+                        if (e.target.value === 'new') {
+                            const currentParams = new URLSearchParams();
+                            currentParams.set('action', 'new');
+                            if (newTask.title) currentParams.set('title', newTask.title);
+                            if (newTask.due_date) currentParams.set('due_date', newTask.due_date);
+                            if (newTask.task_type) currentParams.set('task_type', newTask.task_type);
+                            if (newTask.description) currentParams.set('description', newTask.description);
 
-                        <input className="form-input" placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
-                        <input className="form-input" type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
-                        <div className="chip-group">
-                            {[['high', 'Важная'], ['medium', 'Средняя'], ['low', 'Низкая']].map(([v, l]) => (
-                                <button key={v} type="button" className={`chip ${newTask.priority === v ? 'active' : ''}`} onClick={() => handleFieldChange('priority', v)}>{l}</button>
-                            ))}
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowForm(false)}>Отмена</button>
-                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Сохранить</button>
-                        </div>
-                    </form>
-                )}
+                            navigate(`/clients/new?returnTo=${encodeURIComponent(location.pathname + '?' + currentParams.toString())}`);
+                        } else {
+                            handleFieldChange('client_id', e.target.value);
+                        }
+                    }}>
+                        <option value="">Без клиента</option>
+                        <option value="new">+ Создать нового клиента</option>
+                        {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                    </select>
+
+                    <input className="form-input" placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
+                    <input className="form-input" type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        {newTask.id && (
+                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => {
+                                setNewTask({ title: '', description: '', due_date: '', client_id: '', task_type: '' });
+                            }}>Очистить</button>
+                        )}
+                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Сохранить</button>
+                    </div>
+                </form>
+
+                {/* Task feed with filters */}
+                <div className="tab-filters" style={{ marginBottom: 12 }}>
+                    {[['today', 'Сегодня'], ['week', 'Неделя'], ['all', 'Все']].map(([v, l]) => (
+                        <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
+                    ))}
+                </div>
 
                 <Group label="Просрочено" tasks={overdue} color="var(--danger)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
                 <Group label="Сегодня" tasks={todayT.filter(t => !overdue.find(o => o.id === t.id))} color="var(--warning)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
@@ -259,11 +345,10 @@ export function TasksPage() {
                 <Group label="Позже" tasks={later} color="var(--text-secondary)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
                 {filter === 'all' && <Group label="Выполнено" tasks={done} color="var(--text-muted)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />}
 
-                {tasks.length === 0 && !showForm && (
+                {tasks.length === 0 && (
                     <div className="empty-state">
                         <div className="empty-title">Нет задач</div>
-                        <div className="empty-desc">Добавьте задачу или напоминание</div>
-                        <button className="btn btn-primary" onClick={() => setShowForm(true)}>+ Добавить задачу</button>
+                        <div className="empty-desc">Заполните форму выше, чтобы создать задачу</div>
                     </div>
                 )}
             </div>

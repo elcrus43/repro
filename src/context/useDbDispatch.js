@@ -45,7 +45,7 @@ export function useDbDispatch(state, dispatch, onError) {
       case 'ADD_CLIENT':
         enhancedAction.client = {
           ...action.client,
-          id:         action.client.id || nanoid(),
+          id: action.client.id || nanoid(),
           created_at: now,
           updated_at: now,
         };
@@ -59,12 +59,12 @@ export function useDbDispatch(state, dispatch, onError) {
       case 'UPDATE_PROPERTY': {
         const prop = {
           ...action.property,
-          id:         action.property.id || nanoid(),
+          id: action.property.id || nanoid(),
           created_at: action.property.created_at || now,
           updated_at: now,
         };
         enhancedAction.property = prop;
-        enhancedAction.matches  = _buildPropertyMatches(prop, stateRef.current, now);
+        enhancedAction.matches = _buildPropertyMatches(prop, stateRef.current, now);
         break;
       }
 
@@ -72,7 +72,7 @@ export function useDbDispatch(state, dispatch, onError) {
       case 'UPDATE_REQUEST': {
         const req = {
           ...action.request,
-          id:         action.request.id || nanoid(),
+          id: action.request.id || nanoid(),
           created_at: action.request.created_at || now,
           updated_at: now,
         };
@@ -89,8 +89,8 @@ export function useDbDispatch(state, dispatch, onError) {
         const match = stateRef.current.matches.find(m => m.id === action.matchId);
         if (match) {
           enhancedAction.propertyId = match.property_id;
-          enhancedAction.requestId  = match.request_id;
-          enhancedAction.now        = now;
+          enhancedAction.requestId = match.request_id;
+          enhancedAction.now = now;
         }
         break;
       }
@@ -100,8 +100,8 @@ export function useDbDispatch(state, dispatch, onError) {
         enhancedAction.showing = sh;
         enhancedAction.matches = sh.match_id
           ? stateRef.current.matches.map(m =>
-              m.id === sh.match_id ? { ...m, status: 'showing_planned', updated_at: now } : m
-            )
+            m.id === sh.match_id ? { ...m, status: 'showing_planned', updated_at: now } : m
+          )
           : stateRef.current.matches;
         enhancedAction.task = action.customTask
           ? { ...action.customTask, id: action.customTask.id || nanoid(), created_at: now, realtor_id: sh.realtor_id }
@@ -113,22 +113,35 @@ export function useDbDispatch(state, dispatch, onError) {
         enhancedAction.showing = action.showing;
         enhancedAction.matches = action.showing.status === 'completed'
           ? stateRef.current.matches.map(m =>
-              m.id === action.showing.match_id ? { ...m, status: 'showing_done', updated_at: now } : m
-            )
+            m.id === action.showing.match_id ? { ...m, status: 'showing_done', updated_at: now } : m
+          )
           : stateRef.current.matches;
         break;
       }
 
       case 'ADD_TASK':
-        enhancedAction.task = { ...action.task, id: action.task.id || nanoid(), created_at: now };
+        enhancedAction.task = {
+          ...action.task,
+          id: action.task.id || nanoid(),
+          created_at: now,
+          updated_at: now,
+        };
+        break;
+
+      case 'UPDATE_TASK':
+        enhancedAction.task = { ...action.task, updated_at: now };
+        break;
+
+      case 'DELETE_TASK':
+        // No enhancement needed — just pass the id through
         break;
 
       case 'ADD_PRICE_ITEM':
         enhancedAction.item = {
           ...action.item,
-          id:              action.item.id || nanoid(),
-          created_at:      now,
-          show_in_sale:    action.item.show_in_sale    ?? true,
+          id: action.item.id || nanoid(),
+          created_at: now,
+          show_in_sale: action.item.show_in_sale ?? true,
           show_in_purchase: action.item.show_in_purchase ?? true,
         };
         break;
@@ -188,14 +201,14 @@ function _buildPropertyMatches(prop, state, now) {
     );
     const request = state.requests.find(r => r.id === m.request_id);
     return {
-      id:               existing?.id || nanoid(),
+      id: existing?.id || nanoid(),
       ...m,
-      realtor_id:       request?.realtor_id || prop.realtor_id,
-      status:           existing?.status           || 'new',
+      realtor_id: request?.realtor_id || prop.realtor_id,
+      status: existing?.status || 'new',
       rejection_reason: existing?.rejection_reason || '',
-      realtor_comment:  existing?.realtor_comment  || '',
-      created_at:       existing?.created_at       || now,
-      updated_at:       now,
+      realtor_comment: existing?.realtor_comment || '',
+      created_at: existing?.created_at || now,
+      updated_at: now,
     };
   });
 }
@@ -206,29 +219,29 @@ function _buildRequestMatches(req, state, now) {
       ex => ex.request_id === req.id && ex.property_id === m.property_id
     );
     return {
-      id:               existing?.id || nanoid(),
+      id: existing?.id || nanoid(),
       ...m,
-      realtor_id:       req.realtor_id,
-      status:           existing?.status           || 'new',
+      realtor_id: req.realtor_id,
+      status: existing?.status || 'new',
       rejection_reason: existing?.rejection_reason || '',
-      realtor_comment:  existing?.realtor_comment  || '',
-      created_at:       existing?.created_at       || now,
-      updated_at:       now,
+      realtor_comment: existing?.realtor_comment || '',
+      created_at: existing?.created_at || now,
+      updated_at: now,
     };
   });
 }
 
 function _buildShowingTask(sh, now) {
   return {
-    id:          nanoid(),
-    realtor_id:  sh.realtor_id,
-    client_id:   sh.client_id   || null,
+    id: nanoid(),
+    realtor_id: sh.realtor_id,
+    client_id: sh.client_id || null,
     property_id: sh.property_id || null,
-    title:       `Показ — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+    title: `Показ — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
     description: '',
-    due_date:    sh.showing_date,
-    priority:    'high',
-    status:      'pending',
-    created_at:  now,
+    due_date: sh.showing_date,
+    priority: 'high',
+    status: 'pending',
+    created_at: now,
   };
 }

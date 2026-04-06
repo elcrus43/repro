@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
 import { stripPhone, formatNumber } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
@@ -114,7 +115,8 @@ export function MatchDetailPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
-    const matchId = window.location.pathname.split('/')[2];
+    const { id: matchId } = useParams();
+    const { toast } = useToastContext();
     const match = state.matches.find(m => m.id === matchId);
 
     // Хуки ДОЛЖНЫ быть до любого раннего return
@@ -182,9 +184,9 @@ export function MatchDetailPage() {
             const link = `${window.location.origin}/p/${data.slug}`;
             setPublicLink(link);
             navigator.clipboard.writeText(link);
-            alert('Публичная ссылка скопирована в буфер обмена!');
+            toast.success('Публичная ссылка скопирована в буфер обмена!');
         } catch (_e) {
-            alert('Ошибка при генерации ссылки');
+            toast.error('Ошибка при генерации ссылки');
         } finally {
             setIsGeneratingLink(false);
         }

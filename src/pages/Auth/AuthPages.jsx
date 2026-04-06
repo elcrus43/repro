@@ -6,7 +6,7 @@ import { supabase } from '../../lib/supabase';
 const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
 export function LoginPage() {
-    const { state, dispatch } = useApp();
+    const { state } = useApp();
     const navigate = useNavigate();
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
@@ -36,10 +36,13 @@ export function ListPage() {
     }, [state.properties, scope, user?.id, filter, search, state.clients]);
 
     // Pagination - show 20 items per page
-    const { paginatedItems: properties, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filteredProperties, 20);
+    const { paginatedItems: properties, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage, resetPage } = usePagination(filteredProperties, 20);
+
+    // Reset to page 1 when filtered data changes
+    useEffect(() => { resetPage(); }, [filteredProperties, resetPage]);
 
     const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
-    const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
+    const statusColors = { active: 'lime', paused: 'blue', deal_closed: 'green', refused: 'red' };
 
     return (
         <div className="page fade-in">

@@ -143,12 +143,26 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
 
       /* ── Клиенты ─────────────────────────────────────────────────────── */
       case 'ADD_CLIENT': {
-        result = await withRetry(() => supabase.from('clients').insert(action.client));
+        // Normalize client data
+        const clientData = {
+          ...action.client,
+          client_types: action.client.client_types || ['buyer'],
+          additional_contacts: action.client.additional_contacts || [],
+          passport_details: action.client.passport_details || null,
+          source: action.client.source || null,
+          notes: action.client.notes || null,
+        };
+        // Remove undefined fields
+        Object.keys(clientData).forEach(key => {
+          if (clientData[key] === undefined) delete clientData[key];
+        });
+
+        result = await withRetry(() => supabase.from('clients').insert(clientData));
 
         // Ретрай без passport_details при ошибке схемы (hotfix для старых БД)
         if (_isPassportColumnError(result?.error)) {
           console.warn('[Supabase] passport_details column missing, retrying without it');
-          const { passport_details: _pd, ...clientWithout } = action.client;
+          const { passport_details: _pd, ...clientWithout } = clientData;
           result = await withRetry(() => supabase.from('clients').insert(clientWithout));
         }
         break;
@@ -156,11 +170,25 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
 
       case 'UPDATE_CLIENT': {
         const { id: cId, ...cData } = action.client;
-        result = await withRetry(() => supabase.from('clients').update(cData).eq('id', cId));
+        // Normalize client data
+        const normalizedData = {
+          ...cData,
+          client_types: cData.client_types || ['buyer'],
+          additional_contacts: cData.additional_contacts || [],
+          passport_details: cData.passport_details || null,
+          source: cData.source || null,
+          notes: cData.notes || null,
+        };
+        // Remove undefined fields
+        Object.keys(normalizedData).forEach(key => {
+          if (normalizedData[key] === undefined) delete normalizedData[key];
+        });
+
+        result = await withRetry(() => supabase.from('clients').update(normalizedData).eq('id', cId));
 
         if (_isPassportColumnError(result?.error)) {
           console.warn('[Supabase] passport_details column missing, retrying without it');
-          const { passport_details: _pd, ...dataWithout } = cData;
+          const { passport_details: _pd, ...dataWithout } = normalizedData;
           result = await withRetry(() => supabase.from('clients').update(dataWithout).eq('id', cId));
         }
         break;
@@ -180,6 +208,12 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
           property_type: action.property.property_type || 'apartment',
           floors_total: action.property.floors_total || 9,
           build_year: action.property.build_year || new Date().getFullYear(),
+          city: action.property.city || 'Киров',
+          district: action.property.district || null,
+          microdistrict: action.property.microdistrict || null,
+          price_min: action.property.price_min || null,
+          notes: action.property.notes || null,
+          commission: action.property.commission ?? 0,
         };
         // Remove undefined fields to avoid schema errors
         Object.keys(propertyData).forEach(key => {
@@ -187,6 +221,14 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
         });
 
         result = await withRetry(() => supabase.from('properties').insert(propertyData));
+
+        // Retry without notes if column missing
+        if (result?.error && result.error.message?.includes('notes')) {
+          console.warn('[Supabase] notes column missing, retrying without it');
+          const { notes: _n, ...propertyWithoutNotes } = propertyData;
+          result = await withRetry(() => supabase.from('properties').insert(propertyWithoutNotes));
+        }
+
         if (!result?.error && action.matches?.length > 0) {
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
           if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
@@ -203,6 +245,12 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
           property_type: pData.property_type || 'apartment',
           floors_total: pData.floors_total || 9,
           build_year: pData.build_year || new Date().getFullYear(),
+          city: pData.city || 'Киров',
+          district: pData.district || null,
+          microdistrict: pData.microdistrict || null,
+          price_min: pData.price_min || null,
+          notes: pData.notes || null,
+          commission: pData.commission ?? 0,
         };
         // Remove undefined fields
         Object.keys(normalizedData).forEach(key => {
@@ -210,6 +258,14 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
         });
 
         result = await withRetry(() => supabase.from('properties').update(normalizedData).eq('id', pId));
+
+        // Retry without notes if column missing
+        if (result?.error && result.error.message?.includes('notes')) {
+          console.warn('[Supabase] notes column missing, retrying without it');
+          const { notes: _n, ...dataWithoutNotes } = normalizedData;
+          result = await withRetry(() => supabase.from('properties').update(dataWithoutNotes).eq('id', pId));
+        }
+
         if (!result?.error && action.matches?.length > 0) {
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
           if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);

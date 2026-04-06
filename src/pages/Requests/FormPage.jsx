@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 
@@ -9,6 +10,7 @@ export function FormPage() {
     const [searchParams] = useSearchParams();
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const { toast } = useToastContext();
 
     const existing = id ? state.requests.find(r => r.id === id) : null;
     const initialForm = existing || {
@@ -41,7 +43,10 @@ export function FormPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (!form.client_id) return alert('Выберите клиента');
+        if (!form.client_id) {
+            toast.error('Выберите клиента');
+            return;
+        }
 
         if (id) {
             dispatch({ type: 'UPDATE_REQUEST', request: { ...form, id } });
@@ -125,7 +130,7 @@ export function FormPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Комиссия (₽)</label>
-                            <input type="number" className="form-input" value={form.commission || ''} onChange={e => setF('commission', Number(e.target.value))} />
+                            <input type="number" className="form-input" value={form.commission ?? ''} onChange={e => setF('commission', e.target.value === '' ? 0 : Number(e.target.value))} />
                         </div>
                     </div>
 

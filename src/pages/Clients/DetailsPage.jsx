@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
 import { Edit2, Trash2 } from 'lucide-react';
@@ -8,7 +8,7 @@ import { PROPERTY_TYPES } from '../../data/constants';
 export function DetailsPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
-    const id = window.location.pathname.split('/')[2];
+    const { id } = useParams();
     const client = state.clients.find(c => c.id === id);
 
     if (!client) return (

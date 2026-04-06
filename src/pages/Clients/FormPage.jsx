@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, stripPhone } from '../../utils/format';
 
@@ -12,8 +12,7 @@ const defaultClient = {
 export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
-    const path = window.location.pathname;
-    const id = path.includes('/edit') ? path.split('/')[2] : null;
+    const { id } = useParams();
     const existing = id ? state.clients.find(c => c.id === id) : null;
     const initialForm = existing ? {
         ...existing,

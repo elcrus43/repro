@@ -1,6 +1,9 @@
 /**
  * Google Calendar integration via Google Identity Services (GSI)
  * Uses OAuth 2.0 implicit flow — no backend needed
+ *
+ * Token persistence: access tokens are stored in sessionStorage
+ * so they survive page reloads within the same browser tab session.
  */
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -9,6 +12,44 @@ const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 let tokenClient = null;
 let accessToken = null;
 let tokenExpiry = 0;
+
+const STORAGE_KEY = 'gcal_access_token';
+const STORAGE_EXPIRY_KEY = 'gcal_token_expiry';
+
+/** Restore token from sessionStorage if available */
+function restoreToken() {
+    if (accessToken) return true;
+    try {
+        const stored = sessionStorage.getItem(STORAGE_KEY);
+        const expiry = sessionStorage.getItem(STORAGE_EXPIRY_KEY);
+        if (stored && expiry && Date.now() < Number(expiry)) {
+            accessToken = stored;
+            tokenExpiry = Number(expiry);
+            return true;
+        }
+    } catch {
+        // sessionStorage may be disabled
+    }
+    return false;
+}
+
+/** Persist token to sessionStorage */
+function persistToken(token, expiryMs) {
+    try {
+        sessionStorage.setItem(STORAGE_KEY, token);
+        sessionStorage.setItem(STORAGE_EXPIRY_KEY, String(expiryMs));
+    } catch {
+        // sessionStorage may be disabled — non-critical
+    }
+}
+
+/** Clear persisted token */
+function clearPersistedToken() {
+    try {
+        sessionStorage.removeItem(STORAGE_KEY);
+        sessionStorage.removeItem(STORAGE_EXPIRY_KEY);
+    } catch { /* ignore */ }
+}
 
 /** Load the GSI script dynamically */
 function loadGsiScript() {
@@ -31,15 +72,41 @@ async function getTokenClient() {
         tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: CLIENT_ID,
             scope: SCOPES,
-            callback: () => {}, // will be overridden per-request
+            callback: () => { }, // will be overridden per-request
         });
     }
     return tokenClient;
 }
 
-/** Request access token (shows Google consent popup if needed) */
-export function requestAccessToken() {
+/**
+ * Check if Google Calendar is configured and connected.
+ * @returns {boolean}
+ */
+export function isCalendarConfigured() {
+    return !!CLIENT_ID && CLIENT_ID !== 'your_google_client_id.apps.googleusercontent.com';
+}
+
+/**
+ * Check if user has a valid access token (connected their Google Calendar).
+ * @returns {boolean}
+ */
+export function isCalendarConnected() {
+    return !!accessToken && Date.now() < tokenExpiry;
+}
+
+/**
+ * Request access token (shows Google consent popup if needed).
+ * @param {boolean} forceConsent - if true, always show consent popup
+ * @returns {Promise<string>} access token
+ */
+export function requestAccessToken(forceConsent = false) {
     return new Promise((resolve, reject) => {
+        // Try to restore token from sessionStorage first
+        if (!forceConsent && restoreToken()) {
+            resolve(accessToken);
+            return;
+        }
+
         getTokenClient().then(client => {
             client.callback = (response) => {
                 if (response.error) {
@@ -47,17 +114,39 @@ export function requestAccessToken() {
                 } else {
                     accessToken = response.access_token;
                     tokenExpiry = Date.now() + (response.expires_in - 60) * 1000;
+                    persistToken(accessToken, tokenExpiry);
                     resolve(accessToken);
                 }
             };
-            // If we have a valid token, skip popup
-            if (accessToken && Date.now() < tokenExpiry) {
+            // If we have a valid token and not forcing consent, skip popup
+            if (!forceConsent && accessToken && Date.now() < tokenExpiry) {
                 resolve(accessToken);
                 return;
             }
-            client.requestAccessToken({ prompt: '' });
+            client.requestAccessToken({ prompt: forceConsent ? 'consent' : '' });
         }).catch(reject);
     });
+}
+
+/**
+ * Disconnect Google Calendar (clear tokens).
+ * This revokes the access token and clears local storage.
+ */
+export async function disconnectCalendar() {
+    if (accessToken) {
+        try {
+            // Revoke the token on Google's side
+            await fetch(`https://oauth2.googleapis.com/revoke?token=${accessToken}`, {
+                method: 'POST',
+            });
+        } catch {
+            // Token revocation may fail — non-critical
+        }
+    }
+    accessToken = null;
+    tokenExpiry = 0;
+    clearPersistedToken();
+    tokenClient = null;
 }
 
 /**

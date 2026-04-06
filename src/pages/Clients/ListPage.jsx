@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
@@ -32,7 +32,10 @@ export function ListPage() {
     }, [state.clients, scope, user?.id, filter, search]);
 
     // Pagination - show 20 items per page
-    const { paginatedItems: clients, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filteredClients, 20);
+    const { paginatedItems: clients, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage, resetPage } = usePagination(filteredClients, 20);
+
+    // Reset to page 1 when filtered data changes
+    useEffect(() => { resetPage(); }, [filteredClients, resetPage]);
 
     const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };

@@ -7,34 +7,30 @@ import { MessageSquare, Sparkles, TrendingUp, CheckSquare } from 'lucide-react';
 export function DashboardPage() {
     const { state } = useApp();
     const navigate = useNavigate();
-    const user = state.currentUser;
-    if (!user) return null;
 
-    const isAdmin = user.role === 'admin';
-
-    // Memoized calculations to prevent re-computation on every render
+    // Memoized calculations - MUST be before any conditional returns
     const myProperties = useMemo(() =>
         state.properties.filter(p => p.status === 'active'),
         [state.properties]
     );
 
     const myClients = useMemo(() =>
-        state.clients.filter(c => isAdmin || c.realtor_id === user.id),
-        [state.clients, isAdmin, user.id]
+        state.clients.filter(c => state.currentUser?.role === 'admin' || c.realtor_id === state.currentUser?.id),
+        [state.clients, state.currentUser?.role, state.currentUser?.id]
     );
 
     const myRequests = useMemo(() =>
-        state.requests.filter(r => (isAdmin || r.realtor_id === user.id) && r.status === 'active'),
-        [state.requests, isAdmin, user.id]
+        state.requests.filter(r => (state.currentUser?.role === 'admin' || r.realtor_id === state.currentUser?.id) && r.status === 'active'),
+        [state.requests, state.currentUser?.role, state.currentUser?.id]
     );
 
     const myMatches = useMemo(() => {
-        if (isAdmin) return state.matches;
+        if (state.currentUser?.role === 'admin') return state.matches;
         return state.matches.filter(m => {
             const req = state.requests.find(r => r.id === m.request_id);
-            return req?.realtor_id === user.id;
+            return req?.realtor_id === state.currentUser?.id;
         });
-    }, [state.matches, state.requests, isAdmin, user.id]);
+    }, [state.matches, state.requests, state.currentUser?.role, state.currentUser?.id]);
 
     const newMatches = useMemo(() =>
         myMatches
@@ -46,9 +42,12 @@ export function DashboardPage() {
 
     const today = new Date().toISOString().slice(0, 10);
     const todayTasks = useMemo(() =>
-        state.tasks.filter(t => (isAdmin || t.realtor_id === user.id) && t.due_date?.startsWith(today) && t.status === 'pending'),
-        [state.tasks, isAdmin, user.id, today]
+        state.tasks.filter(t => (state.currentUser?.role === 'admin' || t.realtor_id === state.currentUser?.id) && t.due_date?.startsWith(today) && t.status === 'pending'),
+        [state.tasks, state.currentUser?.role, state.currentUser?.id, today]
     );
+
+    const user = state.currentUser;
+    if (!user) return null;
 
     return (
         <div className="page fade-in">

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToastContext } from '../../components/Toast';
 import { ChevronLeft, Calculator, FileText, ExternalLink } from 'lucide-react';
 import { API_BASE } from '../../config';
 
 export function EstimationPage() {
     const navigate = useNavigate();
+    const { toast } = useToastContext();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [result, setResult] = useState(null);
@@ -51,7 +53,7 @@ export function EstimationPage() {
             a.download = 'estimation_report.pdf';
             a.click();
         } catch (_err) {
-            alert('Ошибка при скачивании PDF');
+            toast.error('Ошибка при скачивании PDF');
         }
     };
 

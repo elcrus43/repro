@@ -1,8 +1,18 @@
 // Matching algorithm per TZ §4.1
 import { RENOVATION_LABELS, BUILDING_TYPES, MARKET_LABELS, PROPERTY_TYPES } from '../data/constants';
 
+/** @typedef {import('./types').Property} Property */
+/** @typedef {import('./types').Request} Request */
+/** @typedef {import('./types').MatchResult} MatchResult */
+/** @typedef {import('./types').MatchWithIds} MatchWithIds */
+
 const RENOVATION_RANK = { none: 0, cosmetic: 1, euro: 2, designer: 3 };
 
+/**
+ * @param {Property} property
+ * @param {Request} request
+ * @returns {MatchResult | null}
+ */
 export function calculateMatch(property, request) {
   // === MANDATORY (exclusive) params ===
   // 1. Property type must be in request's property_types
@@ -241,6 +251,11 @@ function fmt(n) {
   return String(n);
 }
 
+/**
+ * @param {Property} property
+ * @param {Request[]} requests
+ * @returns {MatchWithIds[]}
+ */
 export function runMatchingForProperty(property, requests) {
   const results = [];
   for (const req of requests) {
@@ -254,6 +269,11 @@ export function runMatchingForProperty(property, requests) {
   return results;
 }
 
+/**
+ * @param {Request} request
+ * @param {Property[]} properties
+ * @returns {MatchWithIds[]}
+ */
 export function runMatchingForRequest(request, properties) {
   const results = [];
   for (const prop of properties) {
@@ -267,6 +287,10 @@ export function runMatchingForRequest(request, properties) {
   return results;
 }
 
+/**
+ * @param {'perfect'|'good'|'possible'} level
+ * @returns {{ label: string, cls: string }}
+ */
 export function getLevelLabel(level) {
   switch (level) {
     case 'perfect': return { label: 'Отличное', cls: 'perfect' };
@@ -276,23 +300,39 @@ export function getLevelLabel(level) {
   }
 }
 
+/**
+ * @param {number} n
+ * @returns {string}
+ */
 export function formatPrice(n) {
   if (!n && n !== 0) return '—';
   if (n >= 10_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + ' млн ₽';
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
 }
 
+/**
+ * @param {string|number} val
+ * @returns {number | null}
+ */
 export function cleanPrice(val) {
   if (!val) return null;
   const clean = String(val).replace(/[^0-9]/g, '');
   return clean ? Number(clean) : null;
 }
 
+/**
+ * @param {string|Date} dt
+ * @returns {string}
+ */
 export function formatDate(dt) {
   if (!dt) return '—';
   return new Date(dt).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+/**
+ * @param {string|Date} dt
+ * @returns {string}
+ */
 export function formatDateTime(dt) {
   if (!dt) return '—';
   return new Date(dt).toLocaleString('ru-RU', {

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useToastContext } from '../../components/Toast';
 import { X, Send, MessageSquare, Loader2, ExternalLink } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 
 const API_BASE = `${API_ROOT}/api/v1/messaging`;
 
 export function MessageTemplateModal({ isOpen, onClose, context }) {
+    const { toast } = useToastContext();
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedId, setSelectedId] = useState('');
@@ -45,7 +47,7 @@ export function MessageTemplateModal({ isOpen, onClose, context }) {
             const data = await res.json();
             setRendered(data);
         } catch (_e) {
-            alert('Ошибка при генерации сообщения');
+            toast.error('Ошибка при генерации сообщения');
         } finally {
             setRendering(false);
         }

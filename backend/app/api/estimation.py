@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..core.database import get_db
@@ -6,6 +6,7 @@ from ..services.estimation_service import EstimationService, EstimationInput, Es
 from ..services.pdf_report import EstimationReportGenerator
 from pydantic import BaseModel, Field
 from fastapi.responses import Response
+from ..core.rate_limiter import limiter, ESTIMATION_RATE_LIMIT
 import io
 
 router = APIRouter(prefix="/estimation", tags=["estimation"])
@@ -42,22 +43,24 @@ class EstimationResponse(BaseModel):
     analogs: List[AnalogItem]
 
 @router.post("/calculate", response_model=EstimationResponse)
+@limiter.limit(ESTIMATION_RATE_LIMIT)
 async def calculate_estimation(
-    request: EstimationRequest,
+    request: Request,
+    req: EstimationRequest,
     db: Session = Depends(get_db)
 ):
     service = EstimationService(db)
     params = EstimationInput(
-        city=request.city,
-        district=request.district,
-        rooms=request.rooms,
-        total_area=request.total_area,
-        floor=request.floor,
-        total_floors=request.total_floors,
-        building_type=request.building_type,
-        deal_type=request.deal_type
+        city=req.city,
+        district=req.district,
+        rooms=req.rooms,
+        total_area=req.total_area,
+        floor=req.floor,
+        total_floors=req.total_floors,
+        building_type=req.building_type,
+        deal_type=req.deal_type
     )
-    
+
     try:
         result = await service.estimate(params)
         return result
@@ -65,26 +68,28 @@ async def calculate_estimation(
         raise HTTPException(status_code=422, detail=str(e))
 
 @router.post("/pdf")
+@limiter.limit(ESTIMATION_RATE_LIMIT)
 async def generate_pdf(
-    request: EstimationRequest,
+    request: Request,
+    req: EstimationRequest,
     db: Session = Depends(get_db)
 ):
     service = EstimationService(db)
     params = EstimationInput(
-        city=request.city,
-        district=request.district,
-        rooms=request.rooms,
-        total_area=request.total_area,
-        floor=request.floor,
-        total_floors=request.total_floors,
-        building_type=request.building_type,
-        deal_type=request.deal_type
+        city=req.city,
+        district=req.district,
+        rooms=req.rooms,
+        total_area=req.total_area,
+        floor=req.floor,
+        total_floors=req.total_floors,
+        building_type=req.building_type,
+        deal_type=req.deal_type
     )
-    
+
     try:
         result = await service.estimate(params)
         pdf_gen = EstimationReportGenerator()
-        pdf_bytes = pdf_gen.generate(request.dict(), result)
+        pdf_bytes = pdf_gen.generate(req.dict(), result)
         
         return Response(
             content=pdf_bytes,

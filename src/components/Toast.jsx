@@ -40,34 +40,34 @@ export function useToastContext() {
 /* ─── Icons ────────────────────────────────────────────────────────────────── */
 
 const ICONS = {
-  error:   '✕',
+  error: '✕',
   success: '✓',
-  warn:    '⚠',
-  info:    'ℹ',
+  warn: '⚠',
+  info: 'ℹ',
 };
 
-const COLORS = {
-  error:   { bg: '#fef2f2', border: '#fca5a5', text: '#dc2626', icon: '#dc2626' },
-  success: { bg: '#f0fdf4', border: '#86efac', text: '#16a34a', icon: '#16a34a' },
-  warn:    { bg: '#fffbeb', border: '#fcd34d', text: '#d97706', icon: '#d97706' },
-  info:    { bg: '#eff6ff', border: '#93c5fd', text: '#2563eb', icon: '#2563eb' },
+const TYPE_CLASS = {
+  error: 'toast-error',
+  success: 'toast-success',
+  warn: 'toast-warning',
+  info: 'toast-info',
 };
 
 /* ─── Single Toast ─────────────────────────────────────────────────────────── */
 
 function Toast({ id, message, type, dismiss }) {
-  const c = COLORS[type] || COLORS.info;
+  const toastClass = TYPE_CLASS[type] || TYPE_CLASS.info;
 
   return (
     <div
       role="alert"
+      className={toastClass}
       style={{
         display: 'flex',
         alignItems: 'flex-start',
         gap: '10px',
         padding: '12px 16px',
-        background: c.bg,
-        border: `1px solid ${c.border}`,
+        border: '1px solid',
         borderRadius: '10px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
         minWidth: '280px',
@@ -81,7 +81,7 @@ function Toast({ id, message, type, dismiss }) {
         width: '20px',
         height: '20px',
         borderRadius: '50%',
-        background: c.icon,
+        background: 'currentColor',
         color: '#fff',
         display: 'flex',
         alignItems: 'center',
@@ -99,7 +99,7 @@ function Toast({ id, message, type, dismiss }) {
         margin: 0,
         fontSize: '14px',
         lineHeight: 1.5,
-        color: '#1e293b',
+        color: 'currentColor',
         wordBreak: 'break-word',
       }}>
         {message}
@@ -114,7 +114,8 @@ function Toast({ id, message, type, dismiss }) {
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: '#94a3b8',
+          color: 'currentColor',
+          opacity: 0.5,
           fontSize: '16px',
           lineHeight: 1,
           padding: '0 2px',

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
@@ -33,7 +33,10 @@ export function ListPage() {
     }, [state.requests, scope, user?.id, filter, search, state.clients]);
 
     // Pagination - show 20 items per page
-    const { paginatedItems: requests, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage } = usePagination(filteredRequests, 20);
+    const { paginatedItems: requests, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage, resetPage } = usePagination(filteredRequests, 20);
+
+    // Reset to page 1 when filtered data changes
+    useEffect(() => { resetPage(); }, [filteredRequests, resetPage]);
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };

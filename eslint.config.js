@@ -6,7 +6,7 @@ import { defineConfig } from 'eslint/config'
 
 export default defineConfig([
   {
-    ignores: ['dist', 'backend', 'node_modules', '.venv', 'venv', '.notes', 'extension']
+    ignores: ['dist', 'backend', 'node_modules', '.venv', 'venv', '.notes', 'extension', 'src/__tests__/**', '**/*.test.js']
   },
   {
     files: ['**/*.{js,jsx}'],

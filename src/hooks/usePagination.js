@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 /**
  * Хук для пагинации списков
  * @param {Array} items - Массив элементов для пагинации
  * @param {number} itemsPerPage - Количество элементов на странице
- * @returns {{ paginatedItems: Array, currentPage: number, totalPages: number, hasNext: boolean, hasPrev: boolean, nextPage: Function, prevPage: Function, goToPage: Function }}
+ * @returns {{ paginatedItems: Array, currentPage: number, totalPages: number, hasNext: boolean, hasPrev: boolean, nextPage: Function, prevPage: Function, goToPage: Function, resetPage: Function }}
  */
 export function usePagination(items, itemsPerPage = 20) {
     const [currentPage, setCurrentPage] = useState(1);
@@ -20,14 +20,10 @@ export function usePagination(items, itemsPerPage = 20) {
     const hasNext = currentPage < totalPages;
     const hasPrev = currentPage > 1;
 
-    const nextPage = () => setCurrentPage(p => Math.min(p + 1, totalPages));
-    const prevPage = () => setCurrentPage(p => Math.max(p - 1, 1));
-    const goToPage = (page) => setCurrentPage(Math.max(1, Math.min(page, totalPages)));
-
-    // Сброс на первую страницу при изменении массива данных
-    useMemo(() => {
-        setCurrentPage(1);
-    }, [items]);
+    const nextPage = useCallback(() => setCurrentPage(p => Math.min(p + 1, totalPages)), [totalPages]);
+    const prevPage = useCallback(() => setCurrentPage(p => Math.max(p - 1, 1)), []);
+    const goToPage = useCallback((page) => setCurrentPage(Math.max(1, Math.min(page, totalPages))), [totalPages]);
+    const resetPage = useCallback(() => setCurrentPage(1), []);
 
     return {
         paginatedItems,
@@ -37,6 +33,7 @@ export function usePagination(items, itemsPerPage = 20) {
         hasPrev,
         nextPage,
         prevPage,
-        goToPage
+        goToPage,
+        resetPage
     };
 }

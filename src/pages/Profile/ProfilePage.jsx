@@ -1,8 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { supabase } from '../../lib/supabase';
-import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2, UserCheck, UserX } from 'lucide-react';
+import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2, UserCheck, UserX, Calendar } from 'lucide-react';
+import {
+    isCalendarConfigured,
+    isCalendarConnected,
+    requestAccessToken,
+    disconnectCalendar,
+} from '../../lib/googleCalendar';
 
 // Lazy load XLSX for code splitting - loaded only when export is needed
 const loadXLSX = () => import('xlsx');
@@ -11,10 +18,13 @@ const loadXLSX = () => import('xlsx');
 export function ProfilePage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const { toast } = useToastContext();
     const [deferredPrompt, setDeferredPrompt] = React.useState(null);
     const [isInstalled, setIsInstalled] = React.useState(false);
     const [isEditing, setIsEditing] = React.useState(false);
     const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
+    const [gcalConnected, setGcalConnected] = React.useState(() => isCalendarConnected());
+    const gcalConfigured = isCalendarConfigured();
 
     const user = state.currentUser;
     const [editData, setEditData] = React.useState({
@@ -151,7 +161,7 @@ export function ProfilePage() {
             }
 
             if (data.length === 0) {
-                alert('Нет данных для экспорта');
+                toast.error('Нет данных для экспорта');
                 return;
             }
 
@@ -161,7 +171,7 @@ export function ProfilePage() {
             XLSX.writeFile(wb, filename);
         } catch (err) {
             console.error('Export error:', err);
-            alert('Ошибка при экспорте');
+            toast.error('Ошибка при экспорте');
         }
     };
 
@@ -194,16 +204,16 @@ export function ProfilePage() {
                 }
             }
             if (importedCount > 0) {
-                alert(`Успешно перенесено записей: ${importedCount}.`);
+                toast.success(`Успешно перенесено записей: ${importedCount}.`);
                 if (window.confirm('Очистить старые локальные данные браузера, чтобы не переносить их повторно?')) {
                     keys.forEach(k => localStorage.removeItem(k));
                 }
             } else {
-                alert('Старых локальных данных в этом браузере не найдено.');
+                toast.error('Старых локальных данных в этом браузере не найдено.');
             }
         } catch (err) {
             console.error('Sync error:', err);
-            alert('Ошибка при синхронизации: ' + err.message);
+            toast.error('Ошибка при синхронизации: ' + err.message);
         }
     };
 
@@ -214,6 +224,29 @@ export function ProfilePage() {
         { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
         { icon: <CircleHelp size={20} />, label: 'Помощь', action: () => { } },
     ];
+
+    async function handleConnectCalendar() {
+        try {
+            await requestAccessToken(true);
+            setGcalConnected(true);
+            toast.success('Google Календарь подключен');
+        } catch (err) {
+            console.warn('[Calendar Connect Error]', err);
+            toast.error('Не удалось подключить Google Календарь');
+        }
+    }
+
+    async function handleDisconnectCalendar() {
+        if (!window.confirm('Отключить Google Календарь? События не будут синхронизироваться.')) return;
+        try {
+            await disconnectCalendar();
+            setGcalConnected(false);
+            toast.success('Google Календарь отключен');
+        } catch (err) {
+            console.warn('[Calendar Disconnect Error]', err);
+            toast.error('Ошибка при отключении календаря');
+        }
+    }
 
     async function handleLogout() {
         if (window.confirm('Выйти из аккаунта?')) {
@@ -384,6 +417,42 @@ export function ProfilePage() {
                                     if (name && price) dispatch({ type: 'ADD_PRICE_ITEM', item: { name, price: Number(price), show_in_sale: true, show_in_purchase: true } });
                                 }}>+ Добавить услугу</button>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Google Calendar Integration */}
+                {gcalConfigured && (
+                    <div className="card">
+                        <div className="section-title" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Calendar size={18} />
+                            Google Календарь
+                        </div>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            borderRadius: 12,
+                            background: gcalConnected ? 'var(--success-light)' : 'var(--warning-light)',
+                        }}>
+                            <div>
+                                <div style={{ fontWeight: 600, fontSize: 14, color: gcalConnected ? 'var(--success)' : 'var(--warning)' }}>
+                                    {gcalConnected ? 'Подключен' : 'Не подключен'}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                    {gcalConnected
+                                        ? 'Задачи и показы синхронизируются с вашим Google Календарем'
+                                        : 'Подключите для автоматической синхронизации задач'}
+                                </div>
+                            </div>
+                            <button
+                                className={`btn ${gcalConnected ? 'btn-secondary' : 'btn-primary'}`}
+                                style={{ fontSize: 12, padding: '6px 16px', whiteSpace: 'nowrap' }}
+                                onClick={gcalConnected ? handleDisconnectCalendar : handleConnectCalendar}
+                            >
+                                {gcalConnected ? 'Отключить' : 'Подключить'}
+                            </button>
                         </div>
                     </div>
                 )}

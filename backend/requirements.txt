@@ -19,3 +19,4 @@ passlib[bcrypt]
 python-jose[cryptography]
 beautifulsoup4
 user-agents
+slowapi

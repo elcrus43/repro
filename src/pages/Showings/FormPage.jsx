@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { Calendar, User, Home, Save, UserPlus, X } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
 export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const { toast } = useToastContext();
     const params = new URLSearchParams(window.location.search);
     const prePropId = params.get('propertyId') || params.get('property_id');
     const preClientId = params.get('clientId') || params.get('client_id');
@@ -38,7 +40,7 @@ export function FormPage() {
     const allProperties = state.properties;
 
     function handleCreateClient() {
-        if (!newClientName.trim()) { alert('Введите имя клиента'); return; }
+        if (!newClientName.trim()) { toast.error('Введите имя клиента'); return; }
         const client = {
             id: nanoid(),
             realtor_id: state.currentUser?.id,
@@ -61,7 +63,7 @@ export function FormPage() {
     function handleSubmit(e) {
         e.preventDefault();
         if (!form.property_id || !form.client_id || !form.showing_date) {
-            alert('Пожалуйста, выберите продажу, клиента и дату/время');
+            toast.error('Пожалуйста, выберите продажу, клиента и дату/время');
             return;
         }
 

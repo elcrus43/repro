@@ -5,21 +5,23 @@
   --primary: #212121;
   --primary-dark: #000000;
   --primary-light: #f5f5f5;
-  --success: #424242;
-  --success-light: #eeeeee;
-  --warning: #757575;
-  --warning-light: #fafafa;
-  --danger: #333333;
-  --danger-light: #f0f0f0;
-  --orange: #616161;
-  --orange-light: #f8f8f8;
+  --success: #16a34a;
+  --success-light: #f0fdf4;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
+  --danger: #dc2626;
+  --danger-light: #fef2f2;
+  --info: #2563eb;
+  --info-light: #eff6ff;
+  --orange: #ea580c;
+  --orange-light: #fff7ed;
   --bg: #fafafa;
   --surface: #ffffff;
   --border: #e0e0e0;
   --border-light: #f0f0f0;
   --text: #212121;
   --text-secondary: #616161;
-  --text-muted: #9e9e9e;
+  --text-muted: #6b7280;
   /* Material Elevation */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -35,13 +37,23 @@
   --primary: #ffffff;
   --primary-dark: #e0e0e0;
   --primary-light: #333333;
+  --success: #4ade80;
+  --success-light: #14532d;
+  --warning: #fbbf24;
+  --warning-light: #78350f;
+  --danger: #f87171;
+  --danger-light: #7f1d1d;
+  --info: #60a5fa;
+  --info-light: #1e3a5f;
+  --orange: #fb923c;
+  --orange-light: #7c2d12;
   --bg: #121212;
   --surface: #1e1e1e;
   --border: #333333;
   --border-light: #2a2a2a;
   --text: #ffffff;
   --text-secondary: #cccccc;
-  --text-muted: #888888;
+  --text-muted: #9ca3af;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow: 0 4px 6px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.5);
@@ -160,6 +172,42 @@ select {
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 99px;
+}
+
+/* Focus-visible */
+*:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Toast classes */
+.toast-error {
+  background: var(--danger-light);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.toast-success {
+  background: var(--success-light);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.toast-warning {
+  background: var(--warning-light);
+  border-color: var(--warning);
+  color: var(--warning);
+}
+
+.toast-info {
+  background: var(--info-light);
+  border-color: var(--info);
+  color: var(--info);
 }
 
 /* ===== Layout ===== */
@@ -550,6 +598,47 @@ select {
 .badge-orange {
   background: var(--orange-light);
   color: var(--orange);
+}
+
+/* Property Status Badges */
+.badge-lime {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-green {
+  background: #bbf7d0;
+  color: #14532d;
+}
+
+.badge-blue {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-red {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.dark .badge-lime {
+  background: #14532d;
+  color: #86efac;
+}
+
+.dark .badge-green {
+  background: #166534;
+  color: #4ade80;
+}
+
+.dark .badge-blue {
+  background: #1e3a5f;
+  color: #93c5fd;
+}
+
+.dark .badge-red {
+  background: #7f1d1d;
+  color: #fca5a5;
 }
 
 /* ===== Match Score Bar ===== */
@@ -1174,7 +1263,7 @@ select {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
+  background: var(--bg);
   padding: 0 24px 40px;
   justify-content: center;
   gap: 32px;
@@ -1212,6 +1301,11 @@ select {
   flex-direction: column;
   gap: 20px;
   box-shadow: var(--shadow);
+}
+
+.dark .auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
 .auth-card h2 {
@@ -1393,8 +1487,13 @@ select {
 
 /* ===== Spin animation ===== */
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .spin {
@@ -1422,4 +1521,4 @@ select {
   cursor: pointer;
   padding: 4px 0;
   font-family: inherit;
-}
+}

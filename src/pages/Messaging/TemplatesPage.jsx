@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToastContext } from '../../components/Toast';
 import { ChevronLeft, MessageSquare, Plus, Trash2, Loader2, WifiOff } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 
@@ -16,6 +17,7 @@ function lsSave(data) {
 
 export function TemplatesPage() {
     const navigate = useNavigate();
+    const { toast } = useToastContext();
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showNew, setShowNew] = useState(false);
@@ -45,7 +47,7 @@ export function TemplatesPage() {
 
     const handleCreate = async () => {
         if (!newTpl.name.trim() || !newTpl.body.trim()) {
-            alert('Заполните название и текст шаблона');
+            toast.error('Заполните название и текст шаблона');
             return;
         }
 
@@ -90,7 +92,7 @@ export function TemplatesPage() {
             await fetch(`${API_BASE}/templates/${tpl.id}`, { method: 'DELETE' });
             fetchTemplates();
         } catch (_e) {
-            alert('Ошибка при удалении');
+            toast.error('Ошибка при удалении');
         }
     };
 

@@ -248,7 +248,7 @@ export function DetailsPage() {
     );
 
     const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
-    const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
+    const statusColors = { active: 'lime', paused: 'blue', deal_closed: 'green', refused: 'red' };
 
     function handleDelete() {
         if (window.confirm('Удалить этот объект?')) {

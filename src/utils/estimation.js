@@ -2,6 +2,35 @@
  * Offline estimation engine — no backend required.
  * Uses known average price data for Kirov districts (₽ per m², 2024).
  * Returns estimated range + Avito search links as analog listings.
+ *
+ * @typedef {Object} EstimationParams
+ * @property {string} city
+ * @property {string} [district]
+ * @property {number} rooms
+ * @property {number} [total_area]
+ * @property {string} deal_type
+ *
+ * @typedef {Object} AnalogItem
+ * @property {number} id
+ * @property {number} price
+ * @property {string|number} rooms
+ * @property {number} total_area
+ * @property {string} district
+ * @property {number} price_per_m2
+ * @property {string} source
+ * @property {string} source_url
+ * @property {string} label
+ *
+ * @typedef {Object} EstimationResult
+ * @property {number} estimated_min
+ * @property {number} estimated_avg
+ * @property {number} estimated_max
+ * @property {number} price_per_m2
+ * @property {'HIGH'|'MEDIUM'} confidence
+ * @property {number} analogs_count
+ * @property {AnalogItem[]} analogs
+ * @property {string} avito_url
+ * @property {boolean} is_offline
  */
 
 // Average price per m² (₽) by city and rooms
@@ -165,8 +194,8 @@ function generateAnalogs({ city, district, rooms, total_area, deal_type, pricePe
 /**
  * Main estimation function — fully offline.
  *
- * @param {{ city: string, district: string, rooms: number, total_area: number, deal_type: string }} params
- * @returns {{ estimated_min, estimated_avg, estimated_max, price_per_m2, confidence, analogs_count, analogs, avito_url }}
+ * @param {EstimationParams} params
+ * @returns {EstimationResult}
  */
 export function estimateOffline({ city = 'Киров', district = '', rooms = 1, total_area = 0, deal_type = 'SALE' }) {
     const cityData = PRICE_DATA[city] || PRICE_DATA['Киров'];
