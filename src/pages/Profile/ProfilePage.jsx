@@ -421,62 +421,7 @@ export function ProfilePage() {
                     </div>
                 )}
 
-                {/* Google Calendar Integration */}
-                <div className="card">
-                    <div className="section-title" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Calendar size={18} />
-                        Google Календарь
-                    </div>
-                    {!gcalConfigured ? (
-                        <div style={{
-                            padding: '16px',
-                            borderRadius: 12,
-                            background: 'var(--warning-light)',
-                        }}>
-                            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--warning)', marginBottom: 4 }}>
-                                Не настроен
-                            </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                Для работы Google Календаря добавьте <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>VITE_GOOGLE_CLIENT_ID</code> в файл <code style={{ background: 'var(--bg)', padding: '2px 6px', borderRadius: 4 }}>.env</code>
-                            </div>
-                            <a
-                                href="https://console.cloud.google.com"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ fontSize: 12, color: 'var(--primary)', textDecoration: 'underline' }}
-                            >
-                                Получить Client ID →
-                            </a>
-                        </div>
-                    ) : (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 16px',
-                            borderRadius: 12,
-                            background: gcalConnected ? 'var(--success-light)' : 'var(--warning-light)',
-                        }}>
-                            <div>
-                                <div style={{ fontWeight: 600, fontSize: 14, color: gcalConnected ? 'var(--success)' : 'var(--warning)' }}>
-                                    {gcalConnected ? 'Подключен' : 'Не подключен'}
-                                </div>
-                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                    {gcalConnected
-                                        ? 'Задачи и показы синхронизируются с вашим Google Календарем'
-                                        : 'Подключите для автоматической синхронизации задач'}
-                                </div>
-                            </div>
-                            <button
-                                className={`btn ${gcalConnected ? 'btn-secondary' : 'btn-primary'}`}
-                                style={{ fontSize: 12, padding: '6px 16px', whiteSpace: 'nowrap' }}
-                                onClick={gcalConnected ? handleDisconnectCalendar : handleConnectCalendar}
-                            >
-                                {gcalConnected ? 'Отключить' : 'Подключить'}
-                            </button>
-                        </div>
-                    )}
-                </div>
+                {/* Google Calendar Integration — DISABLED temporarily */}
 
                 {/* PWA Install */}
                 {deferredPrompt && !isInstalled && (

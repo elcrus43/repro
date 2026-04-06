@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Google OAuth Test</title>
+</head>
+<body>
+    <h1>Google OAuth Debug Test</h1>
+    <pre id="log"></pre>
+    <button onclick="testOAuth()">Test OAuth</button>
+
+    <script>
+        const CLIENT_ID = '630828877956-nql4svb8fght0sfsnilim6tapk7p8dvc.apps.googleusercontent.com';
+        const log = document.getElementById('log');
+        
+        function print(msg) {
+            log.textContent += msg + '\n';
+            console.log(msg);
+        }
+
+        print('Client ID from code: ' + CLIENT_ID);
+        print('Loading GSI script...');
+
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.onload = () => {
+            print('GSI script loaded ✅');
+            print('window.google.accounts available: ' + !!window.google?.accounts);
+        };
+        script.onerror = () => print('GSI script FAILED ❌');
+        document.head.appendChild(script);
+
+        function testOAuth() {
+            print('\n--- Starting OAuth test ---');
+            
+            const client = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: 'https://www.googleapis.com/auth/calendar.events',
+                callback: (response) => {
+                    print('Callback received:');
+                    print(JSON.stringify(response, null, 2));
+                    if (response.access_token) {
+                        print('✅ SUCCESS! Token received');
+                    }
+                    if (response.error) {
+                        print('❌ ERROR: ' + response.error);
+                    }
+                }
+            });
+
+            print('Token client initialized');
+            print('Calling requestAccessToken...');
+            client.requestAccessToken();
+        }
+    </script>
+</body>
+</html>
