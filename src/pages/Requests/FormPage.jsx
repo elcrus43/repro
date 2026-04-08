@@ -93,7 +93,7 @@ export function FormPage() {
                     {/* Budget */}
                     <div className="form-group">
                         <label className="form-label">Бюджет макс. (₽)</label>
-                        <input type="number" className="form-input" value={form.budget_max || ''} onChange={e => setF('budget_max', Number(e.target.value))} placeholder="0" />
+                        <input className="form-input" value={form.budget_max ? form.budget_max.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''} onChange={e => setF('budget_max', Number(e.target.value.replace(/\D/g, '')))} placeholder="0" />
                     </div>
 
                     {/* Location */}
@@ -130,7 +130,7 @@ export function FormPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Комиссия (₽)</label>
-                            <input type="number" className="form-input" value={form.commission ?? ''} onChange={e => setF('commission', e.target.value === '' ? 0 : Number(e.target.value))} />
+                            <input className="form-input" value={form.commission ? form.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''} onChange={e => setF('commission', Number(e.target.value.replace(/\D/g, '')) || 0)} />
                         </div>
                     </div>
 

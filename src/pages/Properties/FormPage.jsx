@@ -233,7 +233,7 @@ export function FormPage() {
                     {/* Комиссия */}
                     <div className="form-group">
                         <label className="form-label">Ваша комиссия (₽)</label>
-                        <input type="number" className="form-input" value={form.commission ?? ''} onChange={e => setF('commission', e.target.value === '' ? 0 : Number(e.target.value))} />
+                        <input className="form-input" value={form.commission ? form.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''} onChange={e => setF('commission', Number(e.target.value.replace(/\D/g, '')) || 0)} />
                     </div>
 
                     {/* Статус */}
