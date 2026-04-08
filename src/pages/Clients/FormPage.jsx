@@ -14,8 +14,16 @@ export function FormPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const existing = id ? state.clients.find(c => c.id === id) : null;
+    
+    // Format phones for display
+    const formatPhones = (phones) => (phones || []).map(p => formatPhone(p, true));
+    const initialPhones = existing?.phones 
+        ? formatPhones(existing.phones) 
+        : (existing?.phone ? [formatPhone(existing.phone, true)] : ['']);
+
     const initialForm = existing ? {
         ...existing,
+        phones: initialPhones,
         passport_details: existing.passport_details || defaultClient.passport_details
     } : { ...defaultClient, realtor_id: state.currentUser?.id };
 
@@ -129,8 +137,9 @@ export function FormPage() {
                         <label className="form-label">Телефоны <span className="required">*</span></label>
                         {(form.phones || [form.phone || '']).map((p, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-                                <input className="form-input" value={p} onChange={e => {
-                                    const formatted = formatPhone(e.target.value, true);
+                                <input className="form-input" value={p || ''} onChange={e => {
+                                    const raw = e.target.value;
+                                    const formatted = formatPhone(raw, true);
                                     const phones = [...(form.phones || [form.phone || ''])];
                                     phones[idx] = formatted;
                                     setF('phones', phones);
