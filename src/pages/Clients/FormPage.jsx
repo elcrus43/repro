@@ -130,8 +130,9 @@ export function FormPage() {
                         {(form.phones || [form.phone || '']).map((p, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                                 <input className="form-input" value={p} onChange={e => {
+                                    const formatted = formatPhone(e.target.value, true);
                                     const phones = [...(form.phones || [form.phone || ''])];
-                                    phones[idx] = e.target.value;
+                                    phones[idx] = formatted;
                                     setF('phones', phones);
                                 }} placeholder="+7 (999) 000-00-00" />
                                 {idx > 0 && (
