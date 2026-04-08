@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Eye, EyeOff, Lock } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../lib/supabase';
 
 /**
  * Модальное окно для смены пароля.
