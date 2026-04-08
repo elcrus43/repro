@@ -150,6 +150,23 @@ export function useDbDispatch(state, dispatch, onError) {
         enhancedAction.item = { ...action.item };
         break;
 
+      case 'ADD_DEAL':
+        enhancedAction.deal = {
+          ...action.deal,
+          id: action.deal.id || nanoid(),
+          created_at: now,
+          status: 'active',
+        };
+        break;
+
+      case 'UPDATE_DEAL':
+        enhancedAction.deal = { ...action.deal, updated_at: now };
+        break;
+
+      case 'DELETE_DEAL':
+        // No enhancement needed — just pass the id through
+        break;
+
       // Чистые действия — не требуют синхронизации с БД
       case 'LOGOUT':
       case 'SET_LOADING':

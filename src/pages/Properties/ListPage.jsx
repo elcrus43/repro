@@ -81,6 +81,7 @@ export function ListPage() {
                 {properties.map(prop => {
                     const client = state.clients.find(c => c.id === prop.client_id);
                     const matches = state.matches.filter(m => m.property_id === prop.id);
+                    const status = prop.status || 'active'; // По умолчанию «В продаже»
                     const handleDelete = (e) => {
                         e.stopPropagation();
                         if (window.confirm(`Удалить объект ${prop.address || prop.city}?`)) {
@@ -91,7 +92,7 @@ export function ListPage() {
                         <div key={prop.id} className="card" onClick={() => navigate(`/properties/${prop.id}`)}>
                             <div className="flex justify-between items-start" style={{ marginBottom: 6 }}>
                                 <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>{formatNumber(prop.price)} ₽</div>
-                                <span className={`badge badge-${statusColors[prop.status]}`}>{statusLabels[prop.status]}</span>
+                                <span className={`badge badge-${statusColors[status]}`}>{statusLabels[status]}</span>
                             </div>
                             <div className="flex items-center gap-4" style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
                                 {PROPERTY_TYPES[prop.property_type]} {prop.rooms > 0 ? `· ${prop.rooms}к` : '· Студия'} · {prop.area_total} м²

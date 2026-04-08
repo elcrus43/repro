@@ -17,6 +17,7 @@ export function DetailsPage() {
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
+    const status = req.status || 'active';
 
     function handleDelete() {
         if (window.confirm('Удалить этот запрос?')) {
@@ -46,7 +47,7 @@ export function DetailsPage() {
                                 <MapPin size={14} /> {req.districts?.join(', ') || 'Все районы'}
                             </div>
                         </div>
-                        <span className={`badge badge-${statusColors[req.status]}`} style={{ fontSize: 12 }}>{statusLabels[req.status]}</span>
+                        <span className={`badge badge-${statusColors[status]}`} style={{ fontSize: 12 }}>{statusLabels[status]}</span>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>

@@ -28,6 +28,7 @@ export function FormPage() {
         status: 'planned',
         client_feedback: '',
         feedback_comment: '',
+        event_type: 'showing',
         realtor_id: state.currentUser?.id
     });
 
@@ -84,7 +85,7 @@ export function FormPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate(-1)}>←</button>
-                <span className="topbar-title">{editId ? 'Редактировать показ' : 'Новый показ'}</span>
+                <span className="topbar-title">{editId ? 'Редактировать событие' : 'Новое событие'}</span>
             </div>
             <div className="page-content">
                 {state.calendarStatus && (
@@ -109,12 +110,24 @@ export function FormPage() {
                 <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {/* Property */}
                     <div className="form-group">
-                        <label className="form-label"><Home size={14} style={{ marginRight: 4 }} /> Продажа <span className="required">*</span></label>
+                        <label className="form-label"><Home size={14} style={{ marginRight: 4 }} /> Объект <span className="required">*</span></label>
                         <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id}>
-                            <option value="">— Выбрать продажу —</option>
+                            <option value="">— Выбрать объект —</option>
                             {allProperties.map(p => (
                                 <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
                             ))}
+                        </select>
+                    </div>
+
+                    {/* Event Type */}
+                    <div className="form-group">
+                        <label className="form-label">Тип события</label>
+                        <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value })}>
+                            <option value="showing">Показ</option>
+                            <option value="meeting">Встреча с собственником</option>
+                            <option value="viewing">Просмотр</option>
+                            <option value="deposit">Задаток</option>
+                            <option value="deal">Сделка</option>
                         </select>
                     </div>
 
@@ -153,30 +166,41 @@ export function FormPage() {
                         <input className="form-input" type="datetime-local" value={form.showing_date} onChange={e => setForm({ ...form, showing_date: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} />
                     </div>
 
-                    {/* Status (edit mode only) */}
-                    {editId && (
-                        <div className="form-group">
-                            <label className="form-label">Статус</label>
-                            <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} disabled={form.realtor_id !== state.currentUser?.id}>
-                                <option value="planned">Запланирован</option>
-                                <option value="completed">Проведен</option>
-                                <option value="failed">Не состоялся</option>
-                            </select>
-                        </div>
-                    )}
+                    {/* Status */}
+                    <div className="form-group">
+                        <label className="form-label">Статус</label>
+                        <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
+                            <option value="planned">Запланирован</option>
+                            <option value="completed">Проведен</option>
+                            <option value="failed">Не состоялся</option>
+                        </select>
+                    </div>
 
-                    {/* Feedback comment (edit mode only) */}
-                    {editId && (
-                        <div className="form-group">
-                            <label className="form-label">Комментарий после показа</label>
-                            <textarea className="form-textarea" rows={3} value={form.feedback_comment || ''} onChange={e => setForm({ ...form, feedback_comment: e.target.value })} placeholder="Впечатления клиента..." disabled={form.realtor_id !== state.currentUser?.id} />
-                        </div>
-                    )}
+                    {/* Client feedback */}
+                    <div className="form-group">
+                        <label className="form-label">Отзыв</label>
+                        <select className="form-select" value={form.client_feedback || ''} onChange={e => setForm({ ...form, client_feedback: e.target.value })}>
+                            <option value="">— Выбрать —</option>
+                            <option value="interested">Заинтересован</option>
+                            <option value="other_options">Ищет другие варианты</option>
+                            <option value="price_high">Дорого</option>
+                            <option value="layout_bad">Не нравится планировка</option>
+                            <option value="location_bad">Не нравится расположение</option>
+                            <option value="condition_bad">Плохое состояние</option>
+                            <option value="ready">Готов к сделке</option>
+                        </select>
+                    </div>
+
+                    {/* Feedback comment */}
+                    <div className="form-group">
+                        <label className="form-label">Комментарий</label>
+                        <textarea className="form-textarea" rows={3} value={form.feedback_comment || ''} onChange={e => setForm({ ...form, feedback_comment: e.target.value })} placeholder="Впечатления клиента, замечания..." />
+                    </div>
 
                     {(!editId || form.realtor_id === state.currentUser?.id) && (
                         <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: 8 }}>
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                            {editId ? 'Сохранить изменения' : 'Запланировать показ'}
+                            {editId ? 'Сохранить изменения' : 'Сохранить'}
                         </button>
                     )}
                     {editId && form.realtor_id !== state.currentUser?.id && (

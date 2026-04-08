@@ -27,7 +27,7 @@ const MatchDetailPage = lazy(() => import('./pages/Matches/MatchesPages').then(m
 const ShowingsPage = lazy(() => import('./pages/Showings/index.js'));
 const ShowFormPage = lazy(() => import('./pages/Showings/index.js').then(m => ({ default: m.ShowFormPage })));
 const ShowDetailsPage = lazy(() => import('./pages/Showings/index.js').then(m => ({ default: m.ShowDetailsPage })));
-const TasksPage = lazy(() => import('./pages/Tasks/TasksPage'));
+const TasksPage = lazy(() => import('./pages/Tasks/DealsPage'));
 const MeetingOwnerFormPage = lazy(() => import('./pages/Tasks/MeetingOwnerFormPage').then(m => ({ default: m.MeetingOwnerFormPage })));
 const CallFormPage = lazy(() => import('./pages/Tasks/CallFormPage').then(m => ({ default: m.CallFormPage })));
 const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));

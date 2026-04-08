@@ -22,7 +22,11 @@
       "Bash(netstat *)",
       "Bash(timeout *)",
       "Bash(rmdir *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(ren *)",
+      "Bash(copy *)",
+      "Bash(mkdir *)",
+      "Bash(git checkout *)"
     ]
   },
   "$version": 3

@@ -76,7 +76,7 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 export async function loadUserData(userId, role) {
   const isAdmin = role === 'admin';
 
-  const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes] =
+  const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes, dealsRes] =
     await Promise.all([
       supabase.from('clients').select('*'),
       supabase.from('properties').select('*'),
@@ -87,6 +87,9 @@ export async function loadUserData(userId, role) {
         ? supabase.from('tasks').select('*')
         : supabase.from('tasks').select('*').eq('realtor_id', userId),
       supabase.from('pricelist').select('*'),
+      isAdmin
+        ? supabase.from('deals').select('*')
+        : supabase.from('deals').select('*').eq('realtor_id', userId),
     ]);
 
   const { data: profiles } = await supabase.from('profiles').select('*');
@@ -105,11 +108,13 @@ export async function loadUserData(userId, role) {
     profiles: profiles ?? [],
     pendingUsers,
     pricelist: priceRes?.data ?? [],
+    deals: dealsRes?.data ?? [],
     error:
       clientsRes.error?.message ||
       propertiesRes.error?.message ||
       requestsRes.error?.message ||
       priceRes?.error?.message ||
+      dealsRes?.error?.message ||
       null,
   };
 }
@@ -399,6 +404,19 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       case 'DELETE_PRICE_ITEM':
         result = await withRetry(() => supabase.from('pricelist').delete().eq('id', action.id));
+        break;
+
+      /* ── Сделки ──────────────────────────────────────────────────────── */
+      case 'ADD_DEAL':
+        result = await withRetry(() => supabase.from('deals').insert(action.deal));
+        break;
+
+      case 'UPDATE_DEAL':
+        result = await withRetry(() => supabase.from('deals').update(action.deal).eq('id', action.deal.id));
+        break;
+
+      case 'DELETE_DEAL':
+        result = await withRetry(() => supabase.from('deals').delete().eq('id', action.id));
         break;
 
       default:

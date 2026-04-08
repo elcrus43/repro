@@ -227,45 +227,6 @@ export function DetailsPage() {
                     )}
                 </div>
 
-                {/* Showings History */}
-                <div className="card" style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Показы ({myShowings.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/showings/new?client_id=${id}`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
-                    </div>
-                    <button className="btn btn-outline btn-full" onClick={() => navigate('/showings')}>
-                        Смотреть все показы
-                    </button>
-                    {myShowings.length > 0 && (
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', marginTop: 12 }}>
-                            Детальная история доступна в карточках соответствующих продаж.
-                        </div>
-                    )}
-                </div>
-
-                {/* Related Tasks */}
-                <div className="card" style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Задачи ({myTasks.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/tasks?client=${id}&action=new`)} style={{ color: 'var(--primary)', padding: '2px 8px', fontSize: 20 }}>+</button>
-                    </div>
-                    {myTasks.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет активных задач</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {myTasks.map(t => (
-                                <div key={t.id} onClick={() => navigate(`/tasks?client=${id}`)} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
-                                    <div style={{ width: 14, height: 14, borderRadius: 10, border: `2px solid ${t.status === 'done' ? 'var(--success)' : '#ccc'}`, background: t.status === 'done' ? 'var(--success)' : 'transparent', flexShrink: 0 }} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 13, fontWeight: 600, textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? 'var(--text-muted)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.title}</div>
-                                        {t.due_date && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(t.due_date).toLocaleDateString('ru-RU')}</div>}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
                 {/* Notes */}
                 {client.notes && (
                     <div className="card" style={{ padding: '16px' }}>

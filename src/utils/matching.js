@@ -59,6 +59,11 @@ export function calculateMatch(property, request) {
   const budgetMax = request.budget_max;
   const budgetMin = request.budget_min || 0;
 
+  // Hard cutoff: if price > 110% of budget_max, reject immediately
+  if (price > budgetMax * 1.1) {
+    return null;
+  }
+
   if (price <= budgetMax && price >= budgetMin) {
     score += 25;
     matched.push(`Цена: ${fmt(price)} ₽ в диапазоне бюджета`);
@@ -68,8 +73,6 @@ export function calculateMatch(property, request) {
   } else if (price > budgetMax && price <= budgetMax * 1.1) {
     score += 5;
     mismatched.push(`Цена: ${fmt(price)} ₽ чуть выше бюджета ${fmt(budgetMax)} ₽`);
-  } else {
-    mismatched.push(`Цена: ${fmt(price)} ₽ выше бюджета ${fmt(budgetMax)} ₽`);
   }
 
   // === AREA (10 pts) ===

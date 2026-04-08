@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
+import { supabase } from '../../lib/supabase';
 
 export function FormPage() {
     const { id } = useParams();
@@ -13,7 +14,10 @@ export function FormPage() {
     const { toast } = useToastContext();
 
     const existing = id ? state.properties.find(p => p.id === id) : null;
-    const initialForm = existing || {
+    const initialForm = existing ? {
+        ...existing,
+        images: existing.images || []
+    } : {
         client_id: searchParams.get('client') || '',
         realtor_id: state.currentUser?.id,
         property_type: 'apartment',
@@ -33,12 +37,55 @@ export function FormPage() {
         build_year: new Date().getFullYear(),
         status: 'active',
         commission: 0,
-        notes: ''
+        notes: '',
+        images: []
     };
 
     const [form, setForm] = useState(initialForm);
+    const fileInputRef = useRef();
+    const [uploading, setUploading] = useState(false);
 
     const setF = (key, val) => setForm(f => ({ ...f, [key]: val }));
+
+    async function handleImageUpload(e) {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setUploading(true);
+        const newImages = [...(form.images || [])];
+
+        for (const file of files) {
+            try {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${form.realtor_id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
+                const { error: uploadErr, data } = await supabase.storage
+                    .from('property-images')
+                    .upload(fileName, file, { upsert: true });
+
+                if (uploadErr) throw uploadErr;
+
+                // Получаем публичный URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('property-images')
+                    .getPublicUrl(fileName);
+
+                newImages.push(publicUrl);
+            } catch (err) {
+                console.error('[Image upload error]', err);
+                toast.error('Ошибка загрузки: ' + err.message);
+            }
+        }
+
+        setF('images', newImages);
+        setUploading(false);
+        // Очищаем input чтобы можно было загрузить тот же файл снова
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    function handleRemoveImage(index) {
+        const newImages = (form.images || []).filter((_, i) => i !== index);
+        setF('images', newImages);
+    }
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -204,6 +251,57 @@ export function FormPage() {
                     <div className="form-group">
                         <label className="form-label">Описание</label>
                         <textarea className="form-textarea" rows={4} value={form.notes} onChange={e => setF('notes', e.target.value)} placeholder="Особенности объекта, ремонт, условия сделки..." />
+                    </div>
+
+                    {/* ФОТОГРАФИИ */}
+                    <div className="form-group">
+                        <label className="form-label">Фотографии объекта</label>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                            {(form.images || []).map((url, index) => (
+                                <div key={index} style={{ position: 'relative', width: 80, height: 80 }}>
+                                    <img src={url} alt={`Фото ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }} />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveImage(index)}
+                                        style={{
+                                            position: 'absolute', top: -6, right: -6,
+                                            width: 22, height: 22, borderRadius: '50%',
+                                            background: 'var(--danger)', color: 'white',
+                                            border: '2px solid var(--bg)', cursor: 'pointer',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: 12, fontWeight: 'bold', lineHeight: 1
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            ))}
+                            <label
+                                style={{
+                                    width: 80, height: 80, borderRadius: 8,
+                                    border: '2px dashed var(--border)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: uploading ? 'wait' : 'pointer',
+                                    background: 'var(--bg)', fontSize: 28, color: 'var(--text-muted)'
+                                }}
+                            >
+                                {uploading ? '…' : '+'}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    style={{ display: 'none' }}
+                                    onChange={handleImageUpload}
+                                    disabled={uploading}
+                                />
+                            </label>
+                        </div>
+                        {(form.images || []).length > 0 && (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                                {form.images.length} фото • Нажмите × для удаления
+                            </div>
+                        )}
                     </div>
                 </div>
 

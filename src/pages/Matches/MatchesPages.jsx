@@ -154,10 +154,20 @@ export function MatchDetailPage() {
     }
 
     function handleDeal() {
-        if (window.confirm('Закрыть сделку? Это обновит статус объекта, запроса и всех связанных совпадений.')) {
-            dispatch({ type: 'CLOSE_DEAL', matchId: matchId });
-            navigate('/matches');
-        }
+        // Navigate to Deals page with pre-filled data from the match
+        navigate('/tasks', {
+            state: {
+                prefillDeal: {
+                    title: `Сделка: ${seller?.full_name || 'Продавец'} → ${buyer?.full_name || 'Покупатель'}`,
+                    seller_id: seller?.id || '',
+                    buyer_id: buyer?.id || '',
+                    property_id: prop?.id || '',
+                    price: prop?.price || req?.budget_max || '',
+                    commission: prop?.commission || '',
+                    deal_date: new Date().toISOString().slice(0, 16),
+                }
+            }
+        });
     }
 
     function handleScheduleShowing() {

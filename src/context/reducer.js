@@ -18,6 +18,7 @@ export const EMPTY_STATE = {
   pendingUsers: [],
   profiles:     [],
   pricelist:    [],
+  deals:        [],
   loading:      true,
   error:        null,
   calendarStatus: null, // null | 'loading' | 'ok' | 'error'

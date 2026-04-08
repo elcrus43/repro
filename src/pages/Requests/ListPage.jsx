@@ -88,7 +88,7 @@ export function ListPage() {
                         <div key={req.id} className="card" onClick={() => navigate(`/requests/${req.id}`)}>
                             <div className="flex justify-between items-start" style={{ marginBottom: 4 }}>
                                 <div style={{ fontWeight: 700, fontSize: 15 }}>{client?.full_name || 'Без имени'}</div>
-                                <span className={`badge badge-${statusColors[req.status]}`}>{statusLabels[req.status]}</span>
+                                <span className={`badge badge-${statusColors[req.status] || statusColors['active']}`}>{statusLabels[req.status] || statusLabels['active']}</span>
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>
                                 {req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ')}

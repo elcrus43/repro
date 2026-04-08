@@ -64,6 +64,28 @@
   color: var(--bg);
 }
 
+/* Dark mode: ensure icons are visible (currentColor inherits from parent) */
+.dark .icon-btn {
+  color: var(--text-muted);
+}
+
+.dark .icon-btn:hover {
+  color: var(--text);
+}
+
+.dark .nav-icon {
+  color: var(--text-muted);
+}
+
+.dark .nav-item.active .nav-icon {
+  color: var(--primary);
+}
+
+/* Fix lucide-react SVG icons in dark mode */
+.dark svg.lucide {
+  color: inherit;
+}
+
 .dark .fab {
   background: var(--primary);
   color: var(--bg);

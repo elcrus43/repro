@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Edit2, Trash2, Calendar } from 'lucide-react';
+import { Edit2, Trash2, Calendar, Phone, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
@@ -230,81 +230,15 @@ export function TasksPage() {
                 <span className="topbar-title">Задачи</span>
             </div>
             <div className="page-content" style={{ paddingTop: 8 }}>
-                {/* Google Calendar connection status */}
-                {!gcalConfigured ? (
-                    <div style={{
-                        margin: '0 0 12px 0',
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        background: '#fff3e0',
-                        color: '#e65100',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                    }}>
-                        <Calendar size={16} />
-                        <span>Google Календарь не настроен — перейдите в <a href="#/profile" style={{ color: '#e65100', fontWeight: 600 }}>Профиль</a> для настройки</span>
-                    </div>
-                ) : (
-                    <div style={{
-                        margin: '0 0 12px 0',
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                        background: gcalConnected ? '#e8f5e9' : '#fff3e0',
-                        color: gcalConnected ? '#2e7d32' : '#e65100',
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Calendar size={18} />
-                            <span>
-                                {gcalConnected
-                                    ? 'Google Календарь подключен'
-                                    : 'Подключите Google Календарь для синхронизации задач'}
-                            </span>
-                        </div>
-                        <button
-                            onClick={gcalConnected ? handleDisconnectCalendar : handleConnectCalendar}
-                            style={{
-                                background: 'none',
-                                border: `1px solid ${gcalConnected ? '#2e7d32' : '#e65100'}`,
-                                borderRadius: 8,
-                                padding: '4px 12px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                color: gcalConnected ? '#2e7d32' : '#e65100',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            {gcalConnected ? 'Отключить' : 'Подключить'}
-                        </button>
-                    </div>
-                )}
-
-                {calendarStatus && (
-                    <div style={{
-                        margin: '0 0 12px 0',
-                        padding: '10px 14px',
-                        borderRadius: 12,
-                        fontSize: 13,
-                        fontWeight: 500,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 8,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                        background: calendarStatus === 'ok' ? '#e8f5e9' : calendarStatus === 'error' ? '#fdecea' : '#e3f2fd',
-                        color: calendarStatus === 'ok' ? '#2e7d32' : calendarStatus === 'error' ? '#c62828' : '#1565c0',
-                    }}>
-                        {calendarStatus === 'loading' && '🔄 Синхронизация с Google Календарем...'}
-                        {calendarStatus === 'ok' && '✅ Добавлено в Google Календарь'}
-                        {calendarStatus === 'error' && '⚠️ Ошибка календаря (задача сохранена локально)'}
-                    </div>
-                )}
+                {/* Quick action buttons */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                    <button className="btn btn-secondary" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <User size={18} /> Встреча с собственником
+                    </button>
+                    <button className="btn btn-secondary" onClick={() => navigate('/tasks/call')} style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                        <Phone size={18} /> Позвонить
+                    </button>
+                </div>
 
                 {/* Inline task form - always visible */}
                 <form className="card" onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
