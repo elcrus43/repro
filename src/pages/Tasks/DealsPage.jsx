@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Edit2, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { Edit2, Trash2, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
@@ -12,10 +12,10 @@ export function DealsPage() {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Prefill data from Matches page
     const prefillData = location.state?.prefillDeal || {};
-
+    const [view, setView] = useState('list'); // 'dashboard' | 'list'
     const [filter, setFilter] = useState('active');
+    const [showForm, setShowForm] = useState(false);
     const [newDeal, setNewDeal] = useState({
         title: prefillData.title || '',
         seller_id: prefillData.seller_id || '',
@@ -29,12 +29,21 @@ export function DealsPage() {
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
     const filteredDeals = deals.filter(d => filter === 'all' || d.status === filter);
 
-    // Clear prefill after mount
     useEffect(() => {
         if (location.state?.prefillDeal) {
+            setShowForm(true);
             navigate(location.pathname, { replace: true, state: {} });
         }
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Dashboard stats
+    const stats = React.useMemo(() => {
+        const activeDeals = deals.filter(d => d.status === 'active');
+        const closedDeals = deals.filter(d => d.status === 'closed');
+        const totalCommission = closedDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
+        const activeVolume = activeDeals.reduce((sum, d) => sum + (Number(d.price) || 0), 0);
+        return { activeCount: activeDeals.length, closedCount: closedDeals.length, totalCommission, activeVolume };
+    }, [deals]);
 
     function handleFieldChange(field, value) {
         setNewDeal(prev => ({ ...prev, [field]: value }));
@@ -67,6 +76,7 @@ export function DealsPage() {
                 toast.success('Сделка создана');
             }
             setNewDeal({ title: '', seller_id: '', buyer_id: '', property_id: '', price: '', deal_date: new Date().toISOString().slice(0, 16), commission: '' });
+            setShowForm(false);
         } catch (err) {
             console.error('[Deal save error]', err);
             toast.error('Ошибка при сохранении сделки');
@@ -87,6 +97,7 @@ export function DealsPage() {
 
     function editDeal(deal) {
         setNewDeal({ ...deal, deal_date: deal.deal_date ? deal.deal_date.slice(0, 16) : '' });
+        setShowForm(true);
     }
 
     const activeDeals = filteredDeals.filter(d => d.status === 'active');
@@ -97,43 +108,69 @@ export function DealsPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Сделки</span>
+                <button className="icon-btn" onClick={() => setShowForm(!showForm)} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
             <div className="page-content" style={{ paddingTop: 8 }}>
+                {/* Dashboard */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
+                    <div className="card" style={{ background: 'var(--success-light)', padding: '16px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <TrendingUp size={18} color="var(--success)" />
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Закрыто</div>
+                        </div>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success)' }}>{stats.closedCount}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{stats.totalCommission.toLocaleString()} ₽ комиссия</div>
+                    </div>
+                    <div className="card" style={{ background: 'var(--primary-light)', padding: '16px 12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                            <DollarSign size={18} color="var(--primary)" />
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Активные</div>
+                        </div>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)' }}>{stats.activeCount}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{stats.activeVolume.toLocaleString()} ₽ объём</div>
+                    </div>
+                </div>
+
+                {/* Add Deal Button */}
+                <button className="btn btn-primary btn-full" onClick={() => setShowForm(true)} style={{ marginBottom: 16 }}>
+                    <Plus size={18} /> Новая сделка
+                </button>
+
                 {/* Inline Deal Form */}
-                <form className="card" onSubmit={addDeal} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{newDeal.id ? 'Редактировать сделку' : 'Новая сделка'}</div>
+                {showForm && (
+                    <form className="card" onSubmit={addDeal} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{newDeal.id ? 'Редактировать сделку' : 'Новая сделка'}</div>
 
-                    <input className="form-input" placeholder="Название сделки" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
+                        <input className="form-input" placeholder="Название сделки" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
 
-                    <select className="form-select" value={newDeal.seller_id || ''} onChange={e => handleFieldChange('seller_id', e.target.value)}>
-                        <option value="">Продавец...</option>
-                        {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                    </select>
+                        <select className="form-select" value={newDeal.seller_id || ''} onChange={e => handleFieldChange('seller_id', e.target.value)}>
+                            <option value="">Продавец...</option>
+                            {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                        </select>
 
-                    <select className="form-select" value={newDeal.buyer_id || ''} onChange={e => handleFieldChange('buyer_id', e.target.value)}>
-                        <option value="">Покупатель...</option>
-                        {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                    </select>
+                        <select className="form-select" value={newDeal.buyer_id || ''} onChange={e => handleFieldChange('buyer_id', e.target.value)}>
+                            <option value="">Покупатель...</option>
+                            {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                        </select>
 
-                    <select className="form-select" value={newDeal.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
-                        <option value="">Объект...</option>
-                        {state.properties.map(p => <option key={p.id} value={p.id}>{p.address} ({p.price?.toLocaleString()} ₽)</option>)}
-                    </select>
+                        <select className="form-select" value={newDeal.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
+                            <option value="">Объект...</option>
+                            {state.properties.map(p => <option key={p.id} value={p.id}>{p.address} ({p.price?.toLocaleString()} ₽)</option>)}
+                        </select>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <input className="form-input" type="number" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', e.target.value)} />
-                        <input className="form-input" type="number" placeholder="Комиссия" value={newDeal.commission} onChange={e => handleFieldChange('commission', e.target.value)} />
-                    </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <input className="form-input" type="number" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', e.target.value)} />
+                            <input className="form-input" type="number" placeholder="Комиссия" value={newDeal.commission} onChange={e => handleFieldChange('commission', e.target.value)} />
+                        </div>
 
-                    <input className="form-input" type="datetime-local" value={newDeal.deal_date || ''} onChange={e => handleFieldChange('deal_date', e.target.value)} />
+                        <input className="form-input" type="datetime-local" value={newDeal.deal_date || ''} onChange={e => handleFieldChange('deal_date', e.target.value)} />
 
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {newDeal.id && (
-                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setNewDeal({ title: '', seller_id: '', buyer_id: '', property_id: '', price: '', deal_date: new Date().toISOString().slice(0, 16), commission: '' })}>Очистить</button>
-                        )}
-                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{newDeal.id ? 'Сохранить' : 'Создать'}</button>
-                    </div>
-                </form>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); setNewDeal({ title: '', seller_id: '', buyer_id: '', property_id: '', price: '', deal_date: new Date().toISOString().slice(0, 16), commission: '' }); }}>Отмена</button>
+                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{newDeal.id ? 'Сохранить' : 'Создать'}</button>
+                        </div>
+                    </form>
+                )}
 
                 {/* Filters */}
                 <div className="tab-filters" style={{ marginBottom: 12 }}>

@@ -33,9 +33,11 @@ export function FormPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
+        const phones = (form.phones || [form.phone || '']).map(p => stripPhone(p)).filter(Boolean);
         const client = {
             ...form,
-            phone: stripPhone(form.phone),
+            phone: phones[0] || '', // Main phone for backward compatibility
+            phones: phones.length > 1 ? phones : undefined, // Store multiple phones
             additional_contacts: (form.additional_contacts || []).map(c => ({
                 ...c,
                 phone: stripPhone(c.phone)
@@ -60,6 +62,7 @@ export function FormPage() {
     const clientTypes = [
         { id: 'buyer', label: 'Покупатель' },
         { id: 'seller', label: 'Продавец' },
+        { id: 'developer', label: 'Застройщик' },
         { id: 'landlord', label: 'Арендодатель' },
         { id: 'tenant', label: 'Арендатор' },
     ];
@@ -123,8 +126,26 @@ export function FormPage() {
                         </div>
                     </div>
                     <div className="form-group">
-                        <label className="form-label">Телефон <span className="required">*</span></label>
-                        <input className="form-input" value={form.phone} onChange={e => handlePhoneChange(e)} required placeholder="+7 (999) 000-00-00" />
+                        <label className="form-label">Телефоны <span className="required">*</span></label>
+                        {(form.phones || [form.phone || '']).map((p, idx) => (
+                            <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                                <input className="form-input" value={p} onChange={e => {
+                                    const phones = [...(form.phones || [form.phone || ''])];
+                                    phones[idx] = e.target.value;
+                                    setF('phones', phones);
+                                }} placeholder="+7 (999) 000-00-00" />
+                                {idx > 0 && (
+                                    <button type="button" className="icon-btn" onClick={() => {
+                                        const phones = (form.phones || [form.phone || '']).filter((_, i) => i !== idx);
+                                        setF('phones', phones.length > 0 ? phones : ['']);
+                                    }}>✕</button>
+                                )}
+                            </div>
+                        ))}
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+                            const phones = form.phones || [form.phone || ''];
+                            setF('phones', [...phones, '']);
+                        }}>+ Добавить телефон</button>
                     </div>
                     <div className="form-group">
                         <label className="form-label">Email</label>

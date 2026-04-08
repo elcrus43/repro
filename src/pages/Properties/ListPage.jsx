@@ -2,9 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Edit2, Trash2, MapPin, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
+import { GlobalSearch } from '../../components/GlobalSearch';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -48,7 +49,10 @@ export function ListPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Объекты</span>
-                <button className="icon-btn" onClick={() => navigate('/properties/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <GlobalSearch />
+                    <button className="icon-btn" onClick={() => navigate('/properties/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                </div>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>

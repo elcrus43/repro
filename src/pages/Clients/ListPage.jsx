@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
 import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { GlobalSearch } from '../../components/GlobalSearch';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -21,14 +22,16 @@ export function ListPage() {
             .filter(c => {
                 if (filter === 'buyer') return c.client_types?.includes('buyer');
                 if (filter === 'seller') return c.client_types?.includes('seller');
+                if (filter === 'developer') return c.client_types?.includes('developer');
                 if (filter === 'landlord') return c.client_types?.includes('landlord');
                 if (filter === 'tenant') return c.client_types?.includes('tenant');
                 if (filter === 'active') return c.status === 'active';
                 return true;
             })
-            .filter(c =>
-                !search || c.full_name?.toLowerCase().includes(search.toLowerCase()) || c.phone?.includes(search)
-            );
+            .filter(c => {
+                const phones = c.phones || [c.phone];
+                return !search || c.full_name?.toLowerCase().includes(search.toLowerCase()) || phones.some(p => p?.includes(search));
+            });
     }, [state.clients, scope, user?.id, filter, search]);
 
     // Pagination - show 20 items per page
@@ -37,7 +40,7 @@ export function ListPage() {
     // Reset to page 1 when filtered data changes
     useEffect(() => { resetPage(); }, [filteredClients, resetPage]);
 
-    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', landlord: 'Арендодатель', tenant: 'Арендатор' };
+    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', landlord: 'Арендодатель', tenant: 'Арендатор' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
 
@@ -45,7 +48,10 @@ export function ListPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Клиенты</span>
-                <button className="icon-btn" onClick={() => navigate('/clients/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <GlobalSearch />
+                    <button className="icon-btn" onClick={() => navigate('/clients/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                </div>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -62,7 +68,7 @@ export function ListPage() {
             </div>
 
             <div className="tab-filters">
-                {[['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['landlord', 'Арендодатели'], ['tenant', 'Арендаторы'], ['active', 'Активные']].map(([val, label]) => (
+                {[['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['landlord', 'Арендодатели'], ['tenant', 'Арендаторы'], ['active', 'Активные']].map(([val, label]) => (
                     <button key={val} className={`tab-filter ${filter === val ? 'active' : ''}`} onClick={() => setFilter(val)}>{label}</button>
                 ))}
             </div>
@@ -106,6 +112,7 @@ export function ListPage() {
                                             <span key={t} style={{ opacity: 0.8 }}>{typeLabels[t]}</span>
                                         )).reduce((prev, curr) => [prev, ' · ', curr])}
                                         {client.client_types?.length > 0 && ' · '} <span style={{ color: '#2563EB', fontWeight: 600 }}>{formatPhone(client.phone)}</span>
+                                        {client.phones?.length > 1 && <span style={{ opacity: 0.6 }}>+{client.phones.length - 1}</span>}
                                     </div>
                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                                         {client.additional_contacts?.length > 0 && `+${client.additional_contacts.length} чел. · `}
