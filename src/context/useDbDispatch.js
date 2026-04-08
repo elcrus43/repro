@@ -150,6 +150,18 @@ export function useDbDispatch(state, dispatch, onError) {
         enhancedAction.item = { ...action.item };
         break;
 
+      // Чистые действия — не требуют синхронизации с БД
+      case 'LOGOUT':
+      case 'SET_LOADING':
+      case 'SET_USER':
+      case 'SET_ALL':
+      case 'SET_CALENDAR_STATUS':
+      case 'SET_PRICELIST':
+      case 'APPROVE_USER':
+      case 'REJECT_USER':
+        dispatch(action);
+        return; // Пропускаем syncAction
+
       default:
         break;
     }
@@ -172,7 +184,7 @@ export function useDbDispatch(state, dispatch, onError) {
       });
     };
 
-    await syncAction(enhancedAction, { onError, onRollback });
+    await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
 
     /* ── Google Calendar sync ─────────────────────────────────────────── */
     if (action.type === 'ADD_TASK' || action.type === 'UPDATE_TASK') {

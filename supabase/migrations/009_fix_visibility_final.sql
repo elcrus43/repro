@@ -1,15 +1,18 @@
--- FINAL VISIBILITY FIX: Disable Row Level Security (RLS)
--- This ensures that everyone can see everything, regardless of who created the record.
+-- FINAL VISIBILITY FIX: Grant permissions to authenticated users
+-- ВАЖНО: RLS политики настроены в миграциях 017, 023, 025.
+-- Эта миграция ТОЛЬКО предоставляет права доступа, но НЕ отключает RLS.
+-- Если эта миграция запускается после 017/023, команды DISABLE RLS игнорируются.
 
--- Disable RLS for core tables
-ALTER TABLE properties DISABLE ROW LEVEL SECURITY;
-ALTER TABLE requests DISABLE ROW LEVEL SECURITY;
-ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
-ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE matches DISABLE ROW LEVEL SECURITY;
-ALTER TABLE showings DISABLE ROW LEVEL SECURITY;
+-- БЕЗОПАСНО: Эти команды игнорируются, если RLS уже включён в более поздних миграциях
+-- Оставляем только GRANT для совместимости
+-- ALTER TABLE properties DISABLE ROW LEVEL SECURITY;  -- УДАЛЕНО: нарушает безопасность
+-- ALTER TABLE requests DISABLE ROW LEVEL SECURITY;    -- УДАЛЕНО: нарушает безопасность
+-- ALTER TABLE clients DISABLE ROW LEVEL SECURITY;     -- УДАЛЕНО: нарушает безопасность
+-- ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;    -- УДАЛЕНО: нарушает безопасность
+-- ALTER TABLE matches DISABLE ROW LEVEL SECURITY;     -- УДАЛЕНО: нарушает безопасность
+-- ALTER TABLE showings DISABLE ROW LEVEL SECURITY;    -- УДАЛЕНО: нарушает безопасность
 
--- Re-grant access just in case (though disabling RLS usually bypasses this)
+-- Предоставляем права доступа (безопасно, RLS всё ещё активен)
 GRANT ALL ON TABLE properties TO authenticated;
 GRANT ALL ON TABLE requests TO authenticated;
 GRANT ALL ON TABLE clients TO authenticated;

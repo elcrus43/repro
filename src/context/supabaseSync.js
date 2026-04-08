@@ -123,12 +123,22 @@ export async function loadUserData(userId, role) {
  * @param {function} onError      — (message: string) => void  — заменяет alert()
  * @param {function} onRollback   — (action: object) => void   — откат optimistic update
  */
-export async function syncAction(rawAction, { onError, onRollback } = {}) {
+export async function syncAction(rawAction, { onError, onRollback, currentUser } = {}) {
   const handleError = onError ?? ((msg) => console.error('[Supabase]', msg));
 
   try {
     const action = sanitizeObj(rawAction);
     let result;
+
+    // ─── RBAC: Проверка прав для админских действий ─────────────────────
+    const ADMIN_ONLY_ACTIONS = ['APPROVE_USER', 'REJECT_USER', 'ADD_PRICE_ITEM', 'UPDATE_PRICE_ITEM', 'DELETE_PRICE_ITEM'];
+    
+    if (ADMIN_ONLY_ACTIONS.includes(action.type)) {
+      if (!currentUser || currentUser.role !== 'admin') {
+        handleError(`Доступ запрещён: действие ${action.type} требует прав администратора`);
+        return; // Не выполняем действие
+      }
+    }
 
     switch (action.type) {
 
@@ -213,6 +223,7 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
           microdistrict: action.property.microdistrict || null,
           price_min: action.property.price_min || null,
           notes: action.property.notes || null,
+          images: action.property.images || [],
           commission: action.property.commission ?? 0,
         };
         // Remove undefined fields to avoid schema errors
@@ -227,6 +238,12 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
           console.warn('[Supabase] notes column missing, retrying without it');
           const { notes: _n, ...propertyWithoutNotes } = propertyData;
           result = await withRetry(() => supabase.from('properties').insert(propertyWithoutNotes));
+        }
+        // Retry without images if column missing
+        if (result?.error && result.error.message?.includes('images')) {
+          console.warn('[Supabase] images column missing, retrying without it');
+          const { images: _i, ...propertyWithoutImages } = propertyData;
+          result = await withRetry(() => supabase.from('properties').insert(propertyWithoutImages));
         }
 
         if (!result?.error && action.matches?.length > 0) {
@@ -250,6 +267,7 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
           microdistrict: pData.microdistrict || null,
           price_min: pData.price_min || null,
           notes: pData.notes || null,
+          images: pData.images || [],
           commission: pData.commission ?? 0,
         };
         // Remove undefined fields
@@ -264,6 +282,12 @@ export async function syncAction(rawAction, { onError, onRollback } = {}) {
           console.warn('[Supabase] notes column missing, retrying without it');
           const { notes: _n, ...dataWithoutNotes } = normalizedData;
           result = await withRetry(() => supabase.from('properties').update(dataWithoutNotes).eq('id', pId));
+        }
+        // Retry without images if column missing
+        if (result?.error && result.error.message?.includes('images')) {
+          console.warn('[Supabase] images column missing, retrying without it');
+          const { images: _i, ...dataWithoutImages } = normalizedData;
+          result = await withRetry(() => supabase.from('properties').update(dataWithoutImages).eq('id', pId));
         }
 
         if (!result?.error && action.matches?.length > 0) {

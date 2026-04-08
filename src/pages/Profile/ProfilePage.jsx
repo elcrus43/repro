@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { supabase } from '../../lib/supabase';
-import { Settings, Bell, DownloadCloud, CircleHelp, Moon, Sun, ArrowRight, RotateCcw, LogOut, Edit2, UserCheck, UserX, Calendar } from 'lucide-react';
+import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Edit2, UserCheck, UserX, Calendar, Lock } from 'lucide-react';
 import {
     isCalendarConfigured,
     isCalendarConnected,
     requestAccessToken,
     disconnectCalendar,
 } from '../../lib/googleCalendar';
+import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
 // Lazy load XLSX for code splitting - loaded only when export is needed
 const loadXLSX = () => import('xlsx');
@@ -23,6 +24,7 @@ export function ProfilePage() {
     const [isInstalled, setIsInstalled] = React.useState(false);
     const [isEditing, setIsEditing] = React.useState(false);
     const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
+    const [showPasswordModal, setShowPasswordModal] = React.useState(false);
     const [gcalConnected, setGcalConnected] = React.useState(() => isCalendarConnected());
     const gcalConfigured = isCalendarConfigured();
 
@@ -218,11 +220,9 @@ export function ProfilePage() {
     };
 
     const menuItems = [
+        { icon: <Lock size={20} />, label: 'Сменить пароль', action: handleChangePassword },
         { icon: isDark ? <Sun size={20} /> : <Moon size={20} />, label: isDark ? 'Светлая тема' : 'Темная тема', action: toggleTheme },
-        { icon: <Settings size={20} />, label: 'Настройки', action: () => { } },
-        { icon: <Bell size={20} />, label: 'Уведомления', action: () => { } },
         { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
-        { icon: <CircleHelp size={20} />, label: 'Помощь', action: () => { } },
     ];
 
     async function handleConnectCalendar() {
@@ -249,11 +249,27 @@ export function ProfilePage() {
     }
 
     async function handleLogout() {
-        if (window.confirm('Выйти из аккаунта?')) {
-            await supabase.auth.signOut();
-            dispatch({ type: 'LOGOUT' });
-            navigate('/login');
+        if (!window.confirm('Выйти из аккаунта?')) return;
+        try {
+            await supabase.auth.signOut({ scope: 'global' });
+        } catch (e) {
+            console.warn('[Logout] signOut error (ignored):', e);
         }
+        // Удаляем только ключи Supabase, сохраняем тему и PWA
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('sb-')) localStorage.removeItem(key);
+        });
+        // Полный перезагруз страницы для сброса состояния приложения
+        window.location.href = '/login';
+    }
+
+    async function handleChangePassword() {
+        setShowPasswordModal(true);
+    }
+
+    function handlePasswordChangeSuccess() {
+        setShowPasswordModal(false);
+        toast.success('Пароль успешно изменён');
     }
 
     return (
@@ -336,90 +352,95 @@ export function ProfilePage() {
 
                 {/* Admin panel: users management */}
                 {isAdmin && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div className="card">
-                            <div className="section-title" style={{ marginBottom: 12 }}>Управление риэлторами</div>
-                            {/* Pending Users */}
-                            <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    ⏳ Ожидают одобрения ({state.profiles.filter(u => u.status === 'pending').length})
-                                </div>
-                                {state.profiles.filter(u => u.status === 'pending').length === 0 && (
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>Нет новых запросов</div>
-                                )}
-                                {state.profiles.filter(u => u.status === 'pending').map(u => (
-                                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email || u.phone}</div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="icon-btn" onClick={() => handleApprove(u.id)} style={{ color: 'var(--success)' }}><UserCheck size={20} /></button>
-                                            <button className="icon-btn" onClick={() => handleReject(u.id)} style={{ color: 'var(--danger)' }}><UserX size={20} /></button>
-                                        </div>
-                                    </div>
-                                ))}
+                    <div className="card">
+                        <div className="section-title" style={{ marginBottom: 12 }}>Управление риэлторами</div>
+                        {/* Pending Users */}
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                ⏳ Ожидают одобрения ({state.profiles.filter(u => u.status === 'pending').length})
                             </div>
-                            {/* Approved/Rejected */}
-                            <div>
-                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                    Обработанные ({state.profiles.filter(u => u.status !== 'pending' && u.id !== user.id).length})
-                                </div>
-                                {state.profiles.filter(u => u.status !== 'pending' && u.id !== user.id).slice(0, 5).map(u => (
-                                    <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border-light)', opacity: u.status === 'rejected' ? 0.6 : 1 }}>
-                                        <div style={{ flex: 1 }}><div style={{ fontWeight: 500, fontSize: 13 }}>{u.full_name}</div></div>
-                                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: u.status === 'approved' ? 'var(--success-light)' : 'var(--danger-light)', color: u.status === 'approved' ? 'var(--success)' : 'var(--danger)' }}>{u.status === 'approved' ? 'АКТИВЕН' : 'ОТКЛОНЁН'}</span>
-                                        <button className="icon-btn" onClick={() => (u.status === 'approved' ? handleReject(u.id) : handleApprove(u.id))} style={{ color: u.status === 'approved' ? 'var(--danger)' : 'var(--success)', padding: 4 }}>
-                                            {u.status === 'approved' ? <UserX size={16} /> : <UserCheck size={16} />}
-                                        </button>
+                            {state.profiles.filter(u => u.status === 'pending').length === 0 && (
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>Нет новых запросов</div>
+                            )}
+                            {state.profiles.filter(u => u.status === 'pending').map(u => (
+                                <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, fontSize: 14 }}>{u.full_name}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{u.email || u.phone}</div>
                                     </div>
-                                ))}
-                            </div>
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <button className="icon-btn" onClick={() => handleApprove(u.id)} style={{ color: 'var(--success)' }}><UserCheck size={20} /></button>
+                                        <button className="icon-btn" onClick={() => handleReject(u.id)} style={{ color: 'var(--danger)' }}><UserX size={20} /></button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-
-                        {/* PRICE LIST MANAGEMENT */}
-                        <div className="card">
-                            <div className="section-title" style={{ marginBottom: 12 }}>Прейскурант услуг</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {state.pricelist.map(item => (
-                                    <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
-                                                <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{item.price.toLocaleString()} ₽</div>
-                                            </div>
-                                            <div style={{ display: 'flex', gap: 4 }}>
-                                                <button className="icon-btn" onClick={() => {
-                                                    const newName = window.prompt('Название услуги', item.name);
-                                                    const newPrice = window.prompt('Стоимость', item.price);
-                                                    if (newName && newPrice) dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, name: newName, price: Number(newPrice) } });
-                                                }}><Edit2 size={16} /></button>
-                                                <button className="icon-btn" onClick={() => {
-                                                    if (window.confirm('Удалить услугу из прейскуранта?')) dispatch({ type: 'DELETE_PRICE_ITEM', id: item.id });
-                                                }} style={{ color: 'var(--danger)' }}><UserX size={16} /></button>
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
-                                                <input type="checkbox" checked={item.show_in_sale !== false} onChange={e => dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, show_in_sale: e.target.checked } })} />
-                                                Объект (Продажа)
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, cursor: 'pointer' }}>
-                                                <input type="checkbox" checked={item.show_in_purchase !== false} onChange={e => dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, show_in_purchase: e.target.checked } })} />
-                                                Запрос (Покупка)
-                                            </label>
-                                        </div>
-                                    </div>
-                                ))}
-                                <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => {
-                                    const name = window.prompt('Название новой услуги');
-                                    const price = window.prompt('Стоимость');
-                                    if (name && price) dispatch({ type: 'ADD_PRICE_ITEM', item: { name, price: Number(price), show_in_sale: true, show_in_purchase: true } });
-                                }}>+ Добавить услугу</button>
+                        {/* Approved/Rejected */}
+                        <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                Обработанные ({state.profiles.filter(u => u.status !== 'pending' && u.id !== user.id).length})
                             </div>
+                            {state.profiles.filter(u => u.status !== 'pending' && u.id !== user.id).slice(0, 5).map(u => (
+                                <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid var(--border-light)', opacity: u.status === 'rejected' ? 0.6 : 1 }}>
+                                    <div style={{ flex: 1 }}><div style={{ fontWeight: 500, fontSize: 13 }}>{u.full_name}</div></div>
+                                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10, fontWeight: 700, background: u.status === 'approved' ? 'var(--success-light)' : 'var(--danger-light)', color: u.status === 'approved' ? 'var(--success)' : 'var(--danger)' }}>{u.status === 'approved' ? 'АКТИВЕН' : 'ОТКЛОНЁН'}</span>
+                                    <button className="icon-btn" onClick={() => (u.status === 'approved' ? handleReject(u.id) : handleApprove(u.id))} style={{ color: u.status === 'approved' ? 'var(--danger)' : 'var(--success)', padding: 4 }}>
+                                        {u.status === 'approved' ? <UserX size={16} /> : <UserCheck size={16} />}
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
+
+                {/* PRICE LIST — видят все, кнопки управления только у админа */}
+                <div className="card">
+                    <div className="section-title" style={{ marginBottom: 12 }}>Прейскурант услуг</div>
+                    {state.pricelist.length === 0 && (
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', padding: '8px 0' }}>Прейскурант пока пуст</div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {state.pricelist.map(item => (
+                            <div key={item.id} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 600, fontSize: 14 }}>{item.name}</div>
+                                        <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 700 }}>{Number(item.price).toLocaleString()} ₽</div>
+                                    </div>
+                                    {isAdmin && (
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <button className="icon-btn" onClick={() => {
+                                                const newName = window.prompt('Название услуги', item.name);
+                                                const newPrice = window.prompt('Стоимость', item.price);
+                                                if (newName && newPrice) dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, name: newName, price: Number(newPrice) } });
+                                            }}><Edit2 size={16} /></button>
+                                            <button className="icon-btn" onClick={() => {
+                                                if (window.confirm('Удалить услугу из прейскуранта?')) dispatch({ type: 'DELETE_PRICE_ITEM', id: item.id });
+                                            }} style={{ color: 'var(--danger)' }}><UserX size={16} /></button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)', cursor: isAdmin ? 'pointer' : 'default', opacity: isAdmin ? 1 : 0.6 }}>
+                                        <input type="checkbox" checked={item.show_in_sale !== false} onChange={e => dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, show_in_sale: e.target.checked } })} disabled={!isAdmin} />
+                                        Объект (Продажа)
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-muted)', cursor: isAdmin ? 'pointer' : 'default', opacity: isAdmin ? 1 : 0.6 }}>
+                                        <input type="checkbox" checked={item.show_in_purchase !== false} onChange={e => dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, show_in_purchase: e.target.checked } })} disabled={!isAdmin} />
+                                        Запрос (Покупка)
+                                    </label>
+                                </div>
+                            </div>
+                        ))}
+                        {isAdmin && (
+                            <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => {
+                                const name = window.prompt('Название новой услуги');
+                                const price = window.prompt('Стоимость');
+                                if (name && price) dispatch({ type: 'ADD_PRICE_ITEM', item: { name, price: Number(price), show_in_sale: true, show_in_purchase: true } });
+                            }}>+ Добавить услугу</button>
+                        )}
+                    </div>
+                </div>
 
                 {/* Google Calendar Integration — DISABLED temporarily */}
 
@@ -470,9 +491,9 @@ export function ProfilePage() {
                             borderBottom: i < menuItems.length - 1 ? '1px solid var(--border-light)' : 'none',
                             textAlign: 'left', fontSize: 15, color: 'var(--text)'
                         }}>
-                            <span style={{ color: 'var(--text-muted)', display: 'flex' }}>{item.icon}</span>
+                            <span style={{ color: 'var(--text-muted)', display: 'flex', opacity: 0.7 }}>{item.icon}</span>
                             <span style={{ flex: 1, fontWeight: 500 }}>{item.label}</span>
-                            {item.label !== 'Темная тема' && item.label !== 'Светлая тема' && <span style={{ color: 'var(--text-muted)' }}><ArrowRight size={16} /></span>}
+                            <span style={{ color: 'var(--text-muted)', opacity: 0.5 }}><ArrowRight size={16} /></span>
                         </button>
                     ))}
                 </div>
@@ -489,6 +510,14 @@ export function ProfilePage() {
                     </button>
                 </div>
             </div>
+
+            {/* Change Password Modal */}
+            <ChangePasswordModal
+                isOpen={showPasswordModal}
+                onClose={() => setShowPasswordModal(false)}
+                userEmail={user?.email}
+                onSuccess={handlePasswordChangeSuccess}
+            />
         </div>
     );
 }

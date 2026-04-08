@@ -3,11 +3,14 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
-import { Building2, Users, Sparkles, CheckSquare, UserCircle } from 'lucide-react';
+import { RequireAdmin } from './components/RequireAdmin';
+import { Building2, Users, Sparkles, FileCheck, UserCircle } from 'lucide-react';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.RegisterPage })));
+const AuthCallbackPage = lazy(() => import('./pages/Auth/AuthCallback'));
+const UpdatePasswordPage = lazy(() => import('./pages/Auth/UpdatePasswordPage'));
 const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'));
 const ClientsPage = lazy(() => import('./pages/Clients/index.js'));
 const ClientCardPage = lazy(() => import('./pages/Clients/index.js').then(m => ({ default: m.ClientCardPage })));
@@ -25,6 +28,8 @@ const ShowingsPage = lazy(() => import('./pages/Showings/index.js'));
 const ShowFormPage = lazy(() => import('./pages/Showings/index.js').then(m => ({ default: m.ShowFormPage })));
 const ShowDetailsPage = lazy(() => import('./pages/Showings/index.js').then(m => ({ default: m.ShowDetailsPage })));
 const TasksPage = lazy(() => import('./pages/Tasks/TasksPage'));
+const MeetingOwnerFormPage = lazy(() => import('./pages/Tasks/MeetingOwnerFormPage').then(m => ({ default: m.MeetingOwnerFormPage })));
+const CallFormPage = lazy(() => import('./pages/Tasks/CallFormPage').then(m => ({ default: m.CallFormPage })));
 const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
 const EstimationPage = lazy(() => import('./pages/Properties/EstimationPage'));
 const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
@@ -45,7 +50,7 @@ function BottomNav() {
     { path: '/properties', icon: <Building2 size={22} />, label: 'Продажи' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
     { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
-    { path: '/tasks', icon: <CheckSquare size={22} />, label: 'Задачи' },
+    { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
     { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
 
@@ -94,7 +99,7 @@ function RequireAuth({ children }) {
 
 function AppLayout({ children }) {
   const { pathname } = useLocation();
-  const noNav = ['/login', '/register'].includes(pathname) || pathname.startsWith('/p/');
+  const noNav = ['/login', '/register', '/auth/callback', '/update-password'].includes(pathname) || pathname.startsWith('/p/');
 
   return (
     <div className="app-layout">
@@ -116,6 +121,8 @@ function AppRoutes() {
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/update-password" element={<UpdatePasswordPage />} />
 
           {/* Protected */}
           <Route path="/" element={<RequireAuth><DashboardPage /></RequireAuth>} />
@@ -150,12 +157,14 @@ function AppRoutes() {
 
           {/* Tasks */}
           <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
+          <Route path="/tasks/meeting-owner" element={<RequireAuth><MeetingOwnerFormPage /></RequireAuth>} />
+          <Route path="/tasks/call" element={<RequireAuth><CallFormPage /></RequireAuth>} />
 
           {/* Messaging */}
           <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
           <Route path="/p/:slug" element={<PublicPropertyPage />} />
 
-          {/* Profile */}
+          {/* Profile — доступно всем, но админские функции защищены внутри компонента */}
           <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
 
           {/* Fallback */}

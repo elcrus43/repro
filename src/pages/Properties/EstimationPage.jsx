@@ -131,7 +131,7 @@ export function EstimationPage() {
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {result.analogs.map((a, i) => (
-                                <div key={i} className="list-row" onClick={() => window.open(a.source_url, '_blank')}>
+                                <div key={i} className="list-row" onClick={() => window.open(a.source_url, '_blank', 'noopener,noreferrer')}>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                                             <span className="badge badge-subtle" style={{ fontSize: 11 }}>{a.label || 'Авито'}</span>

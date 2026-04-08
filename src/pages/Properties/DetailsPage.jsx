@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, Sparkles, Building2, Calculator, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit2, Trash2, Sparkles, Building2, Calculator, ExternalLink, ChevronDown, ChevronUp, Phone, User } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { estimateOffline } from '../../utils/estimation';
@@ -179,7 +179,7 @@ function EstimationWidget({ prop }) {
                                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, textDecoration: 'none' }}
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    window.open(result.avito_url, '_blank');
+                                    window.open(result.avito_url, '_blank', 'noopener,noreferrer');
                                 }}
                             >
                                 <ExternalLink size={16} />
@@ -195,7 +195,7 @@ function EstimationWidget({ prop }) {
                                     <div
                                         key={a.id}
                                         className="list-row"
-                                        onClick={() => window.open(a.source_url, '_blank')}
+                                        onClick={() => window.open(a.source_url, '_blank', 'noopener,noreferrer')}
                                     >
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
@@ -236,7 +236,27 @@ export function DetailsPage() {
     const client = state.clients.find(c => c.id === prop?.client_id);
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
-    const tasks = state.tasks.filter(t => t.property_id === id);
+
+    // Unified history from showings with event_type
+    const eventTypeLabels = {
+        showing: 'Показ',
+        meeting: 'Встреча с собственником',
+        viewing: 'Просмотр',
+        deposit: 'Задаток',
+        deal: 'Сделка',
+    };
+
+    const events = showings
+        .map(s => {
+            const buyer = s.client_id ? state.clients.find(c => c.id === s.client_id) : null;
+            return {
+                ...s,
+                buyer,
+                dateObj: s.showing_date ? new Date(s.showing_date) : null,
+                typeLabel: eventTypeLabels[s.event_type] || 'Показ',
+            };
+        })
+        .sort((a, b) => (b.dateObj?.getTime() || 0) - (a.dateObj?.getTime() || 0));
 
     if (!prop) return (
         <div className="page">
@@ -249,6 +269,7 @@ export function DetailsPage() {
 
     const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
     const statusColors = { active: 'lime', paused: 'blue', deal_closed: 'green', refused: 'red' };
+    const status = prop.status || 'active';
 
     function handleDelete() {
         if (window.confirm('Удалить этот объект?')) {
@@ -277,7 +298,7 @@ export function DetailsPage() {
                     <div style={{ background: 'var(--primary-light)', padding: '20px 16px', borderBottom: '1px solid var(--border-light)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary)' }}>{formatNumber(prop.price)} ₽</div>
-                            <span className={`badge badge-${statusColors[prop.status]}`} style={{ fontSize: 12 }}>{statusLabels[prop.status]}</span>
+                            <span className={`badge badge-${statusColors[status]}`} style={{ fontSize: 12 }}>{statusLabels[status]}</span>
                         </div>
                         <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>{prop.address || prop.city}</div>
                     </div>
@@ -307,6 +328,20 @@ export function DetailsPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* ГАЛЕРЕЯ ФОТО */}
+                {prop.images && prop.images.length > 0 && (
+                    <div className="card">
+                        <div className="section-title" style={{ marginBottom: 12 }}>Фотографии ({prop.images.length})</div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {prop.images.map((url, index) => (
+                                <div key={index} style={{ width: 'calc(50% - 4px)', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                                    <img src={url} alt={`Фото ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Client */}
                 {client && (
@@ -365,51 +400,58 @@ export function DetailsPage() {
                 {/* Estimation Widget */}
                 <EstimationWidget prop={prop} />
 
-                {/* Showings */}
+                {/* ИСТОРИЯ — все события по объекту */}
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Показы ({showings.length})</div>
+                        <div className="section-title" style={{ marginBottom: 0 }}>История ({events.length})</div>
                         <button className="icon-btn" onClick={() => navigate(`/showings/new?property_id=${id}`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
                     </div>
-                    {showings.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет показов</div>
+                    {events.length === 0 ? (
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Пока нет событий</div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {showings.sort((a, b) => new Date(b.showing_date) - new Date(a.showing_date)).slice(0, 3).map(s => {
-                                const buyer = state.clients.find(c => c.id === s.client_id);
-                                const showingDate = s.showing_date ? new Date(s.showing_date) : null;
+                            {events.map(ev => {
+                                const dateStr = ev.dateObj ? ev.dateObj.toLocaleDateString('ru-RU') : '—';
+                                const timeStr = ev.dateObj ? ev.dateObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+                                const editRoute = `/showings/new?id=${ev.id}`;
+
+                                const feedbackLabels = {
+                                    interested: 'Заинтересован',
+                                    other_options: 'Ищет другие варианты',
+                                    price_high: 'Дорого',
+                                    layout_bad: 'Не нравится планировка',
+                                    location_bad: 'Не нравится расположение',
+                                    condition_bad: 'Плохое состояние',
+                                    ready: 'Готов к сделке',
+                                };
+                                const feedback = ev.client_feedback ? feedbackLabels[ev.client_feedback] || ev.client_feedback : '';
+
                                 return (
-                                    <div key={s.id} onClick={() => navigate('/showings')} style={{ padding: '10px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border-light)', cursor: 'pointer' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                            <span style={{ fontSize: 13, fontWeight: 700 }}>{buyer?.full_name || 'Покупатель'}</span>
-                                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showingDate ? showingDate.toLocaleDateString('ru-RU') : '—'}</span>
+                                    <div key={ev.id} style={{ padding: '12px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border-light)' }}>
+                                        {/* Заголовок + дата/время + иконка редактирования */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div style={{ fontWeight: 700, fontSize: 14 }}>{ev.typeLabel}: {ev.buyer?.full_name || 'Покупатель'}</div>
+                                            <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
+                                                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{dateStr}</div>
+                                                {timeStr && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{timeStr}</div>}
+                                                <button
+                                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}
+                                                    onClick={() => navigate(editRoute)}
+                                                    title="Редактировать"
+                                                >
+                                                    <Edit2 size={14} />
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: 12, color: s.client_feedback ? 'var(--text)' : 'var(--text-muted)', fontStyle: s.client_feedback ? 'normal' : 'italic' }}>
-                                            {s.feedback_comment || 'Без отзыва'}
-                                        </div>
+                                        {/* Отзыв / Комментарий — единая строка */}
+                                        {(feedback || ev.feedback_comment) && (
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                {[feedback, ev.feedback_comment].filter(Boolean).join(' · ')}
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
-                        </div>
-                    )}
-                </div>
-
-                {/* Tasks */}
-                <div className="card" style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>Задачи ({tasks.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/tasks?property_id=${id}&action=new`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
-                    </div>
-                    {tasks.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Нет задач</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {tasks.map(t => (
-                                <div key={t.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '8px 10px', background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border-light)' }}>
-                                    <div style={{ width: 14, height: 14, borderRadius: 10, border: `2px solid ${t.status === 'done' ? 'var(--success)' : '#ccc'}`, background: t.status === 'done' ? 'var(--success)' : 'transparent', flexShrink: 0 }} />
-                                    <div style={{ fontSize: 13, fontWeight: 600, textDecoration: t.status === 'done' ? 'line-through' : 'none', color: t.status === 'done' ? 'var(--text-muted)' : 'var(--text)' }}>{t.title}</div>
-                                </div>
-                            ))}
                         </div>
                     )}
                 </div>

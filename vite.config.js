@@ -25,8 +25,15 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    minify: 'esbuild',
+    minify: 'terser',
     cssMinify: 'esbuild',
+    // Удаление console.log/console.debug из продакшен-билда
+    terserOptions: {
+      compress: {
+        drop_console: ['log', 'debug'],
+        drop_debugger: true,
+      }
+    },
     rollupOptions: {
       output: {
         manualChunks: {

@@ -60,12 +60,11 @@ export class ErrorBoundary extends React.Component {
             Что-то пошло не так
           </h1>
 
-          <p style={{ color: '#64748b', maxWidth: '420px', marginBottom: '24px', lineHeight: 1.6 }}>
-            Произошла неожиданная ошибка в интерфейсе. Попробуйте обновить страницу или
-            сбросить состояние компонента.
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', maxWidth: '400px' }}>
+            Произошла непредвиденная ошибка. Попробуйте обновить страницу или нажмите «Попробовать снова».
           </p>
 
-          {/* Детали ошибки — только в режиме разработки */}
+          {/* Детали ошибки — видны ТОЛЬКО в режиме разработки */}
           {import.meta.env.DEV && this.state.error && (
             <details style={{
               marginBottom: '24px',
@@ -78,7 +77,7 @@ export class ErrorBoundary extends React.Component {
               textAlign: 'left',
             }}>
               <summary style={{ cursor: 'pointer', fontWeight: 600, color: '#dc2626', marginBottom: '8px' }}>
-                Техническая информация
+                Техническая информация (DEV mode)
               </summary>
               <pre style={{ fontSize: '12px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#7f1d1d' }}>
                 {this.state.error.toString()}
