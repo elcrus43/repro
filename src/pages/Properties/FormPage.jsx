@@ -141,7 +141,7 @@ export function FormPage() {
                     {/* Цена */}
                     <div className="form-group">
                         <label className="form-label">Цена (₽)</label>
-                        <input type="number" className="form-input" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }} value={form.price || ''} onChange={e => setF('price', Number(e.target.value))} placeholder="0" />
+                        <input className="form-input" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }} value={form.price ? form.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''} onChange={e => setF('price', Number(e.target.value.replace(/\D/g, '')))} placeholder="0" />
                     </div>
 
                     {/* Город */}

@@ -30,6 +30,15 @@ export function DealsPage() {
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
     const filteredDeals = deals.filter(d => filter === 'all' || d.status === filter);
 
+    // Mask for price input: formats as "ххх ххх ххх"
+    const formatPriceInput = (val) => {
+        const digits = val.replace(/\D/g, '');
+        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        return formatted;
+    };
+
+    const parsePriceInput = (val) => val.replace(/\D/g, '');
+
     // Prepare options for searchable selects
     const clientOptions = state.clients.map(c => ({ id: c.id, label: c.full_name }));
     const propertyOptions = state.properties.map(p => ({ id: p.id, label: `${p.address || p.city} — ${p.price?.toLocaleString()} ₽` }));
@@ -66,8 +75,8 @@ export function DealsPage() {
             ...newDeal,
             id: dealId,
             realtor_id: user.id,
-            price: Number(newDeal.price) || 0,
-            commission: Number(newDeal.commission) || 0,
+            price: Number(parsePriceInput(newDeal.price)) || 0,
+            commission: Number(parsePriceInput(newDeal.commission)) || 0,
             deal_date: newDeal.deal_date || null,
             status: 'active',
         };
@@ -173,8 +182,8 @@ export function DealsPage() {
                         />
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <input className="form-input" type="number" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', e.target.value)} />
-                            <input className="form-input" type="number" placeholder="Комиссия" value={newDeal.commission} onChange={e => handleFieldChange('commission', e.target.value)} />
+                            <input className="form-input" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
+                            <input className="form-input" placeholder="Комиссия" value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
                         </div>
 
                         <input className="form-input" type="datetime-local" value={newDeal.deal_date || ''} onChange={e => handleFieldChange('deal_date', e.target.value)} />
