@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Edit2, Trash2, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
+import { SearchableSelect } from '../../components/SearchableSelect';
 import { nanoid } from '../../utils/nanoid';
 
 export function DealsPage() {
@@ -28,6 +29,10 @@ export function DealsPage() {
 
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
     const filteredDeals = deals.filter(d => filter === 'all' || d.status === filter);
+
+    // Prepare options for searchable selects
+    const clientOptions = state.clients.map(c => ({ id: c.id, label: c.full_name }));
+    const propertyOptions = state.properties.map(p => ({ id: p.id, label: `${p.address || p.city} — ${p.price?.toLocaleString()} ₽` }));
 
     useEffect(() => {
         if (location.state?.prefillDeal) {
@@ -143,20 +148,29 @@ export function DealsPage() {
 
                         <input className="form-input" placeholder="Название сделки" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
 
-                        <select className="form-select" value={newDeal.seller_id || ''} onChange={e => handleFieldChange('seller_id', e.target.value)}>
-                            <option value="">Продавец...</option>
-                            {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                        </select>
+                        <SearchableSelect
+                            value={newDeal.seller_id || ''}
+                            onChange={v => handleFieldChange('seller_id', v)}
+                            placeholder="Продавец..."
+                            searchPlaceholder="Поиск продавца..."
+                            options={clientOptions}
+                        />
 
-                        <select className="form-select" value={newDeal.buyer_id || ''} onChange={e => handleFieldChange('buyer_id', e.target.value)}>
-                            <option value="">Покупатель...</option>
-                            {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                        </select>
+                        <SearchableSelect
+                            value={newDeal.buyer_id || ''}
+                            onChange={v => handleFieldChange('buyer_id', v)}
+                            placeholder="Покупатель..."
+                            searchPlaceholder="Поиск покупателя..."
+                            options={clientOptions}
+                        />
 
-                        <select className="form-select" value={newDeal.property_id || ''} onChange={e => handleFieldChange('property_id', e.target.value)}>
-                            <option value="">Объект...</option>
-                            {state.properties.map(p => <option key={p.id} value={p.id}>{p.address} ({p.price?.toLocaleString()} ₽)</option>)}
-                        </select>
+                        <SearchableSelect
+                            value={newDeal.property_id || ''}
+                            onChange={v => handleFieldChange('property_id', v)}
+                            placeholder="Объект..."
+                            searchPlaceholder="Поиск объекта..."
+                            options={propertyOptions}
+                        />
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                             <input className="form-input" type="number" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', e.target.value)} />

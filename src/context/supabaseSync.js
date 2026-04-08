@@ -433,13 +433,20 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       if (result.error.code === '42501') {
         // RLS — ошибка доступа
         handleError('Ошибка доступа (RLS): у вашей роли нет прав на это действие.');
+      } else if (result.error.code === '42P01' || result.error.message?.includes('does not exist')) {
+        // Table doesn't exist - migration needed
+        handleError('Таблица не найдена. Необходимо выполнить миграцию базы данных.');
+      } else if (result.error.code === '23502') {
+        // NOT NULL violation
+        handleError('Не заполнено обязательное поле.');
+      } else if (result.error.code === '23503') {
+        // Foreign key violation
+        handleError('Связанный объект не найден. Проверьте данные.');
       } else if (missingColumnMatch) {
         // Missing column - provide helpful message
         const columnName = missingColumnMatch[1];
         handleError(
-          `Отсутствует колонка "${columnName}" в базе данных. ` +
-          `Необходимо выполнить миграцию БД. ` +
-          `Обратитесь к файлу: backend/migrations/check_and_fix_properties.sql`
+          `Отсутствует колонка "${columnName}". Необходима миграция БД.`
         );
       } else {
         // Прочие ошибки
