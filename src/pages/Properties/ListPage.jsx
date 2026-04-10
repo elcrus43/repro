@@ -93,7 +93,11 @@ export function ListPage() {
                         }
                     };
                     return (
-                        <div key={prop.id} className="card" onClick={() => navigate(`/properties/${prop.id}`)}>
+                        <div 
+                            key={prop.id} 
+                            className={`card ${status === 'active' ? 'property-card-active' : ''}`} 
+                            onClick={() => navigate(`/properties/${prop.id}`)}
+                        >
                             <div className="flex justify-between items-start" style={{ marginBottom: 6 }}>
                                 <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>{formatNumber(prop.price)} ₽</div>
                                 <span className={`badge badge-${statusColors[status]}`}>{statusLabels[status]}</span>

@@ -390,6 +390,25 @@ a:focus:not(:focus-visible) {
   border: 1px solid var(--border-light);
 }
 
+/* Градиент для активных объектов */
+.property-card-active {
+  background: linear-gradient(135deg, #E8F4FD 0%, #F0F7FF 100%);
+  border-color: rgba(59, 130, 246, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+.property-card-active::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3B82F6, #60A5FA);
+  opacity: 0.6;
+}
+
 .card-clickable {
   cursor: pointer;
   transition: all 0.2s;
