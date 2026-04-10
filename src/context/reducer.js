@@ -193,6 +193,16 @@ export function reducer(state, action) {
     case 'DELETE_PRICE_ITEM':
       return { ...state, pricelist: state.pricelist.filter(i => i.id !== action.id) };
 
+    /* ── Сделки ─────────────────────────────────────────────────────── */
+    case 'ADD_DEAL':
+      return { ...state, deals: [...state.deals, action.deal] };
+
+    case 'UPDATE_DEAL':
+      return { ...state, deals: state.deals.map(d => d.id === action.deal.id ? action.deal : d) };
+
+    case 'DELETE_DEAL':
+      return { ...state, deals: state.deals.filter(d => d.id !== action.id) };
+
     default:
       return state;
   }
