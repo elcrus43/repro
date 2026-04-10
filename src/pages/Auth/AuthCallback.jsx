@@ -11,42 +11,62 @@ import { supabase } from '../../lib/supabase';
 export default function AuthCallbackPage() {
     const navigate = useNavigate();
     const [error, setError] = useState('');
+    const [debug, setDebug] = useState('');
 
     useEffect(() => {
         let navigated = false;
 
-        // 1. Слушаем событие PASSWORD_RECOVERY — Supabase сигнализирует,
-        //    что пользователь пришёл по ссылке сброса пароля
+        // Определяем тип по URL hash - делаем это ПЕРВЫМ
+        const hashParams = new URLSearchParams(window.location.hash.slice(1));
+        const type = hashParams.get('type');
+        const errorParam = hashParams.get('error');
+        const errorDescription = hashParams.get('error_description');
+
+        console.log('[AuthCallback] URL params:', { type, error: errorParam, hash: window.location.hash });
+
+        if (errorParam) {
+            setDebug(`Ошибка: ${errorDescription || errorParam}`);
+            return;
+        }
+
+        // 1. Слушаем событие PASSWORD_RECOVERY
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (navigated) return;
 
+            console.log('[AuthCallback] Auth event:', event, session);
+
             if (event === 'PASSWORD_RECOVERY' && session?.user) {
                 navigated = true;
+                console.log('[AuthCallback] Navigating to /update-password');
                 navigate('/update-password');
             } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-                // Обычный вход (например, OAuth)
                 navigated = true;
                 navigate('/', { replace: true });
             }
         });
 
-        // 2. Проверяем, есть ли уже сессия (хэш уже обработан)
+        // 2. Проверяем, есть ли уже сессия
         supabase.auth.getSession().then(({ data: { session }, error: err }) => {
             if (navigated) return;
 
+            console.log('[AuthCallback] Session check:', { session, error: err });
+
             if (err) {
-                setError('Ошибка: ' + err.message);
+                setDebug('Ошибка: ' + err.message);
                 return;
             }
 
             if (!session) {
-                setError('Сессия не найдена. Ссылка может быть устаревшей.');
+                // Сессия ещё не создана - ждём событие
+                setDebug('Ожидание сессии...');
+                // Авто-переход на recovery если type=recovery
+                if (type === 'recovery') {
+                    setDebug('Обнаружен тип recovery, перенаправляю...');
+                    navigated = true;
+                    setTimeout(() => navigate('/update-password'), 500);
+                }
                 return;
             }
-
-            // Определяем тип по URL hash
-            const hashParams = new URLSearchParams(window.location.hash.slice(1));
-            const type = hashParams.get('type');
 
             navigated = true;
             if (type === 'recovery') {
@@ -65,6 +85,11 @@ export default function AuthCallbackPage() {
         <div className="auth-page">
             <div className="auth-card">
                 <h2>Обработка...</h2>
+                {debug && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: 12, background: 'var(--bg)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 20 }}>
+                        {debug}
+                    </div>
+                )}
                 {error ? (
                     <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 20 }}>
                         {error}
