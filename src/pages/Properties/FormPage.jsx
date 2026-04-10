@@ -4,7 +4,10 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
-import { supabase } from '../../lib/supabase';
+
+// Cloudinary конфигурация
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
 export function FormPage() {
     const { id } = useParams();
@@ -51,25 +54,46 @@ export function FormPage() {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
+        // Проверяем наличие конфигурации Cloudinary
+        if (!CLOUDINARY_CLOUD_NAME) {
+            toast.error('Не настроен Cloudinary. Добавьте VITE_CLOUDINARY_CLOUD_NAME и VITE_CLOUDINARY_UPLOAD_PRESET в .env');
+            return;
+        }
+
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+        if (!uploadPreset) {
+            toast.error('Не настроен Upload Preset. Добавьте VITE_CLOUDINARY_UPLOAD_PRESET в .env');
+            return;
+        }
+
         setUploading(true);
         const newImages = [...(form.images || [])];
 
         for (const file of files) {
             try {
-                const fileExt = file.name.split('.').pop();
-                const fileName = `${form.realtor_id}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${fileExt}`;
-                const { error: uploadErr, data } = await supabase.storage
-                    .from('property-images')
-                    .upload(fileName, file, { upsert: true });
+                // Формируем FormData для Cloudinary
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('upload_preset', uploadPreset);
+                formData.append('folder', 'properties');
 
-                if (uploadErr) throw uploadErr;
+                const response = await fetch(CLOUDINARY_UPLOAD_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
 
-                // Получаем публичный URL
-                const { data: { publicUrl } } = supabase.storage
-                    .from('property-images')
-                    .getPublicUrl(fileName);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-                newImages.push(publicUrl);
+                const result = await response.json();
+
+                if (result.secure_url) {
+                    // Cloudinary возвращает secure_url (https)
+                    newImages.push(result.secure_url);
+                } else {
+                    throw new Error(result.error?.message || 'Ошибка загрузки на Cloudinary');
+                }
             } catch (err) {
                 console.error('[Image upload error]', err);
                 toast.error('Ошибка загрузки: ' + err.message);
