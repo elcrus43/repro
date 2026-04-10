@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Edit2, Trash2, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign } from 'lucide-react';
+import { Edit2, Trash2, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -14,23 +14,45 @@ export function DealsPage() {
     const location = useLocation();
 
     const prefillData = location.state?.prefillDeal || {};
-    const [view, setView] = useState('list'); // 'dashboard' | 'list'
+    const [view, setView] = useState('list');
     const [filter, setFilter] = useState('active');
     const [showForm, setShowForm] = useState(false);
+    
+    // Фильтр по периоду
+    const now = new Date();
+    const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
+    const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+
     const [newDeal, setNewDeal] = useState({
+        id: '',
         title: prefillData.title || '',
         seller_id: prefillData.seller_id || '',
         buyer_id: prefillData.buyer_id || '',
         property_id: prefillData.property_id || '',
         price: prefillData.price || '',
         deal_date: prefillData.deal_date || new Date().toISOString().slice(0, 16),
+        deposit_date: prefillData.deposit_date || '',
+        deposit_amount: prefillData.deposit_amount || '',
         commission: prefillData.commission || '',
+        notes: prefillData.notes || '',
     });
 
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
-    const filteredDeals = deals.filter(d => filter === 'all' || d.status === filter);
+    
+    // Фильтрация по выбранному месяцу/году
+    const filteredByPeriod = useMemo(() => {
+        return deals.filter(d => {
+            const dealDate = d.deal_date ? new Date(d.deal_date) : null;
+            if (!dealDate) return false;
+            return dealDate.getMonth() === selectedMonth && dealDate.getFullYear() === selectedYear;
+        });
+    }, [deals, selectedMonth, selectedYear]);
 
-    // Mask for price input: formats as "ххх ххх ххх"
+    const filteredDeals = useMemo(() => {
+        return filteredByPeriod.filter(d => filter === 'all' || d.status === filter);
+    }, [filteredByPeriod, filter]);
+
+    // Маска цены
     const formatPriceInput = (val) => {
         const digits = val.replace(/\D/g, '');
         const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
@@ -39,9 +61,12 @@ export function DealsPage() {
 
     const parsePriceInput = (val) => val.replace(/\D/g, '');
 
-    // Prepare options for searchable selects
+    // Options для селектов
     const clientOptions = state.clients.map(c => ({ id: c.id, label: c.full_name }));
-    const propertyOptions = state.properties.map(p => ({ id: p.id, label: `${p.address || p.city} — ${p.price?.toLocaleString()} ₽` }));
+    const propertyOptions = state.properties.map(p => ({ 
+        id: p.id, 
+        label: `${p.address || p.city} — ${p.price?.toLocaleString()} ₽` 
+    }));
 
     useEffect(() => {
         if (location.state?.prefillDeal) {
@@ -50,20 +75,50 @@ export function DealsPage() {
         }
     }, []);
 
-    // Dashboard stats
-    const stats = React.useMemo(() => {
-        const activeDeals = deals.filter(d => d.status === 'active');
-        const closedDeals = deals.filter(d => d.status === 'closed');
+    // Статистика за выбранный период
+    const stats = useMemo(() => {
+        const activeDeals = filteredByPeriod.filter(d => d.status === 'active');
+        const closedDeals = filteredByPeriod.filter(d => d.status === 'closed');
+        const cancelledDeals = filteredByPeriod.filter(d => d.status === 'cancelled');
         const totalCommission = closedDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
         const activeVolume = activeDeals.reduce((sum, d) => sum + (Number(d.price) || 0), 0);
-        return { activeCount: activeDeals.length, closedCount: closedDeals.length, totalCommission, activeVolume };
-    }, [deals]);
+        const closedVolume = closedDeals.reduce((sum, d) => sum + (Number(d.price) || 0), 0);
+        return { 
+            activeCount: activeDeals.length, 
+            closedCount: closedDeals.length,
+            cancelledCount: cancelledDeals.length,
+            totalCommission, 
+            activeVolume,
+            closedVolume,
+        };
+    }, [filteredByPeriod]);
+
+    // Навигация по месяцам
+    const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    
+    const prevMonth = () => {
+        if (selectedMonth === 0) {
+            setSelectedMonth(11);
+            setSelectedYear(y => y - 1);
+        } else {
+            setSelectedMonth(m => m - 1);
+        }
+    };
+
+    const nextMonth = () => {
+        if (selectedMonth === 11) {
+            setSelectedMonth(0);
+            setSelectedYear(y => y + 1);
+        } else {
+            setSelectedMonth(m => m + 1);
+        }
+    };
 
     function handleFieldChange(field, value) {
         setNewDeal(prev => ({ ...prev, [field]: value }));
     }
 
-    async function addDeal(e) {
+    async function saveDeal(e) {
         e.preventDefault();
         if (!newDeal.title?.trim()) {
             toast.error('Укажите название сделки');
@@ -75,10 +130,12 @@ export function DealsPage() {
             ...newDeal,
             id: dealId,
             realtor_id: user.id,
-            price: Number(parsePriceInput(newDeal.price)) || 0,
-            commission: Number(parsePriceInput(newDeal.commission)) || 0,
+            price: Number(parsePriceInput(String(newDeal.price))) || 0,
+            deposit_amount: Number(parsePriceInput(String(newDeal.deposit_amount))) || 0,
+            commission: Number(parsePriceInput(String(newDeal.commission))) || 0,
             deal_date: newDeal.deal_date || null,
-            status: 'active',
+            deposit_date: newDeal.deposit_date || null,
+            status: newDeal.status || 'active',
         };
 
         try {
@@ -89,12 +146,28 @@ export function DealsPage() {
                 dispatch({ type: 'ADD_DEAL', deal: dealToSave });
                 toast.success('Сделка создана');
             }
-            setNewDeal({ title: '', seller_id: '', buyer_id: '', property_id: '', price: '', deal_date: new Date().toISOString().slice(0, 16), commission: '' });
+            resetForm();
             setShowForm(false);
         } catch (err) {
             console.error('[Deal save error]', err);
             toast.error('Ошибка при сохранении сделки');
         }
+    }
+
+    function resetForm() {
+        setNewDeal({ 
+            id: '', 
+            title: '', 
+            seller_id: '', 
+            buyer_id: '', 
+            property_id: '', 
+            price: '', 
+            deal_date: new Date().toISOString().slice(0, 16), 
+            deposit_date: '',
+            deposit_amount: '',
+            commission: '',
+            notes: '',
+        });
     }
 
     async function deleteDeal(deal) {
@@ -106,53 +179,145 @@ export function DealsPage() {
 
     function updateStatus(deal, status) {
         dispatch({ type: 'UPDATE_DEAL', deal: { ...deal, status } });
-        toast.success(`Статус сделки обновлён: ${status === 'closed' ? 'Закрыта' : 'Отменена'}`);
+        toast.success(`Статус сделки обновлён: ${status === 'closed' ? 'Закрыта' : status === 'cancelled' ? 'Отменена' : 'Активна'}`);
     }
 
     function editDeal(deal) {
-        setNewDeal({ ...deal, deal_date: deal.deal_date ? deal.deal_date.slice(0, 16) : '' });
+        setNewDeal({ 
+            ...deal, 
+            price: deal.price ? deal.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
+            deposit_amount: deal.deposit_amount ? deal.deposit_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
+            commission: deal.commission ? deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
+            deal_date: deal.deal_date ? deal.deal_date.slice(0, 16) : '',
+            deposit_date: deal.deposit_date ? deal.deposit_date.slice(0, 16) : '',
+        });
         setShowForm(true);
     }
 
-    const activeDeals = filteredDeals.filter(d => d.status === 'active');
-    const closedDeals = filteredDeals.filter(d => d.status === 'closed');
-    const cancelledDeals = filteredDeals.filter(d => d.status === 'cancelled');
+    function DealCard({ deal }) {
+        const seller = state.clients.find(c => c.id === deal.seller_id);
+        const buyer = state.clients.find(c => c.id === deal.buyer_id);
+        const property = state.properties.find(p => p.id === deal.property_id);
+
+        const statusConfig = {
+            active: { label: 'Активна', color: 'var(--primary)', bg: 'var(--primary-light)' },
+            closed: { label: 'Закрыта', color: '#fff', bg: 'var(--success)' },
+            cancelled: { label: 'Отменена', color: '#fff', bg: 'var(--danger)' },
+        };
+        const cfg = statusConfig[deal.status] || statusConfig.active;
+
+        return (
+            <div className="card" style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16 }}>{deal.title}</div>
+                    <span className="badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                </div>
+                
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+                    {seller && <div>📤 Продавец: <strong>{seller.full_name}</strong></div>}
+                    {buyer && <div>📥 Покупатель: <strong>{buyer.full_name}</strong></div>}
+                    {property && <div>🏠 Объект: <strong>{property.address || property.city}</strong>{property.price ? ` · ${property.price.toLocaleString()} ₽` : ''}</div>}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10, fontSize: 13 }}>
+                    <div style={{ background: 'var(--bg)', padding: '6px 8px', borderRadius: 6 }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Цена</div>
+                        <div style={{ fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
+                    </div>
+                    <div style={{ background: 'var(--bg)', padding: '6px 8px', borderRadius: 6 }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Комиссия</div>
+                        <div style={{ fontWeight: 600, color: 'var(--success)' }}>{Number(deal.commission).toLocaleString()} ₽</div>
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10, fontSize: 12 }}>
+                    {deal.deal_date && (
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                            <Calendar size={14} style={{ display: 'inline', marginRight: 4 }} />
+                            Сделка: {new Date(deal.deal_date).toLocaleDateString('ru-RU')}
+                        </div>
+                    )}
+                    {deal.deposit_date && (
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                            💰 Задаток: {new Date(deal.deposit_date).toLocaleDateString('ru-RU')}
+                            {deal.deposit_amount ? ` · ${Number(deal.deposit_amount).toLocaleString()} ₽` : ''}
+                        </div>
+                    )}
+                </div>
+
+                {deal.notes && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, marginBottom: 10 }}>
+                        📝 {deal.notes}
+                    </div>
+                )}
+
+                <div style={{ display: 'flex', gap: 4, borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
+                    {deal.status === 'active' && (
+                        <>
+                            <button className="icon-btn" onClick={() => updateStatus(deal, 'closed')} title="Закрыть">
+                                <CheckCircle size={16} color="var(--success)" />
+                            </button>
+                            <button className="icon-btn" onClick={() => updateStatus(deal, 'cancelled')} title="Отменить">
+                                <XCircle size={16} color="var(--danger)" />
+                            </button>
+                        </>
+                    )}
+                    <button className="icon-btn" onClick={() => editDeal(deal)} title="Редактировать">
+                        <Edit2 size={16} />
+                    </button>
+                    <button className="icon-btn" onClick={() => deleteDeal(deal)} title="Удалить">
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Сделки</span>
-                <button className="icon-btn" onClick={() => setShowForm(!showForm)} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                <button className="icon-btn" onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
+            
             <div className="page-content" style={{ paddingTop: 8 }}>
-                {/* Dashboard */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                    <div className="card" style={{ background: 'var(--success-light)', padding: '16px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                            <TrendingUp size={18} color="var(--success)" />
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Закрыто</div>
+                {/* Фильтр по периоду */}
+                <div className="card" style={{ marginBottom: 12, padding: '12px 16px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <button className="icon-btn" onClick={prevMonth}>
+                            <ChevronLeft size={20} />
+                        </button>
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{ fontSize: 16, fontWeight: 700 }}>{monthNames[selectedMonth]} {selectedYear}</div>
                         </div>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--success)' }}>{stats.closedCount}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{stats.totalCommission.toLocaleString()} ₽ комиссия</div>
-                    </div>
-                    <div className="card" style={{ background: 'var(--primary-light)', padding: '16px 12px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                            <DollarSign size={18} color="var(--primary)" />
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Активные</div>
-                        </div>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)' }}>{stats.activeCount}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{stats.activeVolume.toLocaleString()} ₽ объём</div>
+                        <button className="icon-btn" onClick={nextMonth}>
+                            <ChevronRight size={20} />
+                        </button>
                     </div>
                 </div>
 
-                {/* Add Deal Button */}
-                <button className="btn btn-primary btn-full" onClick={() => setShowForm(true)} style={{ marginBottom: 16 }}>
-                    <Plus size={18} /> Новая сделка
-                </button>
+                {/* Статистика */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
+                    <div className="card" style={{ background: 'var(--primary-light)', padding: '12px 10px' }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Активные</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{stats.activeCount}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{stats.activeVolume.toLocaleString()} ₽</div>
+                    </div>
+                    <div className="card" style={{ background: 'var(--success-light)', padding: '12px 10px' }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Закрыто</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--success)' }}>{stats.closedCount}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{stats.totalCommission.toLocaleString()} ₽</div>
+                    </div>
+                    <div className="card" style={{ background: 'var(--danger-light)', padding: '12px 10px' }}>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Отменено</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--danger)' }}>{stats.cancelledCount}</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{stats.closedVolume.toLocaleString()} ₽</div>
+                    </div>
+                </div>
 
-                {/* Inline Deal Form */}
+                {/* Форма сделки */}
                 {showForm && (
-                    <form className="card" onSubmit={addDeal} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                    <form className="card" onSubmit={saveDeal} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
                         <div style={{ fontWeight: 700, marginBottom: 4 }}>{newDeal.id ? 'Редактировать сделку' : 'Новая сделка'}</div>
 
                         <input className="form-input" placeholder="Название сделки" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
@@ -186,73 +351,43 @@ export function DealsPage() {
                             <input className="form-input" placeholder="Комиссия" value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
                         </div>
 
-                        <input className="form-input" type="datetime-local" value={newDeal.deal_date || ''} onChange={e => handleFieldChange('deal_date', e.target.value)} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <div>
+                                <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Дата сделки</label>
+                                <input className="form-input" type="datetime-local" value={newDeal.deal_date || ''} onChange={e => handleFieldChange('deal_date', e.target.value)} />
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Дата задатка</label>
+                                <input className="form-input" type="datetime-local" value={newDeal.deposit_date || ''} onChange={e => handleFieldChange('deposit_date', e.target.value)} />
+                            </div>
+                        </div>
+
+                        <input className="form-input" placeholder="Сумма задатка" value={newDeal.deposit_amount} onChange={e => handleFieldChange('deposit_amount', formatPriceInput(e.target.value))} />
+
+                        <textarea className="form-textarea" rows={2} placeholder="Заметки..." value={newDeal.notes} onChange={e => handleFieldChange('notes', e.target.value)} />
 
                         <div style={{ display: 'flex', gap: 8 }}>
-                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); setNewDeal({ title: '', seller_id: '', buyer_id: '', property_id: '', price: '', deal_date: new Date().toISOString().slice(0, 16), commission: '' }); }}>Отмена</button>
+                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); resetForm(); }}>Отмена</button>
                             <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{newDeal.id ? 'Сохранить' : 'Создать'}</button>
                         </div>
                     </form>
                 )}
 
-                {/* Filters */}
+                {/* Фильтры по статусу */}
                 <div className="tab-filters" style={{ marginBottom: 12 }}>
                     {[['active', 'Активные'], ['closed', 'Закрытые'], ['cancelled', 'Отменённые'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
                     ))}
                 </div>
 
-                {/* Deal List */}
-                {activeDeals.map(d => (
-                    <div key={d.id} className="card" style={{ marginBottom: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                            <div style={{ fontWeight: 700 }}>{d.title}</div>
-                            <div style={{ display: 'flex', gap: 4 }}>
-                                <button className="icon-btn" onClick={() => updateStatus(d, 'closed')} title="Закрыть"><CheckCircle size={18} color="var(--success)" /></button>
-                                <button className="icon-btn" onClick={() => updateStatus(d, 'cancelled')} title="Отменить"><XCircle size={18} color="var(--danger)" /></button>
-                                <button className="icon-btn" onClick={() => editDeal(d)}><Edit2 size={16} /></button>
-                                <button className="icon-btn" onClick={() => deleteDeal(d)}><Trash2 size={16} /></button>
-                            </div>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <div>Продавец: {state.clients.find(c => c.id === d.seller_id)?.full_name || '—'}</div>
-                            <div>Покупатель: {state.clients.find(c => c.id === d.buyer_id)?.full_name || '—'}</div>
-                            <div>Объект: {state.properties.find(p => p.id === d.property_id)?.address || '—'}</div>
-                            <div>Цена: {Number(d.price).toLocaleString()} ₽ · Комиссия: {Number(d.commission).toLocaleString()} ₽</div>
-                            <div>Дата: {d.deal_date ? new Date(d.deal_date).toLocaleDateString('ru-RU') : '—'}</div>
-                        </div>
-                    </div>
-                ))}
-
-                {filter !== 'active' && closedDeals.map(d => (
-                    <div key={d.id} className="card" style={{ marginBottom: 8, opacity: 0.7 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                            <div style={{ fontWeight: 700, textDecoration: 'line-through' }}>{d.title}</div>
-                            <span className="badge" style={{ background: 'var(--success)', color: '#fff' }}>Закрыта</span>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                            Цена: {Number(d.price).toLocaleString()} ₽ · Комиссия: {Number(d.commission).toLocaleString()} ₽
-                        </div>
-                    </div>
-                ))}
-
-                {filter !== 'active' && cancelledDeals.map(d => (
-                    <div key={d.id} className="card" style={{ marginBottom: 8, opacity: 0.7 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                            <div style={{ fontWeight: 700, textDecoration: 'line-through' }}>{d.title}</div>
-                            <span className="badge" style={{ background: 'var(--danger)', color: '#fff' }}>Отменена</span>
-                        </div>
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                            Цена: {Number(d.price).toLocaleString()} ₽ · Комиссия: {Number(d.commission).toLocaleString()} ₽
-                        </div>
-                    </div>
-                ))}
-
-                {filteredDeals.length === 0 && (
+                {/* Список сделок */}
+                {filteredDeals.length === 0 ? (
                     <div className="empty-state">
                         <div className="empty-title">Нет сделок</div>
-                        <div className="empty-desc">Заполните форму выше или создайте из совпадения</div>
+                        <div className="empty-desc">{filteredByPeriod.length === 0 ? `Нет сделок за ${monthNames[selectedMonth]} ${selectedYear}` : 'Нет сделок с выбранным статусом'}</div>
                     </div>
+                ) : (
+                    filteredDeals.map(d => <DealCard key={d.id} deal={d} />)
                 )}
             </div>
         </div>

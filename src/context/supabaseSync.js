@@ -407,13 +407,37 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         break;
 
       /* ── Сделки ──────────────────────────────────────────────────────── */
-      case 'ADD_DEAL':
-        result = await withRetry(() => supabase.from('deals').insert(action.deal));
+      case 'ADD_DEAL': {
+        const dealData = {
+          ...action.deal,
+          deal_date: action.deal.deal_date || null,
+          deposit_date: action.deal.deposit_date || null,
+          deposit_amount: action.deal.deposit_amount || 0,
+          notes: action.deal.notes || null,
+        };
+        // Remove undefined
+        Object.keys(dealData).forEach(key => {
+          if (dealData[key] === undefined) delete dealData[key];
+        });
+        result = await withRetry(() => supabase.from('deals').insert(dealData));
         break;
+      }
 
-      case 'UPDATE_DEAL':
-        result = await withRetry(() => supabase.from('deals').update(action.deal).eq('id', action.deal.id));
+      case 'UPDATE_DEAL': {
+        const { id: dId, ...dData } = action.deal;
+        const updateData = {
+          ...dData,
+          deal_date: dData.deal_date || null,
+          deposit_date: dData.deposit_date || null,
+          deposit_amount: dData.deposit_amount ?? 0,
+          notes: dData.notes || null,
+        };
+        Object.keys(updateData).forEach(key => {
+          if (updateData[key] === undefined) delete updateData[key];
+        });
+        result = await withRetry(() => supabase.from('deals').update(updateData).eq('id', dId));
         break;
+      }
 
       case 'DELETE_DEAL':
         result = await withRetry(() => supabase.from('deals').delete().eq('id', action.id));
