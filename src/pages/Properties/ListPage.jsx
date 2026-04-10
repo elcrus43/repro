@@ -95,7 +95,7 @@ export function ListPage() {
                     return (
                         <div 
                             key={prop.id} 
-                            className={`card ${status === 'active' ? 'property-card-active' : ''}`} 
+                            className="card property-card-active"
                             onClick={() => navigate(`/properties/${prop.id}`)}
                         >
                             <div className="flex justify-between items-start" style={{ marginBottom: 6 }}>

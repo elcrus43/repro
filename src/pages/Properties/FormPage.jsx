@@ -118,11 +118,23 @@ export function FormPage() {
             return;
         }
 
+        // Отладка: проверяем realtor_id
+        console.log('[FormPage] Submit:', {
+            userId: state.currentUser?.id,
+            formRealtorId: form.realtor_id,
+            hasId: !!id
+        });
+
         if (id) {
             dispatch({ type: 'UPDATE_PROPERTY', property: { ...form, id } });
             navigate(`/properties/${id}`);
         } else {
-            dispatch({ type: 'ADD_PROPERTY', property: { ...form, realtor_id: state.currentUser?.id } });
+            const realtorId = state.currentUser?.id || form.realtor_id;
+            if (!realtorId) {
+                toast.error('Ошибка: не удалось определить пользователя');
+                return;
+            }
+            dispatch({ type: 'ADD_PROPERTY', property: { ...form, realtor_id: realtorId } });
             navigate('/properties');
         }
     }
