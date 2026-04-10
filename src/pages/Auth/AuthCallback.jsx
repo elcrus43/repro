@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 
 /**
@@ -10,86 +10,63 @@ import { supabase } from '../../lib/supabase';
  */
 export default function AuthCallbackPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [error, setError] = useState('');
-    const [debug, setDebug] = useState('');
 
     useEffect(() => {
-        let navigated = false;
+        let cancelled = false;
 
-        // Определяем тип по URL hash - делаем это ПЕРВЫМ
-        const hashParams = new URLSearchParams(window.location.hash.slice(1));
-        const type = hashParams.get('type');
-        const errorParam = hashParams.get('error');
-        const errorDescription = hashParams.get('error_description');
+        async function handleCallback() {
+            // Проверяем URL параметры сначала
+            const type = searchParams.get('type');
+            const errorParam = searchParams.get('error');
+            const errorDescription = searchParams.get('error_description');
 
-        console.log('[AuthCallback] URL params:', { type, error: errorParam, hash: window.location.hash });
+            console.log('[AuthCallback] URL params:', { type, error: errorParam });
 
-        if (errorParam) {
-            setDebug(`Ошибка: ${errorDescription || errorParam}`);
-            return;
-        }
-
-        // 1. Слушаем событие PASSWORD_RECOVERY
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (navigated) return;
-
-            console.log('[AuthCallback] Auth event:', event, session);
-
-            if (event === 'PASSWORD_RECOVERY' && session?.user) {
-                navigated = true;
-                console.log('[AuthCallback] Navigating to /update-password');
-                navigate('/update-password');
-            } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-                navigated = true;
-                navigate('/', { replace: true });
-            }
-        });
-
-        // 2. Проверяем, есть ли уже сессия
-        supabase.auth.getSession().then(({ data: { session }, error: err }) => {
-            if (navigated) return;
-
-            console.log('[AuthCallback] Session check:', { session, error: err });
-
-            if (err) {
-                setDebug('Ошибка: ' + err.message);
+            if (errorParam) {
+                if (cancelled) return;
+                setError(`Ошибка: ${errorDescription || errorParam}`);
                 return;
             }
 
-            if (!session) {
-                // Сессия ещё не создана - ждём событие
-                setDebug('Ожидание сессии...');
-                // Авто-переход на recovery если type=recovery
-                if (type === 'recovery') {
-                    setDebug('Обнаружен тип recovery, перенаправляю...');
-                    navigated = true;
-                    setTimeout(() => navigate('/update-password'), 500);
+            // Для recovery — сразу перенаправляем, не дожидаясь сессии
+            if (type === 'recovery') {
+                console.log('[AuthCallback] Recovery flow, navigating to /update-password');
+                if (!cancelled) {
+                    navigate('/update-password');
                 }
                 return;
             }
 
-            navigated = true;
-            if (type === 'recovery') {
-                navigate('/update-password');
-            } else {
-                navigate('/', { replace: true });
+            // Для остальных типов — ждём сессию
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+            if (cancelled) return;
+
+            if (sessionError) {
+                setError('Ошибка: ' + sessionError.message);
+                return;
             }
-        });
+
+            if (session?.user) {
+                navigate('/', { replace: true });
+            } else {
+                setError('Сессия не найдена. Ссылка может быть устаревшей.');
+            }
+        }
+
+        handleCallback();
 
         return () => {
-            subscription.unsubscribe();
+            cancelled = true;
         };
-    }, [navigate]);
+    }, [navigate, searchParams]);
 
     return (
         <div className="auth-page">
             <div className="auth-card">
                 <h2>Обработка...</h2>
-                {debug && (
-                    <div style={{ color: 'var(--text-muted)', fontSize: 12, background: 'var(--bg)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 20 }}>
-                        {debug}
-                    </div>
-                )}
                 {error ? (
                     <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 20 }}>
                         {error}
