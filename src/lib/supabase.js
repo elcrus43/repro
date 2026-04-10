@@ -1,10 +1,10 @@
 /**
  * Supabase клиент для фронтенда.
- * 
+ *
  * Использует анонимный ключ из переменных окружения Vite.
  * Этот ключ безопасен для клиентского кода — RLS политики
  * на сервере ограничивают доступ к данным.
- * 
+ *
  * @see https://supabase.com/docs/reference/javascript/initializing
  */
 import { createClient } from '@supabase/supabase-js';

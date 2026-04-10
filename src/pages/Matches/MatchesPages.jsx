@@ -71,7 +71,7 @@ function MatchCard({ match: m, onClick }) {
     const statusLabels = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ запланирован', showing_done: 'Показ проведён', rejected: 'Отклонён', deal: 'Сделка' };
 
     return (
-        <div className="match-card" onClick={onClick}>
+        <div className={`match-card ${m.match_level}`} onClick={onClick}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <span className={`match-score-badge ${m.match_level}`}>{lvl.label} {m.score}%</span>
                 <span className="badge badge-muted" style={{ fontSize: 11 }}>{statusLabels[m.status] || m.status}</span>
@@ -81,7 +81,7 @@ function MatchCard({ match: m, onClick }) {
                 <div style={{ width: m.score + '%', height: '100%', borderRadius: 99, background: m.match_level === 'perfect' ? 'var(--success)' : m.match_level === 'good' ? 'var(--warning)' : 'var(--orange)', transition: 'width 0.6s ease' }} />
             </div>
             {/* Property */}
-            <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: 8 }}>
+            <div style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)', borderRadius: 'var(--radius-sm)', padding: '10px 12px', marginBottom: 8 }}>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Продажа</div>
                 {prop ? (
                     <>
@@ -92,7 +92,7 @@ function MatchCard({ match: m, onClick }) {
             </div>
             <div style={{ textAlign: 'center', fontSize: 18, color: 'var(--text-muted)', margin: '4px 0' }}>⇕</div>
             {/* Buyer */}
-            <div style={{ background: 'var(--bg)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
+            <div style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)', borderRadius: 'var(--radius-sm)', padding: '10px 12px' }}>
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 2 }}>Покупка / Клиент</div>
                 {buyer || req ? (
                     <>

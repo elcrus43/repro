@@ -1014,18 +1014,40 @@ a:focus:not(:focus-visible) {
 
 /* ===== Match card ===== */
 .match-card {
-  background: var(--surface);
+  background: linear-gradient(135deg, #E8F4FD 0%, #F0F7FF 100%);
   border-radius: var(--radius-lg);
   padding: 16px;
-  border: 1px solid var(--border-light);
+  border: 1px solid rgba(59, 130, 246, 0.15);
   box-shadow: var(--shadow-sm);
   cursor: pointer;
   transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+
+.match-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3B82F6, #60A5FA);
+  opacity: 0.6;
+}
+
+.match-card.perfect::before {
+  background: linear-gradient(90deg, #10B981, #34D399);
+}
+
+.match-card.good::before {
+  background: linear-gradient(90deg, #F59E0B, #FBBF24);
 }
 
 .match-card:hover {
   box-shadow: var(--shadow);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .match-score-badge {
