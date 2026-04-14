@@ -83,3 +83,9 @@ FIX_ADMIN_ROLE.sql
 
 # ─── Vercel ───────────────────────────────────────────────────
 .vercel/
+
+# ─── Временные файлы .notes ──────────────────────────────────
+.notes/*.txt
+.notes/*.db
+.notes/lint_output*
+.notes/test.*
