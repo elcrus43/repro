@@ -5,6 +5,11 @@
 ### Крылья (Wings)
 - **wing_project** — проект Re-Pro (realtor-match)
   - **hall_facts** → [facts/](facts/) — базовые факты о проекте
+    - [tech-stack.md](facts/tech-stack.md) — полный обзор всех сущностей
+    - [clients.md](facts/clients.md) — клиенты (типы, статусы, связи)
+    - [showings.md](facts/showings.md) — показы (планирование, проведение)
+    - [requests.md](facts/requests.md) — запросы клиентов (критерии поиска)
+    - [deals.md](facts/deals.md) — сделки (финальные соглашения)
   - **hall_events** → [events/](events/) — ключевые события разработки
   - **hall_decisions** → [decisions/](decisions/) — архитектурные решения (ADRs)
   - **hall_patterns** → [patterns/](patterns/) — обнаруженные паттерны кода
