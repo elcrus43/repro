@@ -96,7 +96,13 @@ export function useDbDispatch(state, dispatch, onError) {
       }
 
       case 'ADD_SHOWING': {
-        const sh = { ...action.showing, id: action.showing.id || nanoid(), created_at: now };
+        const sh = {
+          ...action.showing,
+          id: action.showing.id || nanoid(),
+          created_at: now,
+          // Ensure realtor_id is set
+          realtor_id: action.showing.realtor_id || stateRef.current.currentUser?.id,
+        };
         enhancedAction.showing = sh;
         enhancedAction.matches = sh.match_id
           ? stateRef.current.matches.map(m =>
@@ -110,7 +116,11 @@ export function useDbDispatch(state, dispatch, onError) {
       }
 
       case 'UPDATE_SHOWING': {
-        enhancedAction.showing = action.showing;
+        enhancedAction.showing = {
+          ...action.showing,
+          // Ensure realtor_id is preserved
+          realtor_id: action.showing.realtor_id || stateRef.current.currentUser?.id,
+        };
         enhancedAction.matches = action.showing.status === 'completed'
           ? stateRef.current.matches.map(m =>
             m.id === action.showing.match_id ? { ...m, status: 'showing_done', updated_at: now } : m

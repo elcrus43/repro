@@ -12,8 +12,11 @@
     - [deals.md](facts/deals.md) — сделки (финальные соглашения)
   - **hall_events** → [events/](events/) — ключевые события разработки
   - **hall_decisions** → [decisions/](decisions/) — архитектурные решения (ADRs)
+    - [ADR-001](decisions/ADR-001-fix-data-persistence.md) — исправление сохранения данных
   - **hall_patterns** → [patterns/](patterns/) — обнаруженные паттерны кода
   - **hall_issues** → [issues/](issues/) — проблемы и их решения
+    - [ISSUE-001](issues/ISSUE-001-cities-import.md) — ошибка импорта CITIES
+    - [ISSUE-002](issues/ISSUE-002-data-persistence.md) — данные не сохраняются
 
 ### Структура файлов
 ```

@@ -161,13 +161,17 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         // Normalize client data
         const clientData = {
           ...action.client,
+          // Extract phone from phones array if present
+          phone: action.client.phone || (action.client.phones && action.client.phones[0]) || '',
+          phone_2: (action.client.phones && action.client.phones.length > 1) ? action.client.phones[1] : (action.client.phone_2 || ''),
           client_types: action.client.client_types || ['buyer'],
           additional_contacts: action.client.additional_contacts || [],
           passport_details: action.client.passport_details || null,
           source: action.client.source || null,
           notes: action.client.notes || null,
         };
-        // Remove undefined fields
+        // Remove phones array (not in schema) and undefined fields
+        delete clientData.phones;
         Object.keys(clientData).forEach(key => {
           if (clientData[key] === undefined) delete clientData[key];
         });
@@ -188,13 +192,17 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         // Normalize client data
         const normalizedData = {
           ...cData,
+          // Extract phone from phones array if present
+          phone: cData.phone || (cData.phones && cData.phones[0]) || '',
+          phone_2: (cData.phones && cData.phones.length > 1) ? cData.phones[1] : (cData.phone_2 || ''),
           client_types: cData.client_types || ['buyer'],
           additional_contacts: cData.additional_contacts || [],
           passport_details: cData.passport_details || null,
           source: cData.source || null,
           notes: cData.notes || null,
         };
-        // Remove undefined fields
+        // Remove phones array (not in schema) and undefined fields
+        delete normalizedData.phones;
         Object.keys(normalizedData).forEach(key => {
           if (normalizedData[key] === undefined) delete normalizedData[key];
         });
