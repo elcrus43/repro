@@ -81,6 +81,5 @@ FINAL_DATABASE_FIX.sql
 FIX_ADMIN_ROLE.sql
 *.patch.sql
 
-# ─── Vercel & Notes ───────────────────────────────────────────
+# ─── Vercel ───────────────────────────────────────────────────
 .vercel/
-.notes/
