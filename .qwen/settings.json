@@ -28,7 +28,15 @@
       "Bash(mkdir *)",
       "Bash(git checkout *)",
       "Bash(where *)",
-      "Bash(supabase *)"
+      "Bash(supabase *)",
+      "Bash(select-object *)",
+      "Bash(dir *)",
+      "Bash(npm *)",
+      "Bash(powershell *)",
+      "Bash(git fetch *)",
+      "Bash(git *)",
+      "Bash(cmdkey *)",
+      "Bash(gh *)"
     ]
   },
   "$version": 3
