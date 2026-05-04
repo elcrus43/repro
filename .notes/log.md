@@ -17,5 +17,15 @@
 - [MIGRATION] 030_fix_clients_and_showings_save_issues.sql создана
 - [ADR] ADR-001: исправление проблем с сохранением данных
 
+## 2026-05-04
+- [BUILD] Сборка успешна: vite build ✓ (21.43s)
+- [TEST] Выявлены ошибки в src/utils/format.test.js и src/utils/estimation.test.js
+- [FIX] matching.js: исправлены cleanPrice и formatPrice для соответствия тестам
+- [FIX] estimation.js: исправлена логика confidence (HIGH для известных районов с множителем 1.0)
+- [TEST] Все тесты пройдены: 135/135 ✓
+- [FIX] AdGenerator.jsx: обновление модели до gemini-2.5-flash (v1 API), так как 1.5 и 2.0 устарели
+- [FIX] AdGenerator.jsx: уточнение промпта (запрет слов "уникальный", жесткая структура первого абзаца "Продаю...", импорт BUILDING_TYPES)
+- [VERIFY] Структура кода соответствует ISSUE-002 и ADR-001
+
 _Формат: `[ТИП] Описание`_
-_Типы: INIT, BUILD, COMMIT, DISCOVER, FIX, DECISION, ISSUE, INGEST_
+_Типы: INIT, BUILD, COMMIT, DISCOVER, FIX, DECISION, ISSUE, INGEST, TEST, VERIFY_

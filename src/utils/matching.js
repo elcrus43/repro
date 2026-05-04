@@ -308,7 +308,7 @@ export function getLevelLabel(level) {
  * @returns {string}
  */
 export function formatPrice(n) {
-  if (!n && n !== 0) return '—';
+  if (!n) return '—';
   if (n >= 10_000_000) return (n / 1_000_000).toFixed(1).replace('.0', '') + ' млн ₽';
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + ' ₽';
 }
@@ -318,9 +318,9 @@ export function formatPrice(n) {
  * @returns {number | null}
  */
 export function cleanPrice(val) {
-  if (!val) return null;
+  if (val === null || val === undefined || val === '') return null;
   const clean = String(val).replace(/[^0-9]/g, '');
-  return clean ? Number(clean) : null;
+  return clean === '' ? 0 : Number(clean);
 }
 
 /**

@@ -36,7 +36,9 @@
       "Bash(git fetch *)",
       "Bash(git *)",
       "Bash(cmdkey *)",
-      "Bash(gh *)"
+      "Bash(gh *)",
+      "WebFetch(github.com)",
+      "WebFetch(vercel.com)"
     ]
   },
   "$version": 3

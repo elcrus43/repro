@@ -227,7 +227,7 @@ export function estimateOffline({ city = 'Киров', district = '', rooms = 1,
         max = Math.round(avg * 1.13 / 10000) * 10000;
     }
 
-    const confidence = districtMult !== 1.0 ? 'HIGH' : 'MEDIUM';
+    const confidence = (district && Object.prototype.hasOwnProperty.call(cityData.districts, district)) ? 'HIGH' : 'MEDIUM';
     const analogs = generateAnalogs({ city, district, rooms, total_area: area, deal_type, pricePerM2, basePrice: avg });
     const avitoUrl = buildAvitoUrl({ city, district, rooms, deal_type, total_area: area, price: avg });
 

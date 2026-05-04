@@ -6,6 +6,7 @@ import { Edit2, Trash2, Sparkles, Building2, Calculator, ExternalLink, ChevronDo
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { estimateOffline } from '../../utils/estimation';
+import { AdGenerator } from '../../components/AdGenerator';
 
 /* ─── Inline Estimation Widget (offline, no backend needed) ─────────────────── */
 function EstimationWidget({ prop }) {
@@ -399,6 +400,9 @@ export function DetailsPage() {
 
                 {/* Estimation Widget */}
                 <EstimationWidget prop={prop} />
+
+                {/* AI Ad Generator */}
+                <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} />
 
                 {/* ИСТОРИЯ — все события по объекту */}
                 <div className="card" style={{ padding: '16px' }}>

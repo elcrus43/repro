@@ -6,18 +6,18 @@ export const BUILDING_TYPES = {
     block: 'Блок'
 };
 
-export const RENOVATION_LABELS = {
-    none: 'Без ремонта',
-    cosmetic: 'Косметический',
-    euro: 'Евро',
-    designer: 'Дизайнерский'
-};
-
 export const BALCONY_LABELS = {
     none: 'Нет',
     balcony: 'Балкон',
     loggia: 'Лоджия',
     both: 'Оба'
+};
+
+export const RENOVATION_LABELS = {
+    none: 'Без ремонта',
+    cosmetic: 'Косметический',
+    euro: 'Евро',
+    designer: 'Дизайнерский'
 };
 
 export const MARKET_LABELS = {
