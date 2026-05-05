@@ -45,7 +45,7 @@ export function LoginPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -2, color: 'var(--text)', margin: '0 auto 8px', textAlign: 'center' }}>REM</div>
+                <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -2, color: 'var(--primary)', margin: '0 auto 8px', textAlign: 'center' }}>REM</div>
             </div>
             <div className="auth-card">
                 <h2>{mode === 'login' ? 'Вход в систему' : 'Регистрация'}</h2>

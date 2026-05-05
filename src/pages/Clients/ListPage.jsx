@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
-import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
 
 export function ListPage() {
@@ -50,13 +50,13 @@ export function ListPage() {
                 <span className="topbar-title">Клиенты</span>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <GlobalSearch />
-                    <button className="icon-btn" onClick={() => navigate('/clients/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                    <button className="icon-btn" onClick={() => navigate('/clients/new')} style={{ color: 'var(--primary)' }}><Plus size={24} strokeWidth={3} /></button>
                 </div>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="search-bar">
-                    <span className="search-icon">S</span>
+                    <span className="search-icon"><Search size={16} /></span>
                     <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
                 {isAdmin && (
@@ -120,8 +120,8 @@ export function ListPage() {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>
-                                    <button className="icon-btn" onClick={handleEdit}><Edit2 size={16} /></button>
-                                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
+                                    <button className="icon-btn" onClick={handleEdit}><Pencil size={16} /></button>
+                                    <button className="icon-btn" onClick={handleDelete}><Trash size={16} /></button>
                                 </div>
                             </div>
                         </div>
@@ -154,7 +154,6 @@ export function ListPage() {
                 )}
             </div>
 
-            <button className="fab" onClick={() => navigate('/clients/new')}>+</button>
         </div >
     );
 }

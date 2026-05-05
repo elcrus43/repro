@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, MapPin, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -51,13 +51,13 @@ export function ListPage() {
                 <span className="topbar-title">Объекты</span>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <GlobalSearch />
-                    <button className="icon-btn" onClick={() => navigate('/properties/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                    <button className="icon-btn" onClick={() => navigate('/properties/new')} style={{ color: 'var(--primary)' }}><Plus size={24} strokeWidth={3} /></button>
                 </div>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="search-bar">
-                    <span className="search-icon">S</span>
+                    <span className="search-icon"><Search size={16} /></span>
                     <input className="form-input" placeholder="Поиск по адресу или клиенту" value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
                 {isAdmin && (
@@ -113,8 +113,8 @@ export function ListPage() {
                                     {client?.full_name} · <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{matches.length} совпадений</span>
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>
-                                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}><Edit2 size={16} /></button>
-                                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
+                                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}><Pencil size={16} /></button>
+                                    <button className="icon-btn" onClick={handleDelete}><Trash size={16} /></button>
                                 </div>
                             </div>
                         </div>
@@ -146,7 +146,6 @@ export function ListPage() {
                     </div>
                 )}
             </div>
-            <button className="fab" onClick={() => navigate('/properties/new')}>+</button>
         </div>
     );
 }

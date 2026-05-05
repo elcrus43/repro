@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Edit2, Trash2, Calendar, Phone, User } from 'lucide-react';
+import { Pencil, Trash, Calendar, Phone, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
@@ -42,8 +42,8 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                 {task.due_date && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(task.due_date).toLocaleDateString('ru-RU')}</div>}
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <button className="icon-btn" onClick={() => onEdit(task)}><Edit2 size={16} /></button>
-                <button className="icon-btn" onClick={() => onDelete(task)}><Trash2 size={16} /></button>
+                <button className="icon-btn" onClick={() => onEdit(task)}><Pencil size={16} /></button>
+                <button className="icon-btn" onClick={() => onDelete(task)}><Trash size={16} /></button>
                 <div style={{ width: 6, height: 20, borderRadius: 3, background: priorColors[task.priority] || '#ccc', flexShrink: 0 }} />
             </div>
         </div>

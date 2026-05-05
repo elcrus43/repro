@@ -97,9 +97,11 @@ export function FormPage() {
         encumbrance: false,
         minor_owners: false,
         docs_ready: false,
+        seeking_alternative: false,
         // Доп. данные о доме (из парсера)
         apartments_count: null,
         has_elevator: null,
+        elevator_type: 'none',   // none | passenger | cargo | both
         has_garbage_chute: null,
         ceiling_height: null,
         house_series: '',
@@ -500,12 +502,31 @@ export function FormPage() {
                         </div>
                     </div>
 
+                    {/* Лифт: тип */}
+                    <div className="form-group">
+                        <label className="form-label">Лифт</label>
+                        <div className="chip-group" style={{ marginTop: 8 }}>
+                            {[
+                                { val: 'none',      label: 'Нет' },
+                                { val: 'passenger', label: '🛗 Пассажирский' },
+                                { val: 'cargo',     label: '📦 Грузовой' },
+                                { val: 'both',      label: '🛗📦 Оба' },
+                            ].map(({ val, label }) => (
+                                <button
+                                    key={val}
+                                    type="button"
+                                    className={`chip ${(form.elevator_type || 'none') === val ? 'active' : ''}`}
+                                    onClick={() => {
+                                        setF('elevator_type', val);
+                                        setF('has_elevator', val !== 'none');
+                                    }}
+                                >{label}</button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Мусоропровод */}
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        <ToggleChip
-                            label="🛠 Лифт"
-                            value={form.has_elevator === true}
-                            onChange={v => setF('has_elevator', v ? true : false)}
-                        />
                         <ToggleChip
                             label="🗑 Мусоропровод"
                             value={form.has_garbage_chute === true}
@@ -610,6 +631,7 @@ export function FormPage() {
                         <ToggleChip label="Ипотека" value={form.mortgage_available} onChange={v => setF('mortgage_available', v)} />
                         <ToggleChip label="Маткапитал" value={form.matcapital_available} onChange={v => setF('matcapital_available', v)} />
                         <ToggleChip label="Сертификат" value={form.certificate_available} onChange={v => setF('certificate_available', v)} />
+                        <ToggleChip label="🔄 Ищем альтернативу" value={form.seeking_alternative} onChange={v => setF('seeking_alternative', v)} />
                         <ToggleChip label="Обременение" value={form.encumbrance} onChange={v => setF('encumbrance', v)} />
                         <ToggleChip label="Несоверш. собственники" value={form.minor_owners} onChange={v => setF('minor_owners', v)} />
                         <ToggleChip label="Документы готовы" value={form.docs_ready} onChange={v => setF('docs_ready', v)} />
@@ -620,7 +642,7 @@ export function FormPage() {
 
                     <div className="form-group">
                         <label className="form-label">Заметки риэлтора</label>
-                        <textarea className="form-textarea" rows={4} value={form.notes} onChange={e => setF('notes', e.target.value)} placeholder="Особенности, нюансы сделки, пожелания собственника..." />
+                        <textarea className="form-textarea" rows={4} value={form.notes ?? ''} onChange={e => setF('notes', e.target.value)} placeholder="Особенности, нюансы сделки, пожелания собственника..." />
                     </div>
 
                     {/* ── ФОТОГРАФИИ ──────────────────────────────── */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToastContext } from '../../components/Toast';
-import { ChevronLeft, MessageSquare, Plus, Trash2, Loader2, WifiOff } from 'lucide-react';
+import { ChevronLeft, MessageSquare, Plus, Trash, Loader2, WifiOff } from 'lucide-react';
 import { API_BASE as API_ROOT } from '../../config';
 
 const API_BASE = `${API_ROOT}/api/v1/messaging`;
@@ -190,7 +190,7 @@ export function TemplatesPage() {
                                         style={{ color: 'var(--text-muted)' }}
                                         onClick={() => handleDelete(t)}
                                     >
-                                        <Trash2 size={16} />
+                                        <Trash size={16} />
                                     </button>
                                 </div>
                                 <div style={{

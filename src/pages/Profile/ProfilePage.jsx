@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { supabase } from '../../lib/supabase';
-import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Edit2, UserCheck, UserX, Calendar, Lock } from 'lucide-react';
+import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock } from 'lucide-react';
 import {
     isCalendarConfigured,
     isCalendarConnected,
@@ -282,7 +282,7 @@ export function ProfilePage() {
                 <div className="card" style={{ textAlign: 'center', padding: '28px 16px', position: 'relative' }}>
                     {!isEditing && (
                         <button className="icon-btn" style={{ position: 'absolute', top: 12, right: 12 }} onClick={() => setIsEditing(true)}>
-                            <Edit2 size={18} />
+                            <Pencil size={18} />
                         </button>
                     )}
                     {isEditing ? (
@@ -413,7 +413,7 @@ export function ProfilePage() {
                                                 const newName = window.prompt('Название услуги', item.name);
                                                 const newPrice = window.prompt('Стоимость', item.price);
                                                 if (newName && newPrice) dispatch({ type: 'UPDATE_PRICE_ITEM', item: { ...item, name: newName, price: Number(newPrice) } });
-                                            }}><Edit2 size={16} /></button>
+                                            }}><Pencil size={16} /></button>
                                             <button className="icon-btn" onClick={() => {
                                                 if (window.confirm('Удалить услугу из прейскуранта?')) dispatch({ type: 'DELETE_PRICE_ITEM', id: item.id });
                                             }} style={{ color: 'var(--danger)' }}><UserX size={16} /></button>

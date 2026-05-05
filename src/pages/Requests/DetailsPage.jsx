@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, Sparkles, User, MapPin, Building2, Wallet } from 'lucide-react';
+import { Pencil, Trash, Sparkles, User, MapPin, Building2, Wallet } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 
 export function DetailsPage() {
@@ -32,8 +32,8 @@ export function DetailsPage() {
                 <button className="topbar-back" onClick={() => navigate('/requests')}>←</button>
                 <span className="topbar-title">Детали запроса</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}><Edit2 size={18} /></button>
-                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={18} /></button>
+                    <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}><Pencil size={18} /></button>
+                    <button className="icon-btn" onClick={handleDelete}><Trash size={18} /></button>
                 </div>
             </div>
 

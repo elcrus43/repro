@@ -13,11 +13,6 @@ export default defineConfig(({ mode }) => {
       include: ['react', 'react-dom', 'react-router-dom']
     },
     server: {
-      hmr: {
-        protocol: 'ws',
-        host: 'localhost',
-        port: 5173
-      },
       watch: {
         ignored: [
           '**/backend/**',

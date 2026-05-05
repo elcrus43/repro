@@ -66,19 +66,19 @@ export default function UpdatePasswordPage() {
             <div className="auth-logo">
                 <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -2, color: 'var(--text)', margin: '0 auto 8px', textAlign: 'center' }}>REM</div>
             </div>
-            <div className="auth-card">
-                <h2>Новый пароль</h2>
+            <div className="auth-card" style={{ boxShadow: 'var(--shadow-premium)', borderRadius: 'var(--radius-lg)' }}>
+                <h2 style={{ fontFamily: 'Playfair Display, serif', fontWeight: 900, fontSize: 24, marginBottom: 24 }}>Новый пароль</h2>
 
                 {!sessionReady && !error ? (
                     <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Проверяем сессию...</p>
                 ) : (
                     <>
                         {error && (
-                            <div style={{ color: 'var(--danger)', fontSize: 14, background: 'var(--danger-light)', padding: '10px 12px', borderRadius: 'var(--radius-sm)', marginBottom: 20 }}>
+                            <div style={{ color: 'var(--danger)', fontSize: 13, background: 'var(--danger-light)', padding: '12px', borderRadius: 'var(--radius)', marginBottom: 20, border: '1px solid var(--danger)' }}>
                                 {error}
                                 {error.includes('Сессия истекла') && (
                                     <div style={{ marginTop: 12 }}>
-                                        <button className="btn btn-primary btn-full" onClick={() => navigate('/login')}>
+                                        <button className="btn btn-primary btn-full" style={{ height: 44, borderRadius: 'var(--radius)' }} onClick={() => navigate('/login')}>
                                             На страницу входа
                                         </button>
                                     </div>
@@ -86,38 +86,43 @@ export default function UpdatePasswordPage() {
                             </div>
                         )}
 
-                        <input
-                            className="form-input"
-                            type="password"
-                            placeholder="Новый пароль"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            style={{ marginBottom: 12 }}
-                        />
-                        <input
-                            className="form-input"
-                            type="password"
-                            placeholder="Подтвердите пароль"
-                            value={confirmPassword}
-                            onChange={e => setConfirmPassword(e.target.value)}
-                            style={{ marginBottom: 12 }}
-                            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                        />
+                        <div className="form-group" style={{ marginBottom: 16 }}>
+                            <input
+                                className="form-input"
+                                type="password"
+                                placeholder="Новый пароль"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                style={{ height: 48, borderRadius: 'var(--radius)' }}
+                            />
+                        </div>
+                        <div className="form-group" style={{ marginBottom: 24 }}>
+                            <input
+                                className="form-input"
+                                type="password"
+                                placeholder="Подтвердите пароль"
+                                value={confirmPassword}
+                                onChange={e => setConfirmPassword(e.target.value)}
+                                style={{ height: 48, borderRadius: 'var(--radius)' }}
+                                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                            />
+                        </div>
 
                         <button
                             className="btn btn-primary btn-full"
+                            style={{ height: 52, borderRadius: 'var(--radius)', fontSize: 15, fontWeight: 700 }}
                             onClick={handleSubmit}
                             disabled={loading || !password || !confirmPassword || !sessionReady}
                         >
-                            {loading ? 'Сохранение...' : 'Сохранить пароль'}
+                            {loading ? 'Сохранение...' : 'Обновить пароль'}
                         </button>
 
-                        <div style={{ textAlign: 'center', marginTop: 16 }}>
+                        <div style={{ textAlign: 'center', marginTop: 20 }}>
                             <button
-                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, textDecoration: 'underline' }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 13, fontWeight: 500 }}
                                 onClick={() => navigate('/login')}
                             >
-                                Отмена
+                                Вернуться ко входу
                             </button>
                         </div>
                     </>

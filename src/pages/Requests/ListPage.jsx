@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 
@@ -45,12 +45,12 @@ export function ListPage() {
         <div className="page fade-in">
             <div className="topbar">
                 <span className="topbar-title">Запросы</span>
-                <button className="icon-btn" onClick={() => navigate('/requests/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                <button className="icon-btn" onClick={() => navigate('/requests/new')} style={{ color: 'var(--primary)' }}><Plus size={24} strokeWidth={3} /></button>
             </div>
 
             <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div className="search-bar">
-                    <span className="search-icon">S</span>
+                    <span className="search-icon"><Search size={16} /></span>
                     <input className="form-input" placeholder="Поиск по клиенту или типу" value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
                 {isAdmin && (
@@ -102,8 +102,8 @@ export function ListPage() {
                                     {req.districts?.length > 0 && ` · ${req.districts.join(', ')}`}
                                 </div>
                                 <div style={{ display: 'flex', gap: 4 }}>
-                                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); navigate(`/requests/${req.id}/edit`); }}><Edit2 size={16} /></button>
-                                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={16} /></button>
+                                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); navigate(`/requests/${req.id}/edit`); }}><Pencil size={16} /></button>
+                                    <button className="icon-btn" onClick={handleDelete}><Trash size={16} /></button>
                                 </div>
                             </div>
                         </div>
@@ -135,7 +135,6 @@ export function ListPage() {
                     </div>
                 )}
             </div>
-            <button className="fab" onClick={() => navigate('/requests/new')}>+</button>
         </div>
     );
 }

@@ -54,26 +54,16 @@ export async function parseHouseFromAddress(address, city) {
 
     const location = [address, city].filter(Boolean).join(', ');
 
-    const prompt = `Найди в интернете технические характеристики жилого дома по адресу: "${location}", Россия.
-Используй такие сайты как: dom.mingkh.ru, reformagkh.ru, 2gis.ru, яндекс карты, google maps, и другие открытые источники.
+    const prompt = `Найди технические характеристики жилого дома по адресу: "${location}", Россия.
+Ищи на сайтах: dom.mingkh.ru, reformagkh.ru, 2gis.ru и других открытых источниках.
 
-Верни данные СТРОГО в формате JSON (только JSON, без markdown-блоков, без пояснений):
-{
-  "year_built": число или null,
-  "floors_total": число или null,
-  "building_type": "panel|brick|monolith|wood|block или текстовое описание или null",
-  "apartments_count": число или null,
-  "has_elevator": true или false или null,
-  "has_garbage_chute": true или false или null,
-  "ceiling_height": число в метрах или null,
-  "series": "серия или проект дома или null",
-  "developer": "застройщик или null",
-  "management_company": "управляющая компания или null",
-  "cadastral_number": "кадастровый номер или null",
-  "source": "название источника, откуда взяты данные"
-}
+Верни ТОЛЬКО валидный JSON со следующими полями (null если не найдено):
+year_built (число), floors_total (число), building_type (panel/brick/monolith/wood/block),
+apartments_count (число), has_elevator (true/false), has_garbage_chute (true/false),
+ceiling_height (число в метрах), series (серия дома), developer (застройщик),
+management_company (УК), cadastral_number (кадастровый номер), source (источник).
 
-Если какой-то параметр не найден — ставь null. Только JSON.`;
+Только JSON, без markdown, без пояснений.`;
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -83,7 +73,7 @@ export async function parseHouseFromAddress(address, city) {
         body: JSON.stringify({
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             tools: [{ google_search: {} }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 600 },
+            generationConfig: { temperature: 0.1, maxOutputTokens: 2000 },
         }),
     });
 
@@ -98,13 +88,34 @@ export async function parseHouseFromAddress(address, city) {
     }
 
     const data = await res.json();
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
 
-    // Extract JSON — sometimes Gemini wraps it in ```json ... ```
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    // Gemini with google_search may split text across multiple parts — collect all
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const rawText = parts
+        .map(p => p.text || '')
+        .join('')
+        .trim();
+
+    if (!rawText) {
+        console.warn('[houseParser] Empty response from Gemini. Full response:', JSON.stringify(data, null, 2));
+        throw new Error('Gemini вернул пустой ответ. Попробуйте ещё раз.');
+    }
+
+    // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+    const stripped = rawText
+        .replace(/^```(?:json)?\s*/i, '')
+        .replace(/\s*```\s*$/, '')
+        .trim();
+
+    // Extract the outermost JSON object (greedy — takes from first { to last })
+    const firstBrace = stripped.indexOf('{');
+    const lastBrace = stripped.lastIndexOf('}');
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+        console.warn('[houseParser] No JSON object found. Raw text:', rawText.slice(0, 600));
         throw new Error('Не удалось распознать ответ. Попробуйте уточнить адрес.');
     }
+    const jsonStr = stripped.slice(firstBrace, lastBrace + 1);
+    const jsonMatch = [jsonStr]; // keep compatibility with code below
 
     let parsed;
     try {

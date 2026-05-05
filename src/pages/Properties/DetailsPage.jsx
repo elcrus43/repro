@@ -2,11 +2,20 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Edit2, Trash2, Sparkles, Building2, Calculator, ExternalLink, ChevronDown, ChevronUp, Phone, User } from 'lucide-react';
-import { PROPERTY_TYPES } from '../../data/constants';
+import { 
+    Pencil, Trash, Sparkles, Building2, Calculator, ExternalLink, 
+    ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
+    Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
+    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw
+} from 'lucide-react';
+
+
+import { PROPERTY_TYPES, BUILDING_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { estimateOffline } from '../../utils/estimation';
 import { AdGenerator } from '../../components/AdGenerator';
+
+
 
 /* ─── Inline Estimation Widget (offline, no backend needed) ─────────────────── */
 function EstimationWidget({ prop }) {
@@ -228,10 +237,542 @@ function EstimationWidget({ prop }) {
     );
 }
 
+/* ─── BannerGenerator (Inlined to avoid module issues) ─────────────────────── */
+function BannerGenerator({ property, currentUser, onClose }) {
+    const canvasRef = React.useRef(null);
+    const [format, setFormat] = React.useState('story'); // 'story' (9:16) | 'post' (1:1)
+    const [theme, setTheme] = React.useState('light'); // 'light' | 'dark'
+    const [design, setDesign] = React.useState('classic'); // 'classic' | 'minimal'
+    const [loading, setLoading] = React.useState(true);
+    const [imageOffset, setImageOffset] = React.useState(0);
+
+    const formats = {
+        story: { width: 1080, height: 1920, label: 'Story (9:16)' },
+        post: { width: 1080, height: 1080, label: 'Post (1:1)' }
+    };
+
+    React.useEffect(() => {
+        renderBanner();
+    }, [format, theme, design, property, imageOffset]);
+
+    const renderBanner = async () => {
+        setLoading(true);
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const ctx = canvas.getContext('2d');
+        const config = formats[format];
+        canvas.width = config.width;
+        canvas.height = config.height;
+
+        // 1. Load Images (up to 3)
+        const imageUrls = (property.images && property.images.length > 0) 
+            ? property.images 
+            : ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1000&q=80'];
+        
+        const loadedImages = [];
+        const numImages = imageUrls.length;
+        for (let i = 0; i < Math.min(numImages, 3); i++) {
+            const index = (i + imageOffset) % numImages;
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = imageUrls[index];
+            await new Promise((resolve) => {
+                img.onload = resolve;
+                img.onerror = resolve;
+            });
+            if (img.width > 0) loadedImages.push(img);
+        }
+
+        if (loadedImages.length === 0) {
+            setLoading(false);
+            return; // Fallback
+        }
+
+        const isDark = theme === 'dark';
+        ctx.fillStyle = isDark ? '#111111' : '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const drawCover = (img, x, y, w, h) => {
+            const imgRatio = img.width / img.height;
+            const canvasRatio = w / h;
+            let drawW, drawH, drawX, drawY;
+
+            if (imgRatio > canvasRatio) {
+                drawH = h;
+                drawW = h * imgRatio;
+                drawX = x - (drawW - w) / 2;
+                drawY = y;
+            } else {
+                drawW = w;
+                drawH = w / imgRatio;
+                drawX = x;
+                drawY = y - (drawH - h) / 2;
+            }
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, w, h);
+            ctx.clip();
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+            ctx.restore();
+        };
+
+        if (design === 'classic') {
+            if (loadedImages.length >= 3) {
+                const topH = canvas.height * 0.6;
+                const bottomH = canvas.height * 0.4;
+                drawCover(loadedImages[0], 0, 0, canvas.width, topH);
+                drawCover(loadedImages[1], 0, topH, canvas.width / 2, bottomH);
+                drawCover(loadedImages[2], canvas.width / 2, topH, canvas.width / 2, bottomH);
+                
+                ctx.strokeStyle = isDark ? '#111' : '#fff';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.moveTo(0, topH); ctx.lineTo(canvas.width, topH);
+                ctx.moveTo(canvas.width / 2, topH); ctx.lineTo(canvas.width / 2, canvas.height);
+                ctx.stroke();
+            } else if (loadedImages.length === 2) {
+                drawCover(loadedImages[0], 0, 0, canvas.width, canvas.height / 2);
+                drawCover(loadedImages[1], 0, canvas.height / 2, canvas.width, canvas.height / 2);
+                
+                ctx.strokeStyle = isDark ? '#111' : '#fff';
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 2); ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+            } else {
+                drawCover(loadedImages[0], 0, 0, canvas.width, canvas.height);
+            }
+
+            // Overlays
+            if (format === 'story') {
+                renderClassicStoryOverlay(ctx, canvas);
+            } else {
+                renderClassicPostOverlay(ctx, canvas);
+            }
+        } else if (design === 'minimal') {
+            const padding = format === 'story' ? 50 : 40;
+            const textSpace = format === 'story' ? 460 : 320;
+            const photoAreaH = canvas.height - textSpace - padding;
+
+            if (loadedImages.length >= 3) {
+                const mainH = photoAreaH * 0.65;
+                const subH = photoAreaH * 0.35 - (padding/2);
+                drawCover(loadedImages[0], padding, padding, canvas.width - padding*2, mainH);
+                drawCover(loadedImages[1], padding, padding + mainH + (padding/2), canvas.width/2 - padding*1.25, subH);
+                drawCover(loadedImages[2], canvas.width/2 + (padding*0.25), padding + mainH + (padding/2), canvas.width/2 - padding*1.25, subH);
+            } else if (loadedImages.length === 2) {
+                drawCover(loadedImages[0], padding, padding, canvas.width - padding*2, photoAreaH/2 - (padding/2));
+                drawCover(loadedImages[1], padding, padding + photoAreaH/2 + (padding/2), canvas.width - padding*2, photoAreaH/2 - (padding/2));
+            } else {
+                drawCover(loadedImages[0], padding, padding, canvas.width - padding*2, photoAreaH);
+            }
+
+            renderMinimalText(ctx, canvas, textSpace);
+        }
+
+        setLoading(false);
+    };
+
+    const getCleanAddress = () => {
+        let addr = property.address || property.city || 'Объект недвижимости';
+        addr = addr.replace(/,\s*кв\.?\s*\d+/i, '').replace(/\s*кв\.?\s*\d+/i, '').trim();
+        return addr;
+    };
+
+    const translateRenovation = (r) => {
+        const mapping = {
+            'cosmetic': 'Косметический ремонт',
+            'designer': 'Дизайнерский ремонт',
+            'euro': 'Евроремонт',
+            'needs_repair': 'Требует ремонта',
+            'good': 'Хорошее состояние'
+        };
+        return mapping[r] || r;
+    };
+
+    const renderMinimalText = (ctx, canvas, textSpace) => {
+        const w = canvas.width;
+        const h = canvas.height;
+        const isDark = theme === 'dark';
+        const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
+        const textColor2 = isDark ? '#AAAAAA' : '#666666';
+        const brandColor = isDark ? '#4DA6FF' : '#0052FF';
+        
+        const padding = format === 'story' ? 50 : 40;
+        
+        const gap = format === 'story' ? 60 : 40;
+        let currentY = h - textSpace + gap; 
+        
+        // Price
+        ctx.fillStyle = brandColor;
+        const priceSize = format === 'story' ? 90 : 70;
+        ctx.font = `900 ${priceSize}px Montserrat, Inter, sans-serif`;
+        currentY += priceSize;
+        ctx.fillText(formatNumber(property.price) + ' ₽', padding, currentY);
+
+        // Address
+        const addressGap = format === 'story' ? 30 : 20;
+        const addressSize = format === 'story' ? 50 : 36;
+        currentY += addressGap + addressSize;
+        ctx.fillStyle = textColor1;
+        ctx.font = `800 ${addressSize}px Montserrat, Inter, sans-serif`;
+        const address = getCleanAddress();
+        ctx.fillText(address.slice(0, 45) + (address.length > 45 ? '...' : ''), padding, currentY);
+
+        // Details grid
+        const detailsGap = format === 'story' ? 30 : 20;
+        const detailsSize = format === 'story' ? 32 : 22;
+        currentY += detailsGap + detailsSize;
+        
+        ctx.fillStyle = textColor2;
+        ctx.font = `600 ${detailsSize}px Montserrat, Inter, sans-serif`;
+        
+        const details = [];
+        if (property.rooms !== undefined) details.push(`${property.rooms === 0 ? 'Студия' : property.rooms + '-комн.'}`);
+        if (property.area_total) details.push(`${property.area_total} м²`);
+        if (property.floor) details.push(`${property.floor}/${property.floors_total || '?'} эт.`);
+        if (property.renovation) details.push(`${translateRenovation(property.renovation)}`);
+        
+        let detX = padding;
+        details.forEach((txt) => {
+            ctx.fillStyle = brandColor;
+            ctx.beginPath(); ctx.arc(detX + 8, currentY - (detailsSize/3), 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = textColor1;
+            ctx.fillText(txt, detX + 25, currentY);
+            ctx.font = `600 ${detailsSize}px Montserrat, Inter, sans-serif`;
+            detX += ctx.measureText(txt).width + 60;
+        });
+
+        // CTA
+        const ctaGap = format === 'story' ? 60 : 40;
+        const ctaSize = format === 'story' ? 28 : 20;
+        const phoneSize = format === 'story' ? 46 : 32;
+        currentY += ctaGap + phoneSize;
+
+        ctx.fillStyle = textColor2;
+        ctx.font = `500 ${ctaSize}px Montserrat, Inter, sans-serif`;
+        ctx.fillText('СВЯЗАТЬСЯ:', padding, currentY);
+        const ctaWidth = ctx.measureText('СВЯЗАТЬСЯ: ').width;
+
+        ctx.fillStyle = brandColor;
+        ctx.font = `900 ${phoneSize}px Montserrat, Inter, sans-serif`;
+        const phone = currentUser?.phone || '+7 (999) 000-00-00';
+        ctx.fillText(phone, padding + ctaWidth + 10, currentY);
+    };
+
+    const renderClassicStoryOverlay = (ctx, canvas) => {
+        const w = canvas.width;
+        const h = canvas.height;
+        const isDark = theme === 'dark';
+        const gradColor = isDark ? '0,0,0' : '255,255,255';
+        const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
+        const textColor2 = isDark ? '#CCCCCC' : '#333333';
+        const brandColor = isDark ? '#66A3FF' : '#0052FF';
+
+        // 1. Top gradient - reduced to 35% for better photo visibility
+        const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.35);
+        topGrad.addColorStop(0, `rgba(${gradColor},0.95)`);
+        topGrad.addColorStop(0.7, `rgba(${gradColor},0.7)`);
+        topGrad.addColorStop(1, `rgba(${gradColor},0)`);
+        ctx.fillStyle = topGrad;
+        ctx.fillRect(0, 0, w, h * 0.35);
+
+        // Price (Large, Blue)
+        ctx.fillStyle = brandColor;
+        ctx.font = '900 110px Montserrat, Inter, sans-serif';
+        ctx.fillText(formatNumber(property.price) + ' ₽', 80, 140);
+
+        // Clean Address (Large, Black/White)
+        ctx.fillStyle = textColor1;
+        ctx.font = '800 65px Montserrat, Inter, sans-serif';
+        const address = getCleanAddress();
+        ctx.fillText(address.slice(0, 30) + (address.length > 30 ? '...' : ''), 80, 230);
+
+        // Separator line
+        ctx.fillStyle = brandColor;
+        ctx.fillRect(80, 280, 120, 8);
+
+        // More information (Features)
+        ctx.fillStyle = textColor2;
+        ctx.font = '600 38px Montserrat, Inter, sans-serif';
+        
+        let startY = 360;
+        const details = [];
+        if (property.rooms !== undefined) details.push(`Формат: ${property.rooms === 0 ? 'Студия' : property.rooms + '-комнатная'}`);
+        if (property.area_total) details.push(`Общая площадь: ${property.area_total} м²`);
+        if (property.area_kitchen) details.push(`Площадь кухни: ${property.area_kitchen} м²`);
+        if (property.floor) details.push(`Этаж: ${property.floor} из ${property.floors_total || '?'}`);
+        if (property.renovation) details.push(`Ремонт: ${translateRenovation(property.renovation)}`);
+        if (property.material) details.push(`Тип дома: ${property.material}`);
+        if (property.year_built) details.push(`Год постройки: ${property.year_built}`);
+
+        details.forEach((txt, i) => {
+            ctx.fillStyle = brandColor;
+            ctx.beginPath();
+            ctx.arc(95, startY + (i * 55) - 12, 8, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = textColor1;
+            ctx.fillText(txt, 130, startY + (i * 55));
+        });
+
+        // 2. Bottom gradient
+        const bottomGrad = ctx.createLinearGradient(0, h - 350, 0, h);
+        bottomGrad.addColorStop(0, `rgba(${gradColor},0)`);
+        bottomGrad.addColorStop(0.4, `rgba(${gradColor},0.85)`);
+        bottomGrad.addColorStop(1, `rgba(${gradColor},1)`);
+        ctx.fillStyle = bottomGrad;
+        ctx.fillRect(0, h - 350, w, 350);
+
+        // Right side CTA and Phone
+        ctx.fillStyle = textColor2;
+        ctx.font = '500 28px Montserrat, Inter, sans-serif';
+        ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 80, h - 180);
+
+        ctx.fillStyle = brandColor;
+        ctx.font = '900 44px Montserrat, Inter, sans-serif';
+        const phone = currentUser?.phone || '+7 (999) 000-00-00';
+        ctx.fillText(phone, 80, h - 125);
+
+        // Bottom advantages text & icons
+        ctx.strokeStyle = brandColor;
+        ctx.lineWidth = 3;
+        ctx.fillStyle = textColor1;
+
+        // Shield
+        ctx.beginPath(); ctx.moveTo(90, h - 55); ctx.lineTo(130, h - 55); ctx.lineTo(130, h - 30); ctx.arc(110, h - 30, 20, 0, Math.PI); ctx.stroke();
+        ctx.font = 'bold 16px Montserrat, Inter, sans-serif';
+        ctx.fillText('БЕЗОПАСНЫЕ', 150, h - 45);
+        ctx.fillText('СДЕЛКИ', 150, h - 25);
+
+        // House
+        ctx.beginPath(); ctx.moveTo(410, h - 30); ctx.lineTo(410, h - 60); ctx.lineTo(430, h - 80); ctx.lineTo(450, h - 60); ctx.lineTo(450, h - 30); ctx.stroke();
+        ctx.fillText('ШИРОКИЙ ВЫБОР', 470, h - 45);
+        ctx.fillText('ОБЪЕКТОВ', 470, h - 25);
+
+        // Heart
+        ctx.beginPath(); ctx.arc(770, h - 60, 10, Math.PI, 0); ctx.arc(790, h - 60, 10, Math.PI, 0); ctx.lineTo(780, h - 30); ctx.closePath(); ctx.stroke();
+        ctx.fillText('ИНДИВИДУАЛЬНЫЙ', 820, h - 45);
+        ctx.fillText('ПОДХОД', 820, h - 25);
+    };
+
+    const renderClassicPostOverlay = (ctx, canvas) => {
+        const w = canvas.width;
+        const h = canvas.height;
+        const isDark = theme === 'dark';
+        const gradColor = isDark ? '0,0,0' : '255,255,255';
+        const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
+        const textColor2 = isDark ? '#CCCCCC' : '#333333';
+        const brandColor = isDark ? '#66A3FF' : '#0052FF';
+
+        // Top gradient - reduced from 60% to 45%
+        const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.45);
+        topGrad.addColorStop(0, `rgba(${gradColor},0.95)`);
+        topGrad.addColorStop(0.7, `rgba(${gradColor},0.7)`);
+        topGrad.addColorStop(1, `rgba(${gradColor},0)`);
+        ctx.fillStyle = topGrad;
+        ctx.fillRect(0, 0, w, h * 0.45);
+
+        ctx.fillStyle = brandColor;
+        ctx.font = '900 80px Montserrat, Inter, sans-serif';
+        ctx.fillText(formatNumber(property.price) + ' ₽', 60, 100);
+
+        ctx.fillStyle = textColor1;
+        ctx.font = '800 45px Montserrat, Inter, sans-serif';
+        const address = getCleanAddress();
+        ctx.fillText(address.slice(0, 35) + (address.length > 35 ? '...' : ''), 60, 160);
+
+        ctx.fillStyle = brandColor;
+        ctx.fillRect(60, 200, 100, 6);
+
+        ctx.fillStyle = textColor2;
+        ctx.font = '600 28px Montserrat, Inter, sans-serif';
+        
+        let startY = 260;
+        const details = [];
+        if (property.rooms !== undefined) details.push(`${property.rooms === 0 ? 'Студия' : property.rooms + '-комн.'}`);
+        if (property.area_total) details.push(`${property.area_total} м²`);
+        if (property.floor) details.push(`${property.floor}/${property.floors_total || '?'} эт.`);
+        if (property.renovation) details.push(`${translateRenovation(property.renovation)}`);
+        
+        details.forEach((txt, i) => {
+            ctx.fillStyle = brandColor;
+            ctx.beginPath(); ctx.arc(75, startY + (i * 40) - 8, 6, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = textColor1;
+            ctx.fillText(txt, 100, startY + (i * 40));
+        });
+
+        // Bottom gradient instead of solid wave
+        const bottomGrad = ctx.createLinearGradient(0, h - 250, 0, h);
+        bottomGrad.addColorStop(0, `rgba(${gradColor},0)`);
+        bottomGrad.addColorStop(0.4, `rgba(${gradColor},0.85)`);
+        bottomGrad.addColorStop(1, `rgba(${gradColor},1)`);
+        ctx.fillStyle = bottomGrad;
+        ctx.fillRect(0, h - 250, w, 250);
+
+        ctx.fillStyle = textColor2;
+        ctx.font = '500 20px Montserrat, Inter, sans-serif';
+        ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 60, h - 100);
+
+        ctx.fillStyle = brandColor;
+        ctx.font = '900 34px Montserrat, Inter, sans-serif';
+        const phone = currentUser?.phone || '+7 (999) 000-00-00';
+        ctx.fillText(phone, 60, h - 55);
+    };
+
+    const handleRegenerate = () => {
+        setImageOffset(prev => prev + 1);
+    };
+
+    const download = () => {
+        const link = document.createElement('a');
+        link.download = `banner-${property.id}-${format}.png`;
+        link.href = canvasRef.current.toDataURL('image/png');
+        link.click();
+    };
+
+    return (
+        <div style={{
+            position: 'fixed', inset: 0, zIndex: 9999, 
+            background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            padding: 20
+        }}>
+            <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', gap: 12 }}>
+                <button className="icon-btn" onClick={onClose} style={{ background: 'white', color: 'black', width: 44, height: 44 }}><X size={24} /></button>
+            </div>
+
+            <div style={{ 
+                display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap',
+                background: 'rgba(255,255,255,0.1)', padding: 6, borderRadius: 16 
+            }}>
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: format === 'story' ? 'white' : 'transparent',
+                        color: format === 'story' ? 'black' : 'white',
+                        fontWeight: 700, fontSize: 14
+                    }}
+                    onClick={() => setFormat('story')}
+                >
+                    Story (9:16)
+                </button>
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: format === 'post' ? 'white' : 'transparent',
+                        color: format === 'post' ? 'black' : 'white',
+                        fontWeight: 700, fontSize: 14
+                    }}
+                    onClick={() => setFormat('post')}
+                >
+                    Post (1:1)
+                </button>
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
+                
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: theme === 'light' ? 'white' : 'transparent',
+                        color: theme === 'light' ? 'black' : 'white',
+                        fontWeight: 700, fontSize: 14
+                    }}
+                    onClick={() => setTheme('light')}
+                >
+                    Светлый
+                </button>
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: theme === 'dark' ? '#222' : 'transparent',
+                        color: theme === 'dark' ? 'white' : 'white',
+                        fontWeight: 700, fontSize: 14
+                    }}
+                    onClick={() => setTheme('dark')}
+                >
+                    Темный
+                </button>
+
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
+                
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: design === 'classic' ? 'rgba(0,82,255,0.8)' : 'transparent',
+                        color: 'white',
+                        fontWeight: 700, fontSize: 14
+                    }}
+                    onClick={() => setDesign('classic')}
+                >
+                    С градиентом
+                </button>
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: design === 'minimal' ? 'rgba(0,82,255,0.8)' : 'transparent',
+                        color: 'white',
+                        fontWeight: 700, fontSize: 14
+                    }}
+                    onClick={() => setDesign('minimal')}
+                >
+                    Паспарту (Стильный)
+                </button>
+
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
+                
+                <button 
+                    style={{ 
+                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.2)', color: 'white',
+                        fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8
+                    }}
+                    onClick={handleRegenerate}
+                >
+                    <RefreshCw size={16} /> Другие фото
+                </button>
+            </div>
+
+            <div style={{ 
+                position: 'relative', 
+                height: 'calc(100vh - 250px)', 
+                aspectRatio: formats[format].width / formats[format].height,
+                boxShadow: '0 30px 60px rgba(0,0,0,0.8)',
+                borderRadius: 20, overflow: 'hidden',
+                background: '#111', border: '1px solid rgba(255,255,255,0.1)'
+            }}>
+                <canvas 
+                    ref={canvasRef} 
+                    style={{ 
+                        width: '100%', height: '100%', objectFit: 'contain'
+                    }} 
+                />
+                {loading && (
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', color: 'white' }}>
+                        Генерация...
+                    </div>
+                )}
+            </div>
+
+            <div style={{ marginTop: 32, textAlign: 'center' }}>
+                <button className="btn btn-primary" onClick={download} style={{ padding: '16px 48px', borderRadius: 16, fontSize: 16, fontWeight: 700 }}>
+                    Скачать баннер
+                </button>
+            </div>
+        </div>
+    );
+}
+
 /* ─── DetailsPage ────────────────────────────────────────────────────────────── */
+
 export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
+    const [showBannerGen, setShowBannerGen] = useState(false);
+    const [showGallery, setShowGallery] = useState(false);
+
+
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
     const client = state.clients.find(c => c.id === prop?.client_id);
@@ -288,9 +829,13 @@ export function DetailsPage() {
                 <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
                 <span className="topbar-title">Карточка объекта</span>
                 <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}><Edit2 size={18} /></button>
-                    <button className="icon-btn" onClick={handleDelete}><Trash2 size={18} /></button>
+                    <button className="icon-btn" onClick={() => setShowBannerGen(true)} title="Создать баннер" style={{ color: 'var(--primary)' }}>
+                        <ImageIcon size={18} />
+                    </button>
+                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}><Pencil size={18} /></button>
+                    <button className="icon-btn" onClick={handleDelete}><Trash size={18} /></button>
                 </div>
+
             </div>
 
             <div className="page-content">
@@ -333,14 +878,25 @@ export function DetailsPage() {
                 {/* ГАЛЕРЕЯ ФОТО */}
                 {prop.images && prop.images.length > 0 && (
                     <div className="card">
-                        <div className="section-title" style={{ marginBottom: 12 }}>Фотографии ({prop.images.length})</div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {prop.images.map((url, index) => (
-                                <div key={index} style={{ width: 'calc(50% - 4px)', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                                    <img src={url} alt={`Фото ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} />
-                                </div>
-                            ))}
+                        <div 
+                            className="section-title" 
+                            style={{ marginBottom: showGallery ? 12 : 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                            onClick={() => setShowGallery(!showGallery)}
+                        >
+                            <span>Фотографии ({prop.images.length})</span>
+                            <div style={{ color: 'var(--primary)' }}>
+                                {showGallery ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            </div>
                         </div>
+                        {showGallery && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {prop.images.map((url, index) => (
+                                    <div key={index} style={{ width: 'calc(50% - 4px)', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                                        <img src={url} alt={`Фото ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -367,34 +923,173 @@ export function DetailsPage() {
                     </div>
                 )}
 
-                {/* Features */}
-                <div className="card">
-                    <div className="section-title">Параметры</div>
-                    <div className="info-grid" style={{ marginTop: 8 }}>
+
+                {/* ── О ДОМЕ ────────────────────────────────────────── */}
+                <div className="card" style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-light)' }}>
+                        <div style={{ background: 'var(--primary-light)', padding: 6, borderRadius: 6, color: 'var(--primary)' }}>
+                            <Building2 size={16} />
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>О доме</div>
+                    </div>
+                    
+                    <div className="info-grid" style={{ padding: '8px 16px' }}>
+                        {prop.build_year && (
+                            <div className="info-row">
+                                <span className="info-key"><Calendar size={14} style={{ marginRight: 6 }} /> Год постройки</span>
+                                <span className="info-val">{prop.build_year}</span>
+                            </div>
+                        )}
+                        {prop.building_type && (
+                            <div className="info-row">
+                                <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Тип дома</span>
+                                <span className="info-val">{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
+                            </div>
+                        )}
+                        {prop.floors_total && (
+                            <div className="info-row">
+                                <span className="info-key"><ArrowUpCircle size={14} style={{ marginRight: 6 }} /> Этажей</span>
+                                <span className="info-val">{prop.floors_total}</span>
+                            </div>
+                        )}
+                        {prop.apartments_count && (
+                            <div className="info-row">
+                                <span className="info-key"><Home size={14} style={{ marginRight: 6 }} /> Квартир</span>
+                                <span className="info-val">{prop.apartments_count}</span>
+                            </div>
+                        )}
+                        {prop.house_series && (
+                            <div className="info-row">
+                                <span className="info-key"><FileText size={14} style={{ marginRight: 6 }} /> Серия</span>
+                                <span className="info-val">{prop.house_series}</span>
+                            </div>
+                        )}
+                        {prop.elevator_type && prop.elevator_type !== 'none' && (
+                            <div className="info-row">
+                                <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Лифт</span>
+                                <span className="info-val" style={{ fontWeight: 700 }}>
+                                    {{ passenger: 'Пассажирский', cargo: 'Грузовой', both: 'Пасс. + Грузовой' }[prop.elevator_type] || prop.elevator_type}
+                                </span>
+                            </div>
+                        )}
+                        {prop.ceiling_height && (
+                            <div className="info-row">
+                                <span className="info-key"><Maximize2 size={14} style={{ marginRight: 6 }} /> Потолки</span>
+                                <span className="info-val">{prop.ceiling_height} м</span>
+                            </div>
+                        )}
+                        {prop.management_company && (
+                            <div className="info-row">
+                                <span className="info-key"><Briefcase size={14} style={{ marginRight: 6 }} /> УК</span>
+                                <span className="info-val">{prop.management_company}</span>
+                            </div>
+                        )}
+                        {prop.developer && (
+                            <div className="info-row">
+                                <span className="info-key"><Construction size={14} style={{ marginRight: 6 }} /> Застройщик</span>
+                                <span className="info-val">{prop.developer}</span>
+                            </div>
+                        )}
+                        {prop.cadastral_number && (
+                            <div className="info-row" style={{ borderBottom: 'none' }}>
+                                <span className="info-key"><FileText size={14} style={{ marginRight: 6 }} /> Кадастр</span>
+                                <span className="info-val" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{prop.cadastral_number}</span>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* ── О КВАРТИРЕ ─────────────────────────────────────── */}
+                <div className="card" style={{ overflow: 'hidden' }}>
+                    <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-light)' }}>
+                        <div style={{ background: 'var(--success-light, #ecfdf5)', padding: 6, borderRadius: 6, color: 'var(--success, #10b981)' }}>
+                            <Home size={16} />
+                        </div>
+                        <div style={{ fontWeight: 800, fontSize: 16 }}>О квартире</div>
+                    </div>
+
+                    <div className="info-grid" style={{ padding: '8px 16px' }}>
                         <div className="info-row">
-                            <span className="info-key"><Building2 size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 4 }} />Тип объекта</span>
+                            <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Тип</span>
                             <span className="info-val">{PROPERTY_TYPES[prop.property_type]}</span>
                         </div>
                         <div className="info-row">
-                            <span className="info-key">Комнат</span>
-                            <span className="info-val">{prop.rooms || 'Студия'}</span>
+                            <span className="info-key"><Maximize2 size={14} style={{ marginRight: 6 }} /> Комнат</span>
+                            <span className="info-val" style={{ fontWeight: 800 }}>{prop.rooms === 0 ? 'Студия' : prop.rooms || '—'}</span>
                         </div>
                         <div className="info-row">
-                            <span className="info-key">Этаж</span>
-                            <span className="info-val">{prop.floor} из {prop.floors_total || 9}</span>
+                            <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Этаж</span>
+                            <span className="info-val">{prop.floor} из {prop.floors_total || '—'}</span>
                         </div>
-                        <div className="info-row">
-                            <span className="info-key">Год постройки</span>
-                            <span className="info-val">{prop.build_year || '—'}</span>
+                        {prop.area_total > 0 && (
+                            <div className="info-row">
+                                <span className="info-key"><Maximize2 size={14} style={{ marginRight: 6 }} /> Площади</span>
+                                <span className="info-val" style={{ fontSize: 13 }}>
+                                    <b>{prop.area_total}</b>{prop.area_living ? ` / ${prop.area_living}` : ''}{prop.area_kitchen ? ` / ${prop.area_kitchen}` : ''} м²
+                                </span>
+                            </div>
+                        )}
+                        {prop.renovation && (
+                            <div className="info-row">
+                                <span className="info-key"><Sparkles size={14} style={{ marginRight: 6 }} /> Ремонт</span>
+                                <span className="info-val" style={{ fontWeight: 700 }}>
+                                    {{ none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' }[prop.renovation] || prop.renovation}
+                                </span>
+                            </div>
+                        )}
+                        {prop.balcony && prop.balcony !== 'none' && (
+                            <div className="info-row">
+                                <span className="info-key"><Wind size={14} style={{ marginRight: 6 }} /> Балкон</span>
+                                <span className="info-val">{{ balcony: 'Балкон', loggia: 'Лоджия', both: 'Балкон + Лоджия' }[prop.balcony] || prop.balcony}</span>
+                            </div>
+                        )}
+                        {prop.bathroom && (
+                            <div className="info-row">
+                                <span className="info-key"><Droplets size={14} style={{ marginRight: 6 }} /> Санузел</span>
+                                <span className="info-val">{{ combined: 'Совмещённый', separate: 'Раздельный', two: 'Два и более' }[prop.bathroom] || prop.bathroom}</span>
+                            </div>
+                        )}
+                        {prop.parking && prop.parking !== 'none' && (
+                            <div className="info-row">
+                                <span className="info-key"><ParkingCircle size={14} style={{ marginRight: 6 }} /> Парковка</span>
+                                <span className="info-val">{{ open: 'Открытая', garage: 'Гараж', underground: 'Подземная' }[prop.parking] || prop.parking}</span>
+                            </div>
+                        )}
+                        {prop.furniture !== undefined && (
+                            <div className="info-row" style={{ borderBottom: 'none' }}>
+                                <span className="info-key"><Sofa size={14} style={{ marginRight: 6 }} /> Мебель</span>
+                                <span className="info-val">{prop.furniture ? 'Остаётся' : 'Нет'}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Условия сделки */}
+                    {(prop.mortgage_available || prop.matcapital_available || prop.certificate_available ||
+                      prop.encumbrance || prop.minor_owners || prop.docs_ready || prop.seeking_alternative) && (
+                        <div style={{ marginTop: 12, padding: '16px', background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border-light)' }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <CheckCircle2 size={12} /> Условия сделки
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {prop.mortgage_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Ипотека</span>}
+                                {prop.matcapital_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Маткапитал</span>}
+                                {prop.certificate_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Сертификат</span>}
+                                {prop.seeking_alternative && <span className="badge badge-warning" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><Sparkles size={12}/> Альтернатива</span>}
+                                {prop.encumbrance && <span className="badge badge-danger" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12}/> Обременение</span>}
+                                {prop.minor_owners && <span className="badge badge-warning" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12}/> Несоверш. собств.</span>}
+                                {prop.docs_ready && <span className="badge badge-subtle" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Документы готовы</span>}
+                            </div>
                         </div>
-                        <div className="info-row">
-                            <span className="info-key">Тип сделки</span>
-                            <span className="info-val">{prop.deal_type === 'sale' ? 'Продажа' : 'Аренда'}</span>
-                        </div>
-                        <div className="info-row" style={{ borderBottom: 'none' }}>
-                            <span className="info-key">Комиссия</span>
-                            <span className="info-val" style={{ color: 'var(--success)', fontWeight: 700 }}>{formatNumber(prop.commission)} ₽</span>
-                        </div>
+                    )}
+
+                    {/* Тип и комиссия */}
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                            {prop.deal_type === 'sale' ? 'Продажа' : 'Аренда'} · {prop.market_type === 'new_building' ? 'Новостройка' : 'Вторичка'}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>
+                            Комиссия: {formatNumber(prop.commission)} ₽
+                        </span>
                     </div>
                 </div>
 
@@ -443,7 +1138,7 @@ export function DetailsPage() {
                                                     onClick={() => navigate(editRoute)}
                                                     title="Редактировать"
                                                 >
-                                                    <Edit2 size={14} />
+                                                    <Pencil size={14} />
                                                 </button>
                                             </div>
                                         </div>
@@ -466,7 +1161,14 @@ export function DetailsPage() {
                         <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', marginTop: 8 }}>{prop.notes}</div>
                     </div>
                 )}
+                {showBannerGen && (
+                    <BannerGenerator 
+                        property={prop}
+                        currentUser={state.currentUser}
+                        onClose={() => setShowBannerGen(false)} 
+                    />
+                )}
+                </div>
             </div>
-        </div>
-    );
+        );
 }

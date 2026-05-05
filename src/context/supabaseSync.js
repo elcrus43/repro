@@ -258,6 +258,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           const { images: _i, ...propertyWithoutImages } = propertyData;
           result = await withRetry(() => supabase.from('properties').insert(propertyWithoutImages));
         }
+        // Retry without new fields if columns are missing (migration 032 not applied)
+        if (result?.error && _isNewPropertyColumnError(result.error)) {
+          console.warn('[Supabase] New property columns missing. Run migration 032. Retrying without them.');
+          const stripped = _stripNewPropertyFields(propertyData);
+          result = await withRetry(() => supabase.from('properties').insert(stripped));
+        }
 
         if (!result?.error && action.matches?.length > 0) {
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
@@ -301,6 +307,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           console.warn('[Supabase] images column missing, retrying without it');
           const { images: _i, ...dataWithoutImages } = normalizedData;
           result = await withRetry(() => supabase.from('properties').update(dataWithoutImages).eq('id', pId));
+        }
+        // Retry without new fields if columns are missing (migration 032 not applied)
+        if (result?.error && _isNewPropertyColumnError(result.error)) {
+          console.warn('[Supabase] New property columns missing. Run migration 032. Retrying without them.');
+          const stripped = _stripNewPropertyFields(normalizedData);
+          result = await withRetry(() => supabase.from('properties').update(stripped).eq('id', pId));
         }
 
         if (!result?.error && action.matches?.length > 0) {
@@ -506,4 +518,28 @@ function _isPassportColumnError(error) {
     (error.code === '42703' || error.code === 'PGRST204') &&
     error.message?.includes('passport_details')
   );
+}
+
+// Fields added in migration 032 that may not exist in older DB schemas
+const NEW_PROPERTY_FIELDS = [
+  'seeking_alternative', 'elevator_type',
+  'renovation', 'bathroom', 'balcony', 'parking', 'furniture',
+  'mortgage_available', 'matcapital_available', 'certificate_available',
+  'encumbrance', 'minor_owners', 'docs_ready',
+  'apartments_count', 'has_elevator', 'has_garbage_chute',
+  'ceiling_height', 'house_series', 'developer',
+  'management_company', 'cadastral_number', 'building_type',
+  'urgency', 'market_type', 'residential_complex', 'price_min',
+];
+
+function _isNewPropertyColumnError(error) {
+  if (!error) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  return NEW_PROPERTY_FIELDS.some(f => error.message?.includes(f));
+}
+
+function _stripNewPropertyFields(data) {
+  const stripped = { ...data };
+  NEW_PROPERTY_FIELDS.forEach(f => delete stripped[f]);
+  return stripped;
 }

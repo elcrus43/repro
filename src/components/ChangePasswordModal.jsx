@@ -17,7 +17,6 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
     // Сброс состояния при открытии/закрытии
     React.useEffect(() => {
         if (isOpen) {
-            setCurrentPassword('');
             setNewPassword('');
             setConfirmPassword('');
             setShowPasswords(false);
@@ -33,11 +32,6 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
         setError('');
 
         // Валидация
-        if (!currentPassword) {
-            setError('Введите текущий пароль');
-            return;
-        }
-
         if (newPassword.length < 6) {
             setError('Пароль должен содержать минимум 6 символов');
             return;
@@ -51,29 +45,21 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
         setLoading(true);
 
         try {
-            // Supabase требует re-authentication перед сменой пароля
-            const { error: signInErr } = await supabase.auth.signInWithPassword({
-                email: userEmail,
-                password: currentPassword,
-            });
-
-            if (signInErr) {
-                setError('Неверный текущий пароль');
-                setLoading(false);
-                return;
-            }
-
-            const { error: updateErr } = await supabase.auth.updatePassword(newPassword);
+            console.log('[ChangePassword] Sending update request...');
+            const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
 
             if (updateErr) {
-                setError('Ошибка: ' + updateErr.message);
-                setLoading(false);
+                console.error('[ChangePassword] Supabase error:', updateErr);
+                setError('Ошибка Supabase: ' + updateErr.message);
                 return;
             }
 
+            console.log('[ChangePassword] Success!');
             onSuccess();
         } catch (err) {
-            setError('Произошла непредвиденная ошибка');
+            console.error('[ChangePassword] Unexpected error:', err);
+            setError('Произошла ошибка: ' + (err.message || 'неизвестная ошибка'));
+        } finally {
             setLoading(false);
         }
     };
@@ -143,43 +129,6 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div>
-                        <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
-                            Текущий пароль
-                        </label>
-                        <div style={{ position: 'relative' }}>
-                            <input
-                                type={showPasswords ? 'text' : 'password'}
-                                value={currentPassword}
-                                onChange={(e) => setCurrentPassword(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '10px 40px 10px 12px',
-                                    borderRadius: '8px',
-                                    border: '1px solid var(--border-light, #e2e8f0)',
-                                    fontSize: '14px',
-                                }}
-                                autoFocus
-                            />
-                            <button
-                                type="button"
-                                onClick={() => setShowPasswords(!showPasswords)}
-                                style={{
-                                    position: 'absolute',
-                                    right: '8px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: '4px',
-                                    color: 'var(--text-muted)',
-                                }}
-                            >
-                                {showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}
-                            </button>
-                        </div>
-                    </div>
 
                     <div>
                         <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, marginBottom: '4px' }}>
@@ -197,6 +146,7 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
                                     border: '1px solid var(--border-light, #e2e8f0)',
                                     fontSize: '14px',
                                 }}
+                                autoFocus
                             />
                             <button
                                 type="button"

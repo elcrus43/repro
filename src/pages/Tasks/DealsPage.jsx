@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Edit2, Trash2, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -263,10 +263,10 @@ export function DealsPage() {
                         </>
                     )}
                     <button className="icon-btn" onClick={() => editDeal(deal)} title="Редактировать">
-                        <Edit2 size={16} />
+                        <Pencil size={16} />
                     </button>
                     <button className="icon-btn" onClick={() => deleteDeal(deal)} title="Удалить">
-                        <Trash2 size={16} />
+                        <Trash size={16} />
                     </button>
                 </div>
             </div>
