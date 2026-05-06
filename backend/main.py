@@ -20,13 +20,7 @@ ALLOWED_ORIGINS = os.getenv(
 ).split(",")
 
 # ─── Rate Limiting ────────────────────────────────────────────────
-# 100 запросов в минуту на IP (базовый лимит)
-limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
-
-# Более строгие лимиты для дорогих операций
-AI_RATE_LIMIT = "10/minute"       # AI генерация — дорого
-MESSAGING_RATE_LIMIT = "30/minute" # Мессенджинг — защита от спама
-ESTIMATION_RATE_LIMIT = "20/minute" # Оценка — внешний API
+# Configuration is imported from app.core.rate_limiter
 
 app = FastAPI(title="Realtor CRM API", version="1.0.0")
 

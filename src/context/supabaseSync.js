@@ -530,6 +530,9 @@ const NEW_PROPERTY_FIELDS = [
   'ceiling_height', 'house_series', 'developer',
   'management_company', 'cadastral_number', 'building_type',
   'urgency', 'market_type', 'residential_complex', 'price_min',
+  'mortgage_calc_image',
+  'portfolio_new_builds_files',
+  'portfolio_resale_files',
 ];
 
 function _isNewPropertyColumnError(error) {

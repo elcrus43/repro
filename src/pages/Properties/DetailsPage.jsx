@@ -764,12 +764,15 @@ function BannerGenerator({ property, currentUser, onClose }) {
     );
 }
 
+import { PortfolioSection } from '../../components/PortfolioSection';
+
 /* ─── DetailsPage ────────────────────────────────────────────────────────────── */
 
 export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
     const [showBannerGen, setShowBannerGen] = useState(false);
+    const [showPortfolio, setShowPortfolio] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
 
 
@@ -864,13 +867,20 @@ export function DetailsPage() {
                         </div>
                     </div>
 
-                    <div style={{ padding: '0 16px 0', display: 'flex', gap: 8 }}>
+                    <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
                         <button
                             className="btn btn-primary"
                             style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
                             onClick={() => navigate(`/matches?property_id=${id}`)}
                         >
                             <Sparkles size={18} /> Совпадения ({matches.length})
+                        </button>
+                        <button
+                            className="btn btn-secondary"
+                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--bg)', border: '1px solid var(--primary)', color: 'var(--primary)' }}
+                            onClick={() => setShowPortfolio(true)}
+                        >
+                            <Briefcase size={18} /> Портфолио
                         </button>
                     </div>
                 </div>
@@ -1160,6 +1170,19 @@ export function DetailsPage() {
                         <div className="section-title">Описание</div>
                         <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', marginTop: 8 }}>{prop.notes}</div>
                     </div>
+                )}
+                {showPortfolio && (
+                    <PortfolioSection 
+                        property={prop}
+                        currentUser={state.currentUser}
+                        onClose={() => setShowPortfolio(false)} 
+                        onUpdate={(updates) => {
+                            dispatch({ 
+                                type: 'UPDATE_PROPERTY', 
+                                property: { ...prop, ...updates } 
+                            });
+                        }}
+                    />
                 )}
                 {showBannerGen && (
                     <BannerGenerator 
