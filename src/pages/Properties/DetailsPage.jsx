@@ -6,7 +6,7 @@ import {
     Pencil, Trash, Sparkles, Building2, Calculator, ExternalLink, 
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
-    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw
+    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader
 } from 'lucide-react';
 
 
