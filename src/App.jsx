@@ -101,15 +101,28 @@ function LoadingScreen() {
       <p style={{ marginTop: 16, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, opacity: 0.8 }}>Загрузка данных...</p>
       
       {showRetry && (
-        <div style={{ marginTop: 40, textAlign: 'center', animation: 'fadeIn 0.5s ease' }}>
-          <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 12 }}>Загрузка затянулась</p>
-          <button 
-            className="btn btn-secondary" 
-            style={{ minHeight: 36, fontSize: 12 }}
-            onClick={() => window.location.reload()}
-          >
-            Перезагрузить
-          </button>
+        <div style={{ marginTop: 32, textAlign: 'center', padding: '0 20px', animation: 'fadeIn 0.5s ease' }}>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>Загрузка затянулась. Возможно, проблемы с сетью или кэшем.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button 
+              className="btn btn-primary"
+              style={{ minHeight: 44 }}
+              onClick={() => window.location.reload()}
+            >
+              Попробовать снова
+            </button>
+            <button 
+              className="btn btn-secondary"
+              style={{ minHeight: 44, background: 'transparent', border: '1px solid var(--border)' }}
+              onClick={() => {
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.reload();
+              }}
+            >
+              Очистить кэш и войти заново
+            </button>
+          </div>
         </div>
       )}
     </div>

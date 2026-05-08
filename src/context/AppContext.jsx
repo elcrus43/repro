@@ -138,7 +138,15 @@ export function AppProvider({ children }) {
     async function init() {
       dispatch({ type: 'SET_LOADING', value: true });
 
+      // Safety timeout: if session check takes > 10s, fallback to login
+      const timeout = setTimeout(() => {
+        console.warn('[Auth Timeout] Session retrieval took too long.');
+        dispatch({ type: 'SET_LOADING', value: false });
+      }, 10000);
+
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      clearTimeout(timeout);
+      
       if (sessionErr) console.error('[Session error]', sessionErr);
 
       if (session?.user) {
