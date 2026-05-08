@@ -369,8 +369,6 @@ a:focus:not(:focus-visible) {
 .card-clickable:active {
   transform: scale(0.98);
 }
-  transform: translateY(0);
-}
 
 /* ===== Buttons ===== */
 .btn {
