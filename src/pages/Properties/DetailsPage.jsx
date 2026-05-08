@@ -452,7 +452,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const gap = format === 'story' ? 60 : 40;
         let currentY = h - textSpace + gap; 
         
-        // Price & Price/m2
+        // Price
         ctx.fillStyle = brandColor;
         const priceSize = format === 'story' ? 90 : 70;
         ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
@@ -460,15 +460,17 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const priceText = formatNumber(property.price) + ' ₽';
         ctx.fillText(priceText, padding, currentY);
         
+        // Price per m2
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            ctx.fillStyle = brandColor; // Use accent color as requested
-            ctx.font = `600 ${priceSize/2.2}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = brandColor;
+            const m2Size = priceSize / 2.2;
+            ctx.font = `600 ${m2Size}px Oswald, Inter, sans-serif`;
             const priceWidth = ctx.measureText(priceText).width;
             
-            // Check if it fits on the same line
-            if (padding + priceWidth + 300 > w) {
-                currentY += priceSize * 0.5; // Move to next line to avoid overlap
+            // If main price is too long, put m2 price on next line
+            if (padding + priceWidth + 250 > w) {
+                currentY += m2Size + 10;
                 ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, padding, currentY);
             } else {
                 ctx.fillText(`— ${formatNumber(m2Price)} ₽/м²`, padding + priceWidth + 20, currentY - 5);
@@ -551,30 +553,40 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillStyle = topGrad;
         ctx.fillRect(0, 0, w, h * 0.4);
 
+        let currentY = 140;
         ctx.fillStyle = brandColor;
         ctx.font = '900 110px Oswald, Inter, sans-serif';
         const priceText = formatNumber(property.price) + ' ₽';
-        ctx.fillText(priceText, 80, 140);
+        ctx.fillText(priceText, 80, currentY);
 
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            ctx.fillStyle = brandColor; // Use accent color
-            ctx.font = '600 40px Oswald, Inter, sans-serif';
-            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80 + ctx.measureText(priceText).width + 30, 130);
+            ctx.fillStyle = brandColor;
+            ctx.font = '600 45px Oswald, Inter, sans-serif';
+            const priceW = ctx.measureText(priceText).width;
+            
+            if (80 + priceW + 300 > w) {
+                currentY += 60;
+                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80, currentY);
+            } else {
+                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80 + priceW + 30, currentY - 10);
+            }
         }
 
+        currentY += 90;
         ctx.fillStyle = textColor1;
         ctx.font = '800 65px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
-        ctx.fillText(address.slice(0, 30) + (address.length > 30 ? '...' : ''), 80, 230);
+        ctx.fillText(address.slice(0, 30) + (address.length > 30 ? '...' : ''), 80, currentY);
 
+        currentY += 50;
         ctx.fillStyle = brandColor;
-        ctx.fillRect(80, 280, 120, 8);
+        ctx.fillRect(80, currentY, 120, 8);
 
         ctx.fillStyle = textColor2;
         ctx.font = '600 38px Oswald, Inter, sans-serif';
         
-        let startY = 360;
+        let startY = currentY + 80;
         const details = [];
         if (property.rooms !== undefined) details.push(`Формат: ${property.rooms === 0 ? 'Студия' : property.rooms + '-комнатная'}`);
         if (property.area_total) details.push(`Общая площадь: ${property.area_total} м²`);
@@ -627,30 +639,40 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillStyle = topGrad;
         ctx.fillRect(0, 0, w, h * 0.5);
 
+        let currentY = 100;
         ctx.fillStyle = brandColor;
         ctx.font = '900 80px Oswald, Inter, sans-serif';
         const priceText = formatNumber(property.price) + ' ₽';
-        ctx.fillText(priceText, 60, 100);
+        ctx.fillText(priceText, 60, currentY);
 
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            ctx.fillStyle = brandColor; // Use accent color
-            ctx.font = '600 30px Oswald, Inter, sans-serif';
-            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60 + ctx.measureText(priceText).width + 20, 90);
+            ctx.fillStyle = brandColor;
+            ctx.font = '600 32px Oswald, Inter, sans-serif';
+            const priceW = ctx.measureText(priceText).width;
+            
+            if (60 + priceW + 250 > w) {
+                currentY += 45;
+                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60, currentY);
+            } else {
+                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60 + priceW + 20, currentY - 8);
+            }
         }
 
+        currentY += 60;
         ctx.fillStyle = textColor1;
         ctx.font = '800 45px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
-        ctx.fillText(address.slice(0, 35) + (address.length > 35 ? '...' : ''), 60, 160);
+        ctx.fillText(address.slice(0, 35) + (address.length > 35 ? '...' : ''), 60, currentY);
 
+        currentY += 40;
         ctx.fillStyle = brandColor;
-        ctx.fillRect(60, 200, 100, 6);
+        ctx.fillRect(60, currentY, 100, 6);
 
         ctx.fillStyle = textColor2;
         ctx.font = '600 28px Oswald, Inter, sans-serif';
         
-        let startY = 260;
+        let startY = currentY + 60;
         const details = [];
         if (property.rooms !== undefined) details.push(`${property.rooms === 0 ? 'Студия' : property.rooms + '-комн.'}`);
         if (property.area_total) details.push(`${property.area_total} м²`);
