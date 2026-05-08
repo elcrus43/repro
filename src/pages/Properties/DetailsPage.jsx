@@ -245,12 +245,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
     const [design, setDesign] = React.useState('minimal'); // 'classic' | 'minimal'
     const [accentColor, setAccentColor] = React.useState('#0052FF');
     const [stickers, setStickers] = React.useState([]);
-    const [logo, setLogo] = React.useState(null);
-    const [showQR, setShowQR] = React.useState(true);
+    const [customSticker, setCustomSticker] = React.useState('');
     const [loading, setLoading] = React.useState(true);
     const [imageOffset, setImageOffset] = React.useState(0);
 
-    const STICKER_OPTIONS = ['Ипотека 6%', 'Срочно', 'Чистая продажа', 'Эксклюзив', 'Торг уместен'];
+    const STICKER_OPTIONS = ['Срочно', 'Чистая продажа', 'Эксклюзив', 'Торг уместен'];
     const COLOR_OPTIONS = [
         { name: 'Синий', value: '#0052FF' },
         { name: 'Золотой', value: '#D4AF37' },
@@ -266,7 +265,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
     React.useEffect(() => {
         renderBanner();
-    }, [format, theme, design, property, imageOffset, accentColor, stickers, logo, showQR]);
+    }, [format, theme, design, property, imageOffset, accentColor, stickers, customSticker]);
 
     const renderBanner = async () => {
         setLoading(true);
@@ -295,31 +294,6 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 img.onerror = resolve;
             });
             if (img.width > 0) loadedImages.push(img);
-        }
-
-        // Load Logo if exists
-        let loadedLogo = null;
-        if (logo) {
-            loadedLogo = new Image();
-            loadedLogo.src = logo;
-            await new Promise((resolve) => {
-                loadedLogo.onload = resolve;
-                loadedLogo.onerror = resolve;
-            });
-        }
-
-        // Load QR Code if enabled
-        let loadedQR = null;
-        if (showQR) {
-            const objectUrl = `https://realtor-match.vercel.app/properties/${property.id}`;
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(objectUrl)}&bgcolor=ffffff&color=000000&margin=10`;
-            loadedQR = new Image();
-            loadedQR.crossOrigin = "anonymous";
-            loadedQR.src = qrUrl;
-            await new Promise((resolve) => {
-                loadedQR.onload = resolve;
-                loadedQR.onerror = resolve;
-            });
         }
 
         if (loadedImages.length === 0) {
@@ -384,9 +358,9 @@ function BannerGenerator({ property, currentUser, onClose }) {
             }
 
             if (format === 'story') {
-                renderClassicStoryOverlay(ctx, canvas, loadedLogo, loadedQR);
+                renderClassicStoryOverlay(ctx, canvas);
             } else {
-                renderClassicPostOverlay(ctx, canvas, loadedLogo, loadedQR);
+                renderClassicPostOverlay(ctx, canvas);
             }
         } else if (design === 'minimal') {
             const padding = format === 'story' ? 50 : 40;
@@ -406,7 +380,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 drawCover(loadedImages[0], padding, padding, canvas.width - padding*2, photoAreaH);
             }
 
-            renderMinimalText(ctx, canvas, textSpace, loadedLogo, loadedQR);
+            renderMinimalText(ctx, canvas, textSpace);
         }
 
         // Draw Stickers
@@ -418,21 +392,28 @@ function BannerGenerator({ property, currentUser, onClose }) {
     };
 
     const renderStickers = (ctx, canvas) => {
-        const padding = format === 'story' ? 50 : 40;
+        const padding = format === 'story' ? 60 : 45; // Increased padding from edge
         const stickerH = format === 'story' ? 70 : 50;
         const fontSize = format === 'story' ? 32 : 24;
         let stickerY = padding + 20;
 
-        stickers.forEach(text => {
+        const allStickers = [...stickers];
+        if (customSticker.trim()) allStickers.push(customSticker.trim());
+
+        allStickers.forEach(text => {
             ctx.font = `bold ${fontSize}px Inter, sans-serif`;
             const textW = ctx.measureText(text.toUpperCase()).width;
             const boxW = textW + 40;
 
             ctx.fillStyle = accentColor;
-            // Draw pill shape
+            // Draw pill shape with shadow
+            ctx.shadowColor = 'rgba(0,0,0,0.3)';
+            ctx.shadowBlur = 10;
+            ctx.shadowOffsetY = 4;
             ctx.beginPath();
             ctx.roundRect(canvas.width - padding - boxW, stickerY, boxW, stickerH, 12);
             ctx.fill();
+            ctx.shadowColor = 'transparent';
 
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
@@ -481,9 +462,17 @@ function BannerGenerator({ property, currentUser, onClose }) {
         
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            ctx.fillStyle = textColor2;
-            ctx.font = `600 ${priceSize/2.5}px Oswald, Inter, sans-serif`;
-            ctx.fillText(`— ${formatNumber(m2Price)} ₽/м²`, padding + ctx.measureText(priceText).width + 20, currentY - 5);
+            ctx.fillStyle = brandColor; // Use accent color as requested
+            ctx.font = `600 ${priceSize/2.2}px Oswald, Inter, sans-serif`;
+            const priceWidth = ctx.measureText(priceText).width;
+            
+            // Check if it fits on the same line
+            if (padding + priceWidth + 300 > w) {
+                currentY += priceSize * 0.5; // Move to next line to avoid overlap
+                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, padding, currentY);
+            } else {
+                ctx.fillText(`— ${formatNumber(m2Price)} ₽/м²`, padding + priceWidth + 20, currentY - 5);
+            }
         }
 
         // Address
@@ -500,9 +489,6 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const detailsSize = format === 'story' ? 32 : 22;
         currentY += detailsGap + detailsSize;
         
-        ctx.fillStyle = textColor2;
-        ctx.font = `600 ${detailsSize}px Oswald, Inter, sans-serif`;
-        
         const details = [];
         if (property.rooms !== undefined) details.push(`${property.rooms === 0 ? 'Студия' : property.rooms + '-комн.'}`);
         if (property.area_total) details.push(`${property.area_total} м²`);
@@ -511,11 +497,19 @@ function BannerGenerator({ property, currentUser, onClose }) {
         
         let detX = padding;
         details.forEach((txt) => {
+            const textW = ctx.measureText(txt).width;
+            // Wrap to next line if details are too long
+            if (detX + textW + 40 > w - padding) {
+                detX = padding;
+                currentY += detailsSize + 10;
+            }
+            
             ctx.fillStyle = brandColor;
             ctx.beginPath(); ctx.arc(detX + 8, currentY - (detailsSize/3), 6, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = textColor1;
+            ctx.font = `600 ${detailsSize}px Oswald, Inter, sans-serif`;
             ctx.fillText(txt, detX + 25, currentY);
-            detX += ctx.measureText(txt).width + 60;
+            detX += textW + 60;
         });
 
         // CTA
@@ -539,27 +533,9 @@ function BannerGenerator({ property, currentUser, onClose }) {
             ctx.font = `700 ${ctaSize}px Oswald, Inter, sans-serif`;
             ctx.fillText(currentUser.full_name, padding, currentY + (ctaSize * 1.5));
         }
-
-        // Draw Watermark Logo
-        if (loadedLogo) {
-            const logoW = format === 'story' ? 200 : 150;
-            const logoH = (loadedLogo.height / loadedLogo.width) * logoW;
-            ctx.globalAlpha = 0.4;
-            ctx.drawImage(loadedLogo, w - padding - logoW, h - textSpace + 40, logoW, logoH);
-            ctx.globalAlpha = 1.0;
-        }
-
-        // Draw QR Code
-        if (loadedQR) {
-            const qrSize = format === 'story' ? 180 : 140;
-            ctx.drawImage(loadedQR, w - padding - qrSize, h - padding - qrSize, qrSize, qrSize);
-            ctx.fillStyle = textColor2;
-            ctx.font = `500 ${format === 'story' ? 18 : 14}px Inter, sans-serif`;
-            ctx.fillText('ПОДРОБНЕЕ', w - padding - qrSize + (qrSize/2) - (ctx.measureText('ПОДРОБНЕЕ').width/2), h - padding - qrSize - 10);
-        }
     };
 
-    const renderClassicStoryOverlay = (ctx, canvas, loadedLogo, loadedQR) => {
+    const renderClassicStoryOverlay = (ctx, canvas) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
@@ -582,7 +558,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            ctx.fillStyle = textColor2;
+            ctx.fillStyle = brandColor; // Use accent color
             ctx.font = '600 40px Oswald, Inter, sans-serif';
             ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80 + ctx.measureText(priceText).width + 30, 130);
         }
@@ -633,25 +609,9 @@ function BannerGenerator({ property, currentUser, onClose }) {
             ctx.font = '700 32px Oswald, Inter, sans-serif';
             ctx.fillText(currentUser.full_name, 80, h - 110);
         }
-
-        if (loadedLogo) {
-            const logoW = 250;
-            const logoH = (loadedLogo.height / loadedLogo.width) * logoW;
-            ctx.globalAlpha = 0.5;
-            ctx.drawImage(loadedLogo, w - 80 - logoW, 80, logoW, logoH);
-            ctx.globalAlpha = 1.0;
-        }
-
-        if (loadedQR) {
-            const qrSize = 200;
-            ctx.drawImage(loadedQR, w - 80 - qrSize, h - 100 - qrSize, qrSize, qrSize);
-            ctx.fillStyle = textColor2;
-            ctx.font = '500 20px Inter, sans-serif';
-            ctx.fillText('ОБЪЕКТ В БАЗЕ', w - 80 - qrSize + (qrSize/2) - (ctx.measureText('ОБЪЕКТ В БАЗЕ').width/2), h - 100 - qrSize - 15);
-        }
     };
 
-    const renderClassicPostOverlay = (ctx, canvas, loadedLogo, loadedQR) => {
+    const renderClassicPostOverlay = (ctx, canvas) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
@@ -674,7 +634,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            ctx.fillStyle = textColor2;
+            ctx.fillStyle = brandColor; // Use accent color
             ctx.font = '600 30px Oswald, Inter, sans-serif';
             ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60 + ctx.measureText(priceText).width + 20, 90);
         }
@@ -719,27 +679,6 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.font = '900 34px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, 60, h - 55);
-
-        if (loadedLogo) {
-            const logoW = 200;
-            const logoH = (loadedLogo.height / loadedLogo.width) * logoW;
-            ctx.globalAlpha = 0.5;
-            ctx.drawImage(loadedLogo, w - 60 - logoW, 60, logoW, logoH);
-            ctx.globalAlpha = 1.0;
-        }
-
-        if (loadedQR) {
-            const qrSize = 150;
-            ctx.drawImage(loadedQR, w - 60 - qrSize, h - 60 - qrSize, qrSize, qrSize);
-        }
-    };
-
-    const handleLogoUpload = (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => setLogo(ev.target.result);
-        reader.readAsDataURL(file);
     };
 
     const download = () => {
@@ -760,9 +699,21 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 <button className="icon-btn" onClick={onClose} style={{ background: 'white', color: 'black', width: 44, height: 44 }}><X size={24} /></button>
             </div>
 
-            <div style={{ display: 'flex', gap: 20, width: '100%', maxWidth: 1200, height: '85vh', alignItems: 'flex-start' }}>
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+                gap: 20, width: '100%', maxWidth: 1200, 
+                height: window.innerWidth < 768 ? 'auto' : '85vh', 
+                alignItems: 'flex-start',
+                overflowY: window.innerWidth < 768 ? 'auto' : 'visible'
+            }}>
                 {/* Left Panel: Controls */}
-                <div style={{ flex: '0 0 350px', background: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 24, overflowY: 'auto', maxHeight: '100%' }}>
+                <div style={{ 
+                    flex: window.innerWidth < 768 ? 'none' : '0 0 350px', 
+                    width: window.innerWidth < 768 ? '100%' : 'auto',
+                    background: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 24, 
+                    overflowY: 'auto', maxHeight: window.innerWidth < 768 ? 'none' : '100%' 
+                }}>
                     <h3 style={{ marginBottom: 20, fontFamily: 'Oswald', letterSpacing: 1 }}>НАСТРОЙКИ БАННЕРА</h3>
                     
                     {/* Format & Design */}
@@ -797,7 +748,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
                     {/* Stickers */}
                     <div style={{ marginBottom: 24 }}>
                         <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стикеры преимуществ</label>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                             {STICKER_OPTIONS.map(s => (
                                 <button 
                                     key={s}
@@ -812,22 +763,16 @@ function BannerGenerator({ property, currentUser, onClose }) {
                                 </button>
                             ))}
                         </div>
-                    </div>
-
-                    {/* Logo & QR */}
-                    <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Брендинг</label>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 12 }}>
-                                <span style={{ fontSize: 12 }}>QR-код на объект</span>
-                                <input type="checkbox" checked={showQR} onChange={e => setShowQR(e.target.checked)} style={{ width: 18, height: 18, accentColor }} />
-                            </div>
-                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 12, cursor: 'pointer' }}>
-                                <span style={{ fontSize: 12, flex: 1 }}>{logo ? 'Логотип загружен ✓' : 'Загрузить логотип'}</span>
-                                <input type="file" hidden accept="image/*" onChange={handleLogoUpload} />
-                                <div style={{ width: 24, height: 24, background: 'rgba(255,255,255,0.1)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</div>
-                            </label>
-                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Свой текст на стикер..." 
+                            value={customSticker}
+                            onChange={(e) => setCustomSticker(e.target.value)}
+                            style={{ 
+                                width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: 10, padding: '10px 14px', color: 'white', fontSize: 12, outline: 'none'
+                            }}
+                        />
                     </div>
 
                     {/* Actions */}
@@ -838,7 +783,12 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 </div>
 
                 {/* Right Panel: Preview */}
-                <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ 
+                    flex: 1, height: window.innerWidth < 768 ? '500px' : '100%', 
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    marginTop: window.innerWidth < 768 ? 20 : 0,
+                    width: '100%'
+                }}>
                     <div style={{ 
                         position: 'relative', 
                         height: '100%', 
