@@ -27,6 +27,7 @@ export function MatchesPage() {
         .filter(m => !propFilter || m.property_id === propFilter)
         .filter(m => !reqFilter || m.request_id === reqFilter)
         .filter(m => {
+            if (filter === 'all') return m.status !== 'rejected';
             if (filter === 'new') return m.status === 'new';
             if (filter === 'showing') return m.status === 'showing_planned' || m.status === 'showing_done';
             if (filter === 'deal') return m.status === 'deal';
