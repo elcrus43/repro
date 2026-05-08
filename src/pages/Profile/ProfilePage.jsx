@@ -509,6 +509,45 @@ export function ProfilePage() {
                         <span style={{ fontWeight: 600 }}>Выйти из аккаунта</span>
                     </button>
                 </div>
+
+                {/* DEBUG INFO — для диагностики проблем с данными */}
+                <div className="card" style={{ marginTop: 24, padding: '16px', border: '1px dashed var(--border)', background: 'var(--bg)', opacity: 0.8 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase' }}>Информация для поддержки</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 11, fontFamily: 'monospace' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>User ID:</span>
+                            <span style={{ color: 'var(--primary)' }}>{user.id}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Role:</span>
+                            <span>{user.role}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Status:</span>
+                            <span style={{ color: user.status === 'approved' ? 'var(--success)' : 'var(--warning)' }}>{user.status}</span>
+                        </div>
+                        <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 0' }} />
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Объектов в БД:</span>
+                            <span>{state.properties.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Клиентов в БД:</span>
+                            <span>{state.clients.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Запросов в БД:</span>
+                            <span>{state.requests.length}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>Своих объектов:</span>
+                            <span>{state.properties.filter(p => p.realtor_id === user.id).length}</span>
+                        </div>
+                        <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)' }}>
+                            Если вы не видите данных на мобильном, попробуйте нажать кнопку «Очистить кэш» на экране загрузки.
+                        </div>
+                    </div>
+                </div>
             </div>
 
             {/* Change Password Modal */}

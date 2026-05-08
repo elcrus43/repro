@@ -128,6 +128,15 @@ export function AppProvider({ children }) {
           toast.warn(`Данные загружены частично: ${data.error}`);
         }
         dispatch({ type: 'SET_ALL', data });
+        
+        // Show success toast with counts
+        const propCount = data.properties?.length || 0;
+        const clientCount = data.clients?.length || 0;
+        if (propCount > 0 || clientCount > 0) {
+          toast.success(`Вход выполнен: ${sessionUser.email}. Загружено объектов: ${propCount}, клиентов: ${clientCount}`);
+        } else {
+          toast.warn(`Вход выполнен, но данных в вашем аккаунте пока нет.`);
+        }
       } catch (e) {
         console.error('[Data load error]', e);
         toast.error('Ошибка загрузки данных. Попробуйте обновить страницу.');
