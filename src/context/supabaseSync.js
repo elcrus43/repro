@@ -98,6 +98,12 @@ export async function loadUserData(userId, role) {
     ? profiles?.filter(p => ['pending', 'rejected'].includes(p.status)) ?? []
     : [];
 
+  const errors = [
+    clientsRes.error, propertiesRes.error, requestsRes.error, 
+    matchesRes.error, showingsRes.error, tasksRes.error, 
+    priceRes?.error, dealsRes?.error
+  ].filter(Boolean).map(e => e.message);
+
   return {
     clients: clientsRes.data ?? [],
     properties: propertiesRes.data ?? [],
@@ -109,13 +115,7 @@ export async function loadUserData(userId, role) {
     pendingUsers,
     pricelist: priceRes?.data ?? [],
     deals: dealsRes?.data ?? [],
-    error:
-      clientsRes.error?.message ||
-      propertiesRes.error?.message ||
-      requestsRes.error?.message ||
-      priceRes?.error?.message ||
-      dealsRes?.error?.message ||
-      null,
+    error: errors.length > 0 ? errors.join('; ') : null,
   };
 }
 
