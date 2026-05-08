@@ -440,7 +440,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         return mapping[r] || r;
     };
 
-    const renderMinimalText = (ctx, canvas, textSpace, loadedLogo, loadedQR) => {
+    const renderMinimalText = (ctx, canvas, textSpace) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
@@ -454,20 +454,28 @@ function BannerGenerator({ property, currentUser, onClose }) {
         
         // Price
         ctx.fillStyle = brandColor;
-        const priceSize = format === 'story' ? 90 : 70;
+        let priceSize = format === 'story' ? 90 : 70;
         ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
-        currentY += priceSize;
         const priceText = formatNumber(property.price) + ' ₽';
+        let priceWidth = ctx.measureText(priceText).width;
+        
+        // Shrink price font if it's too long to fit with m2 price
+        const maxPriceWidth = w - padding * 2 - 250;
+        if (priceWidth > maxPriceWidth) {
+            priceSize = priceSize * (maxPriceWidth / priceWidth);
+            ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+            priceWidth = ctx.measureText(priceText).width;
+        }
+
+        currentY += priceSize;
         ctx.fillText(priceText, padding, currentY);
         
-        // Price per m2
+        // Price per m2 (always to the right)
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
             ctx.fillStyle = brandColor;
             const m2Size = priceSize / 2.2;
             ctx.font = `600 ${m2Size}px Oswald, Inter, sans-serif`;
-            const priceWidth = ctx.measureText(priceText).width;
-            
             // If main price is too long, put m2 price on next line
             if (padding + priceWidth + 250 > w) {
                 currentY += m2Size + 10;
@@ -555,22 +563,25 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         let currentY = 140;
         ctx.fillStyle = brandColor;
-        ctx.font = '900 110px Oswald, Inter, sans-serif';
+        let priceF = 110;
+        ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
         const priceText = formatNumber(property.price) + ' ₽';
+        let priceW = ctx.measureText(priceText).width;
+
+        // Shrink if needed
+        if (priceW > w - 160 - 300) {
+            priceF = priceF * ((w - 160 - 300) / priceW);
+            ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
+            priceW = ctx.measureText(priceText).width;
+        }
+        
         ctx.fillText(priceText, 80, currentY);
 
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
             ctx.fillStyle = brandColor;
-            ctx.font = '600 45px Oswald, Inter, sans-serif';
-            const priceW = ctx.measureText(priceText).width;
-            
-            if (80 + priceW + 300 > w) {
-                currentY += 60;
-                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80, currentY);
-            } else {
-                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80 + priceW + 30, currentY - 10);
-            }
+            ctx.font = `600 ${priceF * 0.4}px Oswald, Inter, sans-serif`;
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80 + priceW + 30, currentY - (priceF * 0.1));
         }
 
         currentY += 90;
@@ -641,22 +652,25 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         let currentY = 100;
         ctx.fillStyle = brandColor;
-        ctx.font = '900 80px Oswald, Inter, sans-serif';
+        let priceF = 80;
+        ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
         const priceText = formatNumber(property.price) + ' ₽';
+        let priceW = ctx.measureText(priceText).width;
+
+        // Shrink if needed
+        if (priceW > w - 120 - 250) {
+            priceF = priceF * ((w - 120 - 250) / priceW);
+            ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
+            priceW = ctx.measureText(priceText).width;
+        }
+
         ctx.fillText(priceText, 60, currentY);
 
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
             ctx.fillStyle = brandColor;
-            ctx.font = '600 32px Oswald, Inter, sans-serif';
-            const priceW = ctx.measureText(priceText).width;
-            
-            if (60 + priceW + 250 > w) {
-                currentY += 45;
-                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60, currentY);
-            } else {
-                ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60 + priceW + 20, currentY - 8);
-            }
+            ctx.font = `600 ${priceF * 0.4}px Oswald, Inter, sans-serif`;
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60 + priceW + 20, currentY - (priceF * 0.1));
         }
 
         currentY += 60;
