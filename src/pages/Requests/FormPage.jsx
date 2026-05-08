@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
+import { MultiClientSelector } from '../../components/MultiClientSelector';
 
 export function FormPage() {
     const { id } = useParams();
@@ -13,11 +14,15 @@ export function FormPage() {
     const { toast } = useToastContext();
 
     const existing = id ? state.requests.find(r => r.id === id) : null;
-    const initialForm = existing || {
+    const initialForm = existing ? {
+        ...existing,
+        client_ids: existing.client_ids || (existing.client_id ? [existing.client_id] : [])
+    } : {
         client_id: searchParams.get('client') || '',
+        client_ids: searchParams.get('client') ? [searchParams.get('client')] : [],
         realtor_id: state.currentUser?.id,
         property_types: ['apartment'],
-        city: 'Краснодар',
+        city: 'Киров',
         districts: [],
         microdistricts: [],
         budget_min: 0,
@@ -43,16 +48,22 @@ export function FormPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (!form.client_id) {
-            toast.error('Выберите клиента');
+        if (!form.client_ids || form.client_ids.length === 0) {
+            toast.error('Выберите хотя бы одного клиента');
             return;
         }
 
+        // For backward compatibility
+        const updatedForm = {
+            ...form,
+            client_id: form.client_ids[0]
+        };
+
         if (id) {
-            dispatch({ type: 'UPDATE_REQUEST', request: { ...form, id } });
+            dispatch({ type: 'UPDATE_REQUEST', request: { ...updatedForm, id } });
             navigate(`/requests/${id}`);
         } else {
-            dispatch({ type: 'ADD_REQUEST', request: { ...form, realtor_id: state.currentUser?.id } });
+            dispatch({ type: 'ADD_REQUEST', request: { ...updatedForm, realtor_id: state.currentUser?.id } });
             navigate('/requests');
         }
     }
@@ -72,11 +83,13 @@ export function FormPage() {
                 <div className="card flex flex-column gap-16">
                     {/* Client Selection */}
                     <div className="form-group">
-                        <label className="form-label">Клиент <span className="required">*</span></label>
-                        <select className="form-select" value={form.client_id} onChange={e => setF('client_id', e.target.value)} disabled={!!id} required>
-                            <option value="">Выберите клиента</option>
-                            {state.clients.map(c => <option key={c.id} value={c.id}>{c.full_name} ({c.phone})</option>)}
-                        </select>
+                        <label className="form-label">Покупатели <span className="required">*</span></label>
+                        <MultiClientSelector 
+                            selectedIds={form.client_ids || []}
+                            onChange={ids => setF('client_ids', ids)}
+                            clients={state.clients}
+                            placeholder="Выберите покупателей..."
+                        />
                         {!id && <button type="button" className="btn btn-link btn-sm" onClick={() => navigate('/clients/new?returnTo=' + encodeURIComponent(window.location.pathname + window.location.search))}>+ Создать клиента</button>}
                     </div>
 

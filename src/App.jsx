@@ -78,10 +78,40 @@ function BottomNav() {
 /* ─── Loading ──────────────────────────────────────────────────────────────── */
 
 function LoadingScreen() {
+  const [showRetry, setShowRetry] = React.useState(false);
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => setShowRetry(true), 8000);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="loading-screen">
-      <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, color: 'var(--primary)' }}>REM</div>
-      <p style={{ marginTop: 8, color: 'var(--text-muted)', fontSize: 14 }}>Загрузка...</p>
+    <div className="loading-screen" style={{
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0,
+      background: 'var(--surface)', zIndex: 9999
+    }}>
+      <div className="loading-logo" style={{ 
+        fontSize: 48, fontWeight: 900, letterSpacing: -2, color: 'var(--primary)',
+        animation: 'pulse 2s infinite ease-in-out'
+      }}>REM</div>
+      <div className="loading-bar" style={{ width: 120, height: 4, background: 'var(--bg)', borderRadius: 2, marginTop: 24, overflow: 'hidden' }}>
+        <div className="loading-progress" />
+      </div>
+      <p style={{ marginTop: 16, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, opacity: 0.8 }}>Загрузка данных...</p>
+      
+      {showRetry && (
+        <div style={{ marginTop: 40, textAlign: 'center', animation: 'fadeIn 0.5s ease' }}>
+          <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 12 }}>Загрузка затянулась</p>
+          <button 
+            className="btn btn-secondary" 
+            style={{ minHeight: 36, fontSize: 12 }}
+            onClick={() => window.location.reload()}
+          >
+            Перезагрузить
+          </button>
+        </div>
+      )}
     </div>
   );
 }

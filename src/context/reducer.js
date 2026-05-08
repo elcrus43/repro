@@ -78,7 +78,7 @@ export function reducer(state, action) {
       return {
         ...state,
         properties: [...state.properties, action.property],
-        matches:    [...state.matches, ...action.matches],
+        matches:    [...state.matches, ...(action.matches || [])],
       };
 
     case 'UPDATE_PROPERTY':
@@ -87,7 +87,7 @@ export function reducer(state, action) {
         properties: state.properties.map(p => p.id === action.property.id ? action.property : p),
         matches: [
           ...state.matches.filter(m => m.property_id !== action.property.id || m.status !== 'new'),
-          ...action.matches,
+          ...(action.matches || []),
         ],
       };
 
@@ -99,7 +99,7 @@ export function reducer(state, action) {
       return {
         ...state,
         requests: [...state.requests, action.request],
-        matches:  [...state.matches, ...action.matches],
+        matches:  [...state.matches, ...(action.matches || [])],
       };
 
     case 'UPDATE_REQUEST':
@@ -108,7 +108,7 @@ export function reducer(state, action) {
         requests: state.requests.map(r => r.id === action.request.id ? action.request : r),
         matches: [
           ...state.matches.filter(m => m.request_id !== action.request.id || m.status !== 'new'),
-          ...action.matches,
+          ...(action.matches || []),
         ],
       };
 
@@ -143,8 +143,8 @@ export function reducer(state, action) {
       const prop = properties.find(p => p.id === propertyId);
       const req  = requests.find(r => r.id === requestId);
       const clients = state.clients.map(c => {
-        if (prop && c.id === prop.client_id) return { ...c, status: 'deal_closed' };
-        if (req  && c.id === req.client_id)  return { ...c, status: 'deal_closed' };
+        if (prop && (prop.client_ids || [prop.client_id]).includes(c.id)) return { ...c, status: 'deal_closed' };
+        if (req  && (req.client_ids || [req.client_id]).includes(c.id))  return { ...c, status: 'deal_closed' };
         return c;
       });
 

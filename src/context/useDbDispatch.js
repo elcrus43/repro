@@ -57,10 +57,13 @@ export function useDbDispatch(state, dispatch, onError) {
 
       case 'ADD_PROPERTY':
       case 'UPDATE_PROPERTY': {
+        const propId = action.property.id || action.id || nanoid();
+        const existing = stateRef.current.properties.find(p => p.id === propId);
         const prop = {
+          ...(existing || {}),
           ...action.property,
-          id: action.property.id || nanoid(),
-          created_at: action.property.created_at || now,
+          id: propId,
+          created_at: (existing?.created_at || action.property.created_at || now),
           updated_at: now,
         };
         enhancedAction.property = prop;
@@ -195,6 +198,20 @@ export function useDbDispatch(state, dispatch, onError) {
 
     /* ── Optimistic update ────────────────────────────────────────────── */
     dispatch(enhancedAction);
+    
+    // СИНХРОННОЕ обновление stateRef для обработки быстрых последовательных вызовов.
+    // Это гарантирует, что если dbDispatch будет вызван снова ДО того как React 
+    // выполнит ререндер и обновит stateRef через useLayoutEffect, 
+    // следующий вызов увидит уже "оптимистично" измененные данные.
+    if (enhancedAction.type === 'UPDATE_PROPERTY' || enhancedAction.type === 'ADD_PROPERTY') {
+      const nextProps = stateRef.current.properties.map(p => 
+        p.id === enhancedAction.property.id ? enhancedAction.property : p
+      );
+      if (!nextProps.find(p => p.id === enhancedAction.property.id)) {
+        nextProps.push(enhancedAction.property);
+      }
+      stateRef.current = { ...stateRef.current, properties: nextProps };
+    }
 
     /* ── Supabase sync ────────────────────────────────────────────────── */
     // onRollback вызывается при критической ошибке БД, чтобы откатить

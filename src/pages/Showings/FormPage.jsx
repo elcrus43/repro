@@ -5,6 +5,8 @@ import { useToastContext } from '../../components/Toast';
 import { Calendar, User, Home, Save, UserPlus, X } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
+import { MultiClientSelector } from '../../components/MultiClientSelector';
+
 export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
@@ -18,12 +20,14 @@ export function FormPage() {
 
     const [form, setForm] = useState(existingShowing ? {
         ...existingShowing,
+        client_ids: existingShowing.client_ids || (existingShowing.client_id ? [existingShowing.client_id] : []),
         showing_date: existingShowing.showing_date
             ? new Date(existingShowing.showing_date).toISOString().slice(0, 16)
             : new Date().toISOString().slice(0, 16),
     } : {
         property_id: prePropId || '',
         client_id: preClientId || '',
+        client_ids: preClientId ? [preClientId] : [],
         showing_date: new Date().toISOString().slice(0, 16),
         status: 'planned',
         client_feedback: '',
@@ -55,7 +59,11 @@ export function FormPage() {
             updated_at: new Date().toISOString(),
         };
         dispatch({ type: 'ADD_CLIENT', client });
-        setForm(f => ({ ...f, client_id: client.id }));
+        setForm(f => ({ 
+            ...f, 
+            client_id: client.id,
+            client_ids: [...(f.client_ids || []), client.id]
+        }));
         setShowNewClient(false);
         setNewClientName('');
         setNewClientPhone('');
@@ -63,13 +71,14 @@ export function FormPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (!form.property_id || !form.client_id || !form.showing_date) {
-            toast.error('Пожалуйста, выберите продажу, клиента и дату/время');
+        if (!form.property_id || !form.client_ids?.length || !form.showing_date) {
+            toast.error('Пожалуйста, выберите объект, клиента и дату/время');
             return;
         }
 
         const showing = {
             ...form,
+            client_id: form.client_ids[0],
             showing_date: new Date(form.showing_date).toISOString()
         };
 
@@ -134,7 +143,7 @@ export function FormPage() {
                     {/* Client */}
                     <div className="form-group">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <label className="form-label" style={{ margin: 0 }}><User size={14} style={{ marginRight: 4 }} /> Клиент <span className="required">*</span></label>
+                            <label className="form-label" style={{ margin: 0 }}><User size={14} style={{ marginRight: 4 }} /> Клиенты <span className="required">*</span></label>
                             <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowNewClient(v => !v)}
                                 style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
                                 {showNewClient ? <><X size={12} /> Отмена</> : <><UserPlus size={12} /> Новый клиент</>}
@@ -147,16 +156,16 @@ export function FormPage() {
                                 <input className="form-input" placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
                                 <input className="form-input" placeholder="Телефон" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} />
                                 <button type="button" className="btn btn-primary btn-sm" onClick={handleCreateClient}>
-                                    Создать и выбрать
+                                    Создать и добавить
                                 </button>
                             </div>
                         ) : (
-                            <select className="form-select" value={form.client_id} onChange={e => setForm({ ...form, client_id: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id}>
-                                <option value="">— Выбрать клиента —</option>
-                                {myClients.map(c => (
-                                    <option key={c.id} value={c.id}>{c.full_name}{c.phone ? ` · ${c.phone}` : ''}</option>
-                                ))}
-                            </select>
+                            <MultiClientSelector 
+                                selectedIds={form.client_ids || []}
+                                onChange={ids => setForm({ ...form, client_ids: ids })}
+                                clients={state.clients}
+                                placeholder="Выберите клиентов..."
+                            />
                         )}
                     </div>
 

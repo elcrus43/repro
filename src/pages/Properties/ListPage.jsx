@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
+import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2 } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -14,7 +14,7 @@ export function ListPage() {
     const isAdmin = user?.role === 'admin';
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
-    const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
+    const [scope, setScope] = useState('all');
 
     // Memoized filtered properties
     const filteredProperties = useMemo(() => {
@@ -60,12 +60,10 @@ export function ListPage() {
                     <span className="search-icon"><Search size={16} /></span>
                     <input className="form-input" placeholder="Поиск по адресу или клиенту" value={search} onChange={e => setSearch(e.target.value)} />
                 </div>
-                {isAdmin && (
-                    <div style={{ display: 'flex', background: 'var(--bg)', padding: 4, borderRadius: 8, gap: 4 }}>
-                        <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'all' ? 'white' : 'transparent', boxShadow: scope === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'all' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('all')}>Все объекты</button>
-                        <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои объекты</button>
-                    </div>
-                )}
+                <div style={{ display: 'flex', background: 'var(--bg)', padding: 4, borderRadius: 8, gap: 4 }}>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'all' ? 'white' : 'transparent', boxShadow: scope === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'all' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('all')}>Все объекты</button>
+                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои объекты</button>
+                </div>
             </div>
 
             <div className="tab-filters">
@@ -97,24 +95,51 @@ export function ListPage() {
                             key={prop.id} 
                             className="card property-card-active"
                             onClick={() => navigate(`/properties/${prop.id}`)}
+                            style={{ display: 'flex', gap: 14, padding: 12, alignItems: 'stretch' }}
                         >
-                            <div className="flex justify-between items-start" style={{ marginBottom: 6 }}>
-                                <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>{formatNumber(prop.price)} ₽</div>
-                                <span className={`badge badge-${statusColors[status]}`}>{statusLabels[status]}</span>
+                            {/* PHOTO ZONE */}
+                            <div style={{ 
+                                width: 100, 
+                                height: 100, 
+                                minWidth: 100, 
+                                borderRadius: 12, 
+                                overflow: 'hidden', 
+                                background: 'white',
+                                border: '1px solid rgba(0,0,0,0.05)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}>
+                                {prop.images && prop.images.length > 0 ? (
+                                    <img src={prop.images[0]} alt="Объект" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                ) : (
+                                    <Building2 size={32} color="var(--text-muted)" style={{ opacity: 0.5 }} />
+                                )}
                             </div>
-                            <div className="flex items-center gap-4" style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
-                                {PROPERTY_TYPES[prop.property_type]} {prop.rooms > 0 ? `· ${prop.rooms}к` : '· Студия'} · {prop.area_total} м²
-                            </div>
-                            <div className="flex items-center gap-4" style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                <MapPin size={14} /> {prop.address || prop.city}
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: 8 }}>
-                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                    {client?.full_name} · <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{matches.length} совпадений</span>
+
+                            {/* INFO ZONE */}
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                                <div>
+                                    <div className="flex justify-between items-start" style={{ marginBottom: 4 }}>
+                                        <div style={{ fontWeight: 800, fontSize: 17, color: 'var(--primary)', letterSpacing: '-0.3px' }}>{formatNumber(prop.price)} ₽</div>
+                                        <span className={`badge badge-${statusColors[status]}`} style={{ fontSize: 10, padding: '2px 8px' }}>{statusLabels[status]}</span>
+                                    </div>
+                                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, color: 'var(--text)' }}>
+                                        {PROPERTY_TYPES[prop.property_type]} {prop.rooms > 0 ? `· ${prop.rooms}к` : '· Студия'} · {prop.area_total} м²
+                                    </div>
+                                    <div className="flex items-center gap-4" style={{ fontSize: 12, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <MapPin size={12} style={{ flexShrink: 0 }} /> {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: 4 }}>
-                                    <button className="icon-btn" onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}><Pencil size={16} /></button>
-                                    <button className="icon-btn" onClick={handleDelete}><Trash size={16} /></button>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 6 }}>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                                        {client?.full_name} · <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{matches.length}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 2 }}>
+                                        <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}><Pencil size={14} /></button>
+                                        <button className="icon-btn" style={{ width: 28, height: 28 }} onClick={handleDelete}><Trash size={14} /></button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

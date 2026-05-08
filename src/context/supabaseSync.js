@@ -238,7 +238,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           notes: action.property.notes || null,
           images: action.property.images || [],
           commission: action.property.commission ?? 0,
+          client_ids: action.property.client_ids || (action.property.client_id ? [action.property.client_id] : []),
+          portfolio_analog_links: action.property.portfolio_analog_links || [],
         };
+        // Remove legacy field
+        delete propertyData.mortgage_calc_image;
         // Remove undefined fields to avoid schema errors
         Object.keys(propertyData).forEach(key => {
           if (propertyData[key] === undefined) delete propertyData[key];
@@ -260,8 +264,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         }
         // Retry without new fields if columns are missing (migration 032 not applied)
         if (result?.error && _isNewPropertyColumnError(result.error)) {
-          console.warn('[Supabase] New property columns missing. Run migration 032. Retrying without them.');
-          const stripped = _stripNewPropertyFields(propertyData);
+          console.warn('[Supabase] New property columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewPropertyFields(propertyData, result.error);
           result = await withRetry(() => supabase.from('properties').insert(stripped));
         }
 
@@ -273,7 +277,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       }
 
       case 'UPDATE_PROPERTY': {
-        const { id: pId, ...pData } = action.property;
+        // Handle both { property: { ... } } and { id, data } formats
+        const rawProp = action.property || { ...action.data, id: action.id };
+        const propertyData = sanitizeObj(rawProp);
+        const { id: pId, ...pData } = propertyData;
         // Normalize and clean property data
         const normalizedData = {
           ...pData,
@@ -288,7 +295,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           notes: pData.notes || null,
           images: pData.images || [],
           commission: pData.commission ?? 0,
+          client_ids: pData.client_ids || (pData.client_id ? [pData.client_id] : []),
+          portfolio_analog_links: pData.portfolio_analog_links || [],
         };
+        // Remove legacy field
+        delete normalizedData.mortgage_calc_image;
         // Remove undefined fields
         Object.keys(normalizedData).forEach(key => {
           if (normalizedData[key] === undefined) delete normalizedData[key];
@@ -310,8 +321,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         }
         // Retry without new fields if columns are missing (migration 032 not applied)
         if (result?.error && _isNewPropertyColumnError(result.error)) {
-          console.warn('[Supabase] New property columns missing. Run migration 032. Retrying without them.');
-          const stripped = _stripNewPropertyFields(normalizedData);
+          console.warn('[Supabase] New property columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewPropertyFields(normalizedData, result.error);
           result = await withRetry(() => supabase.from('properties').update(stripped).eq('id', pId));
         }
 
@@ -330,6 +341,13 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       case 'ADD_REQUEST':
       case 'UPDATE_REQUEST':
         result = await withRetry(() => supabase.from('requests').upsert(action.request));
+        
+        if (result?.error && _isNewRequestColumnError(result.error)) {
+          console.warn('[Supabase] New request columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewRequestFields(action.request, result.error);
+          result = await withRetry(() => supabase.from('requests').upsert(stripped));
+        }
+
         if (!result?.error && action.matches?.length > 0) {
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
           if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
@@ -363,25 +381,43 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Показы ──────────────────────────────────────────────────────── */
       case 'ADD_SHOWING': {
-        const queries = [withRetry(() => supabase.from('showings').upsert(action.showing))];
+        const showingData = sanitizeObj(action.showing);
+        const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
         if (action.task) queries.push(withRetry(() => supabase.from('tasks').upsert(action.task)));
         if (action.matches && action.showing.match_id) {
           const match = action.matches.find(m => m.id === action.showing.match_id);
           if (match) queries.push(withRetry(() => supabase.from('matches').upsert(match)));
         }
         const results = await Promise.all(queries);
+        
+        // Retry showing if failed due to missing columns
+        if (results[0]?.error && _isNewShowingColumnError(results[0].error)) {
+          console.warn('[Supabase] New showing columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewShowingFields(showingData, results[0].error);
+          await withRetry(() => supabase.from('showings').upsert(stripped));
+        }
+        
         results.forEach((res, i) => {
-          if (res?.error) console.error(`[Supabase Showing Sync Error ${i}]`, res.error);
+          if (res?.error && !_isNewShowingColumnError(res.error)) console.error(`[Supabase Showing Sync Error ${i}]`, res.error);
         });
         return;
       }
 
       case 'UPDATE_SHOWING': {
-        const queries = [withRetry(() => supabase.from('showings').upsert(action.showing))];
+        const showingData = sanitizeObj(action.showing);
+        const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
         if (action.matches) queries.push(withRetry(() => supabase.from('matches').upsert(action.matches)));
         const results = await Promise.all(queries);
+        
+        // Retry showing if failed due to missing columns
+        if (results[0]?.error && _isNewShowingColumnError(results[0].error)) {
+          console.warn('[Supabase] New showing columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewShowingFields(showingData, results[0].error);
+          await withRetry(() => supabase.from('showings').upsert(stripped));
+        }
+
         results.forEach((res, i) => {
-          if (res?.error) console.error(`[Supabase Showing Update Error ${i}]`, res.error);
+          if (res?.error && !_isNewShowingColumnError(res.error)) console.error(`[Supabase Showing Update Error ${i}]`, res.error);
         });
         return;
       }
@@ -425,6 +461,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       case 'DELETE_PRICE_ITEM':
         result = await withRetry(() => supabase.from('pricelist').delete().eq('id', action.id));
         break;
+      
+
+      case 'DELETE_SHOWING':
+        result = await withRetry(() => supabase.from('showings').delete().eq('id', action.id));
+        break;
 
       /* ── Сделки ──────────────────────────────────────────────────────── */
       case 'ADD_DEAL': {
@@ -433,6 +474,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           deal_date: action.deal.deal_date || null,
           deposit_date: action.deal.deposit_date || null,
           deposit_amount: action.deal.deposit_amount || 0,
+          seller_ids: action.deal.seller_ids || [],
+          buyer_ids: action.deal.buyer_ids || [],
           notes: action.deal.notes || null,
         };
         // Remove undefined
@@ -450,6 +493,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           deal_date: dData.deal_date || null,
           deposit_date: dData.deposit_date || null,
           deposit_amount: dData.deposit_amount ?? 0,
+          seller_ids: dData.seller_ids || [],
+          buyer_ids: dData.buyer_ids || [],
           notes: dData.notes || null,
         };
         Object.keys(updateData).forEach(key => {
@@ -462,6 +507,23 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       case 'DELETE_DEAL':
         result = await withRetry(() => supabase.from('deals').delete().eq('id', action.id));
         break;
+
+      case 'CLOSE_DEAL': {
+        const { propertyId, requestId, matchId, now } = action;
+        // Run updates in parallel
+        await Promise.all([
+          withRetry(() => supabase.from('properties').update({ status: 'sold', updated_at: now }).eq('id', propertyId)),
+          withRetry(() => supabase.from('requests').update({ status: 'found', updated_at: now }).eq('id', requestId)),
+          withRetry(() => supabase.from('matches').update({ status: 'deal', updated_at: now }).eq('id', matchId)),
+          withRetry(() => 
+            supabase.from('matches')
+              .update({ status: 'rejected', updated_at: now })
+              .or(`property_id.eq.${propertyId},request_id.eq.${requestId}`)
+              .neq('id', matchId)
+          )
+        ]);
+        break;
+      }
 
       default:
         return; // Неизвестный тип — ничего не делаем
@@ -530,9 +592,11 @@ const NEW_PROPERTY_FIELDS = [
   'ceiling_height', 'house_series', 'developer',
   'management_company', 'cadastral_number', 'building_type',
   'urgency', 'market_type', 'residential_complex', 'price_min',
-  'mortgage_calc_image',
   'portfolio_new_builds_files',
   'portfolio_resale_files',
+  'portfolio_mortgage_files',
+  'portfolio_analog_links',
+  'client_ids',
 ];
 
 function _isNewPropertyColumnError(error) {
@@ -541,8 +605,53 @@ function _isNewPropertyColumnError(error) {
   return NEW_PROPERTY_FIELDS.some(f => error.message?.includes(f));
 }
 
-function _stripNewPropertyFields(data) {
+function _stripNewPropertyFields(data, error) {
   const stripped = { ...data };
-  NEW_PROPERTY_FIELDS.forEach(f => delete stripped[f]);
+  if (error && error.message) {
+    // Only strip fields that are mentioned in the error message
+    NEW_PROPERTY_FIELDS.forEach(f => {
+      if (error.message.includes(f)) {
+        delete stripped[f];
+      }
+    });
+  } else {
+    // Fallback: if no message, strip all new fields
+    NEW_PROPERTY_FIELDS.forEach(f => delete stripped[f]);
+  }
+  return stripped;
+}
+
+const NEW_REQUEST_FIELDS = ['client_ids'];
+const NEW_SHOWING_FIELDS = ['client_ids', 'event_type'];
+
+function _isNewRequestColumnError(error) {
+  if (!error) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  return NEW_REQUEST_FIELDS.some(f => error.message?.includes(f));
+}
+
+function _isNewShowingColumnError(error) {
+  if (!error) return false;
+  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+  return NEW_SHOWING_FIELDS.some(f => error.message?.includes(f));
+}
+
+function _stripNewRequestFields(data, error) {
+  const stripped = { ...data };
+  if (error && error.message) {
+    NEW_REQUEST_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
+  } else {
+    NEW_REQUEST_FIELDS.forEach(f => delete stripped[f]);
+  }
+  return stripped;
+}
+
+function _stripNewShowingFields(data, error) {
+  const stripped = { ...data };
+  if (error && error.message) {
+    NEW_SHOWING_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
+  } else {
+    NEW_SHOWING_FIELDS.forEach(f => delete stripped[f]);
+  }
   return stripped;
 }

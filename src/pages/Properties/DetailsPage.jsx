@@ -408,7 +408,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         // Price
         ctx.fillStyle = brandColor;
         const priceSize = format === 'story' ? 90 : 70;
-        ctx.font = `900 ${priceSize}px Montserrat, Inter, sans-serif`;
+        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
         currentY += priceSize;
         ctx.fillText(formatNumber(property.price) + ' ₽', padding, currentY);
 
@@ -417,7 +417,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const addressSize = format === 'story' ? 50 : 36;
         currentY += addressGap + addressSize;
         ctx.fillStyle = textColor1;
-        ctx.font = `800 ${addressSize}px Montserrat, Inter, sans-serif`;
+        ctx.font = `800 ${addressSize}px Oswald, Inter, sans-serif`;
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 45) + (address.length > 45 ? '...' : ''), padding, currentY);
 
@@ -427,7 +427,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         currentY += detailsGap + detailsSize;
         
         ctx.fillStyle = textColor2;
-        ctx.font = `600 ${detailsSize}px Montserrat, Inter, sans-serif`;
+        ctx.font = `600 ${detailsSize}px Oswald, Inter, sans-serif`;
         
         const details = [];
         if (property.rooms !== undefined) details.push(`${property.rooms === 0 ? 'Студия' : property.rooms + '-комн.'}`);
@@ -441,7 +441,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
             ctx.beginPath(); ctx.arc(detX + 8, currentY - (detailsSize/3), 6, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = textColor1;
             ctx.fillText(txt, detX + 25, currentY);
-            ctx.font = `600 ${detailsSize}px Montserrat, Inter, sans-serif`;
+            ctx.font = `600 ${detailsSize}px Oswald, Inter, sans-serif`;
             detX += ctx.measureText(txt).width + 60;
         });
 
@@ -452,12 +452,12 @@ function BannerGenerator({ property, currentUser, onClose }) {
         currentY += ctaGap + phoneSize;
 
         ctx.fillStyle = textColor2;
-        ctx.font = `500 ${ctaSize}px Montserrat, Inter, sans-serif`;
+        ctx.font = `500 ${ctaSize}px Oswald, Inter, sans-serif`;
         ctx.fillText('СВЯЗАТЬСЯ:', padding, currentY);
         const ctaWidth = ctx.measureText('СВЯЗАТЬСЯ: ').width;
 
         ctx.fillStyle = brandColor;
-        ctx.font = `900 ${phoneSize}px Montserrat, Inter, sans-serif`;
+        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, padding + ctaWidth + 10, currentY);
     };
@@ -481,12 +481,12 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Price (Large, Blue)
         ctx.fillStyle = brandColor;
-        ctx.font = '900 110px Montserrat, Inter, sans-serif';
+        ctx.font = '900 110px Oswald, Inter, sans-serif';
         ctx.fillText(formatNumber(property.price) + ' ₽', 80, 140);
 
         // Clean Address (Large, Black/White)
         ctx.fillStyle = textColor1;
-        ctx.font = '800 65px Montserrat, Inter, sans-serif';
+        ctx.font = '800 65px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 30) + (address.length > 30 ? '...' : ''), 80, 230);
 
@@ -496,7 +496,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // More information (Features)
         ctx.fillStyle = textColor2;
-        ctx.font = '600 38px Montserrat, Inter, sans-serif';
+        ctx.font = '600 38px Oswald, Inter, sans-serif';
         
         let startY = 360;
         const details = [];
@@ -528,11 +528,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Right side CTA and Phone
         ctx.fillStyle = textColor2;
-        ctx.font = '500 28px Montserrat, Inter, sans-serif';
+        ctx.font = '500 28px Oswald, Inter, sans-serif';
         ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 80, h - 180);
 
         ctx.fillStyle = brandColor;
-        ctx.font = '900 44px Montserrat, Inter, sans-serif';
+        ctx.font = '900 44px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, 80, h - 125);
 
@@ -543,7 +543,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Shield
         ctx.beginPath(); ctx.moveTo(90, h - 55); ctx.lineTo(130, h - 55); ctx.lineTo(130, h - 30); ctx.arc(110, h - 30, 20, 0, Math.PI); ctx.stroke();
-        ctx.font = 'bold 16px Montserrat, Inter, sans-serif';
+        ctx.font = 'bold 16px Oswald, Inter, sans-serif';
         ctx.fillText('БЕЗОПАСНЫЕ', 150, h - 45);
         ctx.fillText('СДЕЛКИ', 150, h - 25);
 
@@ -576,11 +576,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillRect(0, 0, w, h * 0.45);
 
         ctx.fillStyle = brandColor;
-        ctx.font = '900 80px Montserrat, Inter, sans-serif';
+        ctx.font = '900 80px Oswald, Inter, sans-serif';
         ctx.fillText(formatNumber(property.price) + ' ₽', 60, 100);
 
         ctx.fillStyle = textColor1;
-        ctx.font = '800 45px Montserrat, Inter, sans-serif';
+        ctx.font = '800 45px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 35) + (address.length > 35 ? '...' : ''), 60, 160);
 
@@ -588,7 +588,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillRect(60, 200, 100, 6);
 
         ctx.fillStyle = textColor2;
-        ctx.font = '600 28px Montserrat, Inter, sans-serif';
+        ctx.font = '600 28px Oswald, Inter, sans-serif';
         
         let startY = 260;
         const details = [];
@@ -613,11 +613,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillRect(0, h - 250, w, 250);
 
         ctx.fillStyle = textColor2;
-        ctx.font = '500 20px Montserrat, Inter, sans-serif';
+        ctx.font = '500 20px Oswald, Inter, sans-serif';
         ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 60, h - 100);
 
         ctx.fillStyle = brandColor;
-        ctx.font = '900 34px Montserrat, Inter, sans-serif';
+        ctx.font = '900 34px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, 60, h - 55);
     };
@@ -778,7 +778,7 @@ export function DetailsPage() {
 
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
-    const client = state.clients.find(c => c.id === prop?.client_id);
+    const clients = state.clients.filter(c => (prop?.client_ids || [prop?.client_id]).includes(c.id));
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
 
@@ -831,9 +831,10 @@ export function DetailsPage() {
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
                 <span className="topbar-title">Карточка объекта</span>
-                <div className="topbar-actions">
-                    <button className="icon-btn" onClick={() => setShowBannerGen(true)} title="Создать баннер" style={{ color: 'var(--primary)' }}>
+                <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <button className="btn btn-primary" onClick={() => setShowBannerGen(true)} title="Создать баннер" style={{ padding: '6px 12px', height: 36, borderRadius: 10, fontSize: 13, textTransform: 'none' }}>
                         <ImageIcon size={18} />
+                        <span style={{ marginLeft: 6, fontWeight: 700 }}>Баннер</span>
                     </button>
                     <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}><Pencil size={18} /></button>
                     <button className="icon-btn" onClick={handleDelete}><Trash size={18} /></button>
@@ -842,46 +843,49 @@ export function DetailsPage() {
             </div>
 
             <div className="page-content">
-                {/* Header Card */}
-                <div className="card" style={{ padding: '0 0 16px 0', overflow: 'hidden' }}>
-                    <div style={{ background: 'var(--primary-light)', padding: '20px 16px', borderBottom: '1px solid var(--border-light)' }}>
+                {/* Header Card — Redesigned with Square Image */}
+                <div className="card" style={{ padding: 12, display: 'flex', gap: 16, alignItems: 'center' }}>
+                    <div style={{ width: 100, height: 100, borderRadius: 16, overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                        <img 
+                            src={prop.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=80'} 
+                            alt="Object" 
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                        />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ fontSize: 24, fontWeight: 900, color: 'var(--primary)' }}>{formatNumber(prop.price)} ₽</div>
-                            <span className={`badge badge-${statusColors[status]}`} style={{ fontSize: 12 }}>{statusLabels[status]}</span>
+                            <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--primary)', letterSpacing: -0.5 }}>{formatNumber(prop.price)} ₽</div>
+                            <span className={`badge badge-${statusColors[status]}`} style={{ fontSize: 10, padding: '2px 8px' }}>{statusLabels[status]}</span>
                         </div>
-                        <div style={{ fontSize: 15, fontWeight: 700, marginTop: 4 }}>{prop.address || prop.city}</div>
-                    </div>
-
-                    <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, textAlign: 'center' }}>
-                        <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: 8 }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Общая S</div>
-                            <div style={{ fontSize: 15, fontWeight: 800 }}>{prop.area_total} м²</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
                         </div>
-                        <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: 8 }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Жилая S</div>
-                            <div style={{ fontSize: 15, fontWeight: 800 }}>{prop.area_living || '—'} м²</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontWeight: 600 }}>
+                            {prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к`} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт
                         </div>
-                        <div style={{ background: 'var(--bg)', padding: '8px', borderRadius: 8 }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Кухня</div>
-                            <div style={{ fontSize: 15, fontWeight: 800 }}>{prop.area_kitchen || '—'} м²</div>
+                        
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                            <button
+                                style={{ 
+                                    padding: '6px 12px', fontSize: 12, borderRadius: 8, border: 'none',
+                                    background: 'var(--primary)', color: 'white', fontWeight: 700,
+                                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
+                                }}
+                                onClick={() => navigate(`/matches?property_id=${id}`)}
+                            >
+                                <Sparkles size={14} /> Совпадения ({matches.length})
+                            </button>
+                            <button
+                                style={{ 
+                                    padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--primary)',
+                                    background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700,
+                                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
+                                }}
+                                onClick={() => setShowPortfolio(true)}
+                            >
+                                <Briefcase size={14} /> Портфолио
+                            </button>
                         </div>
-                    </div>
-
-                    <div style={{ padding: '0 16px 16px', display: 'flex', gap: 8 }}>
-                        <button
-                            className="btn btn-primary"
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
-                            onClick={() => navigate(`/matches?property_id=${id}`)}
-                        >
-                            <Sparkles size={18} /> Совпадения ({matches.length})
-                        </button>
-                        <button
-                            className="btn btn-secondary"
-                            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: 'var(--bg)', border: '1px solid var(--primary)', color: 'var(--primary)' }}
-                            onClick={() => setShowPortfolio(true)}
-                        >
-                            <Briefcase size={18} /> Портфолио
-                        </button>
                     </div>
                 </div>
 
@@ -910,25 +914,28 @@ export function DetailsPage() {
                     </div>
                 )}
 
-                {/* Client */}
-                {client && (
-                    <div className="card" onClick={() => navigate(`/clients/${client.id}`)} style={{ cursor: 'pointer' }}>
-                        <div className="section-title">Собственник</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                            {/* Initials only — no photo */}
-                            <div style={{
-                                width: 40, height: 40, borderRadius: '50%',
-                                background: 'var(--border)', color: 'var(--text-secondary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: 15, fontWeight: 700, flexShrink: 0, letterSpacing: 0.5,
-                            }}>
-                                {initials(client.full_name)}
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700 }}>{client.full_name}</div>
-                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{client.phone}</div>
-                            </div>
-                            <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                {/* Clients */}
+                {clients.length > 0 && (
+                    <div className="card">
+                        <div className="section-title">{clients.length > 1 ? 'Собственники' : 'Собственник'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                            {clients.map(c => (
+                                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                                    <div style={{
+                                        width: 40, height: 40, borderRadius: '50%',
+                                        background: 'var(--border)', color: 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 15, fontWeight: 700, flexShrink: 0, letterSpacing: 0.5,
+                                    }}>
+                                        {initials(c.full_name)}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 700 }}>{c.full_name}</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
+                                    </div>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -1091,6 +1098,7 @@ export function DetailsPage() {
                             </div>
                         </div>
                     )}
+
 
                     {/* Тип и комиссия */}
                     <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

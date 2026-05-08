@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
+import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { nanoid } from '../../utils/nanoid';
 
 export function DealsPage() {
@@ -26,8 +27,8 @@ export function DealsPage() {
     const [newDeal, setNewDeal] = useState({
         id: '',
         title: prefillData.title || '',
-        seller_id: prefillData.seller_id || '',
-        buyer_id: prefillData.buyer_id || '',
+        seller_ids: prefillData.seller_ids || (prefillData.seller_id ? [prefillData.seller_id] : []),
+        buyer_ids: prefillData.buyer_ids || (prefillData.buyer_id ? [prefillData.buyer_id] : []),
         property_id: prefillData.property_id || '',
         price: prefillData.price || '',
         deal_date: prefillData.deal_date || new Date().toISOString().slice(0, 16),
@@ -36,6 +37,8 @@ export function DealsPage() {
         commission: prefillData.commission || '',
         notes: prefillData.notes || '',
     });
+
+    const prevPropertyId = useRef(newDeal.property_id);
 
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
     
@@ -74,6 +77,22 @@ export function DealsPage() {
             navigate(location.pathname, { replace: true, state: {} });
         }
     }, []);
+
+    // Автоподстановка при выборе объекта
+    useEffect(() => {
+        if (newDeal.property_id && newDeal.property_id !== prevPropertyId.current) {
+            const prop = state.properties.find(p => p.id === newDeal.property_id);
+            if (prop) {
+                setNewDeal(prev => ({
+                    ...prev,
+                    price: formatPriceInput(String(prop.price || '')),
+                    commission: formatPriceInput(String(prop.commission || '')),
+                    seller_ids: prop.client_ids || (prop.client_id ? [prop.client_id] : [])
+                }));
+            }
+        }
+        prevPropertyId.current = newDeal.property_id;
+    }, [newDeal.property_id, state.properties]);
 
     // Статистика за выбранный период
     const stats = useMemo(() => {
@@ -158,8 +177,8 @@ export function DealsPage() {
         setNewDeal({ 
             id: '', 
             title: '', 
-            seller_id: '', 
-            buyer_id: '', 
+            seller_ids: [], 
+            buyer_ids: [], 
             property_id: '', 
             price: '', 
             deal_date: new Date().toISOString().slice(0, 16), 
@@ -168,6 +187,7 @@ export function DealsPage() {
             commission: '',
             notes: '',
         });
+        prevPropertyId.current = '';
     }
 
     async function deleteDeal(deal) {
@@ -185,18 +205,21 @@ export function DealsPage() {
     function editDeal(deal) {
         setNewDeal({ 
             ...deal, 
+            seller_ids: deal.seller_ids || (deal.seller_id ? [deal.seller_id] : []),
+            buyer_ids: deal.buyer_ids || (deal.buyer_id ? [deal.buyer_id] : []),
             price: deal.price ? deal.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deposit_amount: deal.deposit_amount ? deal.deposit_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             commission: deal.commission ? deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deal_date: deal.deal_date ? deal.deal_date.slice(0, 16) : '',
             deposit_date: deal.deposit_date ? deal.deposit_date.slice(0, 16) : '',
         });
+        prevPropertyId.current = deal.property_id;
         setShowForm(true);
     }
 
     function DealCard({ deal }) {
-        const seller = state.clients.find(c => c.id === deal.seller_id);
-        const buyer = state.clients.find(c => c.id === deal.buyer_id);
+        const sellers = state.clients.filter(c => (deal.seller_ids || [deal.seller_id]).includes(c.id));
+        const buyers = state.clients.filter(c => (deal.buyer_ids || [deal.buyer_id]).includes(c.id));
         const property = state.properties.find(p => p.id === deal.property_id);
 
         const statusConfig = {
@@ -214,8 +237,12 @@ export function DealsPage() {
                 </div>
                 
                 <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                    {seller && <div>📤 Продавец: <strong>{seller.full_name}</strong></div>}
-                    {buyer && <div>📥 Покупатель: <strong>{buyer.full_name}</strong></div>}
+                    {sellers.length > 0 && (
+                        <div>📤 Продавец: <strong>{sellers.map(s => s.full_name).join(', ')}</strong></div>
+                    )}
+                    {buyers.length > 0 && (
+                        <div>📥 Покупатель: <strong>{buyers.map(b => b.full_name).join(', ')}</strong></div>
+                    )}
                     {property && <div>🏠 Объект: <strong>{property.address || property.city}</strong>{property.price ? ` · ${property.price.toLocaleString()} ₽` : ''}</div>}
                 </div>
 
@@ -322,29 +349,36 @@ export function DealsPage() {
 
                         <input className="form-input" placeholder="Название сделки" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
 
-                        <SearchableSelect
-                            value={newDeal.seller_id || ''}
-                            onChange={v => handleFieldChange('seller_id', v)}
-                            placeholder="Продавец..."
-                            searchPlaceholder="Поиск продавца..."
-                            options={clientOptions}
-                        />
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, display: 'block' }}>Продавцы</label>
+                            <MultiClientSelector
+                                selectedIds={newDeal.seller_ids || []}
+                                onChange={ids => handleFieldChange('seller_ids', ids)}
+                                clients={state.clients}
+                                placeholder="Выбрать продавцов..."
+                            />
+                        </div>
 
-                        <SearchableSelect
-                            value={newDeal.buyer_id || ''}
-                            onChange={v => handleFieldChange('buyer_id', v)}
-                            placeholder="Покупатель..."
-                            searchPlaceholder="Поиск покупателя..."
-                            options={clientOptions}
-                        />
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, display: 'block' }}>Покупатели</label>
+                            <MultiClientSelector
+                                selectedIds={newDeal.buyer_ids || []}
+                                onChange={ids => handleFieldChange('buyer_ids', ids)}
+                                clients={state.clients}
+                                placeholder="Выбрать покупателей..."
+                            />
+                        </div>
 
-                        <SearchableSelect
-                            value={newDeal.property_id || ''}
-                            onChange={v => handleFieldChange('property_id', v)}
-                            placeholder="Объект..."
-                            searchPlaceholder="Поиск объекта..."
-                            options={propertyOptions}
-                        />
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, display: 'block' }}>Объект</label>
+                            <SearchableSelect
+                                value={newDeal.property_id || ''}
+                                onChange={v => handleFieldChange('property_id', v)}
+                                placeholder="Выберите объект..."
+                                searchPlaceholder="Поиск объекта..."
+                                options={propertyOptions}
+                            />
+                        </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                             <input className="form-input" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />

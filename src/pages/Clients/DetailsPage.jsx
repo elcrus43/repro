@@ -40,7 +40,7 @@ export function DetailsPage() {
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate('/clients')}>←</button>
                 <span className="topbar-title">Клиент</span>
-                <div className="topbar-actions">
+                <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button className="icon-btn" onClick={() => navigate(`/clients/${id}/edit`)}><Pencil size={18} /></button>
                     <button className="icon-btn" onClick={handleDelete}><Trash size={18} /></button>
                 </div>

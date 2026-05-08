@@ -10,7 +10,7 @@ export function DetailsPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const req = state.requests.find(r => r.id === id);
-    const client = state.clients.find(c => c.id === req?.client_id);
+    const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
     const matches = state.matches.filter(m => m.request_id === id);
 
     if (!req) return <div className="page"><div className="topbar"><button className="topbar-back" onClick={() => navigate('/requests')}>←</button><span className="topbar-title">Запрос не найден</span></div></div>;
@@ -31,7 +31,7 @@ export function DetailsPage() {
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate('/requests')}>←</button>
                 <span className="topbar-title">Детали запроса</span>
-                <div className="topbar-actions">
+                <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <button className="icon-btn" onClick={() => navigate(`/requests/${id}/edit`)}><Pencil size={18} /></button>
                     <button className="icon-btn" onClick={handleDelete}><Trash size={18} /></button>
                 </div>
@@ -66,18 +66,24 @@ export function DetailsPage() {
                     </button>
                 </div>
 
-                {/* Client Info */}
-                <div className="card" onClick={() => navigate(`/clients/${client?.id}`)}>
-                    <div className="section-title">Клиент</div>
-                    <div className="flex items-center gap-12">
-                        <div className="avatar">{(client?.full_name || '?')[0]}</div>
-                        <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 700 }}>{client?.full_name}</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{client?.phone}</div>
+                {/* Clients Info */}
+                {clients.length > 0 && (
+                    <div className="card">
+                        <div className="section-title">{clients.length > 1 ? 'Покупатели' : 'Покупатель'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {clients.map(c => (
+                                <div key={c.id} className="flex items-center gap-12" onClick={() => navigate(`/clients/${c.id}`)} style={{ cursor: 'pointer' }}>
+                                    <div className="avatar">{(c.full_name || '?')[0]}</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 700 }}>{c.full_name}</div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
+                                    </div>
+                                    <span style={{ color: 'var(--primary)', fontSize: 14 }}>➔</span>
+                                </div>
+                            ))}
                         </div>
-                        <span style={{ color: 'var(--primary)', fontSize: 14 }}>➔</span>
                     </div>
-                </div>
+                )}
 
                 {/* Requirements */}
                 <div className="card">
