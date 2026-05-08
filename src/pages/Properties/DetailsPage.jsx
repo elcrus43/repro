@@ -242,9 +242,22 @@ function BannerGenerator({ property, currentUser, onClose }) {
     const canvasRef = React.useRef(null);
     const [format, setFormat] = React.useState('story'); // 'story' (9:16) | 'post' (1:1)
     const [theme, setTheme] = React.useState('light'); // 'light' | 'dark'
-    const [design, setDesign] = React.useState('classic'); // 'classic' | 'minimal'
+    const [design, setDesign] = React.useState('minimal'); // 'classic' | 'minimal'
+    const [accentColor, setAccentColor] = React.useState('#0052FF');
+    const [stickers, setStickers] = React.useState([]);
+    const [logo, setLogo] = React.useState(null);
+    const [showQR, setShowQR] = React.useState(true);
     const [loading, setLoading] = React.useState(true);
     const [imageOffset, setImageOffset] = React.useState(0);
+
+    const STICKER_OPTIONS = ['Ипотека 6%', 'Срочно', 'Чистая продажа', 'Эксклюзив', 'Торг уместен'];
+    const COLOR_OPTIONS = [
+        { name: 'Синий', value: '#0052FF' },
+        { name: 'Золотой', value: '#D4AF37' },
+        { name: 'Зеленый', value: '#2E7D32' },
+        { name: 'Красный', value: '#C62828' },
+        { name: 'Черный', value: '#1A1A1A' }
+    ];
 
     const formats = {
         story: { width: 1080, height: 1920, label: 'Story (9:16)' },
@@ -253,7 +266,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
     React.useEffect(() => {
         renderBanner();
-    }, [format, theme, design, property, imageOffset]);
+    }, [format, theme, design, property, imageOffset, accentColor, stickers, logo, showQR]);
 
     const renderBanner = async () => {
         setLoading(true);
@@ -265,7 +278,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         canvas.width = config.width;
         canvas.height = config.height;
 
-        // 1. Load Images (up to 3)
+        // 1. Load Images
         const imageUrls = (property.images && property.images.length > 0) 
             ? property.images 
             : ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1000&q=80'];
@@ -284,9 +297,34 @@ function BannerGenerator({ property, currentUser, onClose }) {
             if (img.width > 0) loadedImages.push(img);
         }
 
+        // Load Logo if exists
+        let loadedLogo = null;
+        if (logo) {
+            loadedLogo = new Image();
+            loadedLogo.src = logo;
+            await new Promise((resolve) => {
+                loadedLogo.onload = resolve;
+                loadedLogo.onerror = resolve;
+            });
+        }
+
+        // Load QR Code if enabled
+        let loadedQR = null;
+        if (showQR) {
+            const objectUrl = `https://realtor-match.vercel.app/properties/${property.id}`;
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(objectUrl)}&bgcolor=ffffff&color=000000&margin=10`;
+            loadedQR = new Image();
+            loadedQR.crossOrigin = "anonymous";
+            loadedQR.src = qrUrl;
+            await new Promise((resolve) => {
+                loadedQR.onload = resolve;
+                loadedQR.onerror = resolve;
+            });
+        }
+
         if (loadedImages.length === 0) {
             setLoading(false);
-            return; // Fallback
+            return;
         }
 
         const isDark = theme === 'dark';
@@ -345,11 +383,10 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 drawCover(loadedImages[0], 0, 0, canvas.width, canvas.height);
             }
 
-            // Overlays
             if (format === 'story') {
-                renderClassicStoryOverlay(ctx, canvas);
+                renderClassicStoryOverlay(ctx, canvas, loadedLogo, loadedQR);
             } else {
-                renderClassicPostOverlay(ctx, canvas);
+                renderClassicPostOverlay(ctx, canvas, loadedLogo, loadedQR);
             }
         } else if (design === 'minimal') {
             const padding = format === 'story' ? 50 : 40;
@@ -369,10 +406,40 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 drawCover(loadedImages[0], padding, padding, canvas.width - padding*2, photoAreaH);
             }
 
-            renderMinimalText(ctx, canvas, textSpace);
+            renderMinimalText(ctx, canvas, textSpace, loadedLogo, loadedQR);
+        }
+
+        // Draw Stickers
+        if (stickers.length > 0) {
+            renderStickers(ctx, canvas);
         }
 
         setLoading(false);
+    };
+
+    const renderStickers = (ctx, canvas) => {
+        const padding = format === 'story' ? 50 : 40;
+        const stickerH = format === 'story' ? 70 : 50;
+        const fontSize = format === 'story' ? 32 : 24;
+        let stickerY = padding + 20;
+
+        stickers.forEach(text => {
+            ctx.font = `bold ${fontSize}px Inter, sans-serif`;
+            const textW = ctx.measureText(text.toUpperCase()).width;
+            const boxW = textW + 40;
+
+            ctx.fillStyle = accentColor;
+            // Draw pill shape
+            ctx.beginPath();
+            ctx.roundRect(canvas.width - padding - boxW, stickerY, boxW, stickerH, 12);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.fillText(text.toUpperCase(), canvas.width - padding - (boxW/2), stickerY + (stickerH/2) + (fontSize/3));
+            stickerY += stickerH + 15;
+        });
+        ctx.textAlign = 'left'; // Reset
     };
 
     const getCleanAddress = () => {
@@ -392,25 +459,32 @@ function BannerGenerator({ property, currentUser, onClose }) {
         return mapping[r] || r;
     };
 
-    const renderMinimalText = (ctx, canvas, textSpace) => {
+    const renderMinimalText = (ctx, canvas, textSpace, loadedLogo, loadedQR) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
         const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
         const textColor2 = isDark ? '#AAAAAA' : '#666666';
-        const brandColor = isDark ? '#4DA6FF' : '#0052FF';
+        const brandColor = accentColor;
         
         const padding = format === 'story' ? 50 : 40;
-        
         const gap = format === 'story' ? 60 : 40;
         let currentY = h - textSpace + gap; 
         
-        // Price
+        // Price & Price/m2
         ctx.fillStyle = brandColor;
         const priceSize = format === 'story' ? 90 : 70;
         ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
         currentY += priceSize;
-        ctx.fillText(formatNumber(property.price) + ' ₽', padding, currentY);
+        const priceText = formatNumber(property.price) + ' ₽';
+        ctx.fillText(priceText, padding, currentY);
+        
+        if (property.price && property.area_total) {
+            const m2Price = Math.round(property.price / property.area_total);
+            ctx.fillStyle = textColor2;
+            ctx.font = `600 ${priceSize/2.5}px Oswald, Inter, sans-serif`;
+            ctx.fillText(`— ${formatNumber(m2Price)} ₽/м²`, padding + ctx.measureText(priceText).width + 20, currentY - 5);
+        }
 
         // Address
         const addressGap = format === 'story' ? 30 : 20;
@@ -441,7 +515,6 @@ function BannerGenerator({ property, currentUser, onClose }) {
             ctx.beginPath(); ctx.arc(detX + 8, currentY - (detailsSize/3), 6, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = textColor1;
             ctx.fillText(txt, detX + 25, currentY);
-            ctx.font = `600 ${detailsSize}px Oswald, Inter, sans-serif`;
             detX += ctx.measureText(txt).width + 60;
         });
 
@@ -461,47 +534,67 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, padding + ctaWidth + 10, currentY);
 
-        // Agent Name in Minimal
         if (currentUser?.full_name) {
             ctx.fillStyle = textColor1;
             ctx.font = `700 ${ctaSize}px Oswald, Inter, sans-serif`;
             ctx.fillText(currentUser.full_name, padding, currentY + (ctaSize * 1.5));
         }
+
+        // Draw Watermark Logo
+        if (loadedLogo) {
+            const logoW = format === 'story' ? 200 : 150;
+            const logoH = (loadedLogo.height / loadedLogo.width) * logoW;
+            ctx.globalAlpha = 0.4;
+            ctx.drawImage(loadedLogo, w - padding - logoW, h - textSpace + 40, logoW, logoH);
+            ctx.globalAlpha = 1.0;
+        }
+
+        // Draw QR Code
+        if (loadedQR) {
+            const qrSize = format === 'story' ? 180 : 140;
+            ctx.drawImage(loadedQR, w - padding - qrSize, h - padding - qrSize, qrSize, qrSize);
+            ctx.fillStyle = textColor2;
+            ctx.font = `500 ${format === 'story' ? 18 : 14}px Inter, sans-serif`;
+            ctx.fillText('ПОДРОБНЕЕ', w - padding - qrSize + (qrSize/2) - (ctx.measureText('ПОДРОБНЕЕ').width/2), h - padding - qrSize - 10);
+        }
     };
 
-    const renderClassicStoryOverlay = (ctx, canvas) => {
+    const renderClassicStoryOverlay = (ctx, canvas, loadedLogo, loadedQR) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
         const gradColor = isDark ? '0,0,0' : '255,255,255';
         const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
         const textColor2 = isDark ? '#CCCCCC' : '#333333';
-        const brandColor = isDark ? '#66A3FF' : '#0052FF';
+        const brandColor = accentColor;
 
-        // 1. Top gradient - reduced to 35% for better photo visibility
-        const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.35);
+        const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.4);
         topGrad.addColorStop(0, `rgba(${gradColor},0.95)`);
         topGrad.addColorStop(0.7, `rgba(${gradColor},0.7)`);
         topGrad.addColorStop(1, `rgba(${gradColor},0)`);
         ctx.fillStyle = topGrad;
-        ctx.fillRect(0, 0, w, h * 0.35);
+        ctx.fillRect(0, 0, w, h * 0.4);
 
-        // Price (Large, Blue)
         ctx.fillStyle = brandColor;
         ctx.font = '900 110px Oswald, Inter, sans-serif';
-        ctx.fillText(formatNumber(property.price) + ' ₽', 80, 140);
+        const priceText = formatNumber(property.price) + ' ₽';
+        ctx.fillText(priceText, 80, 140);
 
-        // Clean Address (Large, Black/White)
+        if (property.price && property.area_total) {
+            const m2Price = Math.round(property.price / property.area_total);
+            ctx.fillStyle = textColor2;
+            ctx.font = '600 40px Oswald, Inter, sans-serif';
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80 + ctx.measureText(priceText).width + 30, 130);
+        }
+
         ctx.fillStyle = textColor1;
         ctx.font = '800 65px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 30) + (address.length > 30 ? '...' : ''), 80, 230);
 
-        // Separator line
         ctx.fillStyle = brandColor;
         ctx.fillRect(80, 280, 120, 8);
 
-        // More information (Features)
         ctx.fillStyle = textColor2;
         ctx.font = '600 38px Oswald, Inter, sans-serif';
         
@@ -509,23 +602,16 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const details = [];
         if (property.rooms !== undefined) details.push(`Формат: ${property.rooms === 0 ? 'Студия' : property.rooms + '-комнатная'}`);
         if (property.area_total) details.push(`Общая площадь: ${property.area_total} м²`);
-        if (property.area_kitchen) details.push(`Площадь кухни: ${property.area_kitchen} м²`);
         if (property.floor) details.push(`Этаж: ${property.floor} из ${property.floors_total || '?'}`);
         if (property.renovation) details.push(`Ремонт: ${translateRenovation(property.renovation)}`);
-        if (property.material) details.push(`Тип дома: ${property.material}`);
-        if (property.year_built) details.push(`Год постройки: ${property.year_built}`);
 
         details.forEach((txt, i) => {
             ctx.fillStyle = brandColor;
-            ctx.beginPath();
-            ctx.arc(95, startY + (i * 55) - 12, 8, 0, Math.PI * 2);
-            ctx.fill();
-
+            ctx.beginPath(); ctx.arc(95, startY + (i * 55) - 12, 8, 0, Math.PI * 2); ctx.fill();
             ctx.fillStyle = textColor1;
             ctx.fillText(txt, 130, startY + (i * 55));
         });
 
-        // 2. Bottom gradient
         const bottomGrad = ctx.createLinearGradient(0, h - 350, 0, h);
         bottomGrad.addColorStop(0, `rgba(${gradColor},0)`);
         bottomGrad.addColorStop(0.4, `rgba(${gradColor},0.85)`);
@@ -533,7 +619,6 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillStyle = bottomGrad;
         ctx.fillRect(0, h - 350, w, 350);
 
-        // Right side CTA and Phone
         ctx.fillStyle = textColor2;
         ctx.font = '500 28px Oswald, Inter, sans-serif';
         ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 80, h - 210);
@@ -549,48 +634,50 @@ function BannerGenerator({ property, currentUser, onClose }) {
             ctx.fillText(currentUser.full_name, 80, h - 110);
         }
 
-        // Bottom advantages text & icons
-        ctx.strokeStyle = brandColor;
-        ctx.lineWidth = 3;
-        ctx.fillStyle = textColor1;
+        if (loadedLogo) {
+            const logoW = 250;
+            const logoH = (loadedLogo.height / loadedLogo.width) * logoW;
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(loadedLogo, w - 80 - logoW, 80, logoW, logoH);
+            ctx.globalAlpha = 1.0;
+        }
 
-        // Shield
-        ctx.beginPath(); ctx.moveTo(90, h - 55); ctx.lineTo(130, h - 55); ctx.lineTo(130, h - 30); ctx.arc(110, h - 30, 20, 0, Math.PI); ctx.stroke();
-        ctx.font = 'bold 16px Oswald, Inter, sans-serif';
-        ctx.fillText('БЕЗОПАСНЫЕ', 150, h - 45);
-        ctx.fillText('СДЕЛКИ', 150, h - 25);
-
-        // House
-        ctx.beginPath(); ctx.moveTo(410, h - 30); ctx.lineTo(410, h - 60); ctx.lineTo(430, h - 80); ctx.lineTo(450, h - 60); ctx.lineTo(450, h - 30); ctx.stroke();
-        ctx.fillText('ШИРОКИЙ ВЫБОР', 470, h - 45);
-        ctx.fillText('ОБЪЕКТОВ', 470, h - 25);
-
-        // Heart
-        ctx.beginPath(); ctx.arc(770, h - 60, 10, Math.PI, 0); ctx.arc(790, h - 60, 10, Math.PI, 0); ctx.lineTo(780, h - 30); ctx.closePath(); ctx.stroke();
-        ctx.fillText('ИНДИВИДУАЛЬНЫЙ', 820, h - 45);
-        ctx.fillText('ПОДХОД', 820, h - 25);
+        if (loadedQR) {
+            const qrSize = 200;
+            ctx.drawImage(loadedQR, w - 80 - qrSize, h - 100 - qrSize, qrSize, qrSize);
+            ctx.fillStyle = textColor2;
+            ctx.font = '500 20px Inter, sans-serif';
+            ctx.fillText('ОБЪЕКТ В БАЗЕ', w - 80 - qrSize + (qrSize/2) - (ctx.measureText('ОБЪЕКТ В БАЗЕ').width/2), h - 100 - qrSize - 15);
+        }
     };
 
-    const renderClassicPostOverlay = (ctx, canvas) => {
+    const renderClassicPostOverlay = (ctx, canvas, loadedLogo, loadedQR) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
         const gradColor = isDark ? '0,0,0' : '255,255,255';
         const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
         const textColor2 = isDark ? '#CCCCCC' : '#333333';
-        const brandColor = isDark ? '#66A3FF' : '#0052FF';
+        const brandColor = accentColor;
 
-        // Top gradient - reduced from 60% to 45%
-        const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.45);
+        const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.5);
         topGrad.addColorStop(0, `rgba(${gradColor},0.95)`);
         topGrad.addColorStop(0.7, `rgba(${gradColor},0.7)`);
         topGrad.addColorStop(1, `rgba(${gradColor},0)`);
         ctx.fillStyle = topGrad;
-        ctx.fillRect(0, 0, w, h * 0.45);
+        ctx.fillRect(0, 0, w, h * 0.5);
 
         ctx.fillStyle = brandColor;
         ctx.font = '900 80px Oswald, Inter, sans-serif';
-        ctx.fillText(formatNumber(property.price) + ' ₽', 60, 100);
+        const priceText = formatNumber(property.price) + ' ₽';
+        ctx.fillText(priceText, 60, 100);
+
+        if (property.price && property.area_total) {
+            const m2Price = Math.round(property.price / property.area_total);
+            ctx.fillStyle = textColor2;
+            ctx.font = '600 30px Oswald, Inter, sans-serif';
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 60 + ctx.measureText(priceText).width + 20, 90);
+        }
 
         ctx.fillStyle = textColor1;
         ctx.font = '800 45px Oswald, Inter, sans-serif';
@@ -617,7 +704,6 @@ function BannerGenerator({ property, currentUser, onClose }) {
             ctx.fillText(txt, 100, startY + (i * 40));
         });
 
-        // Bottom gradient instead of solid wave
         const bottomGrad = ctx.createLinearGradient(0, h - 250, 0, h);
         bottomGrad.addColorStop(0, `rgba(${gradColor},0)`);
         bottomGrad.addColorStop(0.4, `rgba(${gradColor},0.85)`);
@@ -633,10 +719,27 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.font = '900 34px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, 60, h - 55);
+
+        if (loadedLogo) {
+            const logoW = 200;
+            const logoH = (loadedLogo.height / loadedLogo.width) * logoW;
+            ctx.globalAlpha = 0.5;
+            ctx.drawImage(loadedLogo, w - 60 - logoW, 60, logoW, logoH);
+            ctx.globalAlpha = 1.0;
+        }
+
+        if (loadedQR) {
+            const qrSize = 150;
+            ctx.drawImage(loadedQR, w - 60 - qrSize, h - 60 - qrSize, qrSize, qrSize);
+        }
     };
 
-    const handleRegenerate = () => {
-        setImageOffset(prev => prev + 1);
+    const handleLogoUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => setLogo(ev.target.result);
+        reader.readAsDataURL(file);
     };
 
     const download = () => {
@@ -649,129 +752,113 @@ function BannerGenerator({ property, currentUser, onClose }) {
     return (
         <div style={{
             position: 'fixed', inset: 0, zIndex: 9999, 
-            background: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(20px)',
+            background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(25px)',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            padding: 20
+            padding: 20, color: 'white'
         }}>
             <div style={{ position: 'absolute', top: 20, right: 20, display: 'flex', gap: 12 }}>
                 <button className="icon-btn" onClick={onClose} style={{ background: 'white', color: 'black', width: 44, height: 44 }}><X size={24} /></button>
             </div>
 
-            <div style={{ 
-                display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap',
-                background: 'rgba(255,255,255,0.08)', padding: '6px 10px', borderRadius: 14 
-            }}>
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: format === 'story' ? 'white' : 'transparent',
-                        color: format === 'story' ? 'black' : 'white',
-                        fontWeight: 700, fontSize: 12
-                    }}
-                    onClick={() => setFormat('story')}
-                >
-                    Story (9:16)
-                </button>
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: format === 'post' ? 'white' : 'transparent',
-                        color: format === 'post' ? 'black' : 'white',
-                        fontWeight: 700, fontSize: 12
-                    }}
-                    onClick={() => setFormat('post')}
-                >
-                    Post (1:1)
-                </button>
-                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
-                
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: theme === 'light' ? 'white' : 'transparent',
-                        color: theme === 'light' ? 'black' : 'white',
-                        fontWeight: 700, fontSize: 12
-                    }}
-                    onClick={() => setTheme('light')}
-                >
-                    Светлый
-                </button>
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: theme === 'dark' ? '#222' : 'transparent',
-                        color: theme === 'dark' ? 'white' : 'white',
-                        fontWeight: 700, fontSize: 12
-                    }}
-                    onClick={() => setTheme('dark')}
-                >
-                    Темный
-                </button>
-
-                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 4px' }} />
-                
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: design === 'classic' ? 'rgba(0,82,255,0.8)' : 'transparent',
-                        color: 'white',
-                        fontWeight: 700, fontSize: 12
-                    }}
-                    onClick={() => setDesign('classic')}
-                >
-                    Классика
-                </button>
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: design === 'minimal' ? 'rgba(0,82,255,0.8)' : 'transparent',
-                        color: 'white',
-                        fontWeight: 700, fontSize: 12
-                    }}
-                    onClick={() => setDesign('minimal')}
-                >
-                    Паспарту
-                </button>
-
-                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
-                
-                <button 
-                    style={{ 
-                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.15)', color: 'white',
-                        fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6
-                    }}
-                    onClick={handleRegenerate}
-                >
-                    <RefreshCw size={14} /> Фото
-                </button>
-            </div>
-
-            <div style={{ 
-                position: 'relative', 
-                height: 'calc(100vh - 250px)', 
-                aspectRatio: formats[format].width / formats[format].height,
-                boxShadow: '0 30px 60px rgba(0,0,0,0.8)',
-                borderRadius: 20, overflow: 'hidden',
-                background: '#111', border: '1px solid rgba(255,255,255,0.1)'
-            }}>
-                <canvas 
-                    ref={canvasRef} 
-                    style={{ 
-                        width: '100%', height: '100%', objectFit: 'contain'
-                    }} 
-                />
-                {loading && (
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', color: 'white' }}>
-                        Генерация...
+            <div style={{ display: 'flex', gap: 20, width: '100%', maxWidth: 1200, height: '85vh', alignItems: 'flex-start' }}>
+                {/* Left Panel: Controls */}
+                <div style={{ flex: '0 0 350px', background: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 24, overflowY: 'auto', maxHeight: '100%' }}>
+                    <h3 style={{ marginBottom: 20, fontFamily: 'Oswald', letterSpacing: 1 }}>НАСТРОЙКИ БАННЕРА</h3>
+                    
+                    {/* Format & Design */}
+                    <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Формат и Стиль</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <button className={`btn ${format === 'story' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setFormat('story')}>Story (9:16)</button>
+                            <button className={`btn ${format === 'post' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setFormat('post')}>Post (1:1)</button>
+                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('classic')}>Классика</button>
+                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('minimal')}>Паспарту</button>
+                        </div>
                     </div>
-                )}
-            </div>
 
-            <div style={{ marginTop: 32, textAlign: 'center' }}>
-                <button className="btn btn-primary" onClick={download} style={{ padding: '16px 48px', borderRadius: 16, fontSize: 16, fontWeight: 700 }}>
-                    Скачать баннер
-                </button>
+                    {/* Accent Color */}
+                    <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Акцентный цвет</label>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {COLOR_OPTIONS.map(c => (
+                                <button 
+                                    key={c.value}
+                                    onClick={() => setAccentColor(c.value)}
+                                    style={{ 
+                                        width: 40, height: 40, borderRadius: '50%', background: c.value, border: accentColor === c.value ? '3px solid white' : 'none', cursor: 'pointer',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                    title={c.name}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Stickers */}
+                    <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стикеры преимуществ</label>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {STICKER_OPTIONS.map(s => (
+                                <button 
+                                    key={s}
+                                    onClick={() => setStickers(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+                                    style={{ 
+                                        padding: '6px 10px', borderRadius: 8, fontSize: 10, border: 'none', cursor: 'pointer',
+                                        background: stickers.includes(s) ? accentColor : 'rgba(255,255,255,0.1)',
+                                        color: 'white', fontWeight: 600
+                                    }}
+                                >
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Logo & QR */}
+                    <div style={{ marginBottom: 24 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Брендинг</label>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 12 }}>
+                                <span style={{ fontSize: 12 }}>QR-код на объект</span>
+                                <input type="checkbox" checked={showQR} onChange={e => setShowQR(e.target.checked)} style={{ width: 18, height: 18, accentColor }} />
+                            </div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(255,255,255,0.05)', padding: '10px 14px', borderRadius: 12, cursor: 'pointer' }}>
+                                <span style={{ fontSize: 12, flex: 1 }}>{logo ? 'Логотип загружен ✓' : 'Загрузить логотип'}</span>
+                                <input type="file" hidden accept="image/*" onChange={handleLogoUpload} />
+                                <div style={{ width: 24, height: 24, background: 'rgba(255,255,255,0.1)', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>+</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 40 }}>
+                        <button className="btn btn-secondary" style={{ padding: '12px' }} onClick={() => setImageOffset(o => o + 1)}>Другие фото</button>
+                        <button className="btn btn-secondary" style={{ padding: '12px' }} onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>{theme === 'light' ? 'Темная тема' : 'Светлая тема'}</button>
+                    </div>
+                </div>
+
+                {/* Right Panel: Preview */}
+                <div style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ 
+                        position: 'relative', 
+                        height: '100%', 
+                        aspectRatio: formats[format].width / formats[format].height,
+                        boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
+                        borderRadius: 24, overflow: 'hidden',
+                        background: '#111', border: '1px solid rgba(255,255,255,0.1)'
+                    }}>
+                        <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                        {loading && (
+                            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', color: 'white' }}>
+                                <Loader size={30} style={{ animation: 'spin 1s linear infinite' }} />
+                            </div>
+                        )}
+                    </div>
+                    
+                    <button className="btn btn-primary" onClick={download} style={{ marginTop: 32, padding: '18px 60px', borderRadius: 20, fontSize: 18, fontWeight: 900, boxShadow: `0 10px 30px -10px ${accentColor}` }}>
+                        СКАЧАТЬ БАННЕР
+                    </button>
+                </div>
             </div>
         </div>
     );
