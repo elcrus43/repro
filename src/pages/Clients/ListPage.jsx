@@ -96,7 +96,7 @@ export function ListPage() {
                         navigate(`/clients/${client.id}/edit`);
                     };
                     return (
-                        <div key={client.id} className="card" style={{ position: 'relative' }} onClick={() => navigate(`/clients/${client.id}`)}>
+                        <div key={client.id} className="card card-clickable" style={{ position: 'relative' }} onClick={() => navigate(`/clients/${client.id}`)}>
                             <div className="flex items-center gap-12">
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div className="flex items-center gap-8" style={{ marginBottom: 2 }}>

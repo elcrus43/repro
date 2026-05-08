@@ -320,19 +320,29 @@ a:focus:not(:focus-visible) {
 
 /* ===== Cards ===== */
 .card {
-  background: var(--surface);
+  background: #f8fafc;
   border-radius: var(--radius-lg);
   padding: 16px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
   border: 1px solid var(--border-light);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Градиент для активных объектов */
+/* Светло-серый фон для активных объектов */
 .property-card-active {
-  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
-  border-color: rgba(0, 82, 255, 0.1);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border-color: var(--border-light);
   position: relative;
   overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.property-card-active:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-light);
+  z-index: 10;
 }
 
 .property-card-active::before {
@@ -342,22 +352,23 @@ a:focus:not(:focus-visible) {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, #3B82F6, #60A5FA);
-  opacity: 0.6;
+  background: var(--primary);
+  opacity: 0.4;
 }
 
 .card-clickable {
   cursor: pointer;
-  transition: all 0.2s;
 }
 
 .card-clickable:hover {
-  box-shadow: var(--shadow);
-  transform: translateY(-1px);
-  border-color: var(--border);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  border-color: var(--primary-light);
 }
 
 .card-clickable:active {
+  transform: scale(0.98);
+}
   transform: translateY(0);
 }
 

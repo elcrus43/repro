@@ -460,6 +460,13 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, padding + ctaWidth + 10, currentY);
+
+        // Agent Name in Minimal
+        if (currentUser?.full_name) {
+            ctx.fillStyle = textColor1;
+            ctx.font = `700 ${ctaSize}px Oswald, Inter, sans-serif`;
+            ctx.fillText(currentUser.full_name, padding, currentY + (ctaSize * 1.5));
+        }
     };
 
     const renderClassicStoryOverlay = (ctx, canvas) => {
@@ -529,12 +536,18 @@ function BannerGenerator({ property, currentUser, onClose }) {
         // Right side CTA and Phone
         ctx.fillStyle = textColor2;
         ctx.font = '500 28px Oswald, Inter, sans-serif';
-        ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 80, h - 180);
+        ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 80, h - 210);
 
         ctx.fillStyle = brandColor;
-        ctx.font = '900 44px Oswald, Inter, sans-serif';
+        ctx.font = '900 48px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
-        ctx.fillText(phone, 80, h - 125);
+        ctx.fillText(phone, 80, h - 150);
+
+        if (currentUser?.full_name) {
+            ctx.fillStyle = textColor1;
+            ctx.font = '700 32px Oswald, Inter, sans-serif';
+            ctx.fillText(currentUser.full_name, 80, h - 110);
+        }
 
         // Bottom advantages text & icons
         ctx.strokeStyle = brandColor;
@@ -645,15 +658,15 @@ function BannerGenerator({ property, currentUser, onClose }) {
             </div>
 
             <div style={{ 
-                display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap',
-                background: 'rgba(255,255,255,0.1)', padding: 6, borderRadius: 16 
+                display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap',
+                background: 'rgba(255,255,255,0.08)', padding: '6px 10px', borderRadius: 14 
             }}>
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: format === 'story' ? 'white' : 'transparent',
                         color: format === 'story' ? 'black' : 'white',
-                        fontWeight: 700, fontSize: 14
+                        fontWeight: 700, fontSize: 12
                     }}
                     onClick={() => setFormat('story')}
                 >
@@ -661,10 +674,10 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 </button>
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: format === 'post' ? 'white' : 'transparent',
                         color: format === 'post' ? 'black' : 'white',
-                        fontWeight: 700, fontSize: 14
+                        fontWeight: 700, fontSize: 12
                     }}
                     onClick={() => setFormat('post')}
                 >
@@ -674,10 +687,10 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: theme === 'light' ? 'white' : 'transparent',
                         color: theme === 'light' ? 'black' : 'white',
-                        fontWeight: 700, fontSize: 14
+                        fontWeight: 700, fontSize: 12
                     }}
                     onClick={() => setTheme('light')}
                 >
@@ -685,52 +698,52 @@ function BannerGenerator({ property, currentUser, onClose }) {
                 </button>
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: theme === 'dark' ? '#222' : 'transparent',
                         color: theme === 'dark' ? 'white' : 'white',
-                        fontWeight: 700, fontSize: 14
+                        fontWeight: 700, fontSize: 12
                     }}
                     onClick={() => setTheme('dark')}
                 >
                     Темный
                 </button>
 
-                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
+                <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 4px' }} />
                 
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: design === 'classic' ? 'rgba(0,82,255,0.8)' : 'transparent',
                         color: 'white',
-                        fontWeight: 700, fontSize: 14
+                        fontWeight: 700, fontSize: 12
                     }}
                     onClick={() => setDesign('classic')}
                 >
-                    С градиентом
+                    Классика
                 </button>
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
                         background: design === 'minimal' ? 'rgba(0,82,255,0.8)' : 'transparent',
                         color: 'white',
-                        fontWeight: 700, fontSize: 14
+                        fontWeight: 700, fontSize: 12
                     }}
                     onClick={() => setDesign('minimal')}
                 >
-                    Паспарту (Стильный)
+                    Паспарту
                 </button>
 
                 <div style={{ width: 1, background: 'rgba(255,255,255,0.2)', margin: '4px 8px' }} />
                 
                 <button 
                     style={{ 
-                        padding: '12px 24px', borderRadius: 12, border: 'none', cursor: 'pointer',
-                        background: 'rgba(255,255,255,0.2)', color: 'white',
-                        fontWeight: 700, fontSize: 14, display: 'flex', alignItems: 'center', gap: 8
+                        padding: '6px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                        background: 'rgba(255,255,255,0.15)', color: 'white',
+                        fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 6
                     }}
                     onClick={handleRegenerate}
                 >
-                    <RefreshCw size={16} /> Другие фото
+                    <RefreshCw size={14} /> Фото
                 </button>
             </div>
 
@@ -778,6 +791,7 @@ export function DetailsPage() {
 
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
+    const agent = state.profiles.find(p => p.id === prop?.realtor_id);
     const clients = state.clients.filter(c => (prop?.client_ids || [prop?.client_id]).includes(c.id));
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
@@ -863,6 +877,25 @@ export function DetailsPage() {
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontWeight: 600 }}>
                             {prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к`} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт
                         </div>
+
+                        {agent && (
+                            <div style={{ 
+                                display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, 
+                                padding: '4px 8px', background: 'var(--bg-light)', borderRadius: 6,
+                                width: 'fit-content'
+                            }}>
+                                <div style={{ 
+                                    width: 18, height: 18, borderRadius: '50%', background: 'var(--primary)',
+                                    color: 'white', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontWeight: 800
+                                }}>
+                                    {initials(agent.full_name)}
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>
+                                    Агент: <span style={{ color: 'var(--text)' }}>{agent.full_name}</span>
+                                </div>
+                            </div>
+                        )}
                         
                         <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                             <button

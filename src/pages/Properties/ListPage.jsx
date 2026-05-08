@@ -93,7 +93,7 @@ export function ListPage() {
                     return (
                         <div 
                             key={prop.id} 
-                            className="card property-card-active"
+                            className="card property-card-active card-clickable"
                             onClick={() => navigate(`/properties/${prop.id}`)}
                             style={{ display: 'flex', gap: 14, padding: 12, alignItems: 'stretch' }}
                         >
