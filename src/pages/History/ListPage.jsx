@@ -280,7 +280,7 @@ export function ListPage() {
                             const timeStr = new Date(s.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                             
                             return (
-                                <div key={s.id} className="card" style={{ marginBottom: 10, padding: '10px 14px' }} onClick={() => navigate(`/history/${s.id}`)}>
+                                <div key={s.id} className="card card-clickable" style={{ marginBottom: 10, padding: '10px 14px' }} onClick={() => navigate(`/history/new?id=${s.id}`)}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
                                         <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{dateStr} {timeStr}</div>
                                         <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700 }}>
