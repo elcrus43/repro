@@ -383,11 +383,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
             renderMinimalText(ctx, canvas, textSpace);
         } else if (design === 'stripe') {
             // STRIPE: collage photos (main + thumbnails) + accent stripe at bottom
-            renderStripeOverlay(ctx, canvas, loadedImages);
+            renderStripeOverlay(ctx, canvas, loadedImages, drawCover);
         } else if (design === 'split') {
             // SPLIT: left = photo(s) + gradient, right = dark/light panel with accent text
             const splitX = Math.round(canvas.width * 0.55);
-            renderSplitOverlay(ctx, canvas, splitX, loadedImages);
+            renderSplitOverlay(ctx, canvas, splitX, loadedImages, drawCover);
         }
 
         // Draw Stickers
@@ -724,7 +724,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillText(phone, 60, h - 55);
     };
 
-    const renderStripeOverlay = (ctx, canvas, imgs) => {
+    const renderStripeOverlay = (ctx, canvas, imgs, drawCover) => {
         const w = canvas.width;
         const h = canvas.height;
         const pad = format === 'story' ? 16 : 12;
@@ -834,7 +834,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
     };
 
 
-    const renderSplitOverlay = (ctx, canvas, splitX, imgs) => {
+    const renderSplitOverlay = (ctx, canvas, splitX, imgs, drawCover) => {
         const w = canvas.width;
         const h = canvas.height;
         const isDark = theme === 'dark';
