@@ -382,14 +382,12 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
             renderMinimalText(ctx, canvas, textSpace);
         } else if (design === 'stripe') {
-            // STRIPE: full-bleed photo, colored stripe across middle-bottom
-            drawCover(loadedImages[0], 0, 0, canvas.width, canvas.height);
-            renderStripeOverlay(ctx, canvas);
+            // STRIPE: collage photos (main + thumbnails) + accent stripe at bottom
+            renderStripeOverlay(ctx, canvas, loadedImages);
         } else if (design === 'split') {
-            // SPLIT: left half photo, right half solid color with text
+            // SPLIT: left = photo(s) + gradient, right = dark/light panel with accent text
             const splitX = Math.round(canvas.width * 0.55);
-            drawCover(loadedImages[0], 0, 0, splitX, canvas.height);
-            renderSplitOverlay(ctx, canvas, splitX);
+            renderSplitOverlay(ctx, canvas, splitX, loadedImages);
         }
 
         // Draw Stickers
@@ -726,168 +724,249 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillText(phone, 60, h - 55);
     };
 
-    const renderStripeOverlay = (ctx, canvas) => {
+    const renderStripeOverlay = (ctx, canvas, imgs) => {
         const w = canvas.width;
         const h = canvas.height;
+        const pad = format === 'story' ? 16 : 12;
+
+        // ── Photo area layout ──────────────────────────────────────────────
+        // Bottom stripe height
+        const stripeH = format === 'story' ? 520 : 380;
+        const photoH = h - stripeH;
+
+        if (imgs.length >= 3) {
+            // Main photo left, 2 thumbnails stacked right
+            const mainW = Math.round(w * 0.66);
+            const thumbW = w - mainW - pad;
+            const thumbH = Math.round((photoH - pad) / 2);
+            drawCover(imgs[0], 0, 0, mainW - pad / 2, photoH);
+            drawCover(imgs[1], mainW + pad / 2, 0, thumbW, thumbH);
+            drawCover(imgs[2], mainW + pad / 2, thumbH + pad, thumbW, thumbH);
+        } else if (imgs.length === 2) {
+            const halfW = Math.round((w - pad) / 2);
+            drawCover(imgs[0], 0, 0, halfW, photoH);
+            drawCover(imgs[1], halfW + pad, 0, halfW, photoH);
+        } else {
+            drawCover(imgs[0], 0, 0, w, photoH);
+        }
+
+        // ── Accent stripe separator ────────────────────────────────────────
+        const accentBarH = format === 'story' ? 12 : 8;
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(0, photoH, w, accentBarH);
+
+        // ── Bottom text panel ──────────────────────────────────────────────
         const isDark = theme === 'dark';
-        const bg = isDark ? '#111111' : '#FFFFFF';
+        const panelBg = isDark ? '#111111' : '#FFFFFF';
+        ctx.fillStyle = panelBg;
+        ctx.fillRect(0, photoH + accentBarH, w, stripeH - accentBarH);
+
         const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
-        const textColor2 = isDark ? '#BBBBBB' : '#555555';
+        const textColor2 = isDark ? '#888888' : '#666666';
+        const px = format === 'story' ? 70 : 50;
 
-        // Dark gradient over full image
-        const grad = ctx.createLinearGradient(0, h * 0.35, 0, h);
-        grad.addColorStop(0, 'rgba(0,0,0,0)');
-        grad.addColorStop(0.5, 'rgba(0,0,0,0.75)');
-        grad.addColorStop(1, 'rgba(0,0,0,0.97)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, w, h);
-
-        // Colored accent stripe
-        const stripeH = format === 'story' ? 14 : 10;
-        const stripeY = h * 0.52;
-        ctx.fillStyle = accentColor;
-        ctx.fillRect(0, stripeY, w, stripeH);
-
-        // Price — large, above stripe
-        const priceSize = format === 'story' ? 120 : 88;
-        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = '#FFFFFF';
-        const priceText = formatNumber(property.price) + ' ₽';
-        ctx.fillText(priceText, 80, stripeY - 30);
-
-        // m2 price badge
-        if (property.price && property.area_total) {
-            const m2Price = Math.round(property.price / property.area_total);
-            const badgeSize = format === 'story' ? 36 : 26;
-            ctx.font = `600 ${badgeSize}px Oswald, Inter, sans-serif`;
-            ctx.fillStyle = accentColor;
-            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80, stripeY - 30 - priceSize - 10);
-        }
-
-        // Text block below stripe
-        let y = stripeY + stripeH + (format === 'story' ? 70 : 50);
-        const addrSize = format === 'story' ? 58 : 40;
-        ctx.font = `800 ${addrSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = '#FFFFFF';
-        const address = getCleanAddress();
-        ctx.fillText(address.slice(0, 38) + (address.length > 38 ? '...' : ''), 80, y);
-
-        y += format === 'story' ? 60 : 44;
-        const detSize = format === 'story' ? 40 : 28;
-        ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.7)';
-        const parts = [];
-        if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
-        if (property.area_total) parts.push(`${property.area_total} м²`);
-        if (property.floor) parts.push(`${property.floor}/${property.floors_total || '?'} эт.`);
-        ctx.fillText(parts.join('  ·  '), 80, y);
-
-        // Phone
-        y = h - (format === 'story' ? 140 : 100);
-        const phoneSize = format === 'story' ? 52 : 36;
-        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = accentColor;
-        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', 80, y);
-        if (currentUser?.full_name) {
-            ctx.fillStyle = 'rgba(255,255,255,0.6)';
-            ctx.font = `500 ${phoneSize * 0.6}px Oswald, Inter, sans-serif`;
-            ctx.fillText(currentUser.full_name, 80, y + phoneSize * 0.85);
-        }
-    };
-
-    const renderSplitOverlay = (ctx, canvas, splitX) => {
-        const w = canvas.width;
-        const h = canvas.height;
-        const isDark = theme === 'dark';
-
-        // Solid color right panel
-        ctx.fillStyle = accentColor;
-        ctx.fillRect(splitX, 0, w - splitX, h);
-
-        // Thin separator line
-        ctx.fillStyle = isDark ? '#000' : '#fff';
-        ctx.fillRect(splitX - 3, 0, 6, h);
-
-        // All text in the right panel
-        const px = splitX + (format === 'story' ? 60 : 44); // left padding inside right panel
-        const panelW = w - splitX;
-        const textColor = '#FFFFFF';
+        let y = photoH + accentBarH + (format === 'story' ? 100 : 70);
 
         // Price
-        let y = format === 'story' ? 200 : 160;
-        const priceSize = format === 'story' ? 88 : 64;
+        const priceSize = format === 'story' ? 108 : 78;
         ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = textColor;
-        // Wrap price if needed
+        ctx.fillStyle = accentColor;
         const priceText = formatNumber(property.price) + ' ₽';
-        const priceW = ctx.measureText(priceText).width;
-        const availW = panelW - 80;
-        if (priceW > availW) {
-            const scale = availW / priceW;
-            ctx.font = `900 ${priceSize * scale}px Oswald, Inter, sans-serif`;
+        let priceW = ctx.measureText(priceText).width;
+        if (priceW > w - px * 2 - 260) {
+            const s = (w - px * 2 - 260) / priceW;
+            ctx.font = `900 ${priceSize * s}px Oswald, Inter, sans-serif`;
+            priceW = ctx.measureText(priceText).width;
         }
         ctx.fillText(priceText, px, y);
 
-        // m2
+        // m² price inline
         if (property.price && property.area_total) {
             const m2Price = Math.round(property.price / property.area_total);
-            y += format === 'story' ? 56 : 40;
-            ctx.font = `600 ${priceSize * 0.38}px Oswald, Inter, sans-serif`;
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, px, y);
+            const m2Size = format === 'story' ? 34 : 24;
+            ctx.font = `600 ${m2Size}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = textColor2;
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, px + priceW + 20, y - 8);
         }
 
-        // Divider line
-        y += format === 'story' ? 50 : 36;
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.fillRect(px, y, panelW * 0.6, 2);
+        y += format === 'story' ? 22 : 16;
+
+        // Divider
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(px, y, format === 'story' ? 100 : 70, format === 'story' ? 6 : 4);
+        y += format === 'story' ? 56 : 38;
 
         // Address
-        y += format === 'story' ? 60 : 44;
-        const addrSize = format === 'story' ? 46 : 32;
+        const addrSize = format === 'story' ? 52 : 36;
         ctx.font = `700 ${addrSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = textColor;
+        ctx.fillStyle = textColor1;
         const address = getCleanAddress();
-        // word-wrap address
-        const words = address.split(' ');
-        let line = '';
-        words.forEach(word => {
-            const test = line ? line + ' ' + word : word;
-            if (ctx.measureText(test).width > availW - 40 && line) {
-                ctx.fillText(line, px, y);
-                y += addrSize + 8;
-                line = word;
-            } else { line = test; }
-        });
-        if (line) { ctx.fillText(line, px, y); y += addrSize + 8; }
+        ctx.fillText(address.slice(0, 40) + (address.length > 40 ? '...' : ''), px, y);
+        y += format === 'story' ? 56 : 40;
 
-        // Details
-        y += format === 'story' ? 30 : 20;
-        const detSize = format === 'story' ? 36 : 24;
+        // Details row
+        const detSize = format === 'story' ? 36 : 26;
         ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.fillStyle = textColor2;
         const parts = [];
         if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
         if (property.area_total) parts.push(`${property.area_total} м²`);
         if (property.floor) parts.push(`${property.floor}/${property.floors_total || '?'} эт.`);
         if (property.renovation) parts.push(translateRenovation(property.renovation));
-        parts.forEach(p => {
-            ctx.fillText('· ' + p, px, y);
+        ctx.fillText(parts.join('  ·  '), px, y);
+        y += format === 'story' ? 70 : 50;
+
+        // Phone
+        const phoneSize = format === 'story' ? 52 : 36;
+        ctx.font = `500 ${phoneSize * 0.55}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = textColor2;
+        ctx.fillText('СВЯЗАТЬСЯ:', px, y);
+        y += format === 'story' ? 58 : 42;
+        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = accentColor;
+        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, y);
+        if (currentUser?.full_name) {
+            y += format === 'story' ? 48 : 36;
+            ctx.font = `600 ${phoneSize * 0.55}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = textColor2;
+            ctx.fillText(currentUser.full_name, px, y);
+        }
+    };
+
+
+    const renderSplitOverlay = (ctx, canvas, splitX, imgs) => {
+        const w = canvas.width;
+        const h = canvas.height;
+        const isDark = theme === 'dark';
+        const pad = format === 'story' ? 16 : 12;
+
+        // ── Left: photos with gradient overlay ────────────────────────────
+        if (imgs.length >= 3) {
+            const mainH = Math.round(h * 0.62);
+            const thumbH = h - mainH - pad;
+            const thumbW = Math.round((splitX - pad) / 2);
+            drawCover(imgs[0], 0, 0, splitX, mainH);
+            drawCover(imgs[1], 0, mainH + pad, thumbW, thumbH);
+            drawCover(imgs[2], thumbW + pad, mainH + pad, thumbW, thumbH);
+        } else if (imgs.length === 2) {
+            const halfH = Math.round((h - pad) / 2);
+            drawCover(imgs[0], 0, 0, splitX, halfH);
+            drawCover(imgs[1], 0, halfH + pad, splitX, halfH);
+        } else {
+            drawCover(imgs[0], 0, 0, splitX, h);
+        }
+
+        // Gradient over left panel: right-to-left fade to hide hard edge
+        const fadeGrad = ctx.createLinearGradient(splitX * 0.5, 0, splitX, 0);
+        fadeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        fadeGrad.addColorStop(1, isDark ? 'rgba(17,17,17,0.55)' : 'rgba(255,255,255,0.45)');
+        ctx.fillStyle = fadeGrad;
+        ctx.fillRect(0, 0, splitX, h);
+
+        // Bottom-up gradient on left (for any bottom text/overlap)
+        const bottomFade = ctx.createLinearGradient(0, h * 0.7, 0, h);
+        bottomFade.addColorStop(0, 'rgba(0,0,0,0)');
+        bottomFade.addColorStop(1, 'rgba(0,0,0,0.5)');
+        ctx.fillStyle = bottomFade;
+        ctx.fillRect(0, 0, splitX, h);
+
+        // ── Right: panel with accent color ────────────────────────────────
+        // Background: dark or light depending on theme
+        const panelBg = isDark ? '#111111' : '#FFFFFF';
+        ctx.fillStyle = panelBg;
+        ctx.fillRect(splitX, 0, w - splitX, h);
+
+        // Thin accent border on left edge of panel
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(splitX, 0, format === 'story' ? 8 : 6, h);
+
+        // ── Text in right panel ───────────────────────────────────────────
+        const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
+        const textColor2 = isDark ? '#888888' : '#666666';
+        const px = splitX + (format === 'story' ? 56 : 40);
+        const panelW = w - splitX;
+        const availW = panelW - (format === 'story' ? 80 : 60);
+
+        let y = format === 'story' ? 200 : 160;
+
+        // Price
+        const priceSize = format === 'story' ? 90 : 64;
+        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = accentColor;
+        const priceText = formatNumber(property.price) + ' ₽';
+        let priceW = ctx.measureText(priceText).width;
+        if (priceW > availW) {
+            const s = availW / priceW;
+            ctx.font = `900 ${priceSize * s}px Oswald, Inter, sans-serif`;
+            priceW = ctx.measureText(priceText).width;
+        }
+        ctx.fillText(priceText, px, y);
+        y += format === 'story' ? 16 : 12;
+
+        // m² price
+        if (property.price && property.area_total) {
+            const m2Price = Math.round(property.price / property.area_total);
+            const m2Size = format === 'story' ? 32 : 22;
+            ctx.font = `600 ${m2Size}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = textColor2;
+            y += m2Size + (format === 'story' ? 6 : 4);
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, px, y);
+        }
+
+        // Accent underline
+        y += format === 'story' ? 28 : 20;
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(px, y, format === 'story' ? 80 : 60, format === 'story' ? 6 : 4);
+        y += format === 'story' ? 50 : 36;
+
+        // Address with word-wrap
+        const addrSize = format === 'story' ? 44 : 30;
+        ctx.font = `700 ${addrSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = textColor1;
+        const words = getCleanAddress().split(' ');
+        let line = '';
+        words.forEach(word => {
+            const test = line ? line + ' ' + word : word;
+            if (ctx.measureText(test).width > availW && line) {
+                ctx.fillText(line, px, y); y += addrSize + (format === 'story' ? 10 : 6); line = word;
+            } else { line = test; }
+        });
+        if (line) { ctx.fillText(line, px, y); y += addrSize + (format === 'story' ? 10 : 6); }
+
+        // Details — each on own line with accent bullet
+        y += format === 'story' ? 20 : 14;
+        const detSize = format === 'story' ? 34 : 24;
+        ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
+        const detParts = [];
+        if (property.rooms !== undefined) detParts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
+        if (property.area_total) detParts.push(`${property.area_total} м²`);
+        if (property.floor) detParts.push(`${property.floor}/${property.floors_total || '?'} эт.`);
+        if (property.renovation) detParts.push(translateRenovation(property.renovation));
+        detParts.forEach(p => {
+            // Accent dot
+            ctx.fillStyle = accentColor;
+            ctx.beginPath(); ctx.arc(px + 7, y - detSize * 0.28, format === 'story' ? 7 : 5, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = textColor1;
+            ctx.fillText(p, px + (format === 'story' ? 26 : 20), y);
             y += detSize + (format === 'story' ? 14 : 10);
         });
 
-        // Phone at bottom
+        // Phone block at bottom
         const phoneSize = format === 'story' ? 48 : 34;
-        const phoneY = h - (format === 'story' ? 160 : 120);
+        const phoneY = h - (format === 'story' ? 200 : 150);
+        ctx.font = `500 ${phoneSize * 0.5}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = textColor2;
+        ctx.fillText('СВЯЗАТЬСЯ:', px, phoneY - (format === 'story' ? 16 : 10));
         ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, phoneY);
+        ctx.fillStyle = accentColor;
+        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, phoneY + phoneSize * 0.85);
         if (currentUser?.full_name) {
-            ctx.fillStyle = 'rgba(255,255,255,0.7)';
-            ctx.font = `500 ${phoneSize * 0.55}px Oswald, Inter, sans-serif`;
-            ctx.fillText(currentUser.full_name, px, phoneY + phoneSize * 0.85);
+            ctx.font = `600 ${phoneSize * 0.52}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = textColor2;
+            ctx.fillText(currentUser.full_name, px, phoneY + phoneSize * 1.6);
         }
     };
+
 
     const download = () => {
         const link = document.createElement('a');
