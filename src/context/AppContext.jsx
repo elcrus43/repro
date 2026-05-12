@@ -44,7 +44,9 @@ export function AppProvider({ children }) {
   /* ── Auth & Data Loading ────────────────────────────────────────────── */
 
   useEffect(() => {
-    let isInitial = true;
+    // Track whether getSession() already loaded data so the auth listener
+    // knows whether it needs to step in (important for mobile cold-starts).
+    let sessionLoadedData = false;
 
     async function loadProfileAndData(sessionUser) {
       const { data: profile, error: profileErr } = await supabase
@@ -129,13 +131,11 @@ export function AppProvider({ children }) {
         }
         dispatch({ type: 'SET_ALL', data });
         
-        // Show success toast with counts
+        // Show counts in toast
         const propCount = data.properties?.length || 0;
         const clientCount = data.clients?.length || 0;
         if (propCount > 0 || clientCount > 0) {
-          toast.success(`Вход выполнен: ${sessionUser.email}. Загружено объектов: ${propCount}, клиентов: ${clientCount}`);
-        } else {
-          toast.warn(`Вход выполнен, но данных в вашем аккаунте пока нет.`);
+          toast.success(`Загружено объектов: ${propCount}, клиентов: ${clientCount}`);
         }
       } catch (e) {
         console.error('[Data load error]', e);
@@ -159,23 +159,37 @@ export function AppProvider({ children }) {
       if (sessionErr) console.error('[Session error]', sessionErr);
 
       if (session?.user) {
+        // getSession() returned a valid session — load data immediately
+        sessionLoadedData = true;
         await loadProfileAndData(session.user);
       } else {
-        dispatch({ type: 'SET_LOADING', value: false });
+        // No session from getSession(). On mobile browsers (iOS Safari, Android
+        // WebView) localStorage may not be readable synchronously on cold start.
+        // Wait up to 2s for onAuthStateChange to fire SIGNED_IN before giving up.
+        console.info('[Auth] getSession() returned null — waiting for onAuthStateChange (2s)...');
+        setTimeout(() => {
+          if (!sessionLoadedData) {
+            // Genuinely no session — show login screen
+            dispatch({ type: 'SET_LOADING', value: false });
+          }
+        }, 2000);
       }
-
-      isInitial = false;
     }
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.info('[AuthStateChange]', event, session?.user?.email ?? 'no user');
       if (event === 'SIGNED_OUT') {
+        sessionLoadedData = false;
         dispatch({ type: 'LOGOUT' });
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        if (!isInitial) {
+        if (!sessionLoadedData) {
+          // Mobile cold-start: getSession() returned null but session is now available
+          sessionLoadedData = true;
           await loadProfileAndData(session.user);
         }
+        // If sessionLoadedData is true, init() already handled it — skip.
       }
     });
 
