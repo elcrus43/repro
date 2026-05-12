@@ -33,6 +33,7 @@ const CallFormPage = lazy(() => import('./pages/Tasks/CallFormPage').then(m => (
 const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
 const EstimationPage = lazy(() => import('./pages/Properties/EstimationPage'));
 const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
+const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 
 /* ─── BottomNav ────────────────────────────────────────────────────────────── */
@@ -206,6 +207,7 @@ function AppRoutes() {
           {/* Messaging */}
           <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
           <Route path="/p/:slug" element={<PublicPropertyPage />} />
+          <Route path="/debug" element={<DebugPage />} />
 
           {/* Profile — доступно всем, но админские функции защищены внутри компонента */}
           <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
