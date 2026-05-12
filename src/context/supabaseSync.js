@@ -493,6 +493,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           seller_ids: action.deal.seller_ids || [],
           buyer_ids: action.deal.buyer_ids || [],
           notes: action.deal.notes || null,
+          mortgage_bank: action.deal.mortgage_bank || null,
+          mortgage_amount: action.deal.mortgage_amount || 0,
+          mortgage_expiry: action.deal.mortgage_expiry || null,
         };
         // Remove undefined
         Object.keys(dealData).forEach(key => {
@@ -518,6 +521,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           seller_ids: dData.seller_ids || [],
           buyer_ids: dData.buyer_ids || [],
           notes: dData.notes || null,
+          mortgage_bank: dData.mortgage_bank || null,
+          mortgage_amount: dData.mortgage_amount || 0,
+          mortgage_expiry: dData.mortgage_expiry || null,
         };
         Object.keys(updateData).forEach(key => {
           if (updateData[key] === undefined) delete updateData[key];
@@ -653,7 +659,7 @@ function _stripNewPropertyFields(data, error) {
 
 const NEW_REQUEST_FIELDS = ['client_ids', 'mortgage'];
 const NEW_SHOWING_FIELDS = ['client_ids', 'event_type'];
-const NEW_DEAL_FIELDS    = ['mortgage', 'expenses'];
+const NEW_DEAL_FIELDS    = ['mortgage', 'expenses', 'mortgage_bank', 'mortgage_amount', 'mortgage_expiry'];
 
 function _isNewRequestColumnError(error) {
     if (!error) return false;

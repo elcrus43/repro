@@ -37,6 +37,9 @@ export function DealsPage() {
         commission: prefillData.commission || '',
         notes: prefillData.notes || '',
         mortgage: prefillData.mortgage || false,
+        mortgage_bank: prefillData.mortgage_bank || '',
+        mortgage_amount: prefillData.mortgage_amount || '',
+        mortgage_expiry: prefillData.mortgage_expiry || '',
         expenses: prefillData.expenses || [],
     });
 
@@ -162,6 +165,9 @@ export function DealsPage() {
             deposit_date: newDeal.deposit_date || null,
             status: newDeal.status || 'active',
             mortgage: newDeal.mortgage || false,
+            mortgage_bank: newDeal.mortgage_bank || '',
+            mortgage_amount: Number(parsePriceInput(String(newDeal.mortgage_amount))) || 0,
+            mortgage_expiry: newDeal.mortgage_expiry || null,
             expenses: newDeal.expenses || [],
         };
 
@@ -195,6 +201,9 @@ export function DealsPage() {
             commission: '',
             notes: '',
             mortgage: false,
+            mortgage_bank: '',
+            mortgage_amount: '',
+            mortgage_expiry: '',
             expenses: [],
         });
         prevPropertyId.current = '';
@@ -222,6 +231,7 @@ export function DealsPage() {
             commission: deal.commission ? deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deal_date: deal.deal_date ? deal.deal_date.slice(0, 16) : '',
             deposit_date: deal.deposit_date ? deal.deposit_date.slice(0, 16) : '',
+            mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
         });
         prevPropertyId.current = deal.property_id;
         setShowForm(true);
@@ -244,7 +254,15 @@ export function DealsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ fontWeight: 700, fontSize: 16 }}>{deal.title}</div>
-                        {deal.mortgage && <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontSize: 10 }}>🏠 Ипотека</span>}
+                        {deal.mortgage && (
+                            <span 
+                                className="badge" 
+                                style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontSize: 10, cursor: 'help' }}
+                                title={`${deal.mortgage_bank || 'Банк не указан'}${deal.mortgage_amount ? ` · ${deal.mortgage_amount.toLocaleString()} ₽` : ''}${deal.mortgage_expiry ? ` · до ${new Date(deal.mortgage_expiry).toLocaleDateString()}` : ''}`}
+                            >
+                                🏠 Ипотека
+                            </span>
+                        )}
                     </div>
                     <span className="badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                 </div>
@@ -285,19 +303,49 @@ export function DealsPage() {
                     )}
                 </div>
 
+                {deal.mortgage && (deal.mortgage_bank || deal.mortgage_amount || deal.mortgage_expiry) && (
+                    <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
+                        {deal.mortgage_bank && <span>🏦 <strong>{deal.mortgage_bank}</strong></span>}
+                        {deal.mortgage_amount > 0 && <span>💵 Одобрено: <strong>{deal.mortgage_amount.toLocaleString()} ₽</strong></span>}
+                        {deal.mortgage_expiry && <span>📅 До: <strong>{new Date(deal.mortgage_expiry).toLocaleDateString()}</strong></span>}
+                    </div>
+                )}
+
                 {deal.expenses && deal.expenses.length > 0 && (
-                    <div style={{ marginBottom: 10, fontSize: 12, background: 'var(--bg)', padding: '8px 10px', borderRadius: 8 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>Расходы по сделке</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            {deal.expenses.map((exp, idx) => (
-                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>{exp.name} <small style={{ color: 'var(--text-muted)' }}>({exp.party === 'seller' ? 'прод.' : 'пок.'})</small></span>
-                                    <span style={{ fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                    <div style={{ marginBottom: 10, fontSize: 12, background: 'var(--bg)', padding: '10px', borderRadius: 10 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Расходы сторон</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                            {/* Продавец */}
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>ПРОДАВЕЦ</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    {deal.expenses.filter(e => e.party === 'seller').map((exp, idx) => (
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.85 }}>
+                                            <span style={{ fontSize: 11 }}>{exp.name}</span>
+                                            <span style={{ fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                                        </div>
+                                    ))}
+                                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--primary)' }}>
+                                        <span>Итого:</span>
+                                        <span>{deal.expenses.filter(e => e.party === 'seller').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()} ₽</span>
+                                    </div>
                                 </div>
-                            ))}
-                            <div style={{ borderTop: '1px dashed var(--border)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
-                                <span>Итого:</span>
-                                <span>{deal.expenses.reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()} ₽</span>
+                            </div>
+                            {/* Покупатель */}
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>ПОКУПАТЕЛЬ</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                    {deal.expenses.filter(e => e.party === 'buyer').map((exp, idx) => (
+                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.85 }}>
+                                            <span style={{ fontSize: 11 }}>{exp.name}</span>
+                                            <span style={{ fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                                        </div>
+                                    ))}
+                                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--success)' }}>
+                                        <span>Итого:</span>
+                                        <span>{deal.expenses.filter(e => e.party === 'buyer').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()} ₽</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -435,6 +483,34 @@ export function DealsPage() {
                             <label className="form-label mb-0" style={{ cursor: 'pointer', margin: 0 }}>Ипотечная сделка</label>
                             <input type="checkbox" checked={newDeal.mortgage} onChange={e => handleFieldChange('mortgage', e.target.checked)} style={{ width: 20, height: 20 }} />
                         </div>
+
+                        {newDeal.mortgage && (
+                            <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--primary-light)', padding: 12, borderRadius: 12 }}>
+                                <input 
+                                    className="form-input" 
+                                    placeholder="Банк" 
+                                    value={newDeal.mortgage_bank} 
+                                    onChange={e => handleFieldChange('mortgage_bank', e.target.value)} 
+                                />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <input 
+                                        className="form-input" 
+                                        placeholder="Сумма одобрена" 
+                                        value={newDeal.mortgage_amount} 
+                                        onChange={e => handleFieldChange('mortgage_amount', formatPriceInput(e.target.value))} 
+                                    />
+                                    <div>
+                                        <label style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600, display: 'block', marginBottom: 2 }}>До какого числа</label>
+                                        <input 
+                                            className="form-input" 
+                                            type="date" 
+                                            value={newDeal.mortgage_expiry} 
+                                            onChange={e => handleFieldChange('mortgage_expiry', e.target.value)} 
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, display: 'block' }}>Расходы по сделке</label>
