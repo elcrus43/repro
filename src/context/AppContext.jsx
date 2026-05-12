@@ -122,25 +122,24 @@ export function AppProvider({ children }) {
 
       dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
 
-      try {
-        const data = await loadUserData(sessionUser.id, profile.role);
-        if (data.error) {
-          toast.warn(`Данные загружены частично: ${data.error}`);
-        }
-        dispatch({ type: 'SET_ALL', data });
+      // loadUserData использует safeQuery внутри — сетевые ошибки изолированы
+      const data = await loadUserData(sessionUser.id, profile.role);
 
-        const propCount = data.properties?.length || 0;
-        const clientCount = data.clients?.length || 0;
-        if (propCount > 0 || clientCount > 0) {
-          toast.success(`Загружено: ${propCount} объект(ов), ${clientCount} клиент(ов)`);
-        } else {
-          toast.warn('Данные не найдены. Если это ошибка — обновите страницу.');
-        }
-      } catch (e) {
-        console.error('[Data load error]', e);
-        toast.error('Ошибка загрузки данных. Попробуйте обновить страницу.');
-        dispatch({ type: 'SET_LOADING', value: false });
+      if (data.error) {
+        toast.warn(`Часть данных не загрузилась: ${data.error}`);
       }
+
+      // Всегда диспатчим — даже если часть запросов упала, покажем что загрузилось
+      dispatch({ type: 'SET_ALL', data });
+
+      const propCount = data.properties?.length || 0;
+      const clientCount = data.clients?.length || 0;
+      if (propCount > 0 || clientCount > 0) {
+        toast.success(`Загружено: ${propCount} объект(ов), ${clientCount} клиент(ов)`);
+      } else if (!data.error) {
+        toast.warn('Данных пока нет. Создайте первый объект или клиента.');
+      }
+
     }
 
     async function init() {

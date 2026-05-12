@@ -76,48 +76,64 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 export async function loadUserData(userId, role) {
   const isAdmin = role === 'admin';
 
+  // Изолирует сетевые ошибки: сбой одного запроса не убивает остальные
+  async function safeQuery(fn) {
+    try {
+      const res = await fn();
+      return res;
+    } catch (e) {
+      console.error('[safeQuery] Network error:', e?.message || e);
+      return { data: null, error: { message: e?.message || 'Network error', code: 'NETWORK' } };
+    }
+  }
+
   const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes, dealsRes] =
     await Promise.all([
-      supabase.from('clients').select('*').eq('realtor_id', userId),
-      supabase.from('properties').select('*').eq('realtor_id', userId),
-      supabase.from('requests').select('*').eq('realtor_id', userId),
-      supabase.from('matches').select('*').eq('realtor_id', userId),
-      supabase.from('showings').select('*').eq('realtor_id', userId),
+      safeQuery(() => supabase.from('clients').select('*').eq('realtor_id', userId)),
+      safeQuery(() => supabase.from('properties').select('*').eq('realtor_id', userId)),
+      safeQuery(() => supabase.from('requests').select('*').eq('realtor_id', userId)),
+      safeQuery(() => supabase.from('matches').select('*').eq('realtor_id', userId)),
+      safeQuery(() => supabase.from('showings').select('*').eq('realtor_id', userId)),
       isAdmin
-        ? supabase.from('tasks').select('*')
-        : supabase.from('tasks').select('*').eq('realtor_id', userId),
-      supabase.from('pricelist').select('*'),
+        ? safeQuery(() => supabase.from('tasks').select('*'))
+        : safeQuery(() => supabase.from('tasks').select('*').eq('realtor_id', userId)),
+      safeQuery(() => supabase.from('pricelist').select('*')),
       isAdmin
-        ? supabase.from('deals').select('*')
-        : supabase.from('deals').select('*').eq('realtor_id', userId),
+        ? safeQuery(() => supabase.from('deals').select('*'))
+        : safeQuery(() => supabase.from('deals').select('*').eq('realtor_id', userId)),
     ]);
 
-  const { data: profiles } = await supabase.from('profiles').select('*');
+  const { data: profiles } = await safeQuery(() => supabase.from('profiles').select('*')) ?? {};
 
   const pendingUsers = isAdmin
     ? profiles?.filter(p => ['pending', 'rejected'].includes(p.status)) ?? []
     : [];
 
   const errors = [
-    clientsRes.error, propertiesRes.error, requestsRes.error, 
-    matchesRes.error, showingsRes.error, tasksRes.error, 
+    clientsRes.error, propertiesRes.error, requestsRes.error,
+    matchesRes.error, showingsRes.error, tasksRes.error,
     priceRes?.error, dealsRes?.error
   ].filter(Boolean).map(e => e.message);
 
+  if (errors.length > 0) {
+    console.warn('[loadUserData] Partial errors:', errors);
+  }
+
   return {
-    clients: clientsRes.data ?? [],
-    properties: propertiesRes.data ?? [],
-    requests: requestsRes.data ?? [],
-    matches: matchesRes.data ?? [],
-    showings: showingsRes.data ?? [],
-    tasks: tasksRes.data ?? [],
-    profiles: profiles ?? [],
+    clients:     clientsRes.data ?? [],
+    properties:  propertiesRes.data ?? [],
+    requests:    requestsRes.data ?? [],
+    matches:     matchesRes.data ?? [],
+    showings:    showingsRes.data ?? [],
+    tasks:       tasksRes.data ?? [],
+    profiles:    profiles ?? [],
     pendingUsers,
-    pricelist: priceRes?.data ?? [],
-    deals: dealsRes?.data ?? [],
+    pricelist:   priceRes?.data ?? [],
+    deals:       dealsRes?.data ?? [],
     error: errors.length > 0 ? errors.join('; ') : null,
   };
 }
+
 
 /* ─── Sync ─────────────────────────────────────────────────────────────────── */
 
