@@ -78,11 +78,11 @@ export async function loadUserData(userId, role) {
 
   const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes, dealsRes] =
     await Promise.all([
-      supabase.from('clients').select('*'),
-      supabase.from('properties').select('*'),
-      supabase.from('requests').select('*'),
-      supabase.from('matches').select('*'),
-      supabase.from('showings').select('*'),
+      supabase.from('clients').select('*').eq('realtor_id', userId),
+      supabase.from('properties').select('*').eq('realtor_id', userId),
+      supabase.from('requests').select('*').eq('realtor_id', userId),
+      supabase.from('matches').select('*').eq('realtor_id', userId),
+      supabase.from('showings').select('*').eq('realtor_id', userId),
       isAdmin
         ? supabase.from('tasks').select('*')
         : supabase.from('tasks').select('*').eq('realtor_id', userId),
