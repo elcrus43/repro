@@ -36,6 +36,8 @@ export function DealsPage() {
         deposit_amount: prefillData.deposit_amount || '',
         commission: prefillData.commission || '',
         notes: prefillData.notes || '',
+        mortgage: prefillData.mortgage || false,
+        expenses: prefillData.expenses || [],
     });
 
     const prevPropertyId = useRef(newDeal.property_id);
@@ -159,6 +161,8 @@ export function DealsPage() {
             deal_date: newDeal.deal_date || null,
             deposit_date: newDeal.deposit_date || null,
             status: newDeal.status || 'active',
+            mortgage: newDeal.mortgage || false,
+            expenses: newDeal.expenses || [],
         };
 
         try {
@@ -190,6 +194,8 @@ export function DealsPage() {
             deposit_amount: '',
             commission: '',
             notes: '',
+            mortgage: false,
+            expenses: [],
         });
         prevPropertyId.current = '';
     }
@@ -236,7 +242,10 @@ export function DealsPage() {
         return (
             <div className="card" style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ fontWeight: 700, fontSize: 16 }}>{deal.title}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div style={{ fontWeight: 700, fontSize: 16 }}>{deal.title}</div>
+                        {deal.mortgage && <span className="badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontSize: 10 }}>🏠 Ипотека</span>}
+                    </div>
                     <span className="badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                 </div>
                 
@@ -268,13 +277,31 @@ export function DealsPage() {
                             Сделка: {new Date(deal.deal_date).toLocaleDateString('ru-RU')}
                         </div>
                     )}
-                    {deal.deposit_date && (
+                    {(deal.deposit_date || deal.deposit_amount) && (
                         <div style={{ color: 'var(--text-secondary)' }}>
-                            💰 Задаток: {new Date(deal.deposit_date).toLocaleDateString('ru-RU')}
+                            💰 Задаток: {deal.deposit_date ? new Date(deal.deposit_date).toLocaleDateString('ru-RU') : '—'}
                             {deal.deposit_amount ? ` · ${Number(deal.deposit_amount).toLocaleString()} ₽` : ''}
                         </div>
                     )}
                 </div>
+
+                {deal.expenses && deal.expenses.length > 0 && (
+                    <div style={{ marginBottom: 10, fontSize: 12, background: 'var(--bg)', padding: '8px 10px', borderRadius: 8 }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase' }}>Расходы по сделке</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {deal.expenses.map((exp, idx) => (
+                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>{exp.name} <small style={{ color: 'var(--text-muted)' }}>({exp.party === 'seller' ? 'прод.' : 'пок.'})</small></span>
+                                    <span style={{ fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                                </div>
+                            ))}
+                            <div style={{ borderTop: '1px dashed var(--border)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                                <span>Итого:</span>
+                                <span>{deal.expenses.reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()} ₽</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {deal.notes && (
                     <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, marginBottom: 10 }}>
@@ -403,6 +430,87 @@ export function DealsPage() {
                         <input className="form-input" placeholder="Сумма задатка" value={newDeal.deposit_amount} onChange={e => handleFieldChange('deposit_amount', formatPriceInput(e.target.value))} />
 
                         <textarea className="form-textarea" rows={2} placeholder="Заметки..." value={newDeal.notes} onChange={e => handleFieldChange('notes', e.target.value)} />
+
+                        <div className="form-group flex justify-between items-center" style={{ background: 'var(--bg)', padding: '10px 12px', borderRadius: 10 }}>
+                            <label className="form-label mb-0" style={{ cursor: 'pointer', margin: 0 }}>Ипотечная сделка</label>
+                            <input type="checkbox" checked={newDeal.mortgage} onChange={e => handleFieldChange('mortgage', e.target.checked)} style={{ width: 20, height: 20 }} />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, display: 'block' }}>Расходы по сделке</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {newDeal.expenses?.map((exp, idx) => (
+                                    <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'var(--bg)', padding: 6, borderRadius: 8 }}>
+                                        <div style={{ flex: 1, fontSize: 13 }}>{exp.name}</div>
+                                        <div style={{ width: 80, fontSize: 13, fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</div>
+                                        <select 
+                                            value={exp.party} 
+                                            onChange={e => {
+                                                const next = [...newDeal.expenses];
+                                                next[idx] = { ...next[idx], party: e.target.value };
+                                                handleFieldChange('expenses', next);
+                                            }}
+                                            style={{ padding: '2px 4px', fontSize: 11, borderRadius: 4, border: '1px solid var(--border)' }}
+                                        >
+                                            <option value="seller">Прод.</option>
+                                            <option value="buyer">Пок.</option>
+                                        </select>
+                                        <button type="button" className="icon-btn" onClick={() => {
+                                            const next = newDeal.expenses.filter((_, i) => i !== idx);
+                                            handleFieldChange('expenses', next);
+                                        }}>
+                                            <XCircle size={14} color="var(--danger)" />
+                                        </button>
+                                    </div>
+                                ))}
+                                
+                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                                    <select 
+                                        className="form-input" 
+                                        style={{ flex: 1, fontSize: 13 }}
+                                        onChange={e => {
+                                            if (!e.target.value) return;
+                                            const item = state.pricelist.find(i => i.id === e.target.value);
+                                            if (item) {
+                                                const next = [...(newDeal.expenses || []), { 
+                                                    id: nanoid(), 
+                                                    name: item.name, 
+                                                    amount: item.price, 
+                                                    party: 'buyer' 
+                                                }];
+                                                handleFieldChange('expenses', next);
+                                            }
+                                            e.target.value = '';
+                                        }}
+                                    >
+                                        <option value="">+ Из прейскуранта</option>
+                                        {state.pricelist.map(item => (
+                                            <option key={item.id} value={item.id}>{item.name} ({item.price.toLocaleString()} ₽)</option>
+                                        ))}
+                                    </select>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-secondary" 
+                                        style={{ padding: '0 12px', fontSize: 12 }}
+                                        onClick={() => {
+                                            const name = prompt('Название расхода:');
+                                            const amount = prompt('Сумма:');
+                                            if (name && amount) {
+                                                const next = [...(newDeal.expenses || []), { 
+                                                    id: nanoid(), 
+                                                    name, 
+                                                    amount: Number(amount.replace(/\D/g, '')), 
+                                                    party: 'buyer' 
+                                                }];
+                                                handleFieldChange('expenses', next);
+                                            }
+                                        }}
+                                    >
+                                        + Вручную
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
                         <div style={{ display: 'flex', gap: 8 }}>
                             <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); resetForm(); }}>Отмена</button>

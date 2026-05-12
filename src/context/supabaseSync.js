@@ -499,6 +499,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (dealData[key] === undefined) delete dealData[key];
         });
         result = await withRetry(() => supabase.from('deals').insert(dealData));
+        
+        if (result?.error && _isNewDealColumnError(result.error)) {
+          console.warn('[Supabase] New deal columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewDealFields(dealData, result.error);
+          result = await withRetry(() => supabase.from('deals').insert(stripped));
+        }
         break;
       }
 
@@ -517,6 +523,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (updateData[key] === undefined) delete updateData[key];
         });
         result = await withRetry(() => supabase.from('deals').update(updateData).eq('id', dId));
+
+        if (result?.error && _isNewDealColumnError(result.error)) {
+          console.warn('[Supabase] New deal columns missing. Retrying without specific missing fields.');
+          const stripped = _stripNewDealFields(updateData, result.error);
+          result = await withRetry(() => supabase.from('deals').update(stripped).eq('id', dId));
+        }
         break;
       }
 
@@ -602,7 +614,9 @@ function _isPassportColumnError(error) {
 const NEW_PROPERTY_FIELDS = [
   'seeking_alternative', 'elevator_type',
   'renovation', 'bathroom', 'balcony', 'parking', 'furniture',
-  'mortgage_available', 'matcapital_available', 'certificate_available',
+  'mortgage',
+  'mortgage_available',
+  'matcapital_available', 'certificate_available',
   'encumbrance', 'minor_owners', 'docs_ready',
   'apartments_count', 'has_elevator', 'has_garbage_chute',
   'ceiling_height', 'house_series', 'developer',
@@ -637,37 +651,54 @@ function _stripNewPropertyFields(data, error) {
   return stripped;
 }
 
-const NEW_REQUEST_FIELDS = ['client_ids'];
+const NEW_REQUEST_FIELDS = ['client_ids', 'mortgage'];
 const NEW_SHOWING_FIELDS = ['client_ids', 'event_type'];
+const NEW_DEAL_FIELDS    = ['mortgage', 'expenses'];
 
 function _isNewRequestColumnError(error) {
-  if (!error) return false;
-  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
-  return NEW_REQUEST_FIELDS.some(f => error.message?.includes(f));
+    if (!error) return false;
+    if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+    return NEW_REQUEST_FIELDS.some(f => error.message?.includes(f));
 }
 
 function _isNewShowingColumnError(error) {
-  if (!error) return false;
-  if (error.code !== '42703' && error.code !== 'PGRST204') return false;
-  return NEW_SHOWING_FIELDS.some(f => error.message?.includes(f));
+    if (!error) return false;
+    if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+    return NEW_SHOWING_FIELDS.some(f => error.message?.includes(f));
+}
+
+function _isNewDealColumnError(error) {
+    if (!error) return false;
+    if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+    return NEW_DEAL_FIELDS.some(f => error.message?.includes(f));
 }
 
 function _stripNewRequestFields(data, error) {
-  const stripped = { ...data };
-  if (error && error.message) {
-    NEW_REQUEST_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
-  } else {
-    NEW_REQUEST_FIELDS.forEach(f => delete stripped[f]);
-  }
-  return stripped;
+    const stripped = { ...data };
+    if (error && error.message) {
+        NEW_REQUEST_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
+    } else {
+        NEW_REQUEST_FIELDS.forEach(f => delete stripped[f]);
+    }
+    return stripped;
 }
 
 function _stripNewShowingFields(data, error) {
-  const stripped = { ...data };
-  if (error && error.message) {
-    NEW_SHOWING_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
-  } else {
-    NEW_SHOWING_FIELDS.forEach(f => delete stripped[f]);
-  }
-  return stripped;
+    const stripped = { ...data };
+    if (error && error.message) {
+        NEW_SHOWING_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
+    } else {
+        NEW_SHOWING_FIELDS.forEach(f => delete stripped[f]);
+    }
+    return stripped;
+}
+
+function _stripNewDealFields(data, error) {
+    const stripped = { ...data };
+    if (error && error.message) {
+        NEW_DEAL_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
+    } else {
+        NEW_DEAL_FIELDS.forEach(f => delete stripped[f]);
+    }
+    return stripped;
 }

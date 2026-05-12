@@ -137,6 +137,7 @@ export function FormPage() {
         parking: 'none',
         furniture: false,
         mortgage_available: true,
+        mortgage: true,
         matcapital_available: false,
         certificate_available: false,
         encumbrance: false,
@@ -569,7 +570,7 @@ export function FormPage() {
                 {/* Условия сделки */}
                 <FormCard title="Условия сделки" icon={<Briefcase size={22} />}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        <ToggleChip label="Ипотека" value={form.mortgage_available} onChange={v => setF('mortgage_available', v)} />
+                        <ToggleChip label="Ипотека" value={form.mortgage} onChange={v => { setF('mortgage', v); setF('mortgage_available', v); }} />
                         <ToggleChip label="Маткапитал" value={form.matcapital_available} onChange={v => setF('matcapital_available', v)} />
                         <ToggleChip label="Сертификат" value={form.certificate_available} onChange={v => setF('certificate_available', v)} />
                         <ToggleChip label="Обременение" value={form.encumbrance} onChange={v => setF('encumbrance', v)} />

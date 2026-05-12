@@ -1456,7 +1456,7 @@ export function DetailsPage() {
                                 <CheckCircle2 size={12} /> Условия сделки
                             </div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                {prop.mortgage_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Ипотека</span>}
+                                { (prop.mortgage_available || prop.mortgage) && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Ипотека</span>}
                                 {prop.matcapital_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Маткапитал</span>}
                                 {prop.certificate_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Сертификат</span>}
                                 {prop.seeking_alternative && <span className="badge badge-warning" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><Sparkles size={12}/> Альтернатива</span>}
