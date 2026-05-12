@@ -295,7 +295,7 @@ export function DealsPage() {
                             Сделка: {new Date(deal.deal_date).toLocaleDateString('ru-RU')}
                         </div>
                     )}
-                    {(deal.deposit_date || deal.deposit_amount) && (
+                    {!!(deal.deposit_date || deal.deposit_amount) && (
                         <div style={{ color: 'var(--text-secondary)' }}>
                             💰 Задаток: {deal.deposit_date ? new Date(deal.deposit_date).toLocaleDateString('ru-RU') : '—'}
                             {deal.deposit_amount ? ` · ${Number(deal.deposit_amount).toLocaleString()} ₽` : ''}
@@ -303,7 +303,7 @@ export function DealsPage() {
                     )}
                 </div>
 
-                {deal.mortgage && (deal.mortgage_bank || deal.mortgage_amount || deal.mortgage_expiry) && (
+                {!!(deal.mortgage && (deal.mortgage_bank || deal.mortgage_amount || deal.mortgage_expiry)) && (
                     <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
                         {deal.mortgage_bank && <span>🏦 <strong>{deal.mortgage_bank}</strong></span>}
                         {deal.mortgage_amount > 0 && <span>💵 Одобрено: <strong>{deal.mortgage_amount.toLocaleString()} ₽</strong></span>}
