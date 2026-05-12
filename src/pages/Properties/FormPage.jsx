@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
-import { parseHouseFromAddress, describeParsedFields } from '../../utils/houseParser';
+import { parseHouseFromAddress, describeParsedFields, getMingkhSearchUrl } from '../../utils/houseParser';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
@@ -402,23 +402,45 @@ export function FormPage() {
                         <textarea className="form-textarea" rows={2} value={form.address} onChange={e => setF('address', e.target.value)} placeholder="ул. Ленина, д. 1, кв. 10" style={{ borderRadius: 14, resize: 'none' }} />
                     </div>
 
-                    <button
-                        type="button"
-                        onClick={handleParseHouse}
-                        disabled={parsing || (!form.address && !form.city)}
-                        style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                            width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
-                            border: '2px dashed var(--primary)',
-                            background: 'var(--primary-light)', color: 'var(--primary)',
-                            cursor: parsing ? 'wait' : 'pointer',
-                            fontFamily: 'inherit', fontWeight: 800,
-                            transition: 'all 0.2s',
-                            opacity: (!form.address && !form.city) ? 0.5 : 1
-                        }}
-                    >
-                        {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
-                    </button>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                        <button
+                            type="button"
+                            onClick={handleParseHouse}
+                            disabled={parsing || (!form.address && !form.city)}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
+                                border: '2px dashed var(--primary)',
+                                background: 'var(--primary-light)', color: 'var(--primary)',
+                                cursor: parsing ? 'wait' : 'pointer',
+                                fontFamily: 'inherit', fontWeight: 800,
+                                transition: 'all 0.2s',
+                                opacity: (!form.address && !form.city) ? 0.5 : 1
+                            }}
+                        >
+                            {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
+                        </button>
+                        <button
+                            type="button"
+                            title="Открыть dom.mingkh.ru"
+                            onClick={() => {
+                                const url = getMingkhSearchUrl(form.address, form.city);
+                                window.open(url, '_blank', 'noopener');
+                            }}
+                            disabled={!form.address && !form.city}
+                            style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                padding: '14px 16px', borderRadius: 16, fontSize: 13,
+                                border: '2px dashed var(--border-light)',
+                                background: 'var(--bg-card)', color: 'var(--text-secondary)',
+                                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
+                                transition: 'all 0.2s', whiteSpace: 'nowrap',
+                                opacity: (!form.address && !form.city) ? 0.5 : 1
+                            }}
+                        >
+                            🏠 МинЖКХ
+                        </button>
+                    </div>
 
                     {parsedFields && (
                         <div style={{
