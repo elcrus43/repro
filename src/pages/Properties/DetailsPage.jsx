@@ -399,7 +399,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
     };
 
     const renderStickers = (ctx, canvas) => {
-        const padding = format === 'story' ? 60 : 45; // Increased padding from edge
+        const padding = format === 'story' ? 60 : 45;
         const stickerH = format === 'story' ? 70 : 50;
         const fontSize = format === 'story' ? 32 : 24;
         let stickerY = padding + 20;
@@ -407,28 +407,34 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const allStickers = [...stickers];
         if (customSticker.trim()) allStickers.push(customSticker.trim());
 
+        // В дизайне "Сплит" стикеры рисуем на левой (фото) зоне,
+        // чтобы не перекрывать текстовую панель справа
+        const rightEdge = design === 'split'
+            ? Math.round(canvas.width * 0.55) - padding
+            : canvas.width - padding;
+
         allStickers.forEach(text => {
             ctx.font = `bold ${fontSize}px Inter, sans-serif`;
             const textW = ctx.measureText(text.toUpperCase()).width;
             const boxW = textW + 40;
 
             ctx.fillStyle = accentColor;
-            // Draw pill shape with shadow
             ctx.shadowColor = 'rgba(0,0,0,0.3)';
             ctx.shadowBlur = 10;
             ctx.shadowOffsetY = 4;
             ctx.beginPath();
-            ctx.roundRect(canvas.width - padding - boxW, stickerY, boxW, stickerH, 12);
+            ctx.roundRect(rightEdge - boxW, stickerY, boxW, stickerH, 12);
             ctx.fill();
             ctx.shadowColor = 'transparent';
 
             ctx.fillStyle = '#FFFFFF';
             ctx.textAlign = 'center';
-            ctx.fillText(text.toUpperCase(), canvas.width - padding - (boxW/2), stickerY + (stickerH/2) + (fontSize/3));
+            ctx.fillText(text.toUpperCase(), rightEdge - (boxW / 2), stickerY + (stickerH / 2) + (fontSize / 3));
             stickerY += stickerH + 15;
         });
-        ctx.textAlign = 'left'; // Reset
+        ctx.textAlign = 'left';
     };
+
 
     const getCleanAddress = () => {
         let addr = property.address || property.city || 'Объект недвижимости';
