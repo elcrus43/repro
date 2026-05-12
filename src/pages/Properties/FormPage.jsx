@@ -275,8 +275,8 @@ export function FormPage() {
         <div style={{ 
             minHeight: '100vh', 
             background: '#f1f5f9', 
-            paddingBottom: 100, 
-            fontFamily: "'Outfit', 'Inter', sans-serif" 
+            paddingBottom: 160, 
+            fontFamily: "'Oswald', sans-serif" 
         }}>
             {/* Sticky Header */}
             <div style={{
@@ -637,14 +637,16 @@ export function FormPage() {
                 </FormCard>
 
                 <div style={{ 
-                    position: 'fixed', bottom: 0, left: 0, right: 0, 
-                    padding: '16px 20px 24px', background: 'rgba(255,255,255,0.8)', 
-                    backdropFilter: 'blur(16px)', borderTop: '1px solid var(--border-light)',
-                    zIndex: 100
+                    position: 'fixed', bottom: 'calc(var(--nav-h) + 20px)', left: 0, right: 0, 
+                    padding: '16px 20px', background: 'rgba(255,255,255,0.85)', 
+                    backdropFilter: 'blur(20px)', borderTop: '1px solid var(--border-light)',
+                    zIndex: 100,
+                    boxShadow: '0 -4px 20px rgba(0,0,0,0.05)'
                 }}>
                     <button type="submit" className="btn btn-primary" style={{ 
                         width: '100%', height: 56, borderRadius: 18, fontSize: 16, fontWeight: 800,
-                        boxShadow: '0 8px 24px rgba(0,82,255,0.25)'
+                        boxShadow: '0 8px 24px rgba(0,82,255,0.25)',
+                        fontFamily: "'Oswald', sans-serif"
                     }}>
                         {id ? 'Сохранить изменения' : 'Опубликовать объект'}
                     </button>

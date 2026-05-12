@@ -128,7 +128,7 @@ export function ListPage() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16, paddingBottom: 80 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16 }}>
                         <button
                             className="btn btn-outline"
                             onClick={prevPage}

@@ -167,7 +167,7 @@ function safeFloat(v) {
  */
 export async function parseHouseFromAddress(address, city) {
     if (!GEMINI_API_KEY) {
-        throw new Error('Добавьте VITE_GEMINI_API_KEY в файл .env');
+        throw new Error('Добавьте VITE_GEMINI_API_KEY в файл .env и ПЕРЕЗАПУСТИТЕ проект (npm run dev)');
     }
     if (!address && !city) {
         throw new Error('Укажите адрес для поиска');

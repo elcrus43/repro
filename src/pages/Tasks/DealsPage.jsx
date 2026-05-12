@@ -31,7 +31,7 @@ export function DealsPage() {
         buyer_ids: prefillData.buyer_ids || (prefillData.buyer_id ? [prefillData.buyer_id] : []),
         property_id: prefillData.property_id || '',
         price: prefillData.price || '',
-        deal_date: prefillData.deal_date || new Date().toISOString().slice(0, 16),
+        deal_date: prefillData.deal_date || '',
         deposit_date: prefillData.deposit_date || '',
         deposit_amount: prefillData.deposit_amount || '',
         commission: prefillData.commission || '',
@@ -46,7 +46,11 @@ export function DealsPage() {
     const filteredByPeriod = useMemo(() => {
         return deals.filter(d => {
             const dealDate = d.deal_date ? new Date(d.deal_date) : null;
-            if (!dealDate) return false;
+            if (!dealDate) {
+                // Если дата сделки не установлена, показываем её в месяце создания
+                const createdAt = d.created_at ? new Date(d.created_at) : now;
+                return createdAt.getMonth() === selectedMonth && createdAt.getFullYear() === selectedYear;
+            }
             return dealDate.getMonth() === selectedMonth && dealDate.getFullYear() === selectedYear;
         });
     }, [deals, selectedMonth, selectedYear]);
@@ -181,7 +185,7 @@ export function DealsPage() {
             buyer_ids: [], 
             property_id: '', 
             price: '', 
-            deal_date: new Date().toISOString().slice(0, 16), 
+            deal_date: '', 
             deposit_date: '',
             deposit_amount: '',
             commission: '',

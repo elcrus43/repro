@@ -165,7 +165,7 @@ export function MatchDetailPage() {
                     property_id: prop?.id || '',
                     price: prop?.price || req?.budget_max || '',
                     commission: prop?.commission || '',
-                    deal_date: new Date().toISOString().slice(0, 16),
+                    deal_date: '',
                 }
             }
         });

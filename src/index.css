@@ -33,6 +33,7 @@
   --radius-lg: 16px;
   --radius-pill: 9999px;
   
+  --nav-h: 64px;
 }
 
 /* ===== Utilities ===== */
@@ -56,6 +57,7 @@
 .p-8 { padding: 8px; }
 .p-16 { padding: 16px; }
 .mb-0 { margin-bottom: 0; }
+.font-oswald { font-family: 'Oswald', sans-serif !important; }
 .rounded { border-radius: var(--radius); }
 .bg-muted { background: var(--border-light); }
 .shadow-lg { box-shadow: var(--shadow-premium); }
@@ -201,9 +203,11 @@ a:focus:not(:focus-visible) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding-bottom: calc(var(--nav-h) + 48px);
+  /* Increased padding to ensure navigation bar never obscures content even on devices with large safe areas */
+  padding-bottom: calc(var(--nav-h) + 100px + env(safe-area-inset-bottom));
   min-height: 100vh;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .page-content {
@@ -278,7 +282,7 @@ a:focus:not(:focus-visible) {
 /* ===== Bottom Navigation ===== */
 .bottom-nav {
   position: fixed;
-  bottom: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   width: calc(100% - 32px);

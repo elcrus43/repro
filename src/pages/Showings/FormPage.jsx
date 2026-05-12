@@ -21,14 +21,12 @@ export function FormPage() {
     const [form, setForm] = useState(existingShowing ? {
         ...existingShowing,
         client_ids: existingShowing.client_ids || (existingShowing.client_id ? [existingShowing.client_id] : []),
-        showing_date: existingShowing.showing_date
-            ? new Date(existingShowing.showing_date).toISOString().slice(0, 16)
-            : new Date().toISOString().slice(0, 16),
+        showing_date: existingShowing.showing_date ? new Date(existingShowing.showing_date).toISOString().slice(0, 16) : '',
     } : {
         property_id: prePropId || '',
         client_id: preClientId || '',
         client_ids: preClientId ? [preClientId] : [],
-        showing_date: new Date().toISOString().slice(0, 16),
+        showing_date: '',
         status: 'planned',
         client_feedback: '',
         feedback_comment: '',
