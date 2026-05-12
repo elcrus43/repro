@@ -44,9 +44,8 @@ export function AppProvider({ children }) {
   /* ── Auth & Data Loading ────────────────────────────────────────────── */
 
   useEffect(() => {
-    // Track whether getSession() already loaded data so the auth listener
-    // knows whether it needs to step in (important for mobile cold-starts).
-    let sessionLoadedData = false;
+    let isInitial = true;         // true while init() is still running
+    let pendingSession = null;    // captures SIGNED_IN that fires before init() finishes
 
     async function loadProfileAndData(sessionUser) {
       const { data: profile, error: profileErr } = await supabase
@@ -55,7 +54,6 @@ export function AppProvider({ children }) {
         .eq('id', sessionUser.id)
         .single();
 
-      // Ошибка загрузки профиля (не "не найден")
       if (profileErr && profileErr.code !== 'PGRST116') {
         console.error('[Profile load error]', profileErr);
         const fallbackProfile = {
@@ -78,7 +76,6 @@ export function AppProvider({ children }) {
         return;
       }
 
-      // Новый пользователь — профиль ещё не создан
       if (!profile) {
         const isAdmin = sessionUser.email === ADMIN_EMAIL;
         const newProfile = {
@@ -89,33 +86,27 @@ export function AppProvider({ children }) {
           role: isAdmin ? 'admin' : 'realtor',
           status: isAdmin ? 'approved' : 'pending',
         };
-
         const { data: createdProfile, error: createErr } = await supabase
           .from('profiles')
           .insert(newProfile)
           .select()
           .single();
-
         if (createErr) {
           console.error('[Profile creation error]', createErr);
           dispatch({ type: 'SET_LOADING', value: false });
           return;
         }
-
-        // Ожидающий пользователь — выкидываем
         if (createdProfile.status === 'pending') {
           await supabase.auth.signOut();
           dispatch({ type: 'SET_LOADING', value: false });
           return;
         }
-
         const data = await loadUserData(sessionUser.id, createdProfile.role);
         dispatch({ type: 'SET_USER', user: { ...createdProfile, email: sessionUser.email } });
         dispatch({ type: 'SET_ALL', data });
         return;
       }
 
-      // Существующий пользователь: роль берём ТОЛЬКО из БД (не из email)
       if (profile.status === 'pending' || profile.status === 'rejected') {
         await supabase.auth.signOut();
         dispatch({ type: 'SET_LOADING', value: false });
@@ -123,15 +114,10 @@ export function AppProvider({ children }) {
       }
 
       dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
-
       try {
         const data = await loadUserData(sessionUser.id, profile.role);
-        if (data.error) {
-          toast.warn(`Данные загружены частично: ${data.error}`);
-        }
+        if (data.error) toast.warn(`Данные загружены частично: ${data.error}`);
         dispatch({ type: 'SET_ALL', data });
-        
-        // Show counts in toast
         const propCount = data.properties?.length || 0;
         const clientCount = data.clients?.length || 0;
         if (propCount > 0 || clientCount > 0) {
@@ -147,7 +133,6 @@ export function AppProvider({ children }) {
     async function init() {
       dispatch({ type: 'SET_LOADING', value: true });
 
-      // Safety timeout: if session check takes > 10s, fallback to login
       const timeout = setTimeout(() => {
         console.warn('[Auth Timeout] Session retrieval took too long.');
         dispatch({ type: 'SET_LOADING', value: false });
@@ -155,41 +140,38 @@ export function AppProvider({ children }) {
 
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
       clearTimeout(timeout);
-      
       if (sessionErr) console.error('[Session error]', sessionErr);
 
       if (session?.user) {
-        // getSession() returned a valid session — load data immediately
-        sessionLoadedData = true;
+        // Normal case: session found immediately
         await loadProfileAndData(session.user);
+      } else if (pendingSession) {
+        // Mobile cold-start: getSession() returned null but the auth listener
+        // already captured a SIGNED_IN event with the real session.
+        console.info('[Auth] Using pendingSession from onAuthStateChange (mobile cold-start)');
+        await loadProfileAndData(pendingSession);
       } else {
-        // No session from getSession(). On mobile browsers (iOS Safari, Android
-        // WebView) localStorage may not be readable synchronously on cold start.
-        // Wait up to 2s for onAuthStateChange to fire SIGNED_IN before giving up.
-        console.info('[Auth] getSession() returned null — waiting for onAuthStateChange (2s)...');
-        setTimeout(() => {
-          if (!sessionLoadedData) {
-            // Genuinely no session — show login screen
-            dispatch({ type: 'SET_LOADING', value: false });
-          }
-        }, 2000);
+        // Truly not logged in
+        dispatch({ type: 'SET_LOADING', value: false });
       }
+
+      isInitial = false;
+      pendingSession = null;
     }
 
     init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.info('[AuthStateChange]', event, session?.user?.email ?? 'no user');
       if (event === 'SIGNED_OUT') {
-        sessionLoadedData = false;
         dispatch({ type: 'LOGOUT' });
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        if (!sessionLoadedData) {
-          // Mobile cold-start: getSession() returned null but session is now available
-          sessionLoadedData = true;
+        if (isInitial) {
+          // init() is still running — save for it to pick up (mobile cold-start)
+          pendingSession = session.user;
+        } else {
+          // Normal post-init login (user logged in manually or token refreshed)
           await loadProfileAndData(session.user);
         }
-        // If sessionLoadedData is true, init() already handled it — skip.
       }
     });
 
