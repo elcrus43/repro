@@ -242,7 +242,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
     const canvasRef = React.useRef(null);
     const [format, setFormat] = React.useState('story'); // 'story' (9:16) | 'post' (1:1)
     const [theme, setTheme] = React.useState('light'); // 'light' | 'dark'
-    const [design, setDesign] = React.useState('minimal'); // 'classic' | 'minimal'
+    const [design, setDesign] = React.useState('minimal'); // 'classic' | 'minimal' | 'stripe' | 'split'
     const [accentColor, setAccentColor] = React.useState('#0052FF');
     const [stickers, setStickers] = React.useState([]);
     const [customSticker, setCustomSticker] = React.useState('');
@@ -381,6 +381,15 @@ function BannerGenerator({ property, currentUser, onClose }) {
             }
 
             renderMinimalText(ctx, canvas, textSpace);
+        } else if (design === 'stripe') {
+            // STRIPE: full-bleed photo, colored stripe across middle-bottom
+            drawCover(loadedImages[0], 0, 0, canvas.width, canvas.height);
+            renderStripeOverlay(ctx, canvas);
+        } else if (design === 'split') {
+            // SPLIT: left half photo, right half solid color with text
+            const splitX = Math.round(canvas.width * 0.55);
+            drawCover(loadedImages[0], 0, 0, splitX, canvas.height);
+            renderSplitOverlay(ctx, canvas, splitX);
         }
 
         // Draw Stickers
@@ -717,6 +726,169 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillText(phone, 60, h - 55);
     };
 
+    const renderStripeOverlay = (ctx, canvas) => {
+        const w = canvas.width;
+        const h = canvas.height;
+        const isDark = theme === 'dark';
+        const bg = isDark ? '#111111' : '#FFFFFF';
+        const textColor1 = isDark ? '#FFFFFF' : '#1A1A1A';
+        const textColor2 = isDark ? '#BBBBBB' : '#555555';
+
+        // Dark gradient over full image
+        const grad = ctx.createLinearGradient(0, h * 0.35, 0, h);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(0.5, 'rgba(0,0,0,0.75)');
+        grad.addColorStop(1, 'rgba(0,0,0,0.97)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        // Colored accent stripe
+        const stripeH = format === 'story' ? 14 : 10;
+        const stripeY = h * 0.52;
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(0, stripeY, w, stripeH);
+
+        // Price — large, above stripe
+        const priceSize = format === 'story' ? 120 : 88;
+        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = '#FFFFFF';
+        const priceText = formatNumber(property.price) + ' ₽';
+        ctx.fillText(priceText, 80, stripeY - 30);
+
+        // m2 price badge
+        if (property.price && property.area_total) {
+            const m2Price = Math.round(property.price / property.area_total);
+            const badgeSize = format === 'story' ? 36 : 26;
+            ctx.font = `600 ${badgeSize}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = accentColor;
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, 80, stripeY - 30 - priceSize - 10);
+        }
+
+        // Text block below stripe
+        let y = stripeY + stripeH + (format === 'story' ? 70 : 50);
+        const addrSize = format === 'story' ? 58 : 40;
+        ctx.font = `800 ${addrSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = '#FFFFFF';
+        const address = getCleanAddress();
+        ctx.fillText(address.slice(0, 38) + (address.length > 38 ? '...' : ''), 80, y);
+
+        y += format === 'story' ? 60 : 44;
+        const detSize = format === 'story' ? 40 : 28;
+        ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        const parts = [];
+        if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
+        if (property.area_total) parts.push(`${property.area_total} м²`);
+        if (property.floor) parts.push(`${property.floor}/${property.floors_total || '?'} эт.`);
+        ctx.fillText(parts.join('  ·  '), 80, y);
+
+        // Phone
+        y = h - (format === 'story' ? 140 : 100);
+        const phoneSize = format === 'story' ? 52 : 36;
+        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = accentColor;
+        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', 80, y);
+        if (currentUser?.full_name) {
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = `500 ${phoneSize * 0.6}px Oswald, Inter, sans-serif`;
+            ctx.fillText(currentUser.full_name, 80, y + phoneSize * 0.85);
+        }
+    };
+
+    const renderSplitOverlay = (ctx, canvas, splitX) => {
+        const w = canvas.width;
+        const h = canvas.height;
+        const isDark = theme === 'dark';
+
+        // Solid color right panel
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(splitX, 0, w - splitX, h);
+
+        // Thin separator line
+        ctx.fillStyle = isDark ? '#000' : '#fff';
+        ctx.fillRect(splitX - 3, 0, 6, h);
+
+        // All text in the right panel
+        const px = splitX + (format === 'story' ? 60 : 44); // left padding inside right panel
+        const panelW = w - splitX;
+        const textColor = '#FFFFFF';
+
+        // Price
+        let y = format === 'story' ? 200 : 160;
+        const priceSize = format === 'story' ? 88 : 64;
+        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = textColor;
+        // Wrap price if needed
+        const priceText = formatNumber(property.price) + ' ₽';
+        const priceW = ctx.measureText(priceText).width;
+        const availW = panelW - 80;
+        if (priceW > availW) {
+            const scale = availW / priceW;
+            ctx.font = `900 ${priceSize * scale}px Oswald, Inter, sans-serif`;
+        }
+        ctx.fillText(priceText, px, y);
+
+        // m2
+        if (property.price && property.area_total) {
+            const m2Price = Math.round(property.price / property.area_total);
+            y += format === 'story' ? 56 : 40;
+            ctx.font = `600 ${priceSize * 0.38}px Oswald, Inter, sans-serif`;
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.fillText(`${formatNumber(m2Price)} ₽/м²`, px, y);
+        }
+
+        // Divider line
+        y += format === 'story' ? 50 : 36;
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillRect(px, y, panelW * 0.6, 2);
+
+        // Address
+        y += format === 'story' ? 60 : 44;
+        const addrSize = format === 'story' ? 46 : 32;
+        ctx.font = `700 ${addrSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = textColor;
+        const address = getCleanAddress();
+        // word-wrap address
+        const words = address.split(' ');
+        let line = '';
+        words.forEach(word => {
+            const test = line ? line + ' ' + word : word;
+            if (ctx.measureText(test).width > availW - 40 && line) {
+                ctx.fillText(line, px, y);
+                y += addrSize + 8;
+                line = word;
+            } else { line = test; }
+        });
+        if (line) { ctx.fillText(line, px, y); y += addrSize + 8; }
+
+        // Details
+        y += format === 'story' ? 30 : 20;
+        const detSize = format === 'story' ? 36 : 24;
+        ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        const parts = [];
+        if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
+        if (property.area_total) parts.push(`${property.area_total} м²`);
+        if (property.floor) parts.push(`${property.floor}/${property.floors_total || '?'} эт.`);
+        if (property.renovation) parts.push(translateRenovation(property.renovation));
+        parts.forEach(p => {
+            ctx.fillText('· ' + p, px, y);
+            y += detSize + (format === 'story' ? 14 : 10);
+        });
+
+        // Phone at bottom
+        const phoneSize = format === 'story' ? 48 : 34;
+        const phoneY = h - (format === 'story' ? 160 : 120);
+        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, phoneY);
+        if (currentUser?.full_name) {
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.font = `500 ${phoneSize * 0.55}px Oswald, Inter, sans-serif`;
+            ctx.fillText(currentUser.full_name, px, phoneY + phoneSize * 0.85);
+        }
+    };
+
     const download = () => {
         const link = document.createElement('a');
         link.download = `banner-${property.id}-${format}.png`;
@@ -754,12 +926,17 @@ function BannerGenerator({ property, currentUser, onClose }) {
                     
                     {/* Format & Design */}
                     <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Формат и Стиль</label>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Формат</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                             <button className={`btn ${format === 'story' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setFormat('story')}>Story (9:16)</button>
                             <button className={`btn ${format === 'post' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setFormat('post')}>Post (1:1)</button>
-                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('classic')}>Классика</button>
-                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('minimal')}>Паспарту</button>
+                        </div>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('classic')}>🖼 Классика</button>
+                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('minimal')}>📋 Паспарту</button>
+                            <button className={`btn ${design === 'stripe' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('stripe')}>⚡ Полоса</button>
+                            <button className={`btn ${design === 'split' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('split')}>◧ Сплит</button>
                         </div>
                     </div>
 
@@ -830,7 +1007,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
                         height: '100%', 
                         aspectRatio: formats[format].width / formats[format].height,
                         boxShadow: '0 40px 80px rgba(0,0,0,0.8)',
-                        borderRadius: 24, overflow: 'hidden',
+                        borderRadius: 0, overflow: 'hidden',
                         background: '#111', border: '1px solid rgba(255,255,255,0.1)'
                     }}>
                         <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
