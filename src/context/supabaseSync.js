@@ -255,6 +255,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           images: action.property.images || [],
           commission: action.property.commission ?? 0,
           client_ids: action.property.client_ids || (action.property.client_id ? [action.property.client_id] : []),
+          client_id: (action.property.client_ids && action.property.client_ids.length > 0) 
+            ? action.property.client_ids[0] 
+            : (action.property.client_id || null),
           portfolio_analog_links: action.property.portfolio_analog_links || [],
         };
         // Remove legacy field
@@ -312,6 +315,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           images: pData.images || [],
           commission: pData.commission ?? 0,
           client_ids: pData.client_ids || (pData.client_id ? [pData.client_id] : []),
+          client_id: (pData.client_ids && pData.client_ids.length > 0)
+            ? pData.client_ids[0]
+            : (pData.client_id || null),
           portfolio_analog_links: pData.portfolio_analog_links || [],
         };
         // Remove legacy field

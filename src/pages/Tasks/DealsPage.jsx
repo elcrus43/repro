@@ -238,8 +238,8 @@ export function DealsPage() {
     }
 
     function DealCard({ deal }) {
-        const sellers = state.clients.filter(c => (deal.seller_ids || [deal.seller_id]).includes(c.id));
-        const buyers = state.clients.filter(c => (deal.buyer_ids || [deal.buyer_id]).includes(c.id));
+        const sellers = state.clients.filter(c => (deal.seller_ids || (deal.seller_id ? [deal.seller_id] : [])).includes(c.id));
+        const buyers = state.clients.filter(c => (deal.buyer_ids || (deal.buyer_id ? [deal.buyer_id] : [])).includes(c.id));
         const property = state.properties.find(p => p.id === deal.property_id);
 
         const statusConfig = {
@@ -254,15 +254,6 @@ export function DealsPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <div style={{ fontWeight: 700, fontSize: 16 }}>{deal.title}</div>
-                        {deal.mortgage && (
-                            <span 
-                                className="badge" 
-                                style={{ background: 'var(--primary-light)', color: 'var(--primary)', fontSize: 10, cursor: 'help' }}
-                                title={`${deal.mortgage_bank || 'Банк не указан'}${deal.mortgage_amount ? ` · ${deal.mortgage_amount.toLocaleString()} ₽` : ''}${deal.mortgage_expiry ? ` · до ${new Date(deal.mortgage_expiry).toLocaleDateString()}` : ''}`}
-                            >
-                                🏠 Ипотека
-                            </span>
-                        )}
                     </div>
                     <span className="badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                 </div>
@@ -303,11 +294,16 @@ export function DealsPage() {
                     )}
                 </div>
 
-                {!!(deal.mortgage && (deal.mortgage_bank || (deal.mortgage_amount && deal.mortgage_amount > 0) || deal.mortgage_expiry)) && (
-                    <div style={{ marginBottom: 10, fontSize: 12, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
-                        {deal.mortgage_bank && <span>🏦 <strong>{deal.mortgage_bank}</strong></span>}
-                        {deal.mortgage_amount > 0 && <span>💵 Одобрено: <strong>{deal.mortgage_amount.toLocaleString()} ₽</strong></span>}
-                        {deal.mortgage_expiry && <span>📅 До: <strong>{new Date(deal.mortgage_expiry).toLocaleDateString()}</strong></span>}
+                {!!deal.mortgage && (
+                    <div style={{ marginBottom: 10, fontSize: 12, background: 'var(--primary-light)', padding: '10px', borderRadius: 10, color: 'var(--primary)' }}>
+                        <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            🏠 Ипотечная сделка
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
+                            {deal.mortgage_bank && <span>🏦 <strong>{deal.mortgage_bank}</strong></span>}
+                            {deal.mortgage_amount > 0 && <span>💵 Одобрено: <strong>{deal.mortgage_amount.toLocaleString()} ₽</strong></span>}
+                            {deal.mortgage_expiry && <span>📅 До: <strong>{new Date(deal.mortgage_expiry).toLocaleDateString('ru-RU')}</strong></span>}
+                        </div>
                     </div>
                 )}
 

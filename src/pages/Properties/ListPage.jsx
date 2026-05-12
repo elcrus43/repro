@@ -81,7 +81,8 @@ export function ListPage() {
                     </div>
                 )}
                 {properties.map(prop => {
-                    const client = state.clients.find(c => c.id === prop.client_id);
+                    const clientId = prop.client_id || (prop.client_ids && prop.client_ids[0]);
+                    const client = state.clients.find(c => c.id === clientId);
                     const matches = state.matches.filter(m => m.property_id === prop.id);
                     const status = prop.status || 'active'; // По умолчанию «В продаже»
                     const handleDelete = (e) => {

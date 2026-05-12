@@ -1127,7 +1127,7 @@ export function DetailsPage() {
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
     const agent = state.profiles.find(p => p.id === prop?.realtor_id);
-    const clients = state.clients.filter(c => (prop?.client_ids || [prop?.client_id]).includes(c.id));
+    const clients = state.clients.filter(c => (prop?.client_ids || (prop?.client_id ? [prop.client_id] : [])).includes(c.id));
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
 
