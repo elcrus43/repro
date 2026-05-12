@@ -179,7 +179,7 @@ export function MatchDetailPage() {
         });
         dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
         setShowShowingForm(false);
-        navigate('/showings');
+        navigate('/history');
     }
 
     async function handleGeneratePublicLink() {

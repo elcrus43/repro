@@ -10,7 +10,14 @@ export function ListPage() {
     const user = state.currentUser;
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
     const [feedbackId, setFeedbackId] = useState(null);
-    const [feedbackComment, setFeedbackComment] = useState('');
+    const eventTypeLabels = {
+        showing: 'Показ',
+        meeting: 'Встреча',
+        viewing: 'Просмотр',
+        deposit: 'Задаток',
+        deal: 'Сделка',
+        call: 'Звонок'
+    };
 
     const myShowings = state.showings.filter(s => user?.role === 'admin' || s.realtor_id === user?.id);
 
@@ -71,8 +78,8 @@ export function ListPage() {
     return (
         <div className="page fade-in">
             <div className="topbar">
-                <span className="topbar-title">Показы</span>
-                <button className="icon-btn" onClick={() => navigate('/showings/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+                <span className="topbar-title">История</span>
+                <button className="icon-btn" onClick={() => navigate('/history/new')} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
             </div>
             <div className="page-content">
                 {state.calendarStatus && (
@@ -215,13 +222,13 @@ export function ListPage() {
                                         <span className="badge badge-primary">{statusLabels[s.status] || s.status}</span>
                                         {s.realtor_id === user?.id && (
                                             <>
-                                                <button className="icon-btn" title="Редактировать" onClick={() => navigate(`/showings/new?id=${s.id}`)}><Pencil size={16} /></button>
+                                                <button className="icon-btn" title="Редактировать" onClick={() => navigate(`/history/new?id=${s.id}`)}><Pencil size={16} /></button>
                                                 <button className="icon-btn" onClick={() => { if (window.confirm('Удалить показ?')) dispatch({ type: 'DELETE_SHOWING', id: s.id }); }}><Trash size={16} /></button>
                                             </>
                                         )}
                                     </div>
                                 </div>
-                                {prop && <div style={{ fontWeight: 600, fontSize: 14 }}>Продажа: {prop.address}</div>}
+                                {prop && <div style={{ fontWeight: 600, fontSize: 14 }}>{eventTypeLabels[s.event_type] || 'Событие'}: {prop.address}</div>}
                                 {clients.length > 0 && <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Клиент: {clientNames}</div>}
                                 {s.client_feedback && (
                                     <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
@@ -260,10 +267,45 @@ export function ListPage() {
                     </div>
                 )}
 
+                {/* Feed of all events */}
+                <div style={{ marginTop: 24 }}>
+                    <div className="section-title" style={{ marginBottom: 12 }}>Лента событий</div>
+                    {myShowings
+                        .sort((a, b) => new Date(b.showing_date).getTime() - new Date(a.showing_date).getTime())
+                        .map(s => {
+                            const prop = state.properties.find(p => p.id === s.property_id);
+                            const clients = state.clients.filter(c => (s.client_ids || [s.client_id]).includes(c.id));
+                            const clientNames = clients.map(c => c.full_name).join(', ');
+                            const dateStr = new Date(s.showing_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+                            const timeStr = new Date(s.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                            
+                            return (
+                                <div key={s.id} className="card" style={{ marginBottom: 10, padding: '10px 14px' }} onClick={() => navigate(`/history/${s.id}`)}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>{dateStr} {timeStr}</div>
+                                        <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700 }}>
+                                            {statusLabels[s.status] || s.status}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 2 }}>
+                                        {eventTypeLabels[s.event_type] || 'Событие'}: {prop?.address || 'Объект не указан'}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Клиент: {clientNames || '—'}</div>
+                                    {s.feedback_comment && (
+                                        <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                                            · {s.feedback_comment}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })
+                    }
+                </div>
+
                 {myShowings.length === 0 && (
                     <div className="empty-state">
-                        <div className="empty-title">Нет показов</div>
-                        <div className="empty-desc">Назначьте показ из карточки совпадения</div>
+                        <div className="empty-title">История пуста</div>
+                        <div className="empty-desc">События появятся здесь после их создания</div>
                     </div>
                 )}
             </div>

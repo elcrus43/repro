@@ -85,7 +85,7 @@ export function FormPage() {
         } else {
             dispatch({ type: 'ADD_SHOWING', showing });
         }
-        navigate('/showings');
+        navigate('/history');
     }
 
     return (

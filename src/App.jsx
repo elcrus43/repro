@@ -4,7 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
-import { Building2, Users, Sparkles, FileCheck, UserCircle } from 'lucide-react';
+import { Building2, Users, Sparkles, FileCheck, UserCircle, History } from 'lucide-react';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -24,9 +24,9 @@ const RequestCardPage = lazy(() => import('./pages/Requests/index.js').then(m =>
 const RequestFormPage = lazy(() => import('./pages/Requests/index.js').then(m => ({ default: m.RequestFormPage })));
 const MatchesPage = lazy(() => import('./pages/Matches/MatchesPages'));
 const MatchDetailPage = lazy(() => import('./pages/Matches/MatchesPages').then(m => ({ default: m.MatchDetailPage })));
-const ShowingsPage = lazy(() => import('./pages/Showings/index.js'));
-const ShowFormPage = lazy(() => import('./pages/Showings/index.js').then(m => ({ default: m.ShowFormPage })));
-const ShowDetailsPage = lazy(() => import('./pages/Showings/index.js').then(m => ({ default: m.ShowDetailsPage })));
+const HistoryPage = lazy(() => import('./pages/History/index.js'));
+const HistoryFormPage = lazy(() => import('./pages/History/index.js').then(m => ({ default: m.HistoryFormPage })));
+const HistoryDetailsPage = lazy(() => import('./pages/History/index.js').then(m => ({ default: m.HistoryDetailsPage })));
 const TasksPage = lazy(() => import('./pages/Tasks/DealsPage'));
 const MeetingOwnerFormPage = lazy(() => import('./pages/Tasks/MeetingOwnerFormPage').then(m => ({ default: m.MeetingOwnerFormPage })));
 const CallFormPage = lazy(() => import('./pages/Tasks/CallFormPage').then(m => ({ default: m.CallFormPage })));
@@ -50,7 +50,8 @@ function BottomNav() {
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
-    { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
+    { path: '/matches', icon: <Sparkles size={22} />, label: 'Подбор', badge: newMatchCount > 0 },
+    { path: '/history', icon: <History size={22} />, label: 'История' },
     { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
     { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
@@ -194,10 +195,10 @@ function AppRoutes() {
           <Route path="/matches" element={<RequireAuth><MatchesPage /></RequireAuth>} />
           <Route path="/matches/:id" element={<RequireAuth><MatchDetailPage /></RequireAuth>} />
 
-          {/* Showings */}
-          <Route path="/showings" element={<RequireAuth><ShowingsPage /></RequireAuth>} />
-          <Route path="/showings/new" element={<RequireAuth><ShowFormPage /></RequireAuth>} />
-          <Route path="/showings/:id" element={<RequireAuth><ShowDetailsPage /></RequireAuth>} />
+          {/* History */}
+          <Route path="/history" element={<RequireAuth><HistoryPage /></RequireAuth>} />
+          <Route path="/history/new" element={<RequireAuth><HistoryFormPage /></RequireAuth>} />
+          <Route path="/history/:id" element={<RequireAuth><HistoryDetailsPage /></RequireAuth>} />
 
           {/* Tasks */}
           <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />

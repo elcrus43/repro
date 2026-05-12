@@ -1489,7 +1489,7 @@ export function DetailsPage() {
                 <div className="card" style={{ padding: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <div className="section-title" style={{ marginBottom: 0 }}>История ({events.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/showings/new?property_id=${id}`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
+                        <button className="icon-btn" onClick={() => navigate(`/history/new?property_id=${id}`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
                     </div>
                     {events.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Пока нет событий</div>
@@ -1498,7 +1498,7 @@ export function DetailsPage() {
                             {events.map(ev => {
                                 const dateStr = ev.dateObj ? ev.dateObj.toLocaleDateString('ru-RU') : '—';
                                 const timeStr = ev.dateObj ? ev.dateObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
-                                const editRoute = `/showings/new?id=${ev.id}`;
+                                const editRoute = `/history/new?id=${ev.id}`;
 
                                 const feedbackLabels = {
                                     interested: 'Заинтересован',

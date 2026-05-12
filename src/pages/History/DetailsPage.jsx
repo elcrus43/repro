@@ -8,13 +8,13 @@ export function DetailsPage() {
     const navigate = useNavigate();
     
     const showing = state.showings.find(s => s.id === id);
-    if (!showing) return <div className="page"><div className="topbar"><button className="topbar-back" onClick={() => navigate(-1)}>←</button><span className="topbar-title">Показ не найден</span></div></div>;
+    if (!showing) return <div className="page"><div className="topbar"><button className="topbar-back" onClick={() => navigate(-1)}>←</button><span className="topbar-title">Событие не найдено</span></div></div>;
 
     return (
         <div className="page fade-in">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate(-1)}>←</button>
-                <span className="topbar-title">Детали показа</span>
+                <span className="topbar-title">Детали события</span>
             </div>
             <div className="page-content">
                 <div className="card">
