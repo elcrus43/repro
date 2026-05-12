@@ -6,6 +6,7 @@ import { PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS } fro
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { parseHouseFromAddress, describeParsedFields, getMingkhSearchUrl } from '../../utils/houseParser';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
+import { nanoid } from '../../utils/nanoid';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
@@ -174,6 +175,8 @@ export function FormPage() {
     const [uploading, setUploading] = useState(false);
     const [parsing, setParsing] = useState(false);
     const [parsedFields, setParsedFields] = useState(null);
+    const [showQuickClientForm, setShowQuickClientForm] = useState(false);
+    const [quickClient, setQuickClient] = useState({ full_name: '', phone: '' });
 
     const setF = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -255,6 +258,25 @@ export function FormPage() {
         setF('images', newImages);
     };
 
+    const handleCreateQuickClient = (e) => {
+        e.preventDefault();
+        if (!quickClient.full_name) return;
+        
+        const newClientId = nanoid();
+        const client = {
+            ...quickClient,
+            id: newClientId,
+            realtor_id: state.currentUser?.id,
+            created_at: new Date().toISOString()
+        };
+        
+        dispatch({ type: 'ADD_CLIENT', client });
+        setF('client_ids', [...(form.client_ids || []), newClientId]);
+        setQuickClient({ full_name: '', phone: '' });
+        setShowQuickClientForm(false);
+        toast.success('Клиент создан и добавлен');
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!form.address) {
@@ -265,7 +287,7 @@ export function FormPage() {
             dispatch({ type: 'UPDATE_PROPERTY', property: form });
             toast.success('Объект обновлен');
         } else {
-            const newProperty = { ...form, id: Date.now().toString(), created_at: new Date().toISOString() };
+            const newProperty = { ...form, id: nanoid(), created_at: new Date().toISOString() };
             dispatch({ type: 'ADD_PROPERTY', property: newProperty });
             toast.success('Объект добавлен');
         }
@@ -303,10 +325,21 @@ export function FormPage() {
                 
                 {/* Владельцы */}
                 <FormCard title="Владельцы" icon={<Users size={22} />} description="Выберите одного или нескольких собственников">
-                    <MultiClientSelector 
-                        selectedIds={form.client_ids || []}
-                        onChange={ids => setF('client_ids', ids)}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <MultiClientSelector 
+                            selectedIds={form.client_ids || []}
+                            onChange={ids => setF('client_ids', ids)}
+                            clients={state.clients || []}
+                        />
+                        <button 
+                            type="button" 
+                            className="btn btn-secondary" 
+                            style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14 }}
+                            onClick={() => setShowQuickClientForm(true)}
+                        >
+                            + Создать нового клиента
+                        </button>
+                    </div>
                 </FormCard>
 
                 {/* Основное */}
@@ -653,6 +686,45 @@ export function FormPage() {
                     </button>
                 </div>
             </form>
+
+            {/* Quick Client Modal */}
+            {showQuickClientForm && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 20
+                }}>
+                    <div className="card fade-in" style={{ width: '100%', maxWidth: 400, padding: 24, borderRadius: 24 }}>
+                        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 20 }}>Новый клиент</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div className="form-group">
+                                <label className="form-label">ФИО</label>
+                                <input 
+                                    className="form-input" 
+                                    autoFocus
+                                    value={quickClient.full_name} 
+                                    onChange={e => setQuickClient({ ...quickClient, full_name: e.target.value })} 
+                                    placeholder="Иванов Иван Иванович"
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Телефон</label>
+                                <input 
+                                    className="form-input" 
+                                    value={quickClient.phone} 
+                                    onChange={e => setQuickClient({ ...quickClient, phone: e.target.value })} 
+                                    placeholder="+7 (___) ___-__-__"
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowQuickClientForm(false)}>Отмена</button>
+                                <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreateQuickClient}>Создать</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -10,6 +10,7 @@ import { formatNumber } from '../utils/format';
 import { estimateOffline } from '../utils/estimation';
 import { API_BASE } from '../config';
 import * as XLSX from 'xlsx';
+import { nanoid } from '../utils/nanoid';
 
 const MARKET_RATE = 20; // 20% market rate
 const SUBSIDIZED_RATE = 14.75; // 14.75% subsidized rate
@@ -112,7 +113,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         else if (url.includes('yandex.ru')) domain = 'yandex';
 
         const newLink = {
-            id: Date.now().toString(),
+            id: nanoid(),
             url,
             domain,
             added_at: new Date().toISOString()
@@ -169,7 +170,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
         for (const file of files) {
-            const tempId = Date.now().toString() + Math.random().toString(36).substring(7);
+            const tempId = nanoid();
             const newFile = { id: tempId, name: file.name, url: URL.createObjectURL(file), type: file.type, loading: true };
             let setFiles, field;
             if (section === 'mortgage') { setFiles = setMortgageFiles; field = 'portfolio_mortgage_files'; }
