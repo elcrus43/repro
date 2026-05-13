@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { Calendar, User, Phone, UserPlus, X } from 'lucide-react';
+import { Calendar, User, Phone, UserPlus, X, ChevronLeft, Save, Clock } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
 /**
@@ -92,32 +92,46 @@ export function CallFormPage() {
     }
 
     return (
-        <div className="page fade-in">
-            <div className="topbar">
-                <button className="topbar-back" onClick={() => navigate(-1)}>←</button>
-                <span className="topbar-title">{editId ? 'Редактировать' : 'Позвонить'}</span>
+        <div className="page fade-in" style={{ background: 'var(--surface)' }}>
+            <div className="topbar sticky" style={{ 
+                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+                <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                    <ChevronLeft size={20} />
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                        {editId ? 'Редактировать' : 'Звонок'}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Задача</span>
+                </div>
+                <div style={{ width: 44 }} />
             </div>
-            <div className="page-content">
-                <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
+            <div className="page-content" style={{ padding: '20px 20px 120px' }}>
+                <form onSubmit={handleSubmit} className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)', background: 'white', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    
                     {/* Клиент */}
                     <div className="form-group">
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <label className="form-label" style={{ margin: 0 }}><Phone size={14} style={{ marginRight: 4 }} /> Клиент <span className="required">*</span></label>
-                            <button type="button" className="btn btn-sm btn-ghost" onClick={() => setShowNewClient(v => !v)}
-                                style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                                {showNewClient ? <><X size={12} /> Отмена</> : <><UserPlus size={12} /> Новый клиент</>}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <User size={14} color="var(--primary)" /> Клиент <span style={{ color: '#dc2626' }}>*</span>
+                            </label>
+                            <button type="button" className="card-clickable" onClick={() => setShowNewClient(v => !v)} style={{ border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 10, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                {showNewClient ? <><X size={12} /> Отмена</> : <><UserPlus size={12} /> Новый</>}
                             </button>
                         </div>
 
                         {showNewClient ? (
-                            <div style={{ background: 'var(--bg-secondary)', borderRadius: 10, padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                <input className="form-input" placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
-                                <input className="form-input" placeholder="Телефон" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} />
-                                <button type="button" className="btn btn-primary btn-sm" onClick={handleCreateClient}>Создать и выбрать</button>
+                            <div className="fade-in" style={{ background: '#f8fafc', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, border: '1.5px dashed rgba(0,82,255,0.2)' }}>
+                                <input className="form-input" style={{ background: 'white' }} placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
+                                <input className="form-input" style={{ background: 'white' }} placeholder="Телефон" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} />
+                                <button type="button" className="card-clickable" style={{ height: 40, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }} onClick={handleCreateClient}>Создать</button>
                             </div>
                         ) : (
-                            <select className="form-select" value={form.client_id} onChange={e => setF('client_id', e.target.value)} required>
+                            <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.client_id} onChange={e => setF('client_id', e.target.value)} required>
                                 <option value="">— Выбрать клиента —</option>
                                 {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}{c.phone ? ` · ${c.phone}` : ''}</option>)}
                             </select>
@@ -126,38 +140,42 @@ export function CallFormPage() {
 
                     {/* Дата и время */}
                     <div className="form-group">
-                        <label className="form-label"><Calendar size={14} style={{ marginRight: 4 }} /> Дата и время <span className="required">*</span></label>
-                        <input className="form-input" type="datetime-local" value={form.due_date} onChange={e => setF('due_date', e.target.value)} required />
+                        <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Calendar size={14} color="var(--primary)" /> Дата и время <span style={{ color: '#dc2626' }}>*</span>
+                        </label>
+                        <input className="form-input" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} type="datetime-local" value={form.due_date} onChange={e => setF('due_date', e.target.value)} required />
                     </div>
 
-                    {/* Статус */}
-                    <div className="form-group">
-                        <label className="form-label">Статус</label>
-                        <select className="form-select" value={form.status} onChange={e => setF('status', e.target.value)}>
-                            <option value="pending">Запланирован</option>
-                            <option value="done">Позвонили</option>
-                            <option value="cancelled">Отменён</option>
-                        </select>
-                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        {/* Статус */}
+                        <div className="form-group">
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Статус</label>
+                            <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.status} onChange={e => setF('status', e.target.value)}>
+                                <option value="pending">План</option>
+                                <option value="done">Позвонили</option>
+                                <option value="cancelled">Отказ</option>
+                            </select>
+                        </div>
 
-                    {/* Приоритет */}
-                    <div className="form-group">
-                        <label className="form-label">Приоритет</label>
-                        <select className="form-select" value={form.priority} onChange={e => setF('priority', e.target.value)}>
-                            <option value="high">Высокий</option>
-                            <option value="medium">Средний</option>
-                            <option value="low">Низкий</option>
-                        </select>
+                        {/* Приоритет */}
+                        <div className="form-group">
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Приоритет</label>
+                            <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.priority} onChange={e => setF('priority', e.target.value)}>
+                                <option value="high">Высокий</option>
+                                <option value="medium">Средний</option>
+                                <option value="low">Низкий</option>
+                            </select>
+                        </div>
                     </div>
 
                     {/* Комментарий */}
                     <div className="form-group">
-                        <label className="form-label">Комментарий</label>
-                        <textarea className="form-textarea" rows={3} value={form.description || ''} onChange={e => setF('description', e.target.value)} placeholder="Тема звонка, что обсудить..." />
+                        <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Комментарий</label>
+                        <textarea className="form-textarea" style={{ borderRadius: 16, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)', padding: 16 }} rows={3} value={form.description || ''} onChange={e => setF('description', e.target.value)} placeholder="Тема звонка, что обсудить..." />
                     </div>
 
-                    <button type="submit" className="btn btn-primary btn-full" style={{ marginTop: 8 }}>
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 8 }}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    <button type="submit" className="card-clickable" style={{ marginTop: 12, height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                        <Phone size={20} />
                         {editId ? 'Сохранить изменения' : 'Запланировать звонок'}
                     </button>
                 </form>
@@ -165,3 +183,4 @@ export function CallFormPage() {
         </div>
     );
 }
+

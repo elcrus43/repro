@@ -45,38 +45,90 @@ export function ListPage() {
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
 
     return (
-        <div className="page fade-in">
-            <div className="topbar">
-                <span className="topbar-title">Клиенты</span>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <GlobalSearch />
-                    <button className="icon-btn" onClick={() => navigate('/clients/new')} style={{ color: 'var(--primary)' }}><Plus size={24} strokeWidth={3} /></button>
+        <div className="page fade-in" style={{ paddingBottom: 100 }}>
+            {/* Premium Sticky Topbar — Open Design */}
+            <div className="topbar sticky" style={{ 
+                background: 'rgba(255,255,255,0.7)', 
+                backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px',
+                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                height: 'auto'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="topbar-title font-oswald" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 22 }}>Клиенты</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 800, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>База контактов</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                        <GlobalSearch />
+                        <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
+                            width: 44, height: 44, borderRadius: 14, border: 'none', 
+                            background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)'
+                        }}>
+                            <Plus size={24} />
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div style={{ padding: '12px 16px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div className="search-bar">
-                    <span className="search-icon"><Search size={16} /></span>
-                    <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} />
-                </div>
-                <div style={{ display: 'flex', background: 'var(--bg)', padding: 4, borderRadius: 8, gap: 4 }}>
-                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'all' ? 'white' : 'transparent', boxShadow: scope === 'all' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'all' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('all')}>Общая база</button>
-                    <button style={{ flex: 1, padding: '6px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, background: scope === 'mine' ? 'white' : 'transparent', boxShadow: scope === 'mine' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', color: scope === 'mine' ? 'var(--text)' : 'var(--text-muted)' }} onClick={() => setScope('mine')}>Мои клиенты</button>
-                </div>
-            </div>
+            <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
+                {/* Modern Search & Filters */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div className="search-bar" style={{ background: 'white', border: '1px solid rgba(0,0,0,0.04)', height: 50, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                        <span className="search-icon"><Search size={18} /></span>
+                        <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 600 }} />
+                    </div>
+                    
+                    <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', padding: 4, borderRadius: 16, gap: 4 }}>
+                        <button style={{ 
+                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                            background: scope === 'all' ? 'white' : 'transparent', 
+                            boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                            color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)',
+                            transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
+                        }} onClick={() => setScope('all')}>Общая база</button>
+                        <button style={{ 
+                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                            background: scope === 'mine' ? 'white' : 'transparent', 
+                            boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                            color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)',
+                            transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
+                        }} onClick={() => setScope('mine')}>Мои клиенты</button>
+                    </div>
 
-            <div className="tab-filters">
-                {[['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['landlord', 'Арендодатели'], ['tenant', 'Арендаторы'], ['active', 'Активные']].map(([val, label]) => (
-                    <button key={val} className={`tab-filter ${filter === val ? 'active' : ''}`} onClick={() => setFilter(val)}>{label}</button>
-                ))}
-            </div>
+                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                        {[
+                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['active', 'Активные']
+                        ].map(([val, label]) => (
+                            <button 
+                                key={val} 
+                                className={`tab-filter ${filter === val ? 'active' : ''}`} 
+                                onClick={() => setFilter(val)}
+                                style={{ 
+                                    whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
+                                    background: filter === val ? 'var(--primary)' : 'white',
+                                    color: filter === val ? 'white' : 'var(--text-secondary)',
+                                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
+                                }}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                </div>
 
-            <div className="page-content" style={{ paddingTop: 8 }}>
                 {clients.length === 0 && (
-                    <div className="empty-state">
-                        <div className="empty-title">Нет клиентов</div>
-                        <div className="empty-desc">Добавьте первого клиента</div>
-                        <button className="btn btn-primary" onClick={() => navigate('/clients/new')}>+ Добавить клиента</button>
+                    <div className="empty-state" style={{ background: 'white', borderRadius: 28, padding: '60px 40px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }}>
+                        <div className="empty-title font-oswald" style={{ fontSize: 20, textTransform: 'uppercase' }}>Нет клиентов</div>
+                        <div className="empty-desc">Самое время добавить новый контакт в базу</div>
+                        <button className="card-clickable" style={{ 
+                            padding: '12px 24px', borderRadius: 14, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 14, marginTop: 10
+                        }} onClick={() => navigate('/clients/new')}>Добавить клиента</button>
                     </div>
                 )}
                 {clients.map(client => {
@@ -85,41 +137,54 @@ export function ListPage() {
                         const req = state.requests.find(r => r.id === m.request_id);
                         return prop?.client_id === client.id || req?.client_id === client.id;
                     });
-                    const handleDelete = (e) => {
-                        e.stopPropagation();
-                        if (window.confirm(`Удалить клиента ${client.full_name}?`)) {
-                            dispatch({ type: 'DELETE_CLIENT', id: client.id });
-                        }
-                    };
-                    const handleEdit = (e) => {
-                        e.stopPropagation();
-                        navigate(`/clients/${client.id}/edit`);
-                    };
+                    
+                    const initial = client.full_name?.charAt(0).toUpperCase() || '?';
+                    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                    const avatarBg = colors[initial.charCodeAt(0) % colors.length];
+
                     return (
-                        <div key={client.id} className="card card-clickable" style={{ position: 'relative' }} onClick={() => navigate(`/clients/${client.id}`)}>
-                            <div className="flex items-center gap-12">
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="flex items-center gap-8" style={{ marginBottom: 2 }}>
-                                        <span style={{ fontWeight: 700, fontSize: 15 }}>{client.full_name}</span>
-                                        <span className={`badge badge-${statusColors[client.status] || 'muted'}`} style={{ fontSize: 11 }}>
-                                            {statusLabels[client.status] || client.status}
-                                        </span>
-                                    </div>
-                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                        {client.client_types?.map(t => (
-                                            <span key={t} style={{ opacity: 0.8 }}>{typeLabels[t]}</span>
-                                        )).reduce((prev, curr) => [prev, ' · ', curr])}
-                                        {client.client_types?.length > 0 && ' · '} <span style={{ color: '#2563EB', fontWeight: 600 }}>{formatPhone(client.phone)}</span>
-                                        {client.phones?.length > 1 && <span style={{ opacity: 0.6 }}>+{client.phones.length - 1}</span>}
-                                    </div>
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                                        {client.additional_contacts?.length > 0 && `+${client.additional_contacts.length} чел. · `}
-                                        {matches.length > 0 && `Совпадений: ${matches.length}`}
-                                    </div>
+                        <div key={client.id} className="card card-clickable" style={{ 
+                            padding: '16px', border: 'none', background: 'white', borderRadius: 24, 
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden'
+                        }} onClick={() => navigate(`/clients/${client.id}`)}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                {/* Avatar */}
+                                <div style={{ 
+                                    width: 52, height: 52, borderRadius: 16, background: avatarBg, color: 'white',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800,
+                                    fontFamily: "'Oswald', sans-serif"
+                                }}>
+                                    {initial}
                                 </div>
-                                <div style={{ display: 'flex', gap: 4 }}>
-                                    <button className="icon-btn" onClick={handleEdit}><Pencil size={16} /></button>
-                                    <button className="icon-btn" onClick={handleDelete}><Trash size={16} /></button>
+                                
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
+                                        <div style={{ 
+                                            padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                            background: client.status === 'active' ? '#ecfdf5' : '#fef3c7',
+                                            color: client.status === 'active' ? '#10b981' : '#f59e0b'
+                                        }}>
+                                            {statusLabels[client.status] || client.status}
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 700, marginBottom: 4 }}>
+                                        {formatPhone(client.phone)}
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            {client.client_types?.map(t => (
+                                                <span key={t} style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, background: 'var(--bg-light)', padding: '2px 8px', borderRadius: 6 }}>
+                                                    {typeLabels[t]}
+                                                </span>
+                                            ))}
+                                        </div>
+                                        {matches.length > 0 && (
+                                            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>
+                                                {matches.length} совпадений
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -128,30 +193,37 @@ export function ListPage() {
 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 20, paddingBottom: 20 }}>
                         <button
-                            className="btn btn-outline"
+                            className="card-clickable"
                             onClick={prevPage}
                             disabled={!hasPrev}
-                            style={{ padding: '8px 16px', opacity: hasPrev ? 1 : 0.5 }}
+                            style={{ 
+                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'white', color: 'var(--text)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasPrev ? 1 : 0.4,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                            }}
                         >
-                            <ChevronLeft size={18} /> Назад
+                            <ChevronLeft size={20} />
                         </button>
-                        <span style={{ fontSize: 14, color: 'var(--text-secondary)' }}>
-                            Страница {currentPage} из {totalPages}
+                        <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                            {currentPage} / {totalPages}
                         </span>
                         <button
-                            className="btn btn-outline"
+                            className="card-clickable"
                             onClick={nextPage}
                             disabled={!hasNext}
-                            style={{ padding: '8px 16px', opacity: hasNext ? 1 : 0.5 }}
+                            style={{ 
+                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'white', color: 'var(--text)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasNext ? 1 : 0.4,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                            }}
                         >
-                            Вперёд <ChevronRight size={18} />
+                            <ChevronRight size={20} />
                         </button>
                     </div>
                 )}
             </div>
-
-        </div >
+        </div>
     );
 }

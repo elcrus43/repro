@@ -102,6 +102,7 @@ export function useDbDispatch(state, dispatch, onError) {
         const sh = {
           ...action.showing,
           id: action.showing.id || nanoid(),
+          event_type: action.showing.event_type || 'showing',
           created_at: now,
           // Ensure realtor_id is set
           realtor_id: action.showing.realtor_id || stateRef.current.currentUser?.id,

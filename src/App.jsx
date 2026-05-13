@@ -50,7 +50,7 @@ function BottomNav() {
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
-    { path: '/matches', icon: <Sparkles size={22} />, label: 'Подбор', badge: newMatchCount > 0 },
+    { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
     { path: '/history', icon: <History size={22} />, label: 'История' },
     { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
     { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
@@ -59,18 +59,59 @@ function BottomNav() {
   const isActive = (path) => pathname.startsWith(path);
 
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" style={{ 
+        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
+        width: '100%', maxWidth: 430,
+        height: 'calc(76px + env(safe-area-inset-bottom))', 
+        background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(24px) saturate(180%)',
+        borderTop: '1px solid rgba(0,0,0,0.05)',
+        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+        padding: `0 4px calc(12px + env(safe-area-inset-bottom))`, zIndex: 1000,
+        boxShadow: '0 -10px 40px rgba(0,0,0,0.05)'
+    }}>
       {tabs.map(tab => (
         <button
           key={tab.path}
           className={`nav-item ${isActive(tab.path) ? 'active' : ''}`}
           onClick={() => navigate(tab.path)}
+          style={{ 
+              flex: 1, height: '100%', border: 'none', background: 'transparent',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              gap: 2, position: 'relative', padding: '12px 0',
+              minWidth: 0,
+              color: isActive(tab.path) ? 'var(--primary)' : 'var(--text-muted)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
         >
-          <span className="nav-icon">
-            {tab.icon}
-            {tab.badge && <span className="nav-badge" />}
-          </span>
-          <span className="nav-label">{tab.label}</span>
+          <div style={{ 
+              position: 'relative', 
+              transform: isActive(tab.path) ? 'translateY(-2px)' : 'translateY(0)',
+              transition: 'transform 0.3s ease'
+          }}>
+            {React.cloneElement(tab.icon, { size: 20 })}
+            {tab.badge && (
+                <span style={{ 
+                    position: 'absolute', top: -2, right: -2, width: 8, height: 8, 
+                    borderRadius: '50%', background: '#EF4444', border: '2px solid white' 
+                }} />
+            )}
+          </div>
+          <span style={{ 
+              fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em',
+              opacity: isActive(tab.path) ? 1 : 0.6,
+              fontFamily: "'Oswald', sans-serif",
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              width: '100%',
+              textAlign: 'center'
+          }}>{tab.label}</span>
+          
+          {isActive(tab.path) && (
+              <div style={{ 
+                  position: 'absolute', bottom: 10, width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)'
+              }} />
+          )}
         </button>
       ))}
     </nav>
@@ -91,42 +132,94 @@ function LoadingScreen() {
     <div className="loading-screen" style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0,
-      background: 'var(--surface)', zIndex: 9999
+      background: 'radial-gradient(circle at center, #f8fafc 0%, #f1f5f9 100%)',
+      zIndex: 9999, overflow: 'hidden'
     }}>
-      <div className="loading-logo" style={{ 
-        fontSize: 48, fontWeight: 900, letterSpacing: -2, color: 'var(--primary)',
+      {/* Background Decorative Elements */}
+      <div style={{ 
+          position: 'absolute', top: '-10%', left: '-10%', width: '40%', height: '40%', 
+          background: 'radial-gradient(circle, rgba(0, 82, 255, 0.05) 0%, transparent 70%)',
+          filter: 'blur(60px)', pointerEvents: 'none'
+      }} />
+      <div style={{ 
+          position: 'absolute', bottom: '-10%', right: '-10%', width: '40%', height: '40%', 
+          background: 'radial-gradient(circle, rgba(16, 185, 129, 0.05) 0%, transparent 70%)',
+          filter: 'blur(60px)', pointerEvents: 'none'
+      }} />
+
+      <div className="font-oswald" style={{ 
+        fontSize: 48, fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--primary)',
+        textTransform: 'uppercase', marginBottom: 24, position: 'relative',
         animation: 'pulse 2s infinite ease-in-out'
-      }}>REM</div>
-      <div className="loading-bar" style={{ width: 120, height: 4, background: 'var(--bg)', borderRadius: 2, marginTop: 24, overflow: 'hidden' }}>
-        <div className="loading-progress" />
+      }}>
+        <Building2 size={48} />
+        <div style={{ 
+            position: 'absolute', bottom: -4, left: 0, width: '100%', height: 6, 
+            background: 'var(--primary)', opacity: 0.1, borderRadius: 3
+        }} />
       </div>
-      <p style={{ marginTop: 16, color: 'var(--text-muted)', fontSize: 13, fontWeight: 500, opacity: 0.8 }}>Загрузка данных...</p>
+
+      <div style={{ width: 140, height: 4, background: 'rgba(0,0,0,0.05)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+        <div className="loading-progress" style={{ 
+            position: 'absolute', height: '100%', width: '40%', 
+            background: 'linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%)',
+            borderRadius: 10, animation: 'loading-slide 1.5s infinite ease-in-out'
+        }} />
+      </div>
+
+      <p style={{ 
+          marginTop: 20, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 700, 
+          textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 
+      }}>Загрузка данных</p>
       
       {showRetry && (
-        <div style={{ marginTop: 32, textAlign: 'center', padding: '0 20px', animation: 'fadeIn 0.5s ease' }}>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>Загрузка затянулась. Возможно, проблемы с сетью или кэшем.</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ 
+            marginTop: 48, textAlign: 'center', padding: '0 32px', maxWidth: 400,
+            animation: 'fadeIn 0.8s ease'
+        }}>
+          <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 24, lineHeight: 1.6 }}>
+            Загрузка занимает больше времени, чем обычно. Попробуйте обновить страницу.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button 
-              className="btn btn-primary"
-              style={{ minHeight: 44 }}
+              className="card-clickable"
+              style={{ 
+                  height: 52, borderRadius: 16, border: 'none', background: 'var(--primary)', 
+                  color: 'white', fontWeight: 800, fontSize: 14, boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)',
+                  textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif"
+              }}
               onClick={() => window.location.reload()}
             >
-              Попробовать снова
+              Обновить страницу
             </button>
             <button 
-              className="btn btn-secondary"
-              style={{ minHeight: 44, background: 'transparent', border: '1px solid var(--border)' }}
+              className="card-clickable"
+              style={{ 
+                  height: 52, borderRadius: 16, border: '1px solid rgba(0,0,0,0.1)', 
+                  background: 'white', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 13
+              }}
               onClick={() => {
                 localStorage.clear();
                 sessionStorage.clear();
                 window.location.reload();
               }}
             >
-              Очистить кэш и войти заново
+              Очистить кэш
             </button>
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes loading-slide {
+          0% { left: -40%; }
+          100% { left: 100%; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   );
 }

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Pencil, Trash, Calendar, Phone, User } from 'lucide-react';
+import { Pencil, Trash, Calendar, Phone, User, Plus, CheckCircle, Activity, Clock, ChevronRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
+import { FormCard } from '../../components/FormCard';
 import {
     isCalendarConfigured,
     isCalendarConnected,
@@ -20,31 +21,49 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
     const client = task.client_id ? state.clients.find(c => c.id === task.client_id) : null;
     const prop = task.property_id ? state.properties.find(p => p.id === task.property_id) : null;
     const priorColors = { high: 'var(--danger)', medium: 'var(--warning)', low: 'var(--success)' };
+    
     return (
-        <div style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', alignItems: 'flex-start' }}>
             <button
                 onClick={() => onToggle(task)}
                 style={{
-                    width: 22, height: 22, border: `2px solid ${task.status === 'done' ? 'var(--success)' : '#ccc'}`,
-                    borderRadius: 6, background: task.status === 'done' ? 'var(--success)' : 'white',
+                    width: 26, height: 26, border: `2px solid ${task.status === 'done' ? '#10b981' : 'var(--border)'}`,
+                    borderRadius: 8, background: task.status === 'done' ? '#10b981' : 'white',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                    flexShrink: 0, marginTop: 1, color: 'white', fontSize: 12, fontWeight: 700
+                    flexShrink: 0, marginTop: 2, color: 'white', fontSize: 14, fontWeight: 800,
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}>
                 {task.status === 'done' ? '✓' : ''}
             </button>
             <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 14, textDecoration: task.status === 'done' ? 'line-through' : 'none', color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text)' }}>
+                <div className="font-oswald" style={{ 
+                    fontWeight: 700, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em',
+                    textDecoration: task.status === 'done' ? 'line-through' : 'none', 
+                    color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text)' 
+                }}>
                     {task.title}
                 </div>
-                {task.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1 }}>{task.description}</div>}
-                {client && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>}
-                {prop && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Продажа: {prop.address}</div>}
-                {task.due_date && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(task.due_date).toLocaleDateString('ru-RU')}</div>}
+                {task.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{task.description}</div>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', marginTop: 6 }}>
+                    {client && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--primary)' }}>
+                            <User size={12} /> {client.full_name}
+                        </div>
+                    )}
+                    {task.due_date && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>
+                            <Clock size={12} /> {new Date(task.due_date).toLocaleDateString('ru-RU')}
+                        </div>
+                    )}
+                </div>
             </div>
-            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                <button className="icon-btn" onClick={() => onEdit(task)}><Pencil size={16} /></button>
-                <button className="icon-btn" onClick={() => onDelete(task)}><Trash size={16} /></button>
-                <div style={{ width: 6, height: 20, borderRadius: 3, background: priorColors[task.priority] || '#ccc', flexShrink: 0 }} />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--bg-light)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => onEdit(task)}>
+                    <Pencil size={14} />
+                </button>
+                <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => onDelete(task)}>
+                    <Trash size={14} />
+                </button>
             </div>
         </div>
     );
@@ -53,9 +72,13 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
 function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
     if (ts.length === 0) return null;
     return (
-        <div className="card">
-            <div style={{ fontWeight: 700, fontSize: 14, color, marginBottom: 4 }}>{label} ({ts.length})</div>
-            {ts.map(t => <TaskItem key={t.id} task={t} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)}
+        <div className="card" style={{ padding: '24px', borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
+            <div className="font-oswald" style={{ fontWeight: 800, fontSize: 13, color, letterSpacing: '0.01em', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+                {label} <span>{ts.length}</span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {ts.map(t => <TaskItem key={t.id} task={t} onToggle={onToggle} onDelete={onDelete} onEdit={onEdit} />)}
+            </div>
         </div>
     );
 }
@@ -71,10 +94,9 @@ export function TasksPage() {
     const prefillClientId = searchParams.get('client');
 
     const [filter, setFilter] = useState('today');
-    const calendarStatus = state.calendarStatus;
-    const [gcalConnected, setGcalConnected] = useState(() => isCalendarConnected());
-    const gcalConfigured = isCalendarConfigured();
+    const [showForm, setShowForm] = useState(false);
     const [newTask, setNewTask] = useState({
+        id: '',
         title: searchParams.get('title') || '',
         description: searchParams.get('description') || '',
         due_date: searchParams.get('due_date') || '',
@@ -89,13 +111,11 @@ export function TasksPage() {
     function handleFieldChange(field, value) {
         setNewTask(prev => {
             const updated = { ...prev, [field]: value };
-
             if (field === 'task_type' || field === 'client_id') {
                 const type = field === 'task_type' ? value : prev.task_type;
                 if (type && type !== 'Другое') {
                     const cid = field === 'client_id' ? value : prev.client_id;
                     const client = state.clients.find(c => c.id === cid);
-
                     const parts = [type];
                     if (client) parts.push(client.full_name);
                     updated.title = parts.join(' ');
@@ -109,16 +129,9 @@ export function TasksPage() {
         .filter(t => user?.role === 'admin' || t.realtor_id === user?.id)
         .filter(t => {
             if (t.status === 'done' && filter !== 'all') return false;
-
             const taskDate = t.due_date?.slice(0, 10);
-            if (filter === 'today') {
-                // For "today" we show today's tasks OR overdue tasks
-                return taskDate <= today;
-            }
-            if (filter === 'week') {
-                // For "week" we show everything up to end of week
-                return taskDate <= weekEnd;
-            }
+            if (filter === 'today') return taskDate <= today;
+            if (filter === 'week') return taskDate <= weekEnd;
             return true;
         });
 
@@ -134,170 +147,119 @@ export function TasksPage() {
 
     async function addTask(e) {
         e.preventDefault();
-
-        // Validation: ensure user is authenticated
-        if (!user?.id) {
-            toast.error('Ошибка: пользователь не авторизован. Перезагрузите страницу.');
-            return;
-        }
-
-        // Validation: ensure title is present
         if (!newTask.title?.trim()) {
             toast.error('Укажите название задачи');
             return;
         }
-
         const taskId = newTask.id || nanoid();
-        const taskToSave = {
-            ...newTask,
-            id: taskId,
-            realtor_id: user.id,
-            client_id: newTask.client_id || null,
-            property_id: null,
-            due_date: newTask.due_date || null,
-            status: newTask.status || 'pending',
-            priority: 'medium',
-        };
-
+        const taskToSave = { ...newTask, id: taskId, realtor_id: user.id, client_id: newTask.client_id || null, property_id: null, due_date: newTask.due_date || null, status: newTask.status || 'pending', priority: 'medium' };
         try {
             if (newTask.id) {
                 dispatch({ type: 'UPDATE_TASK', task: taskToSave });
-                toast.success('Задача обновлена');
+                toast.success('Обновлено');
             } else {
-                if (newTask.task_type === 'Показ') {
-                    dispatch({
-                        type: 'ADD_SHOWING',
-                        showing: {
-                            realtor_id: user.id,
-                            client_id: taskToSave.client_id,
-                            property_id: taskToSave.property_id,
-                            showing_date: taskToSave.due_date || new Date().toISOString(),
-                            status: 'planned'
-                        },
-                        customTask: { ...taskToSave, realtor_id: user.id, status: 'pending' }
-                    });
-                    toast.success('Показ и задача созданы');
-                } else {
-                    dispatch({ type: 'ADD_TASK', task: taskToSave });
-                    toast.success('Задача создана');
-                }
+                dispatch({ type: 'ADD_TASK', task: taskToSave });
+                toast.success('Создано');
             }
-
-            setNewTask({ title: '', description: '', due_date: '', client_id: '', task_type: '' });
-        } catch (err) {
-            console.error('[Task save error]', err);
-            toast.error('Ошибка при сохранении задачи');
-        }
-    }
-
-    async function deleteTask(task) {
-        if (window.confirm('Удалить задачу?')) {
-            dispatch({ type: 'DELETE_TASK', id: task.id });
-            toast.success('Задача удалена');
-        }
+            setNewTask({ id: '', title: '', description: '', due_date: '', client_id: '', task_type: '' });
+            setShowForm(false);
+        } catch (err) { toast.error('Ошибка'); }
     }
 
     function editTask(task) {
         setNewTask({ ...task, task_type: task.task_type || '' });
-    }
-
-    async function handleConnectCalendar() {
-        try {
-            await requestAccessToken(true);
-            setGcalConnected(true);
-            toast.success('Google Календарь подключен');
-        } catch (err) {
-            console.warn('[Calendar Connect Error]', err);
-            toast.error('Не удалось подключить Google Календарь');
-        }
-    }
-
-    async function handleDisconnectCalendar() {
-        if (!window.confirm('Отключить Google Календарь? События не будут синхронизироваться.')) return;
-        try {
-            await disconnectCalendar();
-            setGcalConnected(false);
-            toast.success('Google Календарь отключен');
-        } catch (err) {
-            console.warn('[Calendar Disconnect Error]', err);
-            toast.error('Ошибка при отключении календаря');
-        }
+        setShowForm(true);
     }
 
     return (
         <div className="page fade-in">
-            <div className="topbar">
-                <span className="topbar-title">Задачи</span>
-            </div>
-            <div className="page-content" style={{ paddingTop: 8 }}>
-                {/* Quick action buttons */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16 }}>
-                    <button className="btn btn-secondary" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        <User size={18} /> Встреча с собственником
+            {/* Sticky Header — Open Design */}
+            <div className="topbar sticky" style={{ 
+                background: 'rgba(255,255,255,0.7)', 
+                backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px',
+                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                height: 'auto'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22 }}>Задачи и план</span>
+                    <button className="card-clickable" onClick={() => { setNewTask({ id: '', title: '', description: '', due_date: '', client_id: '', task_type: '' }); setShowForm(!showForm); }} style={{ 
+                        width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <Plus size={24} />
                     </button>
-                    <button className="btn btn-secondary" onClick={() => navigate('/tasks/call')} style={{ padding: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                        <Phone size={18} /> Позвонить
+                </div>
+            </div>
+
+            <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
+                
+                {/* Quick Actions Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <button className="card-clickable" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={18} /></div>
+                        <span className="font-oswald" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.02em' }}>Встреча</span>
+                    </button>
+                    <button className="card-clickable" onClick={() => navigate('/tasks/call')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                        <div style={{ width: 36, height: 36, borderRadius: 10, background: '#10b98115', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Phone size={18} /></div>
+                        <span className="font-oswald" style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.02em' }}>Звонок</span>
                     </button>
                 </div>
 
-                {/* Inline task form - always visible */}
-                <form className="card" onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{newTask.id ? 'Редактировать задачу' : 'Новая задача'}</div>
+                {/* Inline Form */}
+                {showForm && (
+                    <FormCard title={newTask.id ? 'Изменить задачу' : 'Новая задача'} onClose={() => setShowForm(false)}>
+                        <form onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Шаблон и клиент</label>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <select className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
+                                        <option value="">Тип задачи...</option>
+                                        {TASK_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
+                                    </select>
+                                    <select className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={newTask.client_id || ''} onChange={e => handleFieldChange('client_id', e.target.value)}>
+                                        <option value="">Без клиента</option>
+                                        {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Детали</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600, marginBottom: 8 }} placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
+                            </div>
+                            <button type="submit" className="btn btn-primary" style={{ height: 50, borderRadius: 16, fontWeight: 700, marginTop: 8 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
+                        </form>
+                    </FormCard>
+                )}
 
-                    <select className="form-select" value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
-                        <option value="">Шаблон задачи...</option>
-                        {TASK_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
-                    </select>
-
-                    <select className="form-select" value={newTask.client_id || ''} onChange={e => {
-                        if (e.target.value === 'new') {
-                            const currentParams = new URLSearchParams();
-                            currentParams.set('action', 'new');
-                            if (newTask.title) currentParams.set('title', newTask.title);
-                            if (newTask.due_date) currentParams.set('due_date', newTask.due_date);
-                            if (newTask.task_type) currentParams.set('task_type', newTask.task_type);
-                            if (newTask.description) currentParams.set('description', newTask.description);
-
-                            navigate(`/clients/new?returnTo=${encodeURIComponent(location.pathname + '?' + currentParams.toString())}`);
-                        } else {
-                            handleFieldChange('client_id', e.target.value);
-                        }
-                    }}>
-                        <option value="">Без клиента</option>
-                        <option value="new">+ Создать нового клиента</option>
-                        {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
-                    </select>
-
-                    <input className="form-input" placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
-                    <input className="form-input" type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
-
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {newTask.id && (
-                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => {
-                                setNewTask({ title: '', description: '', due_date: '', client_id: '', task_type: '' });
-                            }}>Очистить</button>
-                        )}
-                        <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Сохранить</button>
-                    </div>
-                </form>
-
-                {/* Task feed with filters */}
-                <div className="tab-filters" style={{ marginBottom: 12 }}>
+                {/* Filters */}
+                <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
                     {[['today', 'Сегодня'], ['week', 'Неделя'], ['all', 'Все']].map(([v, l]) => (
-                        <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
+                        <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700,
+                            background: filter === v ? 'var(--primary)' : 'white',
+                            color: filter === v ? 'white' : 'var(--text-secondary)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                        }} onClick={() => setFilter(v)}>{l}</button>
                     ))}
                 </div>
 
+                {/* Groups */}
                 <Group label="Просрочено" tasks={overdue} color="var(--danger)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
-                <Group label="Сегодня" tasks={todayT.filter(t => !overdue.find(o => o.id === t.id))} color="var(--warning)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
-                <Group label="Завтра" tasks={tomorrowT} color="var(--success)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
+                <Group label="Сегодня" tasks={todayT.filter(t => !overdue.find(o => o.id === t.id))} color="#f59e0b" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
+                <Group label="Завтра" tasks={tomorrowT} color="#10b981" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
                 <Group label="Позже" tasks={later} color="var(--text-secondary)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />
                 {filter === 'all' && <Group label="Выполнено" tasks={done} color="var(--text-muted)" onToggle={toggleDone} onDelete={deleteTask} onEdit={editTask} />}
 
                 {tasks.length === 0 && (
-                    <div className="empty-state">
-                        <div className="empty-title">Нет задач</div>
-                        <div className="empty-desc">Заполните форму выше, чтобы создать задачу</div>
+                    <div className="empty-state" style={{ padding: '40px 0' }}>
+                        <div style={{ width: 64, height: 64, background: 'var(--bg-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--text-muted)' }}>
+                            <Activity size={28} />
+                        </div>
+                        <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)' }}>Дел нет</div>
                     </div>
                 )}
             </div>
@@ -305,5 +267,4 @@ export function TasksPage() {
     );
 }
 
-// Default export for lazy loading
 export { TasksPage as default };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -19,7 +19,6 @@ export function DealsPage() {
     const [filter, setFilter] = useState('active');
     const [showForm, setShowForm] = useState(false);
     
-    // Фильтр по периоду
     const now = new Date();
     const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
     const [selectedYear, setSelectedYear] = useState(now.getFullYear());
@@ -44,15 +43,12 @@ export function DealsPage() {
     });
 
     const prevPropertyId = useRef(newDeal.property_id);
-
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
     
-    // Фильтрация по выбранному месяцу/году
     const filteredByPeriod = useMemo(() => {
         return deals.filter(d => {
             const dealDate = d.deal_date ? new Date(d.deal_date) : null;
             if (!dealDate) {
-                // Если дата сделки не установлена, показываем её в месяце создания
                 const createdAt = d.created_at ? new Date(d.created_at) : now;
                 return createdAt.getMonth() === selectedMonth && createdAt.getFullYear() === selectedYear;
             }
@@ -64,17 +60,13 @@ export function DealsPage() {
         return filteredByPeriod.filter(d => filter === 'all' || d.status === filter);
     }, [filteredByPeriod, filter]);
 
-    // Маска цены
     const formatPriceInput = (val) => {
         const digits = val.replace(/\D/g, '');
-        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-        return formatted;
+        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     };
 
     const parsePriceInput = (val) => val.replace(/\D/g, '');
 
-    // Options для селектов
-    const clientOptions = state.clients.map(c => ({ id: c.id, label: c.full_name }));
     const propertyOptions = state.properties.map(p => ({ 
         id: p.id, 
         label: `${p.address || p.city} — ${p.price?.toLocaleString()} ₽` 
@@ -87,7 +79,6 @@ export function DealsPage() {
         }
     }, []);
 
-    // Автоподстановка при выборе объекта
     useEffect(() => {
         if (newDeal.property_id && newDeal.property_id !== prevPropertyId.current) {
             const prop = state.properties.find(p => p.id === newDeal.property_id);
@@ -103,7 +94,6 @@ export function DealsPage() {
         prevPropertyId.current = newDeal.property_id;
     }, [newDeal.property_id, state.properties]);
 
-    // Статистика за выбранный период
     const stats = useMemo(() => {
         const activeDeals = filteredByPeriod.filter(d => d.status === 'active');
         const closedDeals = filteredByPeriod.filter(d => d.status === 'closed');
@@ -121,7 +111,6 @@ export function DealsPage() {
         };
     }, [filteredByPeriod]);
 
-    // Навигация по месяцам
     const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     
     const prevMonth = () => {
@@ -146,6 +135,22 @@ export function DealsPage() {
         setNewDeal(prev => ({ ...prev, [field]: value }));
     }
 
+    const addExpense = () => {
+        const newExpense = { id: nanoid(), title: '', amount: '', payer: 'seller' };
+        setNewDeal(prev => ({ ...prev, expenses: [...(prev.expenses || []), newExpense] }));
+    };
+
+    const removeExpense = (id) => {
+        setNewDeal(prev => ({ ...prev, expenses: prev.expenses.filter(e => e.id !== id) }));
+    };
+
+    const updateExpense = (id, field, value) => {
+        setNewDeal(prev => ({
+            ...prev,
+            expenses: prev.expenses.map(e => e.id === id ? { ...e, [field]: value } : e)
+        }));
+    };
+
     async function saveDeal(e) {
         e.preventDefault();
         if (!newDeal.title?.trim()) {
@@ -168,7 +173,10 @@ export function DealsPage() {
             mortgage_bank: newDeal.mortgage_bank || '',
             mortgage_amount: Number(parsePriceInput(String(newDeal.mortgage_amount))) || 0,
             mortgage_expiry: newDeal.mortgage_expiry || null,
-            expenses: newDeal.expenses || [],
+            expenses: (newDeal.expenses || []).map(e => ({
+                ...e,
+                amount: Number(parsePriceInput(String(e.amount))) || 0
+            })),
         };
 
         try {
@@ -182,43 +190,18 @@ export function DealsPage() {
             resetForm();
             setShowForm(false);
         } catch (err) {
-            console.error('[Deal save error]', err);
-            toast.error('Ошибка при сохранении сделки');
+            toast.error('Ошибка при сохранении');
         }
     }
 
     function resetForm() {
-        setNewDeal({ 
-            id: '', 
-            title: '', 
-            seller_ids: [], 
-            buyer_ids: [], 
-            property_id: '', 
-            price: '', 
-            deal_date: '', 
-            deposit_date: '',
-            deposit_amount: '',
-            commission: '',
-            notes: '',
-            mortgage: false,
-            mortgage_bank: '',
-            mortgage_amount: '',
-            mortgage_expiry: '',
-            expenses: [],
-        });
+        setNewDeal({ id: '', title: '', seller_ids: [], buyer_ids: [], property_id: '', price: '', deal_date: '', deposit_date: '', deposit_amount: '', commission: '', notes: '', mortgage: false, mortgage_bank: '', mortgage_amount: '', mortgage_expiry: '', expenses: [] });
         prevPropertyId.current = '';
-    }
-
-    async function deleteDeal(deal) {
-        if (window.confirm('Удалить сделку?')) {
-            dispatch({ type: 'DELETE_DEAL', id: deal.id });
-            toast.success('Сделка удалена');
-        }
     }
 
     function updateStatus(deal, status) {
         dispatch({ type: 'UPDATE_DEAL', deal: { ...deal, status } });
-        toast.success(`Статус сделки обновлён: ${status === 'closed' ? 'Закрыта' : status === 'cancelled' ? 'Отменена' : 'Активна'}`);
+        toast.success(`Статус обновлён: ${status === 'closed' ? 'Закрыта' : 'Активна'}`);
     }
 
     function editDeal(deal) {
@@ -244,131 +227,85 @@ export function DealsPage() {
 
         const statusConfig = {
             active: { label: 'Активна', color: 'var(--primary)', bg: 'var(--primary-light)' },
-            closed: { label: 'Закрыта', color: '#fff', bg: 'var(--success)' },
+            closed: { label: 'Закрыта', color: '#fff', bg: '#10b981' },
             cancelled: { label: 'Отменена', color: '#fff', bg: 'var(--danger)' },
         };
         const cfg = statusConfig[deal.status] || statusConfig.active;
 
         return (
-            <div className="card" style={{ marginBottom: 8 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ fontWeight: 700, fontSize: 16 }}>{deal.title}</div>
+            <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                    <div style={{ flex: 1 }}>
+                        <div className="font-oswald" style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>
+                            <Calendar size={14} /> {deal.deal_date ? new Date(deal.deal_date).toLocaleDateString('ru-RU') : 'Дата не назначена'}
+                        </div>
                     </div>
-                    <span className="badge" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
-                </div>
-                
-                <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
-                    {sellers.length > 0 && (
-                        <div>📤 Продавец: <strong>{sellers.map(s => s.full_name).join(', ')}</strong></div>
-                    )}
-                    {buyers.length > 0 && (
-                        <div>📥 Покупатель: <strong>{buyers.map(b => b.full_name).join(', ')}</strong></div>
-                    )}
-                    {property && <div>🏠 Объект: <strong>{property.address || property.city}</strong>{property.price ? ` · ${property.price.toLocaleString()} ₽` : ''}</div>}
+                    <span style={{ 
+                        padding: '6px 12px', borderRadius: 10, fontSize: 10, fontWeight: 700,
+                        background: cfg.bg === 'var(--primary)' ? 'var(--primary-light)' : cfg.bg.startsWith('#') ? `${cfg.bg}15` : cfg.bg,
+                        color: cfg.bg === 'var(--primary)' ? 'var(--primary)' : cfg.bg.startsWith('#') ? cfg.bg : '#fff'
+                    }}>{cfg.label}</span>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10, fontSize: 13 }}>
-                    <div style={{ background: 'var(--bg)', padding: '6px 8px', borderRadius: 6 }}>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Цена</div>
-                        <div style={{ fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                    <div style={{ background: 'var(--bg-light)', padding: '16px', borderRadius: 20 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Цена</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 800 }}>{Number(deal.price).toLocaleString()} ₽</div>
                     </div>
-                    <div style={{ background: 'var(--bg)', padding: '6px 8px', borderRadius: 6 }}>
-                        <div style={{ color: 'var(--text-muted)', fontSize: 11 }}>Комиссия</div>
-                        <div style={{ fontWeight: 600, color: 'var(--success)' }}>{Number(deal.commission).toLocaleString()} ₽</div>
+                    <div style={{ background: 'var(--bg-light)', padding: '16px', borderRadius: 20 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Комиссия</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
                     </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10, fontSize: 12 }}>
-                    {deal.deal_date && (
-                        <div style={{ color: 'var(--text-secondary)' }}>
-                            <Calendar size={14} style={{ display: 'inline', marginRight: 4 }} />
-                            Сделка: {new Date(deal.deal_date).toLocaleDateString('ru-RU')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                    {property && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(0,82,255,0.03)', borderRadius: 14 }}>
+                            <MapPin size={18} color="var(--primary)" />
+                            <div style={{ fontSize: 13, fontWeight: 700 }}>{property.address || property.city}</div>
                         </div>
                     )}
-                    {!!(deal.deposit_date || (deal.deposit_amount && deal.deposit_amount > 0)) && (
-                        <div style={{ color: 'var(--text-secondary)' }}>
-                            💰 Задаток: {deal.deposit_date ? new Date(deal.deposit_date).toLocaleDateString('ru-RU') : '—'}
-                            {deal.deposit_amount > 0 ? ` · ${Number(deal.deposit_amount).toLocaleString()} ₽` : ''}
-                        </div>
-                    )}
-                </div>
-
-                {!!deal.mortgage && (
-                    <div style={{ marginBottom: 10, fontSize: 12, background: 'var(--primary-light)', padding: '10px', borderRadius: 10, color: 'var(--primary)' }}>
-                        <div style={{ fontWeight: 700, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            🏠 Ипотечная сделка
-                        </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px' }}>
-                            {deal.mortgage_bank && <span>🏦 <strong>{deal.mortgage_bank}</strong></span>}
-                            {deal.mortgage_amount > 0 && <span>💵 Одобрено: <strong>{deal.mortgage_amount.toLocaleString()} ₽</strong></span>}
-                            {deal.mortgage_expiry && <span>📅 До: <strong>{new Date(deal.mortgage_expiry).toLocaleDateString('ru-RU')}</strong></span>}
-                        </div>
-                    </div>
-                )}
-
-                {deal.expenses && deal.expenses.length > 0 && (
-                    <div style={{ marginBottom: 10, fontSize: 12, background: 'var(--bg)', padding: '10px', borderRadius: 10 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 8, color: 'var(--text-muted)', fontSize: 10, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Расходы сторон</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                            {/* Продавец */}
-                            <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>ПРОДАВЕЦ</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                    {deal.expenses.filter(e => e.party === 'seller').map((exp, idx) => (
-                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.85 }}>
-                                            <span style={{ fontSize: 11 }}>{exp.name}</span>
-                                            <span style={{ fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</span>
-                                        </div>
-                                    ))}
-                                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--primary)' }}>
-                                        <span>Итого:</span>
-                                        <span>{deal.expenses.filter(e => e.party === 'seller').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()} ₽</span>
-                                    </div>
-                                </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        {sellers.length > 0 && (
+                            <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
+                                <div style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: 9, marginBottom: 2 }}>Продавец</div>
+                                <div style={{ fontWeight: 700 }}>{sellers.map(s => s.full_name).join(', ')}</div>
                             </div>
-                            {/* Покупатель */}
-                            <div>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>ПОКУПАТЕЛЬ</div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                    {deal.expenses.filter(e => e.party === 'buyer').map((exp, idx) => (
-                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', opacity: 0.85 }}>
-                                            <span style={{ fontSize: 11 }}>{exp.name}</span>
-                                            <span style={{ fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</span>
-                                        </div>
-                                    ))}
-                                    <div style={{ borderTop: '1px solid var(--border)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--success)' }}>
-                                        <span>Итого:</span>
-                                        <span>{deal.expenses.filter(e => e.party === 'buyer').reduce((sum, e) => sum + Number(e.amount), 0).toLocaleString()} ₽</span>
+                        )}
+                        {buyers.length > 0 && (
+                            <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
+                                <div style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: 9, marginBottom: 2 }}>Покупатель</div>
+                                <div style={{ fontWeight: 700 }}>{buyers.map(b => b.full_name).join(', ')}</div>
+                            </div>
+                        )}
+                    </div>
+                    {deal.expenses && deal.expenses.length > 0 && (
+                        <div style={{ marginTop: 12, padding: '12px', background: '#fff9e6', borderRadius: 16, border: '1px dashed #ffd43b' }}>
+                            <div style={{ fontSize: 9, fontWeight: 900, color: '#856404', marginBottom: 8, textTransform: 'uppercase' }}>Расходы сторон</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                {deal.expenses.map(exp => (
+                                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{exp.title} ({exp.payer === 'seller' ? 'Прод.' : 'Покуп.'})</span>
+                                        <span style={{ color: 'var(--text)' }}>{Number(exp.amount).toLocaleString()} ₽</span>
                                     </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
-                {deal.notes && (
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)', background: 'var(--bg)', padding: '6px 8px', borderRadius: 6, marginBottom: 10 }}>
-                        📝 {deal.notes}
-                    </div>
-                )}
-
-                <div style={{ display: 'flex', gap: 4, borderTop: '1px solid var(--border-light)', paddingTop: 10 }}>
+                <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 16 }}>
                     {deal.status === 'active' && (
-                        <>
-                            <button className="icon-btn" onClick={() => updateStatus(deal, 'closed')} title="Закрыть">
-                                <CheckCircle size={16} color="var(--success)" />
-                            </button>
-                            <button className="icon-btn" onClick={() => updateStatus(deal, 'cancelled')} title="Отменить">
-                                <XCircle size={16} color="var(--danger)" />
-                            </button>
-                        </>
+                        <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
+                            <CheckCircle size={18} /> Закрыть
+                        </button>
                     )}
-                    <button className="icon-btn" onClick={() => editDeal(deal)} title="Редактировать">
-                        <Pencil size={16} />
+                    <button className="card-clickable" style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => editDeal(deal)}>
+                        <Pencil size={18} />
                     </button>
-                    <button className="icon-btn" onClick={() => deleteDeal(deal)} title="Удалить">
-                        <Trash size={16} />
+                    <button className="card-clickable" style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--danger-light)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if(window.confirm('Удалить?')) dispatch({type:'DELETE_DEAL', id: deal.id}); }}>
+                        <Trash size={18} />
                     </button>
                 </div>
             </div>
@@ -377,236 +314,135 @@ export function DealsPage() {
 
     return (
         <div className="page fade-in">
-            <div className="topbar">
-                <span className="topbar-title">Сделки</span>
-                <button className="icon-btn" onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ color: 'var(--primary)', fontSize: 24, fontWeight: 'bold' }}>+</button>
+            {/* Sticky Header — Open Design */}
+            <div className="topbar sticky" style={{ 
+                background: 'rgba(255,255,255,0.7)', 
+                backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px',
+                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                height: 'auto'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.02em', fontSize: 22 }}>Управление сделками</span>
+                    <button className="card-clickable" onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ 
+                        width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                        <Plus size={24} />
+                    </button>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                    <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={prevMonth}><ChevronLeft size={20} /></button>
+                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 700 }}>{monthNames[selectedMonth]} {selectedYear}</div>
+                    <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={nextMonth}><ChevronRight size={20} /></button>
+                </div>
             </div>
-            
-            <div className="page-content" style={{ paddingTop: 8 }}>
-                {/* Фильтр по периоду */}
-                <div className="card" style={{ marginBottom: 12, padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <button className="icon-btn" onClick={prevMonth}>
-                            <ChevronLeft size={20} />
-                        </button>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: 16, fontWeight: 700 }}>{monthNames[selectedMonth]} {selectedYear}</div>
+
+            <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
+                
+                {/* Statistics Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Activity size={16} /></div>
+                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>В работе</span>
                         </div>
-                        <button className="icon-btn" onClick={nextMonth}>
-                            <ChevronRight size={20} />
-                        </button>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 800 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>сд.</span></div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
+                    </div>
+                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={16} /></div>
+                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Выручка</span>
+                        </div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
                     </div>
                 </div>
 
-                {/* Статистика */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 16 }}>
-                    <div className="card" style={{ background: 'var(--primary-light)', padding: '12px 10px' }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Активные</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)' }}>{stats.activeCount}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{stats.activeVolume.toLocaleString()} ₽</div>
-                    </div>
-                    <div className="card" style={{ background: 'var(--success-light)', padding: '12px 10px' }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Закрыто</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--success)' }}>{stats.closedCount}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{stats.totalCommission.toLocaleString()} ₽</div>
-                    </div>
-                    <div className="card" style={{ background: 'var(--danger-light)', padding: '12px 10px' }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Отменено</div>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--danger)' }}>{stats.cancelledCount}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{stats.closedVolume.toLocaleString()} ₽</div>
-                    </div>
-                </div>
-
-                {/* Форма сделки */}
+                {/* Form Overlay (Simulated by rendering before list) */}
                 {showForm && (
-                    <form className="card" onSubmit={saveDeal} style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-                        <div style={{ fontWeight: 700, marginBottom: 4 }}>{newDeal.id ? 'Редактировать сделку' : 'Новая сделка'}</div>
-
-                        <input className="form-input" placeholder="Название сделки" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
-
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, display: 'block' }}>Продавцы</label>
-                            <MultiClientSelector
-                                selectedIds={newDeal.seller_ids || []}
-                                onChange={ids => handleFieldChange('seller_ids', ids)}
-                                clients={state.clients}
-                                placeholder="Выбрать продавцов..."
-                            />
-                        </div>
+                    <div className="card fade-in" style={{ padding: '28px', borderRadius: 32, border: 'none', boxShadow: '0 12px 48px rgba(0,82,255,0.1)', background: 'white', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{newDeal.id ? 'Параметры сделки' : 'Запуск новой сделки'}</div>
+                        
+                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} placeholder="Название сделки (напр. Продажа 1к. на Ленина)" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
 
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, display: 'block' }}>Покупатели</label>
-                            <MultiClientSelector
-                                selectedIds={newDeal.buyer_ids || []}
-                                onChange={ids => handleFieldChange('buyer_ids', ids)}
-                                clients={state.clients}
-                                placeholder="Выбрать покупателей..."
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 4, display: 'block' }}>Объект</label>
-                            <SearchableSelect
-                                value={newDeal.property_id || ''}
-                                onChange={v => handleFieldChange('property_id', v)}
-                                placeholder="Выберите объект..."
-                                searchPlaceholder="Поиск объекта..."
-                                options={propertyOptions}
-                            />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <input className="form-input" placeholder="Цена" value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
-                            <input className="form-input" placeholder="Комиссия" value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <div>
-                                <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Дата сделки</label>
-                                <input className="form-input" type="datetime-local" value={newDeal.deal_date || ''} onChange={e => handleFieldChange('deal_date', e.target.value)} />
-                            </div>
-                            <div>
-                                <label style={{ fontSize: 12, color: 'var(--text-muted)' }}>Дата задатка</label>
-                                <input className="form-input" type="datetime-local" value={newDeal.deposit_date || ''} onChange={e => handleFieldChange('deposit_date', e.target.value)} />
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Стороны сделки</label>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." />
+                                <MultiClientSelector selectedIds={newDeal.buyer_ids || []} onChange={ids => handleFieldChange('buyer_ids', ids)} clients={state.clients} placeholder="Выбрать покупателей..." />
                             </div>
                         </div>
 
-                        <input className="form-input" placeholder="Сумма задатка" value={newDeal.deposit_amount} onChange={e => handleFieldChange('deposit_amount', formatPriceInput(e.target.value))} />
-
-                        <textarea className="form-textarea" rows={2} placeholder="Заметки..." value={newDeal.notes} onChange={e => handleFieldChange('notes', e.target.value)} />
-
-                        <div className="form-group flex justify-between items-center" style={{ background: 'var(--bg)', padding: '10px 12px', borderRadius: 10 }}>
-                            <label className="form-label mb-0" style={{ cursor: 'pointer', margin: 0 }}>Ипотечная сделка</label>
-                            <input type="checkbox" checked={newDeal.mortgage} onChange={e => handleFieldChange('mortgage', e.target.checked)} style={{ width: 20, height: 20 }} />
+                        <div className="form-group">
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Объект</label>
+                            <SearchableSelect value={newDeal.property_id || ''} onChange={v => handleFieldChange('property_id', v)} placeholder="Выберите объект..." options={propertyOptions} />
                         </div>
 
-                        {newDeal.mortgage && (
-                            <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--primary-light)', padding: 12, borderRadius: 12 }}>
-                                <input 
-                                    className="form-input" 
-                                    placeholder="Банк" 
-                                    value={newDeal.mortgage_bank} 
-                                    onChange={e => handleFieldChange('mortgage_bank', e.target.value)} 
-                                />
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                                    <input 
-                                        className="form-input" 
-                                        placeholder="Сумма одобрена" 
-                                        value={newDeal.mortgage_amount} 
-                                        onChange={e => handleFieldChange('mortgage_amount', formatPriceInput(e.target.value))} 
-                                    />
-                                    <div>
-                                        <label style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600, display: 'block', marginBottom: 2 }}>До какого числа</label>
-                                        <input 
-                                            className="form-input" 
-                                            type="date" 
-                                            value={newDeal.mortgage_expiry} 
-                                            onChange={e => handleFieldChange('mortgage_expiry', e.target.value)} 
-                                        />
-                                    </div>
-                                </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Цена</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
                             </div>
-                        )}
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Комиссия</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
+                            </div>
+                        </div>
 
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, display: 'block' }}>Расходы по сделке</label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {newDeal.expenses?.map((exp, idx) => (
-                                    <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center', background: 'var(--bg)', padding: 6, borderRadius: 8 }}>
-                                        <div style={{ flex: 1, fontSize: 13 }}>{exp.name}</div>
-                                        <div style={{ width: 80, fontSize: 13, fontWeight: 600 }}>{Number(exp.amount).toLocaleString()} ₽</div>
-                                        <select 
-                                            value={exp.party} 
-                                            onChange={e => {
-                                                const next = [...newDeal.expenses];
-                                                next[idx] = { ...next[idx], party: e.target.value };
-                                                handleFieldChange('expenses', next);
-                                            }}
-                                            style={{ padding: '2px 4px', fontSize: 11, borderRadius: 4, border: '1px solid var(--border)' }}
-                                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', display: 'block' }}>Расходы сторон</label>
+                                <button type="button" onClick={addExpense} style={{ background: 'var(--primary-light)', color: 'var(--primary)', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 800 }}>+ Добавить</button>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {newDeal.expenses?.map(exp => (
+                                    <div key={exp.id} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                        <input className="form-input" style={{ flex: 2, height: 36, fontSize: 12 }} placeholder="Статья (напр. Госпошлина)" value={exp.title} onChange={e => updateExpense(exp.id, 'title', e.target.value)} />
+                                        <input className="form-input" style={{ flex: 1, height: 36, fontSize: 12 }} placeholder="Сумма" value={exp.amount} onChange={e => updateExpense(exp.id, 'amount', formatPriceInput(e.target.value))} />
+                                        <select className="form-input" style={{ flex: 1, height: 36, fontSize: 11, padding: '0 4px' }} value={exp.payer} onChange={e => updateExpense(exp.id, 'payer', e.target.value)}>
                                             <option value="seller">Прод.</option>
-                                            <option value="buyer">Пок.</option>
+                                            <option value="buyer">Покуп.</option>
                                         </select>
-                                        <button type="button" className="icon-btn" onClick={() => {
-                                            const next = newDeal.expenses.filter((_, i) => i !== idx);
-                                            handleFieldChange('expenses', next);
-                                        }}>
-                                            <XCircle size={14} color="var(--danger)" />
-                                        </button>
+                                        <button onClick={() => removeExpense(exp.id)} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', background: 'var(--danger-light)', color: 'var(--danger)' }}><XCircle size={16} /></button>
                                     </div>
                                 ))}
-                                
-                                <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                                    <select 
-                                        className="form-input" 
-                                        style={{ flex: 1, fontSize: 13 }}
-                                        onChange={e => {
-                                            if (!e.target.value) return;
-                                            const item = state.pricelist.find(i => i.id === e.target.value);
-                                            if (item) {
-                                                const next = [...(newDeal.expenses || []), { 
-                                                    id: nanoid(), 
-                                                    name: item.name, 
-                                                    amount: item.price, 
-                                                    party: 'buyer' 
-                                                }];
-                                                handleFieldChange('expenses', next);
-                                            }
-                                            e.target.value = '';
-                                        }}
-                                    >
-                                        <option value="">+ Из прейскуранта</option>
-                                        {state.pricelist.map(item => (
-                                            <option key={item.id} value={item.id}>{item.name} ({item.price.toLocaleString()} ₽)</option>
-                                        ))}
-                                    </select>
-                                    <button 
-                                        type="button" 
-                                        className="btn btn-secondary" 
-                                        style={{ padding: '0 12px', fontSize: 12 }}
-                                        onClick={() => {
-                                            const name = prompt('Название расхода:');
-                                            const amount = prompt('Сумма:');
-                                            if (name && amount) {
-                                                const next = [...(newDeal.expenses || []), { 
-                                                    id: nanoid(), 
-                                                    name, 
-                                                    amount: Number(amount.replace(/\D/g, '')), 
-                                                    party: 'buyer' 
-                                                }];
-                                                handleFieldChange('expenses', next);
-                                            }
-                                        }}
-                                    >
-                                        + Вручную
-                                    </button>
-                                </div>
                             </div>
                         </div>
 
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowForm(false); resetForm(); }}>Отмена</button>
-                            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{newDeal.id ? 'Сохранить' : 'Создать'}</button>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <button className="btn btn-primary" style={{ flex: 1, height: 50, borderRadius: 16, fontWeight: 700 }} onClick={saveDeal}>Сохранить</button>
+                            <button className="btn btn-secondary" style={{ flex: 1, height: 50, borderRadius: 16, background: 'var(--bg-light)', border: 'none', color: 'var(--text-secondary)' }} onClick={() => { setShowForm(false); resetForm(); }}>Отмена</button>
                         </div>
-                    </form>
+                    </div>
                 )}
 
-                {/* Фильтры по статусу */}
-                <div className="tab-filters" style={{ marginBottom: 12 }}>
-                    {[['active', 'Активные'], ['closed', 'Закрытые'], ['cancelled', 'Отменённые'], ['all', 'Все']].map(([v, l]) => (
-                        <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} onClick={() => setFilter(v)}>{l}</button>
+                {/* Status Tabs */}
+                <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
+                    {[['active', 'Активные'], ['closed', 'Закрытые'], ['all', 'Все']].map(([v, l]) => (
+                        <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700,
+                            background: filter === v ? 'var(--primary)' : 'white',
+                            color: filter === v ? 'white' : 'var(--text-secondary)',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                        }} onClick={() => setFilter(v)}>{l}</button>
                     ))}
                 </div>
 
-                {/* Список сделок */}
-                {filteredDeals.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="empty-title">Нет сделок</div>
-                        <div className="empty-desc">{filteredByPeriod.length === 0 ? `Нет сделок за ${monthNames[selectedMonth]} ${selectedYear}` : 'Нет сделок с выбранным статусом'}</div>
-                    </div>
-                ) : (
-                    filteredDeals.map(d => <DealCard key={d.id} deal={d} />)
-                )}
+                {/* List of Deals */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {filteredDeals.length === 0 ? (
+                        <div className="empty-state" style={{ padding: '40px 0' }}>
+                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)' }}>Сделок не найдено</div>
+                        </div>
+                    ) : (
+                        filteredDeals.map(d => <DealCard key={d.id} deal={d} />)
+                    )}
+                </div>
             </div>
         </div>
     );

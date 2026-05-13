@@ -1,4 +1,5 @@
 import React from 'react';
+import { Building2 } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 
@@ -17,7 +18,7 @@ export function RequireAdmin({ children }) {
   if (state.loading) {
     return (
       <div className="loading-screen">
-        <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, color: 'var(--primary)' }}>REM</div>
+        <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, color: 'var(--primary)' }}><Building2 size={36} /></div>
         <p style={{ marginTop: 8, color: 'var(--text-muted)', fontSize: 14 }}>Проверка прав...</p>
       </div>
     );
@@ -48,7 +49,7 @@ export function withRoleGuard(Component, requiredRole) {
     if (state.loading) {
       return (
         <div className="loading-screen">
-          <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, color: 'var(--primary)' }}>REM</div>
+          <div style={{ fontSize: 36, fontWeight: 900, letterSpacing: -1, color: 'var(--primary)' }}><Building2 size={36} /></div>
           <p style={{ marginTop: 8, color: 'var(--text-muted)', fontSize: 14 }}>Проверка прав...</p>
         </div>
       );

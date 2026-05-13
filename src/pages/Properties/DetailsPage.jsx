@@ -6,7 +6,7 @@ import {
     Pencil, Trash, Sparkles, Building2, Calculator, ExternalLink, 
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
-    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader
+    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft
 } from 'lucide-react';
 
 
@@ -157,7 +157,7 @@ function EstimationWidget({ prop }) {
                         <div style={{ marginTop: 16 }} className="fade-in">
                             {/* Result block */}
                             <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '16px', textAlign: 'center', marginBottom: 12 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>
                                     Оценочная стоимость {params.deal_type === 'RENT' ? '(аренда/мес)' : '(продажа)'}
                                 </div>
                                 <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', letterSpacing: -1 }}>
@@ -1127,7 +1127,16 @@ export function DetailsPage() {
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
     const agent = state.profiles.find(p => p.id === prop?.realtor_id);
-    const clients = state.clients.filter(c => (prop?.client_ids || (prop?.client_id ? [prop.client_id] : [])).includes(c.id));
+    
+    // Normalize client_ids to always be an array
+    let propClientIds = prop?.client_ids || [];
+    if (typeof propClientIds === 'string') {
+        // Handle Postgres array literal format "{id1,id2}"
+        propClientIds = propClientIds.replace(/{|}/g, '').split(',').filter(Boolean);
+    }
+    const clientIds = propClientIds.length > 0 ? propClientIds : (prop?.client_id ? [prop.client_id] : []);
+    
+    const clients = state.clients.filter(c => clientIds.includes(c.id));
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
 
@@ -1153,10 +1162,16 @@ export function DetailsPage() {
         .sort((a, b) => (b.dateObj?.getTime() || 0) - (a.dateObj?.getTime() || 0));
 
     if (!prop) return (
-        <div className="page">
-            <div className="topbar">
-                <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
-                <span className="topbar-title">Объект не найден</span>
+        <div className="page" style={{ background: 'var(--bg)' }}>
+            <div className="topbar" style={{ padding: '24px 20px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)' }}>
+                <button className="card-clickable" onClick={() => navigate('/properties')} style={{ 
+                    width: 40, height: 40, borderRadius: 12, border: 'none', background: 'white',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    color: 'var(--text)'
+                }}>
+                    <ChevronLeft size={20} />
+                </button>
+                <span className="topbar-title font-oswald" style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.01em' }}>Объект не найден</span>
             </div>
         </div>
     );
@@ -1176,84 +1191,92 @@ export function DetailsPage() {
     const initials = (name) => name ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
 
     return (
-        <div className="page fade-in">
-            <div className="topbar">
-                <button className="topbar-back" onClick={() => navigate('/properties')}>←</button>
-                <span className="topbar-title">Карточка объекта</span>
-                <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <button className="btn btn-primary" onClick={() => setShowBannerGen(true)} title="Создать баннер" style={{ padding: '6px 12px', height: 36, borderRadius: 10, fontSize: 13, textTransform: 'none' }}>
-                        <ImageIcon size={18} />
-                        <span style={{ marginLeft: 6, fontWeight: 700 }}>Баннер</span>
-                    </button>
-                    <button className="icon-btn" onClick={() => navigate(`/properties/${id}/edit`)}><Pencil size={18} /></button>
-                    <button className="icon-btn" onClick={handleDelete}><Trash size={18} /></button>
+        <div className="page fade-in" style={{ background: 'var(--surface)' }}>
+            <div className="topbar sticky" style={{ 
+                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+            }}>
+                <button onClick={() => navigate('/properties')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                    <ChevronLeft size={20} />
+                </button>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                    <span className="font-oswald" style={{ fontSize: 17, fontWeight: 800, letterSpacing: '0.01em', color: 'var(--text)' }}>
+                        Объект
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
-
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="card-clickable" onClick={() => navigate(`/properties/${id}/edit`)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                        <Pencil size={20} />
+                    </button>
+                    <button className="card-clickable" onClick={handleDelete} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                        <Trash size={20} />
+                    </button>
+                </div>
             </div>
 
-            <div className="page-content">
-                {/* Header Card — Redesigned with Square Image */}
-                <div className="card" style={{ padding: 12, display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <div style={{ width: 100, height: 100, borderRadius: 16, overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                        <img 
-                            src={prop.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=80'} 
-                            alt="Object" 
-                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                        />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ fontSize: 22, fontWeight: 900, color: 'var(--primary)', letterSpacing: -0.5 }}>{formatNumber(prop.price)} ₽</div>
-                            <span className={`badge badge-${statusColors[status]}`} style={{ fontSize: 10, padding: '2px 8px' }}>{statusLabels[status]}</span>
+            <div className="page-content" style={{ padding: '24px 20px 120px' }}>
+                {/* Header Card — Premium Open Design */}
+                <div className="card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.04)', borderRadius: 36, background: 'white' }}>
+                    <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
+                        <div className="card-clickable" style={{ width: 130, height: 130, borderRadius: 28, overflow: 'hidden', flexShrink: 0, boxShadow: '0 15px 30px rgba(0,0,0,0.12)', border: '1px solid rgba(0,0,0,0.02)' }} onClick={() => setShowGallery(true)}>
+                            <img 
+                                src={prop.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=80'} 
+                                alt="Object" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                            />
                         </div>
-                        <div style={{ fontSize: 14, fontWeight: 700, marginTop: 4, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, fontWeight: 600 }}>
-                            {prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к`} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт
-                        </div>
-
-                        {agent && (
-                            <div style={{ 
-                                display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, 
-                                padding: '4px 8px', background: 'var(--bg-light)', borderRadius: 6,
-                                width: 'fit-content'
-                            }}>
-                                <div style={{ 
-                                    width: 18, height: 18, borderRadius: '50%', background: 'var(--primary)',
-                                    color: 'white', fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontWeight: 800
-                                }}>
-                                    {initials(agent.full_name)}
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>
-                                    Агент: <span style={{ color: 'var(--text)' }}>{agent.full_name}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>
+                                        {formatNumber(prop.price)} <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
+                                    </div>
+                                    {prop.area_total > 0 && (
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 700, marginTop: 4, opacity: 0.6 }}>
+                                            {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        )}
-                        
-                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                            <button
-                                style={{ 
-                                    padding: '6px 12px', fontSize: 12, borderRadius: 8, border: 'none',
-                                    background: 'var(--primary)', color: 'white', fontWeight: 700,
-                                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
-                                }}
-                                onClick={() => navigate(`/matches?property_id=${id}`)}
-                            >
-                                <Sparkles size={14} /> Совпадения ({matches.length})
-                            </button>
-                            <button
-                                style={{ 
-                                    padding: '6px 12px', fontSize: 12, borderRadius: 8, border: '1px solid var(--primary)',
-                                    background: 'var(--primary-light)', color: 'var(--primary)', fontWeight: 700,
-                                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
-                                }}
-                                onClick={() => setShowPortfolio(true)}
-                            >
-                                <Briefcase size={14} /> Портфолио
-                            </button>
+                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, marginTop: 12, color: 'var(--text)', lineHeight: 1.2 }}>
+                                {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 600, opacity: 0.7 }}>
+                                {prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к. кв.`} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт.
+                            </div>
                         </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button
+                            className="card-clickable"
+                            style={{ 
+                                flex: 1.5, height: 48, borderRadius: 14, border: 'none',
+                                background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
+                                color: 'white', fontWeight: 700, fontSize: 14,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                boxShadow: '0 8px 20px rgba(0, 82, 255, 0.15)',
+                                fontFamily: "'Oswald', sans-serif"
+                            }}
+                            onClick={() => navigate(`/matches?property_id=${id}`)}
+                        >
+                            <Sparkles size={16} /> Совпадения ({matches.length})
+                        </button>
+                        <button
+                            className="card-clickable"
+                            style={{ 
+                                flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                background: 'white', color: 'var(--text)', fontWeight: 700, fontSize: 13,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                fontFamily: "'Oswald', sans-serif"
+                            }}
+                            onClick={() => setShowBannerGen(true)}
+                        >
+                            <ImageIcon size={18} /> Баннер
+                        </button>
                     </div>
                 </div>
 
@@ -1308,232 +1331,147 @@ export function DetailsPage() {
                     </div>
                 )}
 
-
-                {/* ── О ДОМЕ ────────────────────────────────────────── */}
-                <div className="card" style={{ overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-light)' }}>
-                        <div style={{ background: 'var(--primary-light)', padding: 6, borderRadius: 6, color: 'var(--primary)' }}>
-                            <Building2 size={16} />
+                {/* ── О ДОМЕ — Premium Section ── */}
+                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Building2 size={20} />
                         </div>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>О доме</div>
+                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
                     </div>
                     
-                    <div className="info-grid" style={{ padding: '8px 16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
                         {prop.build_year && (
-                            <div className="info-row">
-                                <span className="info-key"><Calendar size={14} style={{ marginRight: 6 }} /> Год постройки</span>
-                                <span className="info-val">{prop.build_year}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Год постройки</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.build_year}</span>
                             </div>
                         )}
                         {prop.building_type && (
-                            <div className="info-row">
-                                <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Тип дома</span>
-                                <span className="info-val">{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Тип дома</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
                             </div>
                         )}
                         {prop.floors_total && (
-                            <div className="info-row">
-                                <span className="info-key"><ArrowUpCircle size={14} style={{ marginRight: 6 }} /> Этажей</span>
-                                <span className="info-val">{prop.floors_total}</span>
-                            </div>
-                        )}
-                        {prop.apartments_count && (
-                            <div className="info-row">
-                                <span className="info-key"><Home size={14} style={{ marginRight: 6 }} /> Квартир</span>
-                                <span className="info-val">{prop.apartments_count}</span>
-                            </div>
-                        )}
-                        {prop.house_series && (
-                            <div className="info-row">
-                                <span className="info-key"><FileText size={14} style={{ marginRight: 6 }} /> Серия</span>
-                                <span className="info-val">{prop.house_series}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Этажность</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.floors_total}</span>
                             </div>
                         )}
                         {prop.elevator_type && prop.elevator_type !== 'none' && (
-                            <div className="info-row">
-                                <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Лифт</span>
-                                <span className="info-val" style={{ fontWeight: 700 }}>
-                                    {{ passenger: 'Пассажирский', cargo: 'Грузовой', both: 'Пасс. + Грузовой' }[prop.elevator_type] || prop.elevator_type}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Лифт</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                                    {{ passenger: 'Пассажирский', cargo: 'Грузовой', both: 'Пасс. + Груз.' }[prop.elevator_type] || prop.elevator_type}
                                 </span>
                             </div>
                         )}
                         {prop.ceiling_height && (
-                            <div className="info-row">
-                                <span className="info-key"><Maximize2 size={14} style={{ marginRight: 6 }} /> Потолки</span>
-                                <span className="info-val">{prop.ceiling_height} м</span>
-                            </div>
-                        )}
-                        {prop.management_company && (
-                            <div className="info-row">
-                                <span className="info-key"><Briefcase size={14} style={{ marginRight: 6 }} /> УК</span>
-                                <span className="info-val">{prop.management_company}</span>
-                            </div>
-                        )}
-                        {prop.developer && (
-                            <div className="info-row">
-                                <span className="info-key"><Construction size={14} style={{ marginRight: 6 }} /> Застройщик</span>
-                                <span className="info-val">{prop.developer}</span>
-                            </div>
-                        )}
-                        {prop.cadastral_number && (
-                            <div className="info-row" style={{ borderBottom: 'none' }}>
-                                <span className="info-key"><FileText size={14} style={{ marginRight: 6 }} /> Кадастр</span>
-                                <span className="info-val" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{prop.cadastral_number}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Потолки</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.ceiling_height} м</span>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* ── О КВАРТИРЕ ─────────────────────────────────────── */}
-                <div className="card" style={{ overflow: 'hidden' }}>
-                    <div style={{ padding: '16px 16px 8px', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-light)' }}>
-                        <div style={{ background: 'var(--success-light, #ecfdf5)', padding: 6, borderRadius: 6, color: 'var(--success, #10b981)' }}>
-                            <Home size={16} />
+                {/* ── О КВАРТИРЕ — Premium Section ── */}
+                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Home size={20} />
                         </div>
-                        <div style={{ fontWeight: 800, fontSize: 16 }}>О квартире</div>
+                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em' }}>О квартире</div>
                     </div>
-
-                    <div className="info-grid" style={{ padding: '8px 16px' }}>
-                        <div className="info-row">
-                            <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Тип</span>
-                            <span className="info-val">{PROPERTY_TYPES[prop.property_type]}</span>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Этаж</span>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</span>
                         </div>
-                        <div className="info-row">
-                            <span className="info-key"><Maximize2 size={14} style={{ marginRight: 6 }} /> Комнат</span>
-                            <span className="info-val" style={{ fontWeight: 800 }}>{prop.rooms === 0 ? 'Студия' : prop.rooms || '—'}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Общая площадь</span>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.area_total} м²</span>
                         </div>
-                        <div className="info-row">
-                            <span className="info-key"><Layers size={14} style={{ marginRight: 6 }} /> Этаж</span>
-                            <span className="info-val">{prop.floor} из {prop.floors_total || '—'}</span>
-                        </div>
-                        {prop.area_total > 0 && (
-                            <div className="info-row">
-                                <span className="info-key"><Maximize2 size={14} style={{ marginRight: 6 }} /> Площади</span>
-                                <span className="info-val" style={{ fontSize: 13 }}>
-                                    <b>{prop.area_total}</b>{prop.area_living ? ` / ${prop.area_living}` : ''}{prop.area_kitchen ? ` / ${prop.area_kitchen}` : ''} м²
-                                </span>
+                        {prop.area_living > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Жилая</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.area_living} м²</span>
+                            </div>
+                        )}
+                        {prop.area_kitchen > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Кухня</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.area_kitchen} м²</span>
                             </div>
                         )}
                         {prop.renovation && (
-                            <div className="info-row">
-                                <span className="info-key"><Sparkles size={14} style={{ marginRight: 6 }} /> Ремонт</span>
-                                <span className="info-val" style={{ fontWeight: 700 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Ремонт</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
                                     {{ none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' }[prop.renovation] || prop.renovation}
                                 </span>
                             </div>
                         )}
-                        {prop.balcony && prop.balcony !== 'none' && (
-                            <div className="info-row">
-                                <span className="info-key"><Wind size={14} style={{ marginRight: 6 }} /> Балкон</span>
-                                <span className="info-val">{{ balcony: 'Балкон', loggia: 'Лоджия', both: 'Балкон + Лоджия' }[prop.balcony] || prop.balcony}</span>
-                            </div>
-                        )}
                         {prop.bathroom && (
-                            <div className="info-row">
-                                <span className="info-key"><Droplets size={14} style={{ marginRight: 6 }} /> Санузел</span>
-                                <span className="info-val">{{ combined: 'Совмещённый', separate: 'Раздельный', two: 'Два и более' }[prop.bathroom] || prop.bathroom}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Санузел</span>
+                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                                    {{ combined: 'Совмещённый', separate: 'Раздельный', two: 'Два и более' }[prop.bathroom] || prop.bathroom}
+                                </span>
                             </div>
                         )}
-                        {prop.parking && prop.parking !== 'none' && (
-                            <div className="info-row">
-                                <span className="info-key"><ParkingCircle size={14} style={{ marginRight: 6 }} /> Парковка</span>
-                                <span className="info-val">{{ open: 'Открытая', garage: 'Гараж', underground: 'Подземная' }[prop.parking] || prop.parking}</span>
-                            </div>
-                        )}
-                        {prop.furniture !== undefined && (
-                            <div className="info-row" style={{ borderBottom: 'none' }}>
-                                <span className="info-key"><Sofa size={14} style={{ marginRight: 6 }} /> Мебель</span>
-                                <span className="info-val">{prop.furniture ? 'Остаётся' : 'Нет'}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Условия сделки */}
-                    {(prop.mortgage_available || prop.matcapital_available || prop.certificate_available ||
-                      prop.encumbrance || prop.minor_owners || prop.docs_ready || prop.seeking_alternative) && (
-                        <div style={{ marginTop: 12, padding: '16px', background: 'var(--bg)', borderRadius: 12, border: '1px solid var(--border-light)' }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <CheckCircle2 size={12} /> Условия сделки
-                            </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                { (prop.mortgage_available || prop.mortgage) && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Ипотека</span>}
-                                {prop.matcapital_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Маткапитал</span>}
-                                {prop.certificate_available && <span className="badge badge-success" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Сертификат</span>}
-                                {prop.seeking_alternative && <span className="badge badge-warning" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><Sparkles size={12}/> Альтернатива</span>}
-                                {prop.encumbrance && <span className="badge badge-danger" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12}/> Обременение</span>}
-                                {prop.minor_owners && <span className="badge badge-warning" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><AlertCircle size={12}/> Несоверш. собств.</span>}
-                                {prop.docs_ready && <span className="badge badge-subtle" style={{ fontSize: 12, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 4 }}><CheckCircle2 size={12}/> Документы готовы</span>}
-                            </div>
-                        </div>
-                    )}
-
-
-                    {/* Тип и комиссия */}
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                            {prop.deal_type === 'sale' ? 'Продажа' : 'Аренда'} · {prop.market_type === 'new_building' ? 'Новостройка' : 'Вторичка'}
-                        </span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--success)' }}>
-                            Комиссия: {formatNumber(prop.commission)} ₽
-                        </span>
                     </div>
                 </div>
-
-                {/* Estimation Widget */}
-                <EstimationWidget prop={prop} />
 
                 {/* AI Ad Generator */}
                 <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} />
 
-                {/* ИСТОРИЯ — все события по объекту */}
-                <div className="card" style={{ padding: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div className="section-title" style={{ marginBottom: 0 }}>История ({events.length})</div>
-                        <button className="icon-btn" onClick={() => navigate(`/history/new?property_id=${id}`)} style={{ color: 'var(--primary)', fontSize: 20 }}>+</button>
+                {/* Estimation Widget */}
+                <EstimationWidget prop={prop} />
+
+                {/* ИСТОРИЯ — Timeline Style */}
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История ({events.length})</div>
+                        <button className="card-clickable" onClick={() => navigate(`/history/new?property_id=${id}`)} style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,82,255,0.05)' }}>
+                            <Calendar size={20} />
+                        </button>
                     </div>
                     {events.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '8px 0' }}>Пока нет событий</div>
+                        <div style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', padding: '32px 0', opacity: 0.6, background: 'var(--bg-light)', borderRadius: 20 }}>Пока нет событий</div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                             {events.map(ev => {
-                                const dateStr = ev.dateObj ? ev.dateObj.toLocaleDateString('ru-RU') : '—';
+                                const dateStr = ev.dateObj ? ev.dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }) : '—';
                                 const timeStr = ev.dateObj ? ev.dateObj.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
                                 const editRoute = `/history/new?id=${ev.id}`;
-
-                                const feedbackLabels = {
-                                    interested: 'Заинтересован',
-                                    other_options: 'Ищет другие варианты',
-                                    price_high: 'Дорого',
-                                    layout_bad: 'Не нравится планировка',
-                                    location_bad: 'Не нравится расположение',
-                                    condition_bad: 'Плохое состояние',
-                                    ready: 'Готов к сделке',
-                                };
-                                const feedback = ev.client_feedback ? feedbackLabels[ev.client_feedback] || ev.client_feedback : '';
-
+                                const feedbackText = [ev.feedback, ev.feedback_comment].filter(Boolean).join(' · ');
+                                
                                 return (
-                                    <div key={ev.id} style={{ padding: '12px', background: 'var(--bg)', borderRadius: 10, border: '1px solid var(--border-light)' }}>
-                                        {/* Заголовок + дата/время + иконка редактирования */}
+                                    <div key={ev.id} className="card-clickable" style={{ padding: '20px', background: 'var(--bg-light)', borderRadius: 24, border: '1px solid rgba(0,0,0,0.02)' }} onClick={() => navigate(editRoute)}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <div style={{ fontWeight: 700, fontSize: 14 }}>{ev.typeLabel}: {ev.buyer?.full_name || 'Покупатель'}</div>
-                                            <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: 12 }}>
-                                                <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>{dateStr}</div>
-                                                {timeStr && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{timeStr}</div>}
-                                                <button
-                                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '2px 0', marginTop: 2 }}
-                                                    onClick={() => navigate(editRoute)}
-                                                    title="Редактировать"
-                                                >
-                                                    <Pencil size={14} />
-                                                </button>
+                                            <div style={{ flex: 1 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.01em', fontFamily: 'Oswald' }}>{ev.typeLabel}</span>
+                                                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{dateStr} {timeStr}</span>
+                                                </div>
+                                                {ev.buyer && (
+                                                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                                                        {ev.buyer.full_name}
+                                                    </div>
+                                                )}
+                                                {feedbackText && (
+                                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, lineHeight: 1.4, fontStyle: 'italic', opacity: 0.8 }}>
+                                                        «{feedbackText}»
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ color: 'var(--primary)', opacity: 0.4 }}>
+                                                <Pencil size={16} />
                                             </div>
                                         </div>
-                                        {/* Отзыв / Комментарий — единая строка */}
-                                        {(feedback || ev.feedback_comment) && (
-                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                                                {[feedback, ev.feedback_comment].filter(Boolean).join(' · ')}
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}
@@ -1542,11 +1480,12 @@ export function DetailsPage() {
                 </div>
 
                 {prop.notes && (
-                    <div className="card">
-                        <div className="section-title">Описание</div>
-                        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', marginTop: 8 }}>{prop.notes}</div>
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 16 }}>Описание</div>
+                        <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{prop.notes}</div>
                     </div>
                 )}
+                
                 {showPortfolio && (
                     <PortfolioSection 
                         property={prop}
@@ -1571,3 +1510,4 @@ export function DetailsPage() {
             </div>
         );
 }
+

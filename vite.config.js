@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
       }
     },
     build: {
-      target: 'es2020',
+      target: 'es2015',
       minify: 'terser',
       cssMinify: 'esbuild',
       // Удаление console.log/console.debug из продакшен-билда

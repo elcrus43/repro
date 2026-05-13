@@ -6,6 +6,7 @@ import { PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS } fro
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { parseHouseFromAddress, describeParsedFields, getMingkhSearchUrl } from '../../utils/houseParser';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
+import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { nanoid } from '../../utils/nanoid';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
@@ -68,28 +69,29 @@ function ChipGroup({ options, value, onChange }) {
     );
 }
 
-/* ─── Карточка секции ────────────────────────────────────────── */
+/* ─── Карточка секции (Premium Open Design) ───────────────────── */
 function FormCard({ title, icon, children, description }) {
     return (
         <div className="card fade-in" style={{ 
-            padding: '24px', marginBottom: 20, border: 'none', 
-            boxShadow: '0 4px 20px rgba(0,0,0,0.04)', borderRadius: 28,
-            background: 'white'
+            padding: '28px 24px', marginBottom: 24, border: 'none', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.03)', borderRadius: 32,
+            background: 'white', border: '1px solid rgba(255,255,255,0.8)'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                 <div style={{ 
-                    width: 44, height: 44, borderRadius: 14, 
+                    width: 48, height: 48, borderRadius: 16, 
                     background: 'var(--primary-light)', color: 'var(--primary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: 'inset 0 0 0 1px rgba(0, 82, 255, 0.05)'
                 }}>
                     {icon}
                 </div>
                 <div>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--text-primary)' }}>{title}</div>
-                    {description && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{description}</div>}
+                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</div>
+                    {description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, opacity: 0.7 }}>{description}</div>}
                 </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                 {children}
             </div>
         </div>
@@ -107,7 +109,13 @@ export function FormPage() {
     const initialForm = existing ? {
         ...existing,
         images: existing.images || [],
-        client_ids: existing.client_ids || (existing.client_id ? [existing.client_id] : [])
+        client_ids: (() => {
+            let ids = existing.client_ids || [];
+            if (typeof ids === 'string') {
+                ids = ids.replace(/{|}/g, '').split(',').filter(Boolean);
+            }
+            return ids.length > 0 ? ids : (existing.client_id ? [existing.client_id] : []);
+        })()
     } : {
         client_id: searchParams.get('client') || '',
         client_ids: searchParams.get('client') ? [searchParams.get('client')] : [],
@@ -283,11 +291,15 @@ export function FormPage() {
             toast.error('Укажите адрес объекта');
             return;
         }
+        const finalForm = {
+            ...form,
+            client_id: form.client_ids && form.client_ids.length > 0 ? form.client_ids[0] : (form.client_id || null)
+        };
         if (id) {
-            dispatch({ type: 'UPDATE_PROPERTY', property: form });
+            dispatch({ type: 'UPDATE_PROPERTY', property: finalForm });
             toast.success('Объект обновлен');
         } else {
-            const newProperty = { ...form, id: nanoid(), created_at: new Date().toISOString() };
+            const newProperty = { ...finalForm, id: nanoid(), created_at: new Date().toISOString() };
             dispatch({ type: 'ADD_PROPERTY', property: newProperty });
             toast.success('Объект добавлен');
         }
@@ -296,27 +308,29 @@ export function FormPage() {
 
     return (
         <div className="page" style={{ 
-            background: '#f1f5f9', 
-            fontFamily: "'Oswald', sans-serif" 
+            background: '#f8fafc', 
+            fontFamily: "'Inter', sans-serif" 
         }}>
-            {/* Sticky Header */}
+            {/* Sticky Header with Glassmorphism */}
             <div style={{
                 position: 'sticky', top: 0, zIndex: 100,
-                background: 'rgba(255,255,255,0.8)', backdropFilter: 'blur(12px)',
-                padding: '16px 20px', borderBottom: '1px solid var(--border-light)',
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)',
+                padding: '20px 24px', borderBottom: '1px solid rgba(255,255,255,0.3)',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
             }}>
-                <button onClick={() => navigate(-1)} style={{
-                    width: 40, height: 40, borderRadius: 12, border: 'none',
+                <button onClick={() => navigate(-1)} className="card-clickable" style={{
+                    width: 44, height: 44, borderRadius: 14, border: 'none',
                     background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                    color: 'var(--text)'
                 }}>
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={22} />
                 </button>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>
-                    {id ? 'Редактирование объекта' : 'Новый объект'}
+                <div className="font-oswald" style={{ fontWeight: 700, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    {id ? 'Редактирование' : 'Новый объект'}
                 </div>
-                <div style={{ width: 40 }}></div>
+                <div style={{ width: 44 }}></div>
             </div>
 
             <form onSubmit={handleSubmit} style={{ padding: '20px', maxWidth: 600, margin: '0 auto' }}>
@@ -367,7 +381,14 @@ export function FormPage() {
                 <FormCard title="Цена и комиссия" icon={<DollarSign size={22} />}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: 12 }}>Цена (₽)</label>
+                            <label className="form-label" style={{ fontWeight: 700, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Цена (₽)</span>
+                                {form.price > 0 && form.area_total > 0 && (
+                                    <span style={{ color: 'var(--primary)', fontWeight: 800 }}>
+                                        {Math.round(form.price / form.area_total).toLocaleString()} ₽/м²
+                                    </span>
+                                )}
+                            </label>
                             <input
                                 className="form-input"
                                 style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', borderRadius: 14 }}
@@ -431,7 +452,42 @@ export function FormPage() {
 
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Адрес</label>
-                        <textarea className="form-textarea" rows={2} value={form.address} onChange={e => setF('address', e.target.value)} placeholder="ул. Ленина, д. 1, кв. 10" style={{ borderRadius: 14, resize: 'none' }} />
+                        <AddressAutocomplete
+                            value={form.address}
+                            onChange={val => setF('address', val)}
+                            city={form.city !== 'Другой' ? form.city : undefined}
+                            placeholder="ул. Ленина, д. 1, кв. 10"
+                            onSelect={suggestion => {
+                                const d = suggestion.data;
+                                // Автозаполняем связанные поля из ответа DaData
+                                const updates = {};
+
+                                // Город
+                                if (d.city && form.city === 'Другой') {
+                                    updates.city = d.city;
+                                }
+
+                                // Район (только для Кирова)
+                                if (d.city_district_with_type && !form.district) {
+                                    updates.district = d.city_district_with_type;
+                                }
+
+                                // Этаж и кол-во этажей — из house_flat_count (DaData иногда возвращает)
+                                if (d.floors_count && !form.floors_total) {
+                                    updates.floors_total = Number(d.floors_count);
+                                }
+
+                                // Кадастровый номер квартиры
+                                if (d.flat_cadnum && !form.cadastral_number) {
+                                    updates.cadastral_number = d.flat_cadnum;
+                                }
+
+                                // Применяем все обновления разом
+                                if (Object.keys(updates).length > 0) {
+                                    setForm(f => ({ ...f, ...updates }));
+                                }
+                            }}
+                        />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
@@ -668,50 +724,54 @@ export function FormPage() {
                     </div>
                 </FormCard>
 
-                <div style={{ marginTop: 32, marginBottom: 40 }}>
-                    <button type="submit" className="btn btn-primary" style={{ 
-                        width: '100%', height: 56, borderRadius: 18, fontSize: 16, fontWeight: 800,
-                        boxShadow: '0 8px 24px rgba(0,82,255,0.25)',
-                        fontFamily: "'Oswald', sans-serif"
+                <div style={{ marginTop: 40, marginBottom: 60 }}>
+                    <button type="submit" className="btn btn-primary card-clickable" style={{ 
+                        width: '100%', height: 60, borderRadius: 20, fontSize: 16, fontWeight: 800,
+                        boxShadow: '0 12px 24px rgba(0,82,255,0.25)',
+                        fontFamily: "'Oswald', sans-serif",
+                        background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)',
+                        border: 'none', textTransform: 'uppercase', letterSpacing: '0.05em'
                     }}>
                         {id ? 'Сохранить изменения' : 'Опубликовать объект'}
                     </button>
                 </div>
             </form>
 
-            {/* Quick Client Modal */}
+            {/* Quick Client Modal — Premium Open Design */}
             {showQuickClientForm && (
                 <div style={{
                     position: 'fixed', inset: 0, zIndex: 1000,
-                    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)',
+                    background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(10px) saturate(180%)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: 20
+                    padding: 24
                 }}>
-                    <div className="card fade-in" style={{ width: '100%', maxWidth: 400, padding: 24, borderRadius: 24 }}>
-                        <div style={{ fontWeight: 800, fontSize: 18, marginBottom: 20 }}>Новый клиент</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div className="card fade-in" style={{ width: '100%', maxWidth: 420, padding: 32, borderRadius: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 20, marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Новый клиент</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             <div className="form-group">
-                                <label className="form-label">ФИО</label>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ФИО</label>
                                 <input 
                                     className="form-input" 
                                     autoFocus
                                     value={quickClient.full_name} 
                                     onChange={e => setQuickClient({ ...quickClient, full_name: e.target.value })} 
                                     placeholder="Иванов Иван Иванович"
+                                    style={{ height: 52, borderRadius: 14 }}
                                 />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Телефон</label>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
                                 <input 
                                     className="form-input" 
                                     value={quickClient.phone} 
                                     onChange={e => setQuickClient({ ...quickClient, phone: e.target.value })} 
                                     placeholder="+7 (___) ___-__-__"
+                                    style={{ height: 52, borderRadius: 14 }}
                                 />
                             </div>
-                            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                                <button type="button" className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowQuickClientForm(false)}>Отмена</button>
-                                <button type="button" className="btn btn-primary" style={{ flex: 1 }} onClick={handleCreateQuickClient}>Создать</button>
+                            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                                <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 700 }} onClick={() => setShowQuickClientForm(false)}>Отмена</button>
+                                <button type="button" className="btn btn-primary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 700, background: 'var(--primary)', boxShadow: '0 8px 16px rgba(0,82,255,0.15)' }} onClick={handleCreateQuickClient}>Создать</button>
                             </div>
                         </div>
                     </div>

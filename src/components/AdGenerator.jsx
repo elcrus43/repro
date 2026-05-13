@@ -351,54 +351,55 @@ export function AdGenerator({ prop, realtorName }) {
     ];
 
     return (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
             {/* Header toggle */}
             <button
                 id="ad-generator-toggle"
                 style={{
                     width: '100%', display: 'flex', alignItems: 'center',
-                    justifyContent: 'space-between', padding: '14px 16px',
+                    justifyContent: 'space-between', padding: '18px 20px',
                     background: 'none', border: 'none', cursor: 'pointer',
                     fontFamily: 'inherit',
                 }}
                 onClick={() => setOpen(o => !o)}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <div style={{
-                        background: 'linear-gradient(135deg, var(--primary-light), #e8d5f5)',
-                        padding: 8, borderRadius: 8, color: 'var(--primary)',
+                        background: 'linear-gradient(135deg, var(--primary), #3b82f6)',
+                        padding: 10, borderRadius: 14, color: 'white',
+                        boxShadow: '0 4px 12px rgba(0,82,255,0.2)'
                     }}>
-                        <Wand2 size={18} />
+                        <Wand2 size={20} />
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>Генератор объявления</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                            {result ? 'Объявление готово — нажмите для просмотра' : 'AI + поиск данных о доме'}
+                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Генератор объявления</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                            {result ? 'Объявление готово' : 'AI + глубокий анализ данных'}
                         </div>
                     </div>
                 </div>
                 {open
-                    ? <ChevronUp size={18} color="var(--text-muted)" />
-                    : <ChevronDown size={18} color="var(--text-muted)" />
+                    ? <ChevronUp size={20} color="var(--text-muted)" />
+                    : <ChevronDown size={20} color="var(--text-muted)" />
                 }
             </button>
 
             {open && (
-                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-light)' }}>
+                <div style={{ padding: '4px 20px 24px', borderTop: '1px solid var(--border-light)' }}>
 
                     {/* Tone selector */}
-                    <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
                         {TONES.map(t => (
                             <button
                                 key={t.value}
                                 onClick={() => setTone(t.value)}
                                 style={{
-                                    flex: 1, padding: '5px 0', fontSize: 12, borderRadius: 8,
+                                    flex: 1, padding: '10px 0', fontSize: 13, borderRadius: 14,
                                     border: `1.5px solid ${tone === t.value ? 'var(--primary)' : 'var(--border-light)'}`,
-                                    background: tone === t.value ? 'var(--primary-light)' : 'transparent',
-                                    color: tone === t.value ? 'var(--primary)' : 'var(--text-muted)',
-                                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: tone === t.value ? 600 : 400,
-                                    transition: 'all 0.15s',
+                                    background: tone === t.value ? 'var(--primary-light)' : 'var(--bg-light)',
+                                    color: tone === t.value ? 'var(--primary)' : 'var(--text-secondary)',
+                                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: tone === t.value ? 700 : 500,
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}
                             >
                                 {t.label}
@@ -409,14 +410,14 @@ export function AdGenerator({ prop, realtorName }) {
                     {/* Generate button */}
                     <button
                         id="ad-generator-btn"
-                        className="btn btn-primary"
-                        style={{ width: '100%', marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                        className="btn btn-primary btn-full"
+                        style={{ marginTop: 16, height: 52, borderRadius: 16 }}
                         onClick={generate}
                         disabled={loading}
                     >
                         {loading
-                            ? <><Loader size={16} style={{ animation: 'spin 1s linear infinite' }} /> Генерирую...</>
-                            : <><Wand2 size={16} /> {result ? 'Перегенерировать' : 'Сгенерировать объявление'}</>
+                            ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Анализирую...</>
+                            : <><Wand2 size={18} /> {result ? 'Перегенерировать' : 'Сгенерировать объявление'}</>
                         }
                     </button>
 
@@ -426,11 +427,11 @@ export function AdGenerator({ prop, realtorName }) {
                     {/* Error */}
                     {error && (
                         <div style={{
-                            marginTop: 12, padding: 12,
-                            background: 'var(--danger-bg, #fef2f2)',
-                            borderRadius: 10, fontSize: 13,
-                            color: 'var(--danger, #dc2626)',
-                            border: '1px solid var(--danger-border, #fecaca)',
+                            marginTop: 16, padding: 16,
+                            background: 'var(--danger-light)',
+                            borderRadius: 16, fontSize: 14,
+                            color: 'var(--danger)',
+                            border: '1px solid rgba(239, 68, 68, 0.1)',
                         }}>
                             {error}
                         </div>
@@ -438,43 +439,47 @@ export function AdGenerator({ prop, realtorName }) {
 
                     {/* Result */}
                     {result && !error && (
-                        <div className="fade-in" style={{ marginTop: 14 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                <WordCount text={result} />
+                        <div className="fade-in" style={{ marginTop: 20 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <WordCount text={result} />
+                                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--border)' }} />
+                                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>AIDA модель</span>
+                                </div>
                                 <button
                                     onClick={generate}
                                     disabled={loading}
                                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
                                     title="Перегенерировать"
                                 >
-                                    <RefreshCw size={13} />
+                                    <RefreshCw size={14} />
                                 </button>
                             </div>
 
                             <div style={{
-                                background: 'var(--bg)',
+                                background: 'var(--bg-light)',
                                 border: '1px solid var(--border-light)',
-                                borderRadius: 12,
-                                padding: 16,
-                                marginBottom: 10,
+                                borderRadius: 20,
+                                padding: 20,
+                                marginBottom: 16,
                             }}>
                                 <AdText text={result} />
                             </div>
 
                             <button
                                 id="ad-copy-btn"
-                                className="btn btn-secondary"
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                                className="btn btn-secondary btn-full"
+                                style={{ height: 52, borderRadius: 16, background: 'white', color: 'var(--text)' }}
                                 onClick={handleCopy}
                             >
                                 {copied
-                                    ? <><Check size={16} /> Скопировано!</>
-                                    : <><Copy size={16} /> Копировать текст</>
+                                    ? <><Check size={18} /> Скопировано!</>
+                                    : <><Copy size={18} /> Копировать текст</>
                                 }
                             </button>
 
-                            <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center' }}>
-                                * Текст сгенерирован AI. Проверьте перед публикацией.
+                            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', opacity: 0.8 }}>
+                                * Проверьте текст перед публикацией на соответствие правилам площадки.
                             </div>
                         </div>
                     )}
@@ -487,3 +492,4 @@ export function AdGenerator({ prop, realtorName }) {
         </div>
     );
 }
+

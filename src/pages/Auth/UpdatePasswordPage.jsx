@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useToastContext } from '../../components/Toast';
@@ -64,7 +65,9 @@ export default function UpdatePasswordPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -2, color: 'var(--text)', margin: '0 auto 8px', textAlign: 'center' }}>REM</div>
+                <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -2, color: 'var(--text)', margin: '0 auto 8px', textAlign: 'center' }}>
+                    <Building2 size={40} style={{ margin: '0 auto' }} />
+                </div>
             </div>
             <div className="auth-card" style={{ boxShadow: 'var(--shadow-premium)', borderRadius: 'var(--radius-lg)' }}>
                 <h2 style={{ fontFamily: 'Playfair Display, serif', fontWeight: 900, fontSize: 24, marginBottom: 24 }}>Новый пароль</h2>
