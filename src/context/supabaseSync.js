@@ -102,7 +102,7 @@ export async function loadUserData(userId, role) {
    * Безопасный запрос с таймаутом.
    * Promise.race более надежен в старых мобильных браузерах, чем AbortController.
    */
-  async function safeQuery(queryFn, timeoutMs = 12000) {
+  async function safeQuery(queryFn, timeoutMs = 30000) {
     let timer;
     const timeoutPromise = new Promise((_, reject) => {
       timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
@@ -116,16 +116,19 @@ export async function loadUserData(userId, role) {
       clearTimeout(timer);
       const isTimeout = e?.message === 'TIMEOUT';
       const message = isTimeout
-        ? 'Превышено время ожидания (12с)'
+        ? 'Превышено время ожидания (30с)'
         : (e?.message || 'Сетевая ошибка');
       console.error('[safeQuery] Error:', message, e?.name);
       return { data: null, error: { message, code: isTimeout ? 'TIMEOUT' : 'NETWORK' } };
     }
   }
 
-  // Загружаем данные двумя батчами по 4 запроса
-  // (8 параллельных запросов перегружают мобильное соединение)
-  const [clientsRes, propertiesRes, requestsRes, matchesRes] = await Promise.all([
+  // Загружаем все данные параллельно (один батч)
+  // Современные браузеры отлично справляются с 8+ запросами одновременно
+  const [
+    clientsRes, propertiesRes, requestsRes, matchesRes,
+    showingsRes, tasksRes, priceRes, dealsRes, profilesRes
+  ] = await Promise.all([
     isAdmin
       ? safeQuery(() => supabase.from('clients').select('*'))
       : safeQuery(() => supabase.from('clients').select('*').eq('realtor_id', userId)),
@@ -138,10 +141,6 @@ export async function loadUserData(userId, role) {
     isAdmin
       ? safeQuery(() => supabase.from('matches').select('*'))
       : safeQuery(() => supabase.from('matches').select('*').eq('realtor_id', userId)),
-  ]);
-
-  // Второй батч
-  const [showingsRes, tasksRes, priceRes, dealsRes] = await Promise.all([
     isAdmin
       ? safeQuery(() => supabase.from('showings').select('*'))
       : safeQuery(() => supabase.from('showings').select('*').eq('realtor_id', userId)),
@@ -152,11 +151,10 @@ export async function loadUserData(userId, role) {
     isAdmin
       ? safeQuery(() => supabase.from('deals').select('*'))
       : safeQuery(() => supabase.from('deals').select('*').eq('realtor_id', userId)),
+    safeQuery(() => supabase.from('profiles').select('*')),
   ]);
 
-  const profilesRes = await safeQuery(() => supabase.from('profiles').select('*'));
   const profiles = profilesRes?.data ?? [];
-
   const pendingUsers = isAdmin
     ? profiles.filter(p => ['pending', 'rejected'].includes(p.status))
     : [];
@@ -164,7 +162,7 @@ export async function loadUserData(userId, role) {
   const errors = [
     clientsRes.error, propertiesRes.error, requestsRes.error,
     matchesRes.error, showingsRes.error, tasksRes.error,
-    priceRes?.error, dealsRes?.error
+    priceRes?.error, dealsRes?.error, profilesRes?.error
   ].filter(Boolean).map(e => e.message);
 
   if (errors.length > 0) {
