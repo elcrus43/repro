@@ -27,13 +27,23 @@ export function sanitizeObj(obj) {
   if (Array.isArray(obj)) return obj.map(sanitizeObj);
 
   const sanitized = { ...obj };
-  for (const key in sanitized) {
+  Object.keys(sanitized).forEach(key => {
+    // If it's a UUID field but value is not a UUID, make it null
+    if ((key === 'id' || key === 'client_id' || key === 'realtor_id' || key === 'property_id' || key === 'request_id') && 
+        typeof sanitized[key] === 'string' && sanitized[key].length > 0 &&
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitized[key])) {
+      console.warn(`[Supabase] Stripping invalid UUID for field ${key}:`, sanitized[key]);
+      // If it's 'id', we MUST NOT make it null if we want to update, but if it's invalid it will fail anyway.
+      // For foreign keys, null is better than invalid syntax.
+      if (key !== 'id') sanitized[key] = null;
+    }
+    
     if (sanitized[key] === '') {
       sanitized[key] = null;
     } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
       sanitized[key] = sanitizeObj(sanitized[key]);
     }
-  }
+  });
   return sanitized;
 }
 
@@ -46,8 +56,14 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
   let lastError;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+    );
+
     try {
-      const result = await fn();
+      // Race the actual function against the timeout
+      const result = await Promise.race([fn(), timeoutPromise]);
+      
       // Supabase возвращает error внутри объекта, а не бросает исключение
       if (result?.error && NON_RETRYABLE_CODES.includes(result.error.code)) {
         return result; // не ретраим — это не сетевая ошибка
@@ -59,7 +75,9 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
       }
       return result;
     } catch (err) {
-      lastError = { error: err };
+      const isTimeout = err.message === 'TIMEOUT';
+      lastError = { error: { message: isTimeout ? 'Превышено время ожидания (15с)' : err.message, code: isTimeout ? 'TIMEOUT' : 'NETWORK' } };
+      
       if (attempt < retries) {
         await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
       }
@@ -71,42 +89,76 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 /* ─── Loader ───────────────────────────────────────────────────────────────── */
 
 /**
- * Загружает все данные пользователя из Supabase параллельно.
+ * Загружает все данные пользователя из Supabase.
+ * Оптимизировано для мобильных браузеров (Chrome Android):
+ *  - AbortController вместо Promise.race (совместимо с Supabase)
+ *  - Пакетная загрузка вместо 8 параллельных запросов
+ *  - Retry при сетевых сбоях
  */
 export async function loadUserData(userId, role) {
   const isAdmin = role === 'admin';
 
-  // Изолирует сетевые ошибки: сбой одного запроса не убивает остальные
-  async function safeQuery(fn) {
+  /**
+   * Безопасный запрос с таймаутом.
+   * Promise.race более надежен в старых мобильных браузерах, чем AbortController.
+   */
+  async function safeQuery(queryFn, timeoutMs = 12000) {
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
+    });
+    
     try {
-      const res = await fn();
+      const res = await Promise.race([queryFn(), timeoutPromise]);
+      clearTimeout(timer);
       return res;
     } catch (e) {
-      console.error('[safeQuery] Network error:', e?.message || e);
-      return { data: null, error: { message: e?.message || 'Network error', code: 'NETWORK' } };
+      clearTimeout(timer);
+      const isTimeout = e?.message === 'TIMEOUT';
+      const message = isTimeout
+        ? 'Превышено время ожидания (12с)'
+        : (e?.message || 'Сетевая ошибка');
+      console.error('[safeQuery] Error:', message, e?.name);
+      return { data: null, error: { message, code: isTimeout ? 'TIMEOUT' : 'NETWORK' } };
     }
   }
 
-  const [clientsRes, propertiesRes, requestsRes, matchesRes, showingsRes, tasksRes, priceRes, dealsRes] =
-    await Promise.all([
-      safeQuery(() => supabase.from('clients').select('*').eq('realtor_id', userId)),
-      safeQuery(() => supabase.from('properties').select('*').eq('realtor_id', userId)),
-      safeQuery(() => supabase.from('requests').select('*').eq('realtor_id', userId)),
-      safeQuery(() => supabase.from('matches').select('*').eq('realtor_id', userId)),
-      safeQuery(() => supabase.from('showings').select('*').eq('realtor_id', userId)),
-      isAdmin
-        ? safeQuery(() => supabase.from('tasks').select('*'))
-        : safeQuery(() => supabase.from('tasks').select('*').eq('realtor_id', userId)),
-      safeQuery(() => supabase.from('pricelist').select('*')),
-      isAdmin
-        ? safeQuery(() => supabase.from('deals').select('*'))
-        : safeQuery(() => supabase.from('deals').select('*').eq('realtor_id', userId)),
-    ]);
+  // Загружаем данные двумя батчами по 4 запроса
+  // (8 параллельных запросов перегружают мобильное соединение)
+  const [clientsRes, propertiesRes, requestsRes, matchesRes] = await Promise.all([
+    isAdmin
+      ? safeQuery(() => supabase.from('clients').select('*'))
+      : safeQuery(() => supabase.from('clients').select('*').eq('realtor_id', userId)),
+    isAdmin
+      ? safeQuery(() => supabase.from('properties').select('*'))
+      : safeQuery(() => supabase.from('properties').select('*').eq('realtor_id', userId)),
+    isAdmin
+      ? safeQuery(() => supabase.from('requests').select('*'))
+      : safeQuery(() => supabase.from('requests').select('*').eq('realtor_id', userId)),
+    isAdmin
+      ? safeQuery(() => supabase.from('matches').select('*'))
+      : safeQuery(() => supabase.from('matches').select('*').eq('realtor_id', userId)),
+  ]);
 
-  const { data: profiles } = await safeQuery(() => supabase.from('profiles').select('*')) ?? {};
+  // Второй батч
+  const [showingsRes, tasksRes, priceRes, dealsRes] = await Promise.all([
+    isAdmin
+      ? safeQuery(() => supabase.from('showings').select('*'))
+      : safeQuery(() => supabase.from('showings').select('*').eq('realtor_id', userId)),
+    isAdmin
+      ? safeQuery(() => supabase.from('tasks').select('*'))
+      : safeQuery(() => supabase.from('tasks').select('*').eq('realtor_id', userId)),
+    safeQuery(() => supabase.from('pricelist').select('*')),
+    isAdmin
+      ? safeQuery(() => supabase.from('deals').select('*'))
+      : safeQuery(() => supabase.from('deals').select('*').eq('realtor_id', userId)),
+  ]);
+
+  const profilesRes = await safeQuery(() => supabase.from('profiles').select('*'));
+  const profiles = profilesRes?.data ?? [];
 
   const pendingUsers = isAdmin
-    ? profiles?.filter(p => ['pending', 'rejected'].includes(p.status)) ?? []
+    ? profiles.filter(p => ['pending', 'rejected'].includes(p.status))
     : [];
 
   const errors = [
@@ -118,6 +170,8 @@ export async function loadUserData(userId, role) {
   if (errors.length > 0) {
     console.warn('[loadUserData] Partial errors:', errors);
   }
+
+  const allFailed = [clientsRes, propertiesRes, requestsRes, matchesRes].every(r => r.error != null);
 
   return {
     clients:     clientsRes.data ?? [],
@@ -131,6 +185,7 @@ export async function loadUserData(userId, role) {
     pricelist:   priceRes?.data ?? [],
     deals:       dealsRes?.data ?? [],
     error: errors.length > 0 ? errors.join('; ') : null,
+    allFailed,
   };
 }
 

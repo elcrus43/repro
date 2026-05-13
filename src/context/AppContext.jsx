@@ -1,23 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
 /**
- * AppContext.jsx — РЕФАКТОРИНГ
+ * AppContext.jsx
  *
- * БЫЛО: 32 KB God Object — reducer + sync + calendar + enhance + provider в одном файле.
- *
- * СТАЛО: Тонкий провайдер, который только:
+ * Тонкий провайдер:
  *  1. Держит state (useReducer)
  *  2. Загружает данные при старте (Supabase auth)
  *  3. Пробрасывает dbDispatch из useDbDispatch
- *  4. Показывает ошибки через toast (не alert!)
- *
- * Логика вынесена в:
- *  - reducer.js        — чистый reducer
- *  - supabaseSync.js   — синхронизация с БД
- *  - calendarSync.js   — синхронизация с Google Calendar
- *  - useDbDispatch.js  — обогащение действий + оркестрация
+ *  4. Экспортирует reloadData для ручного обновления данных
  */
 
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { reducer, EMPTY_STATE } from './reducer';
 import { loadUserData } from './supabaseSync';
@@ -34,29 +26,83 @@ const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, EMPTY_STATE);
-
-  // toast из ToastProvider (ToastProvider должен быть выше AppProvider в App.jsx)
   const { toast } = useToastContext();
-
-  // dbDispatch: обогащает действие → dispatch → Supabase → Calendar
   const dbDispatch = useDbDispatch(state, dispatch, toast.error);
 
-  /* ── Auth & Data Loading ────────────────────────────────────────────── */
+  // Сохраняем профиль текущего пользователя для ручной перезагрузки
+  const sessionUserRef = useRef(null);
+
+  /* ── loadData: основная загрузка всех таблиц ──────────────────────────── */
+
+  const loadData = useCallback(async (sessionUser, { silent = false } = {}) => {
+    if (!sessionUser) return;
+
+    if (!silent) dispatch({ type: 'SET_LOADING', value: true });
+
+    console.log('[Data Load] Loading tables for role:', sessionUser.role);
+    const data = await loadUserData(sessionUser.id, sessionUser.role);
+
+    // Если ВСЕ запросы упали одновременно — авто-retry через 3 сек.
+    // Типично для мобильного cold-start: сеть ещё не стабилизировалась.
+    const allFailed = data.allFailed;
+
+    if (allFailed) {
+      console.warn('[Data Load] All queries failed, retrying in 3s...', data.error);
+      await new Promise(r => setTimeout(r, 3000));
+      const retryData = await loadUserData(sessionUser.id, sessionUser.role);
+      if (retryData.error) {
+        console.warn('[Data Load] Retry also failed:', retryData.error);
+        if (!silent) toast.error('Не удалось загрузить данные. Проверьте подключение.');
+      } else {
+        console.log('[Data Load] Retry succeeded!');
+        if (!silent) toast.success('Данные загружены');
+      }
+      dispatch({ type: 'SET_ALL', data: retryData });
+      return;
+    }
+
+    if (data.error) {
+      console.warn('[Data Load] Partial error:', data.error);
+      if (!silent) toast.warn(`Часть данных не загрузилась: ${data.error}`);
+    }
+
+    console.log('[Data Load] Done. Properties:', data.properties?.length, 'Clients:', data.clients?.length);
+    dispatch({ type: 'SET_ALL', data });
+
+    if (!silent) {
+      const pCnt = data.properties?.length || 0;
+      const cCnt = data.clients?.length || 0;
+      if (pCnt > 0 || cCnt > 0) {
+        toast.success(`Загружено: ${pCnt} объект(ов), ${cCnt} клиент(ов)`);
+      }
+    }
+  }, [toast]);
+
+  /* ── reloadData: вызывается из любого компонента по кнопке ────────────── */
+
+  const reloadData = useCallback(async () => {
+    const su = sessionUserRef.current;
+    if (!su) { toast.error('Нет активной сессии. Войдите заново.'); return; }
+    await loadData(su, { silent: true });
+    toast.success('Данные обновлены');
+  }, [loadData, toast]);
+
+  /* ── Auth flow ─────────────────────────────────────────────────────────── */
 
   useEffect(() => {
     let isInitial = true;
 
     async function loadProfileAndData(sessionUser) {
+      console.log('[Data Load] Fetching profile for:', sessionUser.id);
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', sessionUser.id)
         .single();
 
-      // Ошибка загрузки профиля (не "не найден")
       if (profileErr && profileErr.code !== 'PGRST116') {
         console.error('[Profile load error]', profileErr);
-        const fallbackProfile = {
+        const fallback = {
           id: sessionUser.id,
           full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
           email: sessionUser.email,
@@ -65,18 +111,12 @@ export function AppProvider({ children }) {
           role: 'realtor',
           status: 'approved',
         };
-        dispatch({ type: 'SET_USER', user: fallbackProfile });
-        try {
-          const data = await loadUserData(sessionUser.id, 'realtor');
-          dispatch({ type: 'SET_ALL', data });
-        } catch (e) {
-          console.error('[Data load error]', e);
-          dispatch({ type: 'SET_LOADING', value: false });
-        }
+        dispatch({ type: 'SET_USER', user: fallback });
+        sessionUserRef.current = fallback;
+        await loadData(fallback);
         return;
       }
 
-      // Новый пользователь — профиль ещё не создан
       if (!profile) {
         const isAdmin = sessionUser.email === ADMIN_EMAIL;
         const newProfile = {
@@ -100,65 +140,50 @@ export function AppProvider({ children }) {
           return;
         }
 
-        // Ожидающий пользователь — выкидываем
         if (createdProfile.status === 'pending') {
           await supabase.auth.signOut();
           dispatch({ type: 'SET_LOADING', value: false });
           return;
         }
 
-        const data = await loadUserData(sessionUser.id, createdProfile.role);
+        const enriched = { ...createdProfile, id: sessionUser.id };
         dispatch({ type: 'SET_USER', user: { ...createdProfile, email: sessionUser.email } });
-        dispatch({ type: 'SET_ALL', data });
+        sessionUserRef.current = enriched;
+        await loadData(enriched);
         return;
       }
 
-      // Существующий пользователь: роль берём ТОЛЬКО из БД (не из email)
       if (profile.status === 'pending' || profile.status === 'rejected') {
         await supabase.auth.signOut();
         dispatch({ type: 'SET_LOADING', value: false });
         return;
       }
 
+      const enriched = { ...profile, id: sessionUser.id };
       dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
-
-      // loadUserData использует safeQuery внутри — сетевые ошибки изолированы
-      const data = await loadUserData(sessionUser.id, profile.role);
-
-      if (data.error) {
-        toast.warn(`Часть данных не загрузилась: ${data.error}`);
-      }
-
-      // Всегда диспатчим — даже если часть запросов упала, покажем что загрузилось
-      dispatch({ type: 'SET_ALL', data });
-
-      const propCount = data.properties?.length || 0;
-      const clientCount = data.clients?.length || 0;
-      if (propCount > 0 || clientCount > 0) {
-        toast.success(`Загружено: ${propCount} объект(ов), ${clientCount} клиент(ов)`);
-      } else if (!data.error) {
-        toast.warn('Данных пока нет. Создайте первый объект или клиента.');
-      }
-
+      sessionUserRef.current = enriched;
+      await loadData(enriched);
     }
 
     async function init() {
       dispatch({ type: 'SET_LOADING', value: true });
 
-      // Safety timeout: если сессия не отвечает > 10s — показываем логин
       const timeout = setTimeout(() => {
         console.warn('[Auth Timeout] Session retrieval took too long.');
         dispatch({ type: 'SET_LOADING', value: false });
       }, 10000);
 
+      console.log('[Auth Init] Getting session...');
       const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
       clearTimeout(timeout);
 
-      if (sessionErr) console.error('[Session error]', sessionErr);
+      if (sessionErr) console.error('[Auth Init] Session error:', sessionErr);
 
       if (session?.user) {
+        console.log('[Auth Init] User found:', session.user.id);
         await loadProfileAndData(session.user);
       } else {
+        console.log('[Auth Init] No session found, showing login page');
         dispatch({ type: 'SET_LOADING', value: false });
       }
 
@@ -169,11 +194,10 @@ export function AppProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
+        sessionUserRef.current = null;
         dispatch({ type: 'LOGOUT' });
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        if (!isInitial) {
-          await loadProfileAndData(session.user);
-        }
+        if (!isInitial) await loadProfileAndData(session.user);
       }
     });
 
@@ -182,7 +206,7 @@ export function AppProvider({ children }) {
   }, []);
 
   return (
-    <AppContext.Provider value={{ state, dispatch: dbDispatch }}>
+    <AppContext.Provider value={{ state, dispatch: dbDispatch, reloadData }}>
       {children}
     </AppContext.Provider>
   );
