@@ -24,21 +24,44 @@ export function LoginPage() {
     async function handleEmailAuth() {
         setLoading(true);
         setError('');
-        try {
+
+        async function tryAuth() {
             if (mode === 'login') {
                 const { error: err } = await supabase.auth.signInWithPassword({ email, password });
                 if (err) throw err;
             } else {
                 const { error: err } = await supabase.auth.signUp({ email, password });
                 if (err) throw err;
-                setError('');
                 setLoading(false);
                 alert('Регистрация успешна! Проверьте email для подтверждения или войдите.');
                 setMode('login');
-                return;
             }
+        }
+
+        try {
+            await tryAuth();
         } catch (e) {
-            setError(e.message);
+            const isNetwork = e.message === 'Failed to fetch' || e.message?.includes('fetch') || e.message?.includes('network');
+            if (isNetwork) {
+                // Один автоматический повтор через 1.5 сек при сетевой ошибке
+                try {
+                    await new Promise(r => setTimeout(r, 1500));
+                    await tryAuth();
+                } catch (e2) {
+                    const isNetwork2 = e2.message === 'Failed to fetch' || e2.message?.includes('fetch') || e2.message?.includes('network');
+                    setError(isNetwork2
+                        ? 'Нет соединения с сервером. Проверьте подключение к интернету и попробуйте снова.'
+                        : e2.message === 'Invalid login credentials'
+                            ? 'Неверный email или пароль'
+                            : e2.message
+                    );
+                }
+            } else {
+                setError(e.message === 'Invalid login credentials'
+                    ? 'Неверный email или пароль'
+                    : e.message
+                );
+            }
             setLoading(false);
         }
     }

@@ -26,8 +26,11 @@ export function TemplatesPage() {
 
     const fetchTemplates = useCallback(async () => {
         setLoading(true);
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
         try {
-            const res = await fetch(`${API_BASE}/templates`, { signal: AbortSignal.timeout(4000) });
+            const res = await fetch(`${API_BASE}/templates`, { signal: controller.signal });
+            clearTimeout(timer);
             if (!res.ok) throw new Error('HTTP ' + res.status);
             const data = await res.json();
             // Merge: server templates + any local-only ones
@@ -35,6 +38,7 @@ export function TemplatesPage() {
             setTemplates([...data, ...local]);
             setOffline(false);
         } catch (_e) {
+            clearTimeout(timer);
             // Backend недоступен — используем localStorage
             setTemplates(lsLoad());
             setOffline(true);
@@ -52,13 +56,16 @@ export function TemplatesPage() {
         }
 
         if (!offline) {
+            const ctrl = new AbortController();
+            const t2 = setTimeout(() => ctrl.abort(), 4000);
             try {
                 const res = await fetch(`${API_BASE}/templates`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(newTpl),
-                    signal: AbortSignal.timeout(4000),
+                    signal: ctrl.signal,
                 });
+                clearTimeout(t2);
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 setShowNew(false);
                 setNewTpl({ name: '', category: 'Common', body: '', channels: ['whatsapp'] });
