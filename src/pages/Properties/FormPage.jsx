@@ -29,14 +29,15 @@ function ToggleChip({ label, value, onChange, icon }) {
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '10px 16px', borderRadius: 14, fontSize: 13,
                 border: 'none',
-                background: value ? 'var(--primary)' : 'var(--bg-card, #f8fafc)',
-                color: value ? 'white' : 'var(--text-secondary)',
-                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: value ? '0 4px 12px rgba(0,82,255,0.2)' : 'inset 0 0 0 1px var(--border-light)',
+                background: 'transparent',
+                color: value ? 'var(--primary)' : 'var(--text-secondary)',
+                cursor: 'pointer', fontFamily: "'Oswald', sans-serif", fontWeight: 700,
+                transition: 'color 0.15s',
+                textDecoration: value ? 'underline' : 'none',
+                textUnderlineOffset: '3px',
             }}
         >
-            {icon && <span style={{ opacity: value ? 1 : 0.6 }}>{icon}</span>}
+            {icon && <span style={{ opacity: value ? 1 : 0.5 }}>{icon}</span>}
             {label}
             {value && <Check size={14} strokeWidth={3} />}
         </button>
@@ -55,11 +56,12 @@ function ChipGroup({ options, value, onChange }) {
                     style={{
                         padding: '10px 18px', borderRadius: 14, fontSize: 13,
                         border: 'none',
-                        background: value === opt.val ? 'var(--primary)' : 'var(--bg-card, #f8fafc)',
-                        color: value === opt.val ? 'white' : 'var(--text-secondary)',
-                        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700,
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: value === opt.val ? '0 4px 12px rgba(0,82,255,0.2)' : 'inset 0 0 0 1px var(--border-light)',
+                        background: 'transparent',
+                        color: value === opt.val ? 'var(--primary)' : 'var(--text-secondary)',
+                        cursor: 'pointer', fontFamily: "'Oswald', sans-serif", fontWeight: 700,
+                        transition: 'color 0.15s',
+                        textDecoration: value === opt.val ? 'underline' : 'none',
+                        textUnderlineOffset: '3px',
                     }}
                 >
                     {opt.label}
@@ -73,25 +75,15 @@ function ChipGroup({ options, value, onChange }) {
 function FormCard({ title, icon, children, description }) {
     return (
         <div className="card fade-in" style={{ 
-            padding: '28px 24px', marginBottom: 24, border: 'none', 
+            padding: '28px 24px', marginBottom: 24,
             boxShadow: '0 8px 30px rgba(0,0,0,0.03)', borderRadius: 32,
             background: 'white', border: '1px solid rgba(255,255,255,0.8)'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                <div style={{ 
-                    width: 48, height: 48, borderRadius: 16, 
-                    background: 'var(--primary-light)', color: 'var(--primary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'inset 0 0 0 1px rgba(0, 82, 255, 0.05)'
-                }}>
-                    {icon}
-                </div>
-                <div>
-                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</div>
-                    {description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, opacity: 0.7 }}>{description}</div>}
-                </div>
+            <div style={{ marginBottom: 20 }}>
+                <div className="font-oswald" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', letterSpacing: '0.01em' }}>{title}</div>
+                {description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, opacity: 0.7 }}>{description}</div>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {children}
             </div>
         </div>
@@ -309,7 +301,7 @@ export function FormPage() {
     return (
         <div className="page" style={{ 
             background: '#f8fafc', 
-            fontFamily: "'Inter', sans-serif" 
+            fontFamily: "'Oswald', sans-serif" 
         }}>
             {/* Sticky Header with Glassmorphism */}
             <div style={{
@@ -422,22 +414,13 @@ export function FormPage() {
 
                 {/* Локация */}
                 <FormCard title="Локация" icon={<MapPin size={22} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
                         <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Город</label>
                             <select className="form-select" value={form.city} onChange={e => setF('city', e.target.value)} style={{ borderRadius: 14 }}>
                                 {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
-                        {form.city === 'Киров' && (
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Район</label>
-                                <select className="form-select" value={form.district || ''} onChange={e => setF('district', e.target.value)} style={{ borderRadius: 14 }}>
-                                    <option value="">— Выбрать —</option>
-                                    {KIROV_DISTRICTS.map(d => <option key={d.name} value={d.name}>{d.name}</option>)}
-                                </select>
-                            </div>
-                        )}
                     </div>
                     
                     {form.city === 'Киров' && form.district && (
@@ -646,11 +629,6 @@ export function FormPage() {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                         <ToggleChip label="Мусоропровод" value={form.has_garbage_chute} onChange={v => setF('has_garbage_chute', v)} icon={<Trash2 size={14} />} />
                         <ToggleChip label="Мебель" value={form.furniture} onChange={v => setF('furniture', v)} icon={<Zap size={14} />} />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Серия / проект</label>
-                        <input className="form-input" value={form.house_series || ''} onChange={e => setF('house_series', e.target.value)} placeholder="напр. П-44" style={{ borderRadius: 14 }} />
                     </div>
                 </FormCard>
 

@@ -24,24 +24,37 @@ import { supabase } from '../lib/supabase';
 export function sanitizeObj(obj) {
   if (obj === '') return null;
   if (!obj || typeof obj !== 'object') return obj;
-  if (Array.isArray(obj)) return obj.map(sanitizeObj);
+  // Массивы (client_ids и др.) обрабатываем без UUID-проверки элементов
+  if (Array.isArray(obj)) return obj.map(item => {
+    if (typeof item === 'string') return item; // строки в массивах не заменяем null
+    return sanitizeObj(item);
+  });
+
+  const UUID_FIELDS = new Set(['id', 'client_id', 'realtor_id', 'property_id', 'request_id']);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
   const sanitized = { ...obj };
   Object.keys(sanitized).forEach(key => {
-    // If it's a UUID field but value is not a UUID, make it null
-    if ((key === 'id' || key === 'client_id' || key === 'realtor_id' || key === 'property_id' || key === 'request_id') && 
-        typeof sanitized[key] === 'string' && sanitized[key].length > 0 &&
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sanitized[key])) {
-      console.warn(`[Supabase] Stripping invalid UUID for field ${key}:`, sanitized[key]);
-      // If it's 'id', we MUST NOT make it null if we want to update, but if it's invalid it will fail anyway.
-      // For foreign keys, null is better than invalid syntax.
-      if (key !== 'id') sanitized[key] = null;
-    }
-    
-    if (sanitized[key] === '') {
+    const val = sanitized[key];
+
+    // UUID-поля: заменяем невалидный UUID null — но не для client_ids!
+    if (UUID_FIELDS.has(key) && key !== 'id' &&
+        typeof val === 'string' && val.length > 0 && !UUID_RE.test(val)) {
+      console.warn(`[Supabase] Stripping invalid UUID for field ${key}:`, val);
       sanitized[key] = null;
-    } else if (typeof sanitized[key] === 'object' && sanitized[key] !== null) {
-      sanitized[key] = sanitizeObj(sanitized[key]);
+      return;
+    }
+
+    if (val === '') {
+      sanitized[key] = null;
+    } else if (Array.isArray(val)) {
+      // Массивы (client_ids, images и др.) обрабатываем через рекурсию без UUID-замены
+      sanitized[key] = val.map(item => {
+        if (typeof item === 'string') return item; // строки (UUID, URL) — не трогаем
+        return sanitizeObj(item);
+      });
+    } else if (typeof val === 'object' && val !== null) {
+      sanitized[key] = sanitizeObj(val);
     }
   });
   return sanitized;
