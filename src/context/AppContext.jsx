@@ -12,7 +12,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { reducer, EMPTY_STATE } from './reducer';
-import { loadUserData, getCachedData, setCachedData } from './supabaseSync';
+import { loadUserData, getCachedData, setCachedData, clearCachedData } from './supabaseSync';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
 
@@ -34,20 +34,20 @@ export function AppProvider({ children }) {
 
   /* ── loadData: основная загрузка всех таблиц ──────────────────────────── */
 
-  const loadData = useCallback(async (sessionUser, { silent = false } = {}) => {
+  const loadData = useCallback(async (sessionUser, { silent = false, forceRefresh = false } = {}) => {
     if (!sessionUser) return;
 
-    // 1. МГНОВЕННО показываем кешированные данные (если есть)
-    const cached = getCachedData(sessionUser.id);
+    // 1. Показываем кеш мгновенно (если не принудительное обновление)
+    const cached = !forceRefresh ? getCachedData(sessionUser.id) : null;
     if (cached && !silent) {
       dispatch({ type: 'SET_ALL', data: cached });
       dispatch({ type: 'SET_LOADING', value: false });
-      console.log('[Data Load] Served from cache instantly');
+      console.log('[Data Load] Served from cache instantly. showings:', cached.showings?.length);
     } else if (!silent) {
       dispatch({ type: 'SET_LOADING', value: true });
     }
 
-    // 2. Загружаем свежие данные из Supabase (в фоне если есть кеш)
+    // 2. Загружаем актуальные данные из Supabase
     console.log('[Data Load] Loading tables for role:', sessionUser.role);
     const data = await loadUserData(sessionUser.id, sessionUser.role);
 
@@ -73,10 +73,17 @@ export function AppProvider({ children }) {
       console.warn('[Data Load] Partial error:', data.error);
     }
 
-    // 3. Обновляем UI свежими данными и сохраняем в кеш
-    console.log('[Data Load] Done. Properties:', data.properties?.length, 'Clients:', data.clients?.length);
+    // 3. Обновляем UI свежими данными и сохраняем в кеш (с защитой от перезаписи меньшим кол-вом)
+    console.log('[Data Load] Done. showings:', data.showings?.length, 'properties:', data.properties?.length);
     dispatch({ type: 'SET_ALL', data });
-    setCachedData(sessionUser.id, data);
+
+    const freshShowings = data.showings?.length || 0;
+    const cachedShowings = cached?.showings?.length || 0;
+    if (freshShowings >= cachedShowings || forceRefresh) {
+      setCachedData(sessionUser.id, data);
+    } else {
+      console.warn('[Cache] Fresh data has FEWER showings than cache, not overwriting. fresh:', freshShowings, 'cached:', cachedShowings);
+    }
 
     if (!silent && !cached) {
       const pCnt = data.properties?.length || 0;
@@ -92,7 +99,8 @@ export function AppProvider({ children }) {
   const reloadData = useCallback(async () => {
     const su = sessionUserRef.current;
     if (!su) { toast.error('Нет активной сессии. Войдите заново.'); return; }
-    await loadData(su, { silent: true });
+    clearCachedData(su.id); // Очищаем кеш при ручном обновлении
+    await loadData(su, { silent: false, forceRefresh: true });
     toast.success('Данные обновлены');
   }, [loadData, toast]);
 

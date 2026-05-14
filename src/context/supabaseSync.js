@@ -190,7 +190,7 @@ export async function loadUserData(userId, role) {
 /* ─── Session Cache ─────────────────────────────────────────────────────────── */
 // Ключ кеша per-user чтобы не смешивать данные разных риелторов
 const CACHE_KEY = (userId) => `rm_cache_${userId}`;
-const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+const CACHE_TTL = 2 * 60 * 1000; // 2 минуты — данные должны быть актуальными
 
 export function getCachedData(userId) {
   try {
