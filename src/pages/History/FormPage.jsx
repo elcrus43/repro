@@ -6,28 +6,18 @@ import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Chec
 import { nanoid } from '../../utils/nanoid';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 
-/* ─── Карточка секции (Open Design) ───────────────────── */
-function FormCard({ title, icon, children, description }) {
+function FormCard({ title, children, description }) {
     return (
         <div className="card fade-in" style={{ 
-            padding: '24px', marginBottom: 20, border: 'none', 
-            boxShadow: '0 8px 30px rgba(0,0,0,0.03)', borderRadius: 28,
+            padding: '20px', marginBottom: 16, border: 'none', 
+            boxShadow: '0 4px 16px rgba(0,0,0,0.03)', borderRadius: 20,
             background: 'white'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
-                <div style={{ 
-                    width: 40, height: 40, borderRadius: 12, 
-                    background: 'var(--primary-light)', color: 'var(--primary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                    {icon}
-                </div>
-                <div>
-                    <div className="font-oswald" style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{title}</div>
-                    {description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 1 }}>{description}</div>}
-                </div>
+            <div style={{ marginBottom: 16 }}>
+                <div className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
+                {description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{description}</div>}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {children}
             </div>
         </div>

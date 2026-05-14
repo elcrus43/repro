@@ -12,7 +12,7 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { reducer, EMPTY_STATE } from './reducer';
-import { loadUserData } from './supabaseSync';
+import { loadUserData, getCachedData, setCachedData } from './supabaseSync';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
 
@@ -37,25 +37,33 @@ export function AppProvider({ children }) {
   const loadData = useCallback(async (sessionUser, { silent = false } = {}) => {
     if (!sessionUser) return;
 
-    if (!silent) dispatch({ type: 'SET_LOADING', value: true });
+    // 1. МГНОВЕННО показываем кешированные данные (если есть)
+    const cached = getCachedData(sessionUser.id);
+    if (cached && !silent) {
+      dispatch({ type: 'SET_ALL', data: cached });
+      dispatch({ type: 'SET_LOADING', value: false });
+      console.log('[Data Load] Served from cache instantly');
+    } else if (!silent) {
+      dispatch({ type: 'SET_LOADING', value: true });
+    }
 
+    // 2. Загружаем свежие данные из Supabase (в фоне если есть кеш)
     console.log('[Data Load] Loading tables for role:', sessionUser.role);
     const data = await loadUserData(sessionUser.id, sessionUser.role);
 
-    // Если ВСЕ запросы упали одновременно — авто-retry через 3 сек.
-    // Типично для мобильного cold-start: сеть ещё не стабилизировалась.
     const allFailed = data.allFailed;
 
     if (allFailed) {
       console.warn('[Data Load] All queries failed, retrying in 3s...', data.error);
+      if (!cached) dispatch({ type: 'SET_LOADING', value: true });
       await new Promise(r => setTimeout(r, 3000));
       const retryData = await loadUserData(sessionUser.id, sessionUser.role);
       if (retryData.error) {
         console.warn('[Data Load] Retry also failed:', retryData.error);
-        if (!silent) toast.error('Не удалось загрузить данные. Проверьте подключение.');
+        if (!cached) toast.error('Не удалось загрузить данные. Проверьте подключение.');
       } else {
         console.log('[Data Load] Retry succeeded!');
-        if (!silent) toast.success('Данные загружены');
+        setCachedData(sessionUser.id, retryData);
       }
       dispatch({ type: 'SET_ALL', data: retryData });
       return;
@@ -63,13 +71,14 @@ export function AppProvider({ children }) {
 
     if (data.error) {
       console.warn('[Data Load] Partial error:', data.error);
-      if (!silent) toast.warn(`Часть данных не загрузилась: ${data.error}`);
     }
 
+    // 3. Обновляем UI свежими данными и сохраняем в кеш
     console.log('[Data Load] Done. Properties:', data.properties?.length, 'Clients:', data.clients?.length);
     dispatch({ type: 'SET_ALL', data });
+    setCachedData(sessionUser.id, data);
 
-    if (!silent) {
+    if (!silent && !cached) {
       const pCnt = data.properties?.length || 0;
       const cCnt = data.clients?.length || 0;
       if (pCnt > 0 || cCnt > 0) {

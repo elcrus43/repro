@@ -76,16 +76,8 @@ export function DetailsPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 
                 {/* Profile Card */}
-                <div className="card" style={{ padding: '32px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white', textAlign: 'center' }}>
-                    <div style={{ 
-                        width: 80, height: 80, borderRadius: 24, background: avatarBg, color: 'white',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, fontWeight: 800,
-                        fontFamily: "'Oswald', sans-serif", margin: '0 auto 16px',
-                        boxShadow: `0 8px 24px ${avatarBg}33`
-                    }}>
-                        {initial}
-                    </div>
-                    <div className="font-oswald" style={{ fontSize: 24, fontWeight: 800, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
+                <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white', textAlign: 'center' }}>
+                    <div className="font-oswald" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                         {client.client_types?.map(t => (
                             <span key={t} style={{ 

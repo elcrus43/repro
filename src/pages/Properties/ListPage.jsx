@@ -291,34 +291,6 @@ export function ListPage() {
                 )}
             </div>
 
-            {/* FLOATING ACTION BUTTON */}
-            <button 
-                className="card-clickable font-oswald" 
-                onClick={() => navigate('/properties/new')}
-                style={{ 
-                    position: 'fixed', 
-                    bottom: 'calc(var(--nav-h) + 32px + env(safe-area-inset-bottom))', 
-                    right: 20, 
-                    zIndex: 200, 
-                    borderRadius: 24, 
-                    padding: '0 32px',
-                    height: 64,
-                    fontSize: 15,
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
-                    background: 'var(--primary)',
-                    color: 'white',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    border: 'none',
-                    boxShadow: '0 16px 32px rgba(0, 82, 255, 0.3)'
-                }}
-            >
-                <Plus size={24} strokeWidth={3} />
-                Опубликовать
-            </button>
         </div>
     );
 }

@@ -107,11 +107,7 @@ function BottomNav() {
               textAlign: 'center'
           }}>{tab.label}</span>
           
-          {isActive(tab.path) && (
-              <div style={{ 
-                  position: 'absolute', bottom: 10, width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)'
-              }} />
-          )}
+
         </button>
       ))}
     </nav>

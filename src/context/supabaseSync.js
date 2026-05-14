@@ -187,6 +187,41 @@ export async function loadUserData(userId, role) {
   };
 }
 
+/* ─── Session Cache ─────────────────────────────────────────────────────────── */
+// Ключ кеша per-user чтобы не смешивать данные разных риелторов
+const CACHE_KEY = (userId) => `rm_cache_${userId}`;
+const CACHE_TTL = 5 * 60 * 1000; // 5 минут
+
+export function getCachedData(userId) {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY(userId));
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) {
+      sessionStorage.removeItem(CACHE_KEY(userId));
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedData(userId, data) {
+  try {
+    sessionStorage.setItem(CACHE_KEY(userId), JSON.stringify({ ts: Date.now(), data }));
+  } catch {
+    // sessionStorage может быть недоступен в private mode — не критично
+  }
+}
+
+export function clearCachedData(userId) {
+  try {
+    if (userId) sessionStorage.removeItem(CACHE_KEY(userId));
+  } catch { /* ignore */ }
+}
+
+
 
 /* ─── Sync ─────────────────────────────────────────────────────────────────── */
 
