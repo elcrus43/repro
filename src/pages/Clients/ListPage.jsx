@@ -145,18 +145,10 @@ export function ListPage() {
                     return (
                         <div key={client.id} className="card card-clickable" style={{ 
                             padding: '16px', border: 'none', background: 'white', borderRadius: 24, 
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden'
+                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden',
+                            borderLeft: `4px solid ${avatarBg}`
                         }} onClick={() => navigate(`/clients/${client.id}`)}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                {/* Avatar */}
-                                <div style={{ 
-                                    width: 52, height: 52, borderRadius: 16, background: avatarBg, color: 'white',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800,
-                                    fontFamily: "'Oswald', sans-serif"
-                                }}>
-                                    {initial}
-                                </div>
-                                
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
