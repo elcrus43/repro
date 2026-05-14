@@ -1,31 +1,33 @@
 /**
  * Formats a phone string to +7 (xxx) xxx-xx-xx
  * @param {string} phone
+ * @param {boolean} inputMode - if true, returns partial formatting for live input
  * @returns {string}
  */
 export function formatPhone(phone, inputMode = false) {
-    if (!phone) return inputMode ? '' : '';
-    
-    // Clean all non-digits
+    if (!phone) return '';
+
+    // Extract only digits
     let clean = phone.replace(/\D/g, '');
 
-    // Handle the case where user starts typing with 8 or 7
-    if (clean.startsWith('8') || clean.startsWith('7')) {
+    // Strip leading country code (7 or 8) ONLY if there are more digits after it.
+    // Without this guard, typing '7' as first digit makes it vanish (bug).
+    if (clean.length > 1 && (clean.startsWith('8') || clean.startsWith('7'))) {
         clean = clean.substring(1);
     }
 
-    // Limit to 10 digits
-    const match = clean.substring(0, 10);
-    const len = match.length;
+    // Limit to 10 local digits
+    const d = clean.substring(0, 10);
+    const len = d.length;
 
-    if (len === 0) return inputMode ? '' : '+7 ';
+    if (len === 0) return '';
 
-    const prefix = '+7 ';
-    let result = prefix;
-    if (len > 0) result += `(${match.substring(0, 3)}`;
-    if (len > 3) result += `) ${match.substring(3, 6)}`;
-    if (len > 6) result += `-${match.substring(6, 8)}`;
-    if (len > 8) result += `-${match.substring(8, 10)}`;
+    // Build formatted string progressively so partial input looks nice
+    let result = '+7 ';
+    result += `(${d.substring(0, Math.min(3, len))}`;
+    if (len > 3) result += `) ${d.substring(3, Math.min(6, len))}`;
+    if (len > 6) result += `-${d.substring(6, Math.min(8, len))}`;
+    if (len > 8) result += `-${d.substring(8, 10)}`;
 
     return result;
 }
@@ -43,7 +45,7 @@ export function stripPhone(phone) {
 
 /**
  * Formats a number with space as thousands separator
- * @param {number|string} num 
+ * @param {number|string} num
  * @returns {string}
  */
 export function formatNumber(num) {

@@ -723,7 +723,8 @@ function _isPassportColumnError(error) {
   );
 }
 
-// Fields added in migration 032 that may not exist in older DB schemas
+// Fields added in migration 032/033 that may not exist in older DB schemas
+// NOTE: client_ids is NOT here — migration 035 has been applied
 const NEW_PROPERTY_FIELDS = [
   'seeking_alternative', 'elevator_type',
   'renovation', 'bathroom', 'balcony', 'parking', 'furniture',
@@ -739,7 +740,7 @@ const NEW_PROPERTY_FIELDS = [
   'portfolio_resale_files',
   'portfolio_mortgage_files',
   'portfolio_analog_links',
-  'client_ids',
+  // 'client_ids' — REMOVED: migration 035 applied, column exists
 ];
 
 function _isNewPropertyColumnError(error) {
@@ -764,8 +765,9 @@ function _stripNewPropertyFields(data, error) {
   return stripped;
 }
 
-const NEW_REQUEST_FIELDS = ['client_ids', 'mortgage'];
-const NEW_SHOWING_FIELDS = ['client_ids', 'event_type'];
+// NOTE: client_ids removed from these lists — migration 035 applied
+const NEW_REQUEST_FIELDS = ['mortgage'];
+const NEW_SHOWING_FIELDS = ['event_type'];
 const NEW_DEAL_FIELDS    = ['mortgage', 'expenses', 'mortgage_bank', 'mortgage_amount', 'mortgage_expiry'];
 
 function _isNewRequestColumnError(error) {
