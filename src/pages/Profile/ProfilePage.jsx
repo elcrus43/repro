@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { supabase } from '../../lib/supabase';
+import { formatPhone } from '../../utils/format';
 import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon } from 'lucide-react';
 import {
     isCalendarConfigured,
@@ -224,7 +225,14 @@ export function ProfilePage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
                                 <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
                                 <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
-                                <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={editData.phone} onChange={e => setEditData({ ...editData, phone: e.target.value })} placeholder="Телефон" />
+                                <input
+                                    className="form-input"
+                                    style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }}
+                                    value={editData.phone || ''}
+                                    type="tel"
+                                    onChange={e => setEditData({ ...editData, phone: formatPhone(e.target.value, true) })}
+                                    placeholder="+7 (___) ___-__-__"
+                                />
                                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                                     <button className="btn btn-secondary" style={{ flex: 1, borderRadius: 14 }} onClick={() => setIsEditing(false)}>Отмена</button>
                                     <button className="btn btn-primary" style={{ flex: 1, borderRadius: 14 }} onClick={handleSave}>Сохранить</button>

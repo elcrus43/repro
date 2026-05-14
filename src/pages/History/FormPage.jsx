@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
+import { formatPhone } from '../../utils/format';
 import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
@@ -56,7 +57,7 @@ export function FormPage() {
     const [newClientPhone, setNewClientPhone] = useState('');
 
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id);
-    const allProperties = state.properties;
+    const allProperties = state.properties.filter(p => p.realtor_id === state.currentUser?.id);
 
     function handleCreateClient() {
         if (!newClientName.trim()) { toast.error('Введите имя клиента'); return; }
@@ -85,8 +86,12 @@ export function FormPage() {
 
     function handleSubmit(e) {
         e.preventDefault();
-        if (!form.property_id || !form.client_ids?.length || !form.showing_date) {
-            toast.error('Пожалуйста, выберите объект, клиента и дату/время');
+        if (!form.client_ids?.length) {
+            toast.error('Выберите клиента для события');
+            return;
+        }
+        if (!form.showing_date) {
+            toast.error('Укажите дату и время события');
             return;
         }
 
@@ -191,7 +196,14 @@ export function FormPage() {
                             {showNewClient ? (
                                 <div className="fade-in" style={{ background: '#f8fafc', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'white' }} placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'white' }} placeholder="Телефон" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} />
+                                    <input
+                                        className="form-input"
+                                        style={{ borderRadius: 12, height: 44, background: 'white' }}
+                                        placeholder="+7 (___) ___-__-__"
+                                        value={newClientPhone}
+                                        type="tel"
+                                        onChange={e => setNewClientPhone(formatPhone(e.target.value, true))}
+                                    />
                                     <button type="button" className="card-clickable" style={{ height: 44, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12 }} onClick={handleCreateClient}>
                                         СОЗДАТЬ И ДОБАВИТЬ
                                     </button>
@@ -200,7 +212,7 @@ export function FormPage() {
                                 <MultiClientSelector 
                                     selectedIds={form.client_ids || []}
                                     onChange={ids => setForm({ ...form, client_ids: ids })}
-                                    clients={state.clients}
+                                    clients={myClients.length > 0 ? myClients : state.clients}
                                     placeholder="Выберите клиентов..."
                                 />
                             )}

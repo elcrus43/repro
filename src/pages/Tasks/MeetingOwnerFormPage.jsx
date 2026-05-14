@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
+import { formatPhone } from '../../utils/format';
 import { Calendar, User, Home, UserPlus, X, ChevronLeft, Save, Clock, AlertCircle } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
@@ -129,7 +130,14 @@ export function MeetingOwnerFormPage() {
                         {showNewClient ? (
                             <div className="fade-in" style={{ background: '#f8fafc', borderRadius: 16, padding: 16, display: 'flex', flexDirection: 'column', gap: 12, border: '1.5px dashed rgba(0,82,255,0.2)' }}>
                                 <input className="form-input" style={{ background: 'white' }} placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
-                                <input className="form-input" style={{ background: 'white' }} placeholder="Телефон" value={newClientPhone} onChange={e => setNewClientPhone(e.target.value)} />
+                                <input
+                                    className="form-input"
+                                    style={{ background: 'white' }}
+                                    placeholder="+7 (___) ___-__-__"
+                                    value={newClientPhone}
+                                    type="tel"
+                                    onChange={e => setNewClientPhone(formatPhone(e.target.value, true))}
+                                />
                                 <button type="button" className="card-clickable" style={{ height: 40, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }} onClick={handleCreateClient}>Создать</button>
                             </div>
                         ) : (
