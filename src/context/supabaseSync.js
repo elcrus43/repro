@@ -505,8 +505,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       /* ── Показы ──────────────────────────────────────────────────────── */
       case 'ADD_SHOWING': {
         const showingData = sanitizeObj(action.showing);
+        // Ensure property_id null not empty string
+        if (showingData.property_id === '') showingData.property_id = null;
         const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
-        if (action.task) queries.push(withRetry(() => supabase.from('tasks').upsert(action.task)));
+        if (action.task) queries.push(withRetry(() => supabase.from('tasks').upsert(sanitizeObj(action.task))));
         if (action.matches && action.showing.match_id) {
           const match = action.matches.find(m => m.id === action.showing.match_id);
           if (match) queries.push(withRetry(() => supabase.from('matches').upsert(match)));
@@ -517,31 +519,44 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         if (results[0]?.error && _isNewShowingColumnError(results[0].error)) {
           console.warn('[Supabase] New showing columns missing. Retrying without specific missing fields.');
           const stripped = _stripNewShowingFields(showingData, results[0].error);
-          await withRetry(() => supabase.from('showings').upsert(stripped));
+          const retryResult = await withRetry(() => supabase.from('showings').upsert(stripped));
+          if (retryResult?.error) {
+            console.error('[Supabase ADD_SHOWING retry error]', retryResult.error);
+            handleError(`Ошибка сохранения события: ${retryResult.error.message}`);
+          }
+        } else if (results[0]?.error) {
+          console.error('[Supabase ADD_SHOWING error]', results[0].error);
+          handleError(`Ошибка сохранения события: ${results[0].error.message}`);
         }
         
-        results.forEach((res, i) => {
-          if (res?.error && !_isNewShowingColumnError(res.error)) console.error(`[Supabase Showing Sync Error ${i}]`, res.error);
+        results.slice(1).forEach((res, i) => {
+          if (res?.error) console.error(`[Supabase ADD_SHOWING sub-query ${i+1} error]`, res.error);
         });
         return;
       }
 
       case 'UPDATE_SHOWING': {
         const showingData = sanitizeObj(action.showing);
+        if (showingData.property_id === '') showingData.property_id = null;
         const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
-        if (action.matches) queries.push(withRetry(() => supabase.from('matches').upsert(action.matches)));
+        if (action.matches && action.showing.match_id) {
+          const match = action.matches.find(m => m.id === action.showing.match_id);
+          if (match) queries.push(withRetry(() => supabase.from('matches').upsert(match)));
+        }
         const results = await Promise.all(queries);
         
-        // Retry showing if failed due to missing columns
         if (results[0]?.error && _isNewShowingColumnError(results[0].error)) {
           console.warn('[Supabase] New showing columns missing. Retrying without specific missing fields.');
           const stripped = _stripNewShowingFields(showingData, results[0].error);
-          await withRetry(() => supabase.from('showings').upsert(stripped));
+          const retryResult = await withRetry(() => supabase.from('showings').upsert(stripped));
+          if (retryResult?.error) {
+            console.error('[Supabase UPDATE_SHOWING retry error]', retryResult.error);
+            handleError(`Ошибка обновления события: ${retryResult.error.message}`);
+          }
+        } else if (results[0]?.error) {
+          console.error('[Supabase UPDATE_SHOWING error]', results[0].error);
+          handleError(`Ошибка обновления события: ${results[0].error.message}`);
         }
-
-        results.forEach((res, i) => {
-          if (res?.error && !_isNewShowingColumnError(res.error)) console.error(`[Supabase Showing Update Error ${i}]`, res.error);
-        });
         return;
       }
 

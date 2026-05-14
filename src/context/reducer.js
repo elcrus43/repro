@@ -156,15 +156,15 @@ export function reducer(state, action) {
       return {
         ...state,
         showings: [...state.showings, action.showing],
-        matches:  action.matches,
-        tasks:    [...state.tasks, action.task],
+        matches:  action.matches !== undefined ? action.matches : state.matches,
+        tasks:    action.task ? [...state.tasks, action.task] : state.tasks,
       };
 
     case 'UPDATE_SHOWING':
       return {
         ...state,
         showings: state.showings.map(s => s.id === action.showing.id ? action.showing : s),
-        matches:  action.matches,
+        matches:  action.matches !== undefined ? action.matches : state.matches,
       };
 
     case 'DELETE_SHOWING':
