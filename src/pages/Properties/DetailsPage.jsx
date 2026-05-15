@@ -1013,15 +1013,15 @@ function BannerGenerator({ property, currentUser, onClose }) {
                     <div style={{ marginBottom: 24 }}>
                         <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Формат</label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
-                            <button className={`btn ${format === 'story' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setFormat('story')}>Story (9:16)</button>
-                            <button className={`btn ${format === 'post' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setFormat('post')}>Post (1:1)</button>
+                            <button className={`btn ${format === 'story' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setFormat('story')}>Story (9:16)</button>
+                            <button className={`btn ${format === 'post' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setFormat('post')}>Post (1:1)</button>
                         </div>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
+                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('classic')}>🖼 Классика</button>
-                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('minimal')}>📋 Паспарту</button>
-                            <button className={`btn ${design === 'stripe' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('stripe')}>⚡ Полоса</button>
-                            <button className={`btn ${design === 'split' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 11, padding: '8px' }} onClick={() => setDesign('split')}>◧ Сплит</button>
+                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('classic')}>🖼 Классика</button>
+                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('minimal')}>📋 Паспарту</button>
+                            <button className={`btn ${design === 'stripe' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('stripe')}>⚡ Полоса</button>
+                            <button className={`btn ${design === 'split' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('split')}>◧ Сплит</button>
                         </div>
                     </div>
 
@@ -1052,9 +1052,9 @@ function BannerGenerator({ property, currentUser, onClose }) {
                                     key={s}
                                     onClick={() => setStickers(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
                                     style={{ 
-                                        padding: '6px 10px', borderRadius: 8, fontSize: 10, border: 'none', cursor: 'pointer',
+                                        padding: '8px 12px', borderRadius: 10, fontSize: 12, border: 'none', cursor: 'pointer',
                                         background: stickers.includes(s) ? accentColor : 'rgba(255,255,255,0.1)',
-                                        color: 'white', fontWeight: 600
+                                        color: 'white', fontWeight: 400
                                     }}
                                 >
                                     {s}
@@ -1103,7 +1103,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
                         )}
                     </div>
                     
-                    <button className="btn btn-primary" onClick={download} style={{ marginTop: 32, padding: '18px 60px', borderRadius: 20, fontSize: 18, fontWeight: 900, boxShadow: `0 10px 30px -10px ${accentColor}` }}>
+                    <button className="btn btn-primary" onClick={download} style={{ marginTop: 32, padding: '18px 60px', borderRadius: 16, fontSize: 18, fontWeight: 500, boxShadow: `0 10px 30px -10px ${accentColor}` }}>
                         СКАЧАТЬ БАННЕР
                     </button>
                 </div>
@@ -1201,10 +1201,10 @@ export function DetailsPage() {
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="font-oswald" style={{ fontSize: 17, fontWeight: 800, letterSpacing: '0.01em', color: 'var(--text)' }}>
+                    <span className="font-oswald" style={{ fontSize: 17, fontWeight: 500, letterSpacing: '0.01em', color: 'var(--text)' }}>
                         Объект
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                     <button className="card-clickable" onClick={() => navigate(`/properties/${id}/edit`)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
@@ -1230,11 +1230,11 @@ export function DetailsPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>
+                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
                                     </div>
                                     {prop.area_total > 0 && (
-                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 700, marginTop: 4, opacity: 0.6 }}>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 400, marginTop: 4, opacity: 0.6 }}>
                                             {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
                                         </div>
                                     )}
@@ -1255,7 +1255,7 @@ export function DetailsPage() {
                             style={{ 
                                 flex: 1.5, height: 48, borderRadius: 14, border: 'none',
                                 background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
-                                color: 'white', fontWeight: 700, fontSize: 14,
+                                color: 'white', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 boxShadow: '0 8px 20px rgba(0, 82, 255, 0.15)',
                                 fontFamily: "'Oswald', sans-serif"
@@ -1268,7 +1268,7 @@ export function DetailsPage() {
                             className="card-clickable"
                             style={{ 
                                 flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
-                                background: 'white', color: 'var(--text)', fontWeight: 700, fontSize: 13,
+                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 14,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
                                 fontFamily: "'Oswald', sans-serif"
@@ -1316,7 +1316,7 @@ export function DetailsPage() {
                                         width: 40, height: 40, borderRadius: '50%',
                                         background: 'var(--border)', color: 'var(--text-secondary)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 15, fontWeight: 700, flexShrink: 0, letterSpacing: 0.5,
+                                        fontSize: 15, fontWeight: 400, flexShrink: 0, letterSpacing: 0.5,
                                     }}>
                                         {initials(c.full_name)}
                                     </div>

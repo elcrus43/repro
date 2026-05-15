@@ -62,7 +62,7 @@ export function ListPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span className="topbar-title font-oswald" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 22 }}>Объекты</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 800, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Портфель недвижимости</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Портфель недвижимости</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
@@ -104,7 +104,7 @@ export function ListPage() {
                         <button 
                             className="card-clickable font-oswald" 
                             style={{ 
-                                flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700, 
+                                flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
                                 background: scope === 'all' ? 'white' : 'transparent', 
                                 boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                                 color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)', 
@@ -115,7 +115,7 @@ export function ListPage() {
                         <button 
                             className="card-clickable font-oswald" 
                             style={{ 
-                                flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700, 
+                                flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
                                 background: scope === 'mine' ? 'white' : 'transparent', 
                                 boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                                 color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)', 
@@ -214,10 +214,10 @@ export function ListPage() {
 
                                 {/* CONTENT WRAPPER */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', lineHeight: 1.1 }}>
+                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', lineHeight: 1.1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 13, opacity: 0.6 }}>₽</span>
                                     </div>
-                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <span>{prop.rooms > 0 ? `${prop.rooms}к` : 'Студия'}</span>
                                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                         <span>{prop.area_total} м²</span>

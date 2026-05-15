@@ -236,13 +236,13 @@ export function DealsPage() {
             <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                     <div style={{ flex: 1 }}>
-                        <div className="font-oswald" style={{ fontWeight: 800, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', fontWeight: 700 }}>
+                        <div className="font-oswald" style={{ fontWeight: 500, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>
                             <Calendar size={14} /> {deal.deal_date ? new Date(deal.deal_date).toLocaleDateString('ru-RU') : 'Дата не назначена'}
                         </div>
                     </div>
                     <span style={{ 
-                        padding: '6px 12px', borderRadius: 10, fontSize: 10, fontWeight: 700,
+                        padding: '6px 12px', borderRadius: 10, fontSize: 12, fontWeight: 400,
                         background: cfg.bg === 'var(--primary)' ? 'var(--primary-light)' : cfg.bg.startsWith('#') ? `${cfg.bg}15` : cfg.bg,
                         color: cfg.bg === 'var(--primary)' ? 'var(--primary)' : cfg.bg.startsWith('#') ? cfg.bg : '#fff'
                     }}>{cfg.label}</span>
@@ -250,12 +250,12 @@ export function DealsPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                     <div style={{ background: 'var(--bg-light)', padding: '16px', borderRadius: 20 }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Цена</div>
-                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 800 }}>{Number(deal.price).toLocaleString()} ₽</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 400, marginBottom: 4 }}>Цена</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 500 }}>{Number(deal.price).toLocaleString()} ₽</div>
                     </div>
                     <div style={{ background: 'var(--bg-light)', padding: '16px', borderRadius: 20 }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, marginBottom: 4 }}>Комиссия</div>
-                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 800, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 400, marginBottom: 4 }}>Комиссия</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 500, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
                     </div>
                 </div>
 
@@ -336,7 +336,7 @@ export function DealsPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                     <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={prevMonth}><ChevronLeft size={20} /></button>
-                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 700 }}>{monthNames[selectedMonth]} {selectedYear}</div>
+                    <div className="font-oswald" style={{ fontSize: 17, fontWeight: 400 }}>{monthNames[selectedMonth]} {selectedYear}</div>
                     <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={nextMonth}><ChevronRight size={20} /></button>
                 </div>
             </div>

@@ -105,10 +105,10 @@ export function MeetingOwnerFormPage() {
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
                         {editId ? 'Редактировать' : 'Встреча'}
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>С собственником</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>С собственником</span>
                 </div>
                 <div style={{ width: 44 }} />
             </div>
@@ -119,10 +119,10 @@ export function MeetingOwnerFormPage() {
                     {/* Клиент */}
                     <div className="form-group">
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, textTransform: 'uppercase', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <User size={14} color="var(--primary)" /> Клиент <span style={{ color: '#dc2626' }}>*</span>
                             </label>
-                            <button type="button" className="card-clickable" onClick={() => setShowNewClient(v => !v)} style={{ border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 10, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <button type="button" className="card-clickable" onClick={() => setShowNewClient(v => !v)} style={{ border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', padding: '4px 10px', borderRadius: 10, fontSize: 12, fontWeight: 400, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
                                 {showNewClient ? <><X size={12} /> Отмена</> : <><UserPlus size={12} /> Новый</>}
                             </button>
                         </div>
@@ -138,7 +138,7 @@ export function MeetingOwnerFormPage() {
                                     type="tel"
                                     onChange={e => setNewClientPhone(formatPhone(e.target.value, true))}
                                 />
-                                <button type="button" className="card-clickable" style={{ height: 40, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }} onClick={handleCreateClient}>Создать</button>
+                                <button type="button" className="card-clickable" style={{ height: 40, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 400, fontSize: 13, textTransform: 'uppercase' }} onClick={handleCreateClient}>Создать</button>
                             </div>
                         ) : (
                             <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.client_id} onChange={e => setF('client_id', e.target.value)} required>
@@ -150,7 +150,7 @@ export function MeetingOwnerFormPage() {
 
                     {/* Объект (опционально) */}
                     <div className="form-group">
-                        <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Home size={14} color="var(--primary)" /> Объект
                         </label>
                         <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.property_id || ''} onChange={e => setF('property_id', e.target.value)}>
@@ -163,7 +163,7 @@ export function MeetingOwnerFormPage() {
 
                     {/* Дата и время */}
                     <div className="form-group">
-                        <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Calendar size={14} color="var(--primary)" /> Дата и время <span style={{ color: '#dc2626' }}>*</span>
                         </label>
                         <input className="form-input" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} type="datetime-local" value={form.due_date} onChange={e => setF('due_date', e.target.value)} required />
@@ -172,7 +172,7 @@ export function MeetingOwnerFormPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         {/* Статус */}
                         <div className="form-group">
-                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Статус</label>
+                            <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Статус</label>
                             <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.status} onChange={e => setF('status', e.target.value)}>
                                 <option value="pending">План</option>
                                 <option value="done">Готово</option>
@@ -182,7 +182,7 @@ export function MeetingOwnerFormPage() {
 
                         {/* Приоритет */}
                         <div className="form-group">
-                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Приоритет</label>
+                            <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Приоритет</label>
                             <select className="form-select" style={{ height: 52, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.priority} onChange={e => setF('priority', e.target.value)}>
                                 <option value="high">Высокий</option>
                                 <option value="medium">Средний</option>
@@ -193,11 +193,11 @@ export function MeetingOwnerFormPage() {
 
                     {/* Комментарий */}
                     <div className="form-group">
-                        <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Комментарий</label>
+                        <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Комментарий</label>
                         <textarea className="form-textarea" style={{ borderRadius: 16, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)', padding: 16 }} rows={3} value={form.description || ''} onChange={e => setF('description', e.target.value)} placeholder="Тема встречи, что обсудить..." />
                     </div>
 
-                    <button type="submit" className="card-clickable" style={{ marginTop: 12, height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                    <button type="submit" className="card-clickable" style={{ marginTop: 12, height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 400, fontSize: 15, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                         <Save size={20} />
                         {editId ? 'Сохранить изменения' : 'Создать встречу'}
                     </button>

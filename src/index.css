@@ -117,7 +117,7 @@ body {
   min-height: 100vh;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
-  font-weight: 300;
+  font-weight: 400;
 }
 
 /* ===== Global: отменяем uppercase везде — используем Oswald с разными весами вместо капса ===== */
@@ -144,7 +144,7 @@ a {
 button {
   cursor: pointer;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 input,
@@ -422,10 +422,10 @@ a:focus:not(:focus-visible) {
   justify-content: center;
   gap: 8px;
   padding: 0 20px;
-  border-radius: var(--radius-pill);
-  border: 2px solid var(--primary);
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: var(--radius);
+  border: 1px solid var(--primary);
+  font-size: 15px;
+  font-weight: 400;
   font-family: 'Oswald', sans-serif;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
