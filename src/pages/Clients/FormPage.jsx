@@ -68,7 +68,6 @@ export function FormPage() {
     const clientTypes = [
         { id: 'buyer', label: 'Покупатель' },
         { id: 'seller', label: 'Продавец' },
-        { id: 'developer', label: 'Застройщик' },
         { id: 'landlord', label: 'Арендодатель' },
         { id: 'tenant', label: 'Арендатор' },
     ];
@@ -101,7 +100,7 @@ export function FormPage() {
                         <label className="form-label">ФИО клиента</label>
                         <div style={{ position: 'relative' }}>
                             <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><User size={18} /></span>
-                            <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={form.full_name} onChange={e => setF('full_name', e.target.value)} required placeholder="Иванов Иван Иванович" />
+                            <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.full_name} onChange={e => setF('full_name', e.target.value)} required placeholder="Иванов Иван Иванович" />
                         </div>
                     </div>
 
@@ -110,13 +109,13 @@ export function FormPage() {
                         {(form.phones || [form.phone || '']).map((p, idx) => (
                             <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, position: 'relative' }}>
                                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', zIndex: 1 }}><Phone size={18} /></span>
-                                <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={p || ''} onChange={e => {
+                                <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={p || ''} onChange={e => {
                                     const raw = e.target.value;
                                     const formatted = formatPhone(raw, true);
                                     const phones = [...(form.phones || [form.phone || ''])];
                                     phones[idx] = formatted;
                                     setF('phones', phones);
-                                }} placeholder="+7 (999) 000-00-00" />
+                                }} placeholder="+7 (912) 000-00-00" />
                                 {idx > 0 && (
                                     <button type="button" className="card-clickable" style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                                         const phones = (form.phones || [form.phone || '']).filter((_, i) => i !== idx);
@@ -137,12 +136,6 @@ export function FormPage() {
                             {clientTypes.map(t => (
                                 <button key={t.id} type="button"
                                     className={`chip ${form.client_types?.includes(t.id) ? 'active' : ''}`}
-                                    style={{ 
-                                        padding: '10px 16px', borderRadius: 12, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', 
-                                        background: form.client_types?.includes(t.id) ? 'var(--primary)' : 'var(--bg-light)',
-                                        color: form.client_types?.includes(t.id) ? 'white' : 'var(--text-secondary)',
-                                        border: 'none', transition: 'all 0.2s'
-                                    }}
                                     onClick={() => toggleType(t.id)}
                                 >
                                     {t.label}
@@ -157,7 +150,7 @@ export function FormPage() {
                         <label className="form-label">Email</label>
                         <div style={{ position: 'relative' }}>
                             <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Mail size={18} /></span>
-                            <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} type="email" value={form.email || ''} onChange={e => setF('email', e.target.value)} placeholder="email@mail.ru" />
+                            <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} type="email" value={form.email || ''} onChange={e => setF('email', e.target.value)} placeholder="email@mail.ru" />
                         </div>
                     </div>
 
@@ -165,7 +158,7 @@ export function FormPage() {
                         <label className="form-label">Источник</label>
                         <div style={{ position: 'relative' }}>
                             <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Share2 size={18} /></span>
-                            <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={form.source || ''} onChange={e => setF('source', e.target.value)}>
+                            <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.source || ''} onChange={e => setF('source', e.target.value)}>
                                 <option value="">Не указан</option>
                                 {sources.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
@@ -176,7 +169,7 @@ export function FormPage() {
                         <label className="form-label">Статус</label>
                         <div style={{ position: 'relative' }}>
                             <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Activity size={18} /></span>
-                            <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={form.status} onChange={e => setF('status', e.target.value)}>
+                            <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.status} onChange={e => setF('status', e.target.value)}>
                                 <option value="active">Активен</option>
                                 <option value="paused">Пауза</option>
                                 <option value="deal_closed">Сделка закрыта</option>
@@ -187,7 +180,7 @@ export function FormPage() {
                 </FormCard>
 
                 <FormCard title="Заметки">
-                    <textarea className="form-textarea" style={{ minHeight: 120, borderRadius: 20, background: 'var(--bg-light)', border: 'none', padding: 16, fontWeight: 600 }} value={form.notes || ''} onChange={e => setF('notes', e.target.value)} placeholder="Важная информация о клиенте, предпочтения, история общения..." />
+                    <textarea className="form-textarea" style={{ minHeight: 120, borderRadius: 20, background: 'var(--bg-light)', border: 'none', padding: 16, fontWeight: 300 }} value={form.notes || ''} onChange={e => setF('notes', e.target.value)} placeholder="Важная информация о клиенте, предпочтения, история общения..." />
                 </FormCard>
 
                 {/* Passport Details Toggle Section */}

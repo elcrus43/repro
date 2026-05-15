@@ -125,6 +125,12 @@ body {
   text-transform: none !important;
 }
 
+::placeholder {
+  font-weight: 300 !important;
+  opacity: 0.3 !important;
+  color: var(--text-secondary) !important;
+}
+
 #root {
   min-height: 100vh;
   display: flex;
@@ -561,21 +567,21 @@ a:focus:not(:focus-visible) {
 }
 
 .chip {
-  padding: 6px 12px;
-  border-radius: 99px;
+  padding: 8px 14px;
+  border-radius: 12px;
   font-size: 13px;
   font-weight: 300;
-  border: 1.5px solid var(--border);
-  background: var(--bg);
+  border: 1px solid var(--border);
+  background: transparent;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
 }
 
 .chip.active {
-  background: var(--primary);
+  background: var(--primary-light);
   border-color: var(--primary);
-  color: white;
+  color: var(--primary);
 }
 
 .chip:hover:not(.active) {
