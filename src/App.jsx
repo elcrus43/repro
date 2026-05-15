@@ -97,7 +97,7 @@ function BottomNav() {
             )}
           </div>
           <span style={{ 
-              fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.01em',
+              fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.01em',
               opacity: isActive(tab.path) ? 1 : 0.6,
               fontFamily: "'Oswald', sans-serif",
               whiteSpace: 'nowrap',
@@ -144,7 +144,7 @@ function LoadingScreen() {
       }} />
 
       <div className="font-oswald" style={{ 
-        fontSize: 48, fontWeight: 900, letterSpacing: '-0.04em', color: 'var(--primary)',
+        fontSize: 48, fontWeight: 600, letterSpacing: '-0.04em', color: 'var(--primary)',
         textTransform: 'uppercase', marginBottom: 24, position: 'relative',
         animation: 'pulse 2s infinite ease-in-out'
       }}>
@@ -164,7 +164,7 @@ function LoadingScreen() {
       </div>
 
       <p style={{ 
-          marginTop: 20, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 700, 
+          marginTop: 20, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, 
           textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 
       }}>Загрузка данных</p>
       
@@ -181,7 +181,7 @@ function LoadingScreen() {
               className="card-clickable"
               style={{ 
                   height: 52, borderRadius: 16, border: 'none', background: 'var(--primary)', 
-                  color: 'white', fontWeight: 800, fontSize: 14, boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)',
+                  color: 'white', fontWeight: 600, fontSize: 14, boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)',
                   textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif"
               }}
               onClick={() => window.location.reload()}
@@ -192,7 +192,7 @@ function LoadingScreen() {
               className="card-clickable"
               style={{ 
                   height: 52, borderRadius: 16, border: '1px solid rgba(0,0,0,0.1)', 
-                  background: 'white', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 13
+                  background: 'white', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13
               }}
               onClick={() => {
                 localStorage.clear();

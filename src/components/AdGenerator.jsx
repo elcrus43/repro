@@ -372,7 +372,7 @@ export function AdGenerator({ prop, realtorName }) {
                         <Wand2 size={20} />
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Генератор объявления</div>
+                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Генератор объявления</div>
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
                             {result ? 'Объявление готово' : 'AI + глубокий анализ данных'}
                         </div>
@@ -398,7 +398,7 @@ export function AdGenerator({ prop, realtorName }) {
                                     border: `1.5px solid ${tone === t.value ? 'var(--primary)' : 'var(--border-light)'}`,
                                     background: tone === t.value ? 'var(--primary-light)' : 'var(--bg-light)',
                                     color: tone === t.value ? 'var(--primary)' : 'var(--text-secondary)',
-                                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: tone === t.value ? 700 : 500,
+                                    cursor: 'pointer', fontFamily: 'inherit', fontWeight: tone === t.value ? 600 : 200,
                                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                 }}
                             >

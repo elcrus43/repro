@@ -37,7 +37,7 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
             </button>
             <div style={{ flex: 1 }}>
                 <div className="font-oswald" style={{ 
-                    fontWeight: 500, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em',
+                    fontWeight: 300, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em',
                     textDecoration: task.status === 'done' ? 'line-through' : 'none', 
                     color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text)' 
                 }}>
@@ -73,7 +73,7 @@ function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
     if (ts.length === 0) return null;
     return (
         <div className="card" style={{ padding: '24px', borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
-            <div className="font-oswald" style={{ fontWeight: 500, fontSize: 14, color, letterSpacing: '0.01em', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <div className="font-oswald" style={{ fontWeight: 600, fontSize: 14, color, letterSpacing: '0.01em', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
                 {label} <span>{ts.length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -185,7 +185,7 @@ export function TasksPage() {
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22 }}>Задачи и план</span>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Задачи и план</span>
                     <button className="card-clickable" onClick={() => { setNewTask({ id: '', title: '', description: '', due_date: '', client_id: '', task_type: '' }); setShowForm(!showForm); }} style={{ 
                         width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>

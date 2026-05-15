@@ -85,7 +85,7 @@ export function GlobalSearch() {
 
                         {results.properties.length > 0 && (
                             <div>
-                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                                     <Building2 size={12} style={{ display: 'inline', marginRight: 4 }} /> Объекты
                                 </div>
                                 {results.properties.map(p => (
@@ -99,7 +99,7 @@ export function GlobalSearch() {
 
                         {results.clients.length > 0 && (
                             <div>
-                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                                     <Users size={12} style={{ display: 'inline', marginRight: 4 }} /> Клиенты
                                 </div>
                                 {results.clients.map(c => (
@@ -113,7 +113,7 @@ export function GlobalSearch() {
 
                         {results.requests.length > 0 && (
                             <div>
-                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                                     <Target size={12} style={{ display: 'inline', marginRight: 4 }} /> Запросы
                                 </div>
                                 {results.requests.map(r => (
@@ -127,7 +127,7 @@ export function GlobalSearch() {
 
                         {results.matches.length > 0 && (
                             <div>
-                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
+                                <div style={{ padding: '8px 16px', fontSize: '11px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>
                                     <Sparkles size={12} style={{ display: 'inline', marginRight: 4 }} /> Совпадения
                                 </div>
                                 {results.matches.map(m => (

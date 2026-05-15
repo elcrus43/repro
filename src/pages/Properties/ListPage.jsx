@@ -61,8 +61,8 @@ export function ListPage() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="topbar-title font-oswald" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 22 }}>Объекты</span>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Портфель недвижимости</span>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Объекты</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Портфель недвижимости</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
@@ -136,7 +136,7 @@ export function ListPage() {
                                     whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
                                     background: filter === val ? 'var(--primary)' : 'white',
                                     color: filter === val ? 'white' : 'var(--text-secondary)',
-                                    fontSize: 12, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    fontSize: 12, fontWeight: 200, textTransform: 'uppercase', letterSpacing: '0.05em',
                                     fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
                                 }}
                             >
@@ -151,7 +151,7 @@ export function ListPage() {
                         <div style={{ width: 80, height: 80, borderRadius: 30, background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                             <Building2 size={40} style={{ opacity: 0.2 }} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Нет объектов</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)' }}>Нет объектов</div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 8, marginBottom: 24 }}>Начните наполнять свой портфель</div>
                         <button className="card-clickable" onClick={() => navigate('/properties/new')} style={{ padding: '12px 24px', borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 13 }}>Добавить объект</button>
                     </div>
@@ -197,13 +197,13 @@ export function ListPage() {
                                     ) : (
                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>
                                             <Building2 size={24} />
-                                            <div style={{ fontSize: 8, fontWeight: 700, marginTop: 4 }}>Нет фото</div>
+                                            <div style={{ fontSize: 8, fontWeight: 600, marginTop: 4 }}>Нет фото</div>
                                         </div>
                                     )}
                                     <div style={{ position: 'absolute', top: 8, left: 8 }}>
                                         <div style={{ 
                                             background: statusColors[status] || '#94a3b8', 
-                                            color: 'white', fontSize: 8, fontWeight: 900, 
+                                            color: 'white', fontSize: 8, fontWeight: 600, 
                                             padding: '3px 8px', borderRadius: 7,
                                             boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
                                         }}>
@@ -214,7 +214,7 @@ export function ListPage() {
 
                                 {/* CONTENT WRAPPER */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 400, color: 'var(--text)', lineHeight: 1.1 }}>
+                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 13, opacity: 0.6 }}>₽</span>
                                     </div>
                                     <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -227,7 +227,7 @@ export function ListPage() {
                                     <div style={{ 
                                         fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, 
                                         display: 'flex', alignItems: 'flex-start', gap: 4,
-                                        fontWeight: 500, opacity: 0.8
+                                        fontWeight: 200, opacity: 0.8
                                     }}>
                                         <MapPin size={12} style={{ marginTop: 2, flexShrink: 0, color: 'var(--primary)' }} />
                                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
@@ -267,12 +267,12 @@ export function ListPage() {
                             style={{ 
                                 padding: '10px 20px', borderRadius: 14, border: 'none', background: 'white',
                                 opacity: hasPrev ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
-                                fontWeight: 400, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                fontWeight: 200, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
                         >
                             <ChevronLeft size={16} /> НАЗАД
                         </button>
-                        <span className="font-oswald" style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        <span className="font-oswald" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
                             {currentPage} / {totalPages}
                         </span>
                         <button
@@ -282,7 +282,7 @@ export function ListPage() {
                             style={{ 
                                 padding: '10px 20px', borderRadius: 14, border: 'none', background: 'white',
                                 opacity: hasNext ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
-                                fontWeight: 400, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                fontWeight: 200, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
                         >
                             ВПЕРЁД <ChevronRight size={16} />

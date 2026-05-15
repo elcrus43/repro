@@ -56,9 +56,9 @@ function EstimationWidget({ prop }) {
                         <Calculator size={18} />
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 700, fontSize: 14 }}>Оценка по аналогам</div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>Оценка по аналогам</div>
                         {result ? (
-                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 700 }}>
+                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
                                 {result.estimated_avg.toLocaleString()} ₽
                                 {params.deal_type === 'RENT' ? '/мес' : ''}
                                 &nbsp;·&nbsp;{avgPerM2?.toLocaleString()} ₽/м²
@@ -157,10 +157,10 @@ function EstimationWidget({ prop }) {
                         <div style={{ marginTop: 16 }} className="fade-in">
                             {/* Result block */}
                             <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '16px', textAlign: 'center', marginBottom: 12 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 4 }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: 0.5, marginBottom: 4 }}>
                                     Оценочная стоимость {params.deal_type === 'RENT' ? '(аренда/мес)' : '(продажа)'}
                                 </div>
-                                <div style={{ fontSize: 28, fontWeight: 900, color: 'var(--primary)', letterSpacing: -1 }}>
+                                <div style={{ fontSize: 28, fontWeight: 600, color: 'var(--primary)', letterSpacing: -1 }}>
                                     {result.estimated_avg.toLocaleString()} ₽
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -210,7 +210,7 @@ function EstimationWidget({ prop }) {
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                                                 <span className="badge badge-subtle" style={{ fontSize: 11 }}>{a.label}</span>
-                                                <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+                                                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
                                                     {a.price.toLocaleString()} ₽
                                                     {params.deal_type === 'RENT' ? '/мес' : ''}
                                                 </span>
@@ -468,7 +468,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         // Price
         ctx.fillStyle = brandColor;
         let priceSize = format === 'story' ? 90 : 70;
-        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${priceSize}px Oswald, Inter, sans-serif`;
         const priceText = formatNumber(property.price) + ' ₽';
         let priceWidth = ctx.measureText(priceText).width;
         
@@ -476,7 +476,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const maxPriceWidth = w - padding * 2 - 250;
         if (priceWidth > maxPriceWidth) {
             priceSize = priceSize * (maxPriceWidth / priceWidth);
-            ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+            ctx.font = `600 ${priceSize}px Oswald, Inter, sans-serif`;
             priceWidth = ctx.measureText(priceText).width;
         }
 
@@ -503,7 +503,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         const addressSize = format === 'story' ? 50 : 36;
         currentY += addressGap + addressSize;
         ctx.fillStyle = textColor1;
-        ctx.font = `800 ${addressSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${addressSize}px Oswald, Inter, sans-serif`;
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 45) + (address.length > 45 ? '...' : ''), padding, currentY);
 
@@ -542,18 +542,18 @@ function BannerGenerator({ property, currentUser, onClose }) {
         currentY += ctaGap + phoneSize;
 
         ctx.fillStyle = textColor2;
-        ctx.font = `500 ${ctaSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `200 ${ctaSize}px Oswald, Inter, sans-serif`;
         ctx.fillText('СВЯЗАТЬСЯ:', padding, currentY);
         const ctaWidth = ctx.measureText('СВЯЗАТЬСЯ: ').width;
 
         ctx.fillStyle = brandColor;
-        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${phoneSize}px Oswald, Inter, sans-serif`;
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, padding + ctaWidth + 10, currentY);
 
         if (currentUser?.full_name) {
             ctx.fillStyle = textColor1;
-            ctx.font = `700 ${ctaSize}px Oswald, Inter, sans-serif`;
+            ctx.font = `600 ${ctaSize}px Oswald, Inter, sans-serif`;
             ctx.fillText(currentUser.full_name, padding, currentY + (ctaSize * 1.5));
         }
     };
@@ -577,14 +577,14 @@ function BannerGenerator({ property, currentUser, onClose }) {
         let currentY = 140;
         ctx.fillStyle = brandColor;
         let priceF = 110;
-        ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${priceF}px Oswald, Inter, sans-serif`;
         const priceText = formatNumber(property.price) + ' ₽';
         let priceW = ctx.measureText(priceText).width;
 
         // Shrink if needed
         if (priceW > w - 160 - 300) {
             priceF = priceF * ((w - 160 - 300) / priceW);
-            ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
+            ctx.font = `600 ${priceF}px Oswald, Inter, sans-serif`;
             priceW = ctx.measureText(priceText).width;
         }
         
@@ -599,7 +599,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         currentY += 90;
         ctx.fillStyle = textColor1;
-        ctx.font = '800 65px Oswald, Inter, sans-serif';
+        ctx.font = '600 65px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 30) + (address.length > 30 ? '...' : ''), 80, currentY);
 
@@ -632,17 +632,17 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillRect(0, h - 350, w, 350);
 
         ctx.fillStyle = textColor2;
-        ctx.font = '500 28px Oswald, Inter, sans-serif';
+        ctx.font = '200 28px Oswald, Inter, sans-serif';
         ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 80, h - 210);
 
         ctx.fillStyle = brandColor;
-        ctx.font = '900 48px Oswald, Inter, sans-serif';
+        ctx.font = '600 48px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, 80, h - 150);
 
         if (currentUser?.full_name) {
             ctx.fillStyle = textColor1;
-            ctx.font = '700 32px Oswald, Inter, sans-serif';
+            ctx.font = '600 32px Oswald, Inter, sans-serif';
             ctx.fillText(currentUser.full_name, 80, h - 110);
         }
     };
@@ -666,14 +666,14 @@ function BannerGenerator({ property, currentUser, onClose }) {
         let currentY = 100;
         ctx.fillStyle = brandColor;
         let priceF = 80;
-        ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${priceF}px Oswald, Inter, sans-serif`;
         const priceText = formatNumber(property.price) + ' ₽';
         let priceW = ctx.measureText(priceText).width;
 
         // Shrink if needed
         if (priceW > w - 120 - 250) {
             priceF = priceF * ((w - 120 - 250) / priceW);
-            ctx.font = `900 ${priceF}px Oswald, Inter, sans-serif`;
+            ctx.font = `600 ${priceF}px Oswald, Inter, sans-serif`;
             priceW = ctx.measureText(priceText).width;
         }
 
@@ -688,7 +688,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         currentY += 60;
         ctx.fillStyle = textColor1;
-        ctx.font = '800 45px Oswald, Inter, sans-serif';
+        ctx.font = '600 45px Oswald, Inter, sans-serif';
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 35) + (address.length > 35 ? '...' : ''), 60, currentY);
 
@@ -721,11 +721,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillRect(0, h - 250, w, 250);
 
         ctx.fillStyle = textColor2;
-        ctx.font = '500 20px Oswald, Inter, sans-serif';
+        ctx.font = '200 20px Oswald, Inter, sans-serif';
         ctx.fillText('УЗНАТЬ ПОДРОБНЕЕ:', 60, h - 100);
 
         ctx.fillStyle = brandColor;
-        ctx.font = '900 34px Oswald, Inter, sans-serif';
+        ctx.font = '600 34px Oswald, Inter, sans-serif';
         const phone = currentUser?.phone || '+7 (999) 000-00-00';
         ctx.fillText(phone, 60, h - 55);
     };
@@ -775,13 +775,13 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Price
         const priceSize = format === 'story' ? 108 : 78;
-        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${priceSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = accentColor;
         const priceText = formatNumber(property.price) + ' ₽';
         let priceW = ctx.measureText(priceText).width;
         if (priceW > w - px * 2 - 260) {
             const s = (w - px * 2 - 260) / priceW;
-            ctx.font = `900 ${priceSize * s}px Oswald, Inter, sans-serif`;
+            ctx.font = `600 ${priceSize * s}px Oswald, Inter, sans-serif`;
             priceW = ctx.measureText(priceText).width;
         }
         ctx.fillText(priceText, px, y);
@@ -804,7 +804,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Address
         const addrSize = format === 'story' ? 52 : 36;
-        ctx.font = `700 ${addrSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${addrSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = textColor1;
         const address = getCleanAddress();
         ctx.fillText(address.slice(0, 40) + (address.length > 40 ? '...' : ''), px, y);
@@ -812,7 +812,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Details row
         const detSize = format === 'story' ? 36 : 26;
-        ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `200 ${detSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = textColor2;
         const parts = [];
         if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
@@ -824,11 +824,11 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Phone
         const phoneSize = format === 'story' ? 52 : 36;
-        ctx.font = `500 ${phoneSize * 0.55}px Oswald, Inter, sans-serif`;
+        ctx.font = `200 ${phoneSize * 0.55}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = textColor2;
         ctx.fillText('СВЯЗАТЬСЯ:', px, y);
         y += format === 'story' ? 58 : 42;
-        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${phoneSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = accentColor;
         ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, y);
         if (currentUser?.full_name) {
@@ -897,13 +897,13 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Price
         const priceSize = format === 'story' ? 90 : 64;
-        ctx.font = `900 ${priceSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${priceSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = accentColor;
         const priceText = formatNumber(property.price) + ' ₽';
         let priceW = ctx.measureText(priceText).width;
         if (priceW > availW) {
             const s = availW / priceW;
-            ctx.font = `900 ${priceSize * s}px Oswald, Inter, sans-serif`;
+            ctx.font = `600 ${priceSize * s}px Oswald, Inter, sans-serif`;
             priceW = ctx.measureText(priceText).width;
         }
         ctx.fillText(priceText, px, y);
@@ -927,7 +927,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
         // Address with word-wrap
         const addrSize = format === 'story' ? 44 : 30;
-        ctx.font = `700 ${addrSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${addrSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = textColor1;
         const words = getCleanAddress().split(' ');
         let line = '';
@@ -942,7 +942,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
         // Details — each on own line with accent bullet
         y += format === 'story' ? 20 : 14;
         const detSize = format === 'story' ? 34 : 24;
-        ctx.font = `500 ${detSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `200 ${detSize}px Oswald, Inter, sans-serif`;
         const detParts = [];
         if (property.rooms !== undefined) detParts.push(property.rooms === 0 ? 'Студия' : `${property.rooms}-комн.`);
         if (property.area_total) detParts.push(`${property.area_total} м²`);
@@ -960,10 +960,10 @@ function BannerGenerator({ property, currentUser, onClose }) {
         // Phone block at bottom
         const phoneSize = format === 'story' ? 48 : 34;
         const phoneY = h - (format === 'story' ? 200 : 150);
-        ctx.font = `500 ${phoneSize * 0.5}px Oswald, Inter, sans-serif`;
+        ctx.font = `200 ${phoneSize * 0.5}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = textColor2;
         ctx.fillText('СВЯЗАТЬСЯ:', px, phoneY - (format === 'story' ? 16 : 10));
-        ctx.font = `900 ${phoneSize}px Oswald, Inter, sans-serif`;
+        ctx.font = `600 ${phoneSize}px Oswald, Inter, sans-serif`;
         ctx.fillStyle = accentColor;
         ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, phoneY + phoneSize * 0.85);
         if (currentUser?.full_name) {
@@ -1230,7 +1230,7 @@ export function DetailsPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
                                     </div>
                                     {prop.area_total > 0 && (
@@ -1243,7 +1243,7 @@ export function DetailsPage() {
                             <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, marginTop: 12, color: 'var(--text)', lineHeight: 1.2 }}>
                                 {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
                             </div>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 600, opacity: 0.7 }}>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 200, opacity: 0.7 }}>
                                 {prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к. кв.`} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт.
                             </div>
                         </div>

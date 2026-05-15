@@ -236,7 +236,7 @@ export function DealsPage() {
             <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                     <div style={{ flex: 1 }}>
-                        <div className="font-oswald" style={{ fontWeight: 500, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
+                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', fontWeight: 400 }}>
                             <Calendar size={14} /> {deal.deal_date ? new Date(deal.deal_date).toLocaleDateString('ru-RU') : 'Дата не назначена'}
                         </div>
@@ -250,12 +250,12 @@ export function DealsPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
                     <div style={{ background: 'var(--bg-light)', padding: '16px', borderRadius: 20 }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 400, marginBottom: 4 }}>Цена</div>
-                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 500 }}>{Number(deal.price).toLocaleString()} ₽</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 200, marginBottom: 4 }}>Цена</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
                     </div>
                     <div style={{ background: 'var(--bg-light)', padding: '16px', borderRadius: 20 }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 400, marginBottom: 4 }}>Комиссия</div>
-                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 500, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 200, marginBottom: 4 }}>Комиссия</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
                     </div>
                 </div>
 
@@ -326,7 +326,7 @@ export function DealsPage() {
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.02em', fontSize: 22 }}>Управление сделками</span>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.02em', fontSize: 22, fontWeight: 600 }}>Управление сделками</span>
                     <button className="card-clickable" onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ 
                         width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
@@ -348,17 +348,17 @@ export function DealsPage() {
                     <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Activity size={16} /></div>
-                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>В работе</span>
+                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>В работе</span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 500 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>сд.</span></div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 600 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>сд.</span></div>
                         <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
                     </div>
                     <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={16} /></div>
-                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>Выручка</span>
+                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>Выручка</span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 500, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 600, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
                         <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
                     </div>
                 </div>
