@@ -37,7 +37,7 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
             </button>
             <div style={{ flex: 1 }}>
                 <div className="font-oswald" style={{ 
-                    fontWeight: 300, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em',
+                    fontWeight: 300, fontSize: 16, letterSpacing: '0.02em',
                     textDecoration: task.status === 'done' ? 'line-through' : 'none', 
                     color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text)' 
                 }}>
@@ -46,12 +46,12 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                 {task.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{task.description}</div>}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', marginTop: 6 }}>
                     {client && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 400, color: 'var(--primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 300, color: 'var(--primary)' }}>
                             <User size={12} /> {client.full_name}
                         </div>
                     )}
                     {task.due_date && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 400, color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>
                             <Clock size={12} /> {new Date(task.due_date).toLocaleDateString('ru-RU')}
                         </div>
                     )}
@@ -73,7 +73,7 @@ function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
     if (ts.length === 0) return null;
     return (
         <div className="card" style={{ padding: '24px', borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
-            <div className="font-oswald" style={{ fontWeight: 600, fontSize: 14, color, letterSpacing: '0.01em', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
+            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 14, color, letterSpacing: '0.01em', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
                 {label} <span>{ts.length}</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -166,6 +166,14 @@ export function TasksPage() {
         } catch (err) { toast.error('Ошибка'); }
     }
 
+    async function deleteTask(task) {
+        if (!window.confirm('Удалить задачу?')) return;
+        try {
+            dispatch({ type: 'DELETE_TASK', id: task.id });
+            toast.success('Удалено');
+        } catch (err) { toast.error('Ошибка'); }
+    }
+
     function editTask(task) {
         setNewTask({ ...task, task_type: task.task_type || '' });
         setShowForm(true);
@@ -185,7 +193,7 @@ export function TasksPage() {
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Задачи и план</span>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Задачи и план</span>
                     <button className="card-clickable" onClick={() => { setNewTask({ id: '', title: '', description: '', due_date: '', client_id: '', task_type: '' }); setShowForm(!showForm); }} style={{ 
                         width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
@@ -200,11 +208,11 @@ export function TasksPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <button className="card-clickable" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} /></div>
-                        <span className="font-oswald" style={{ fontSize: 14, fontWeight: 400, letterSpacing: '0.02em' }}>Встреча</span>
+                        <span className="font-oswald" style={{ fontSize: 14, fontWeight: 300, letterSpacing: '0.02em' }}>Встреча</span>
                     </button>
                     <button className="card-clickable" onClick={() => navigate('/tasks/call')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Phone size={20} /></div>
-                        <span className="font-oswald" style={{ fontSize: 14, fontWeight: 400, letterSpacing: '0.02em' }}>Звонок</span>
+                        <span className="font-oswald" style={{ fontSize: 14, fontWeight: 300, letterSpacing: '0.02em' }}>Звонок</span>
                     </button>
                 </div>
 
@@ -213,24 +221,24 @@ export function TasksPage() {
                     <FormCard title={newTask.id ? 'Изменить задачу' : 'Новая задача'} onClose={() => setShowForm(false)}>
                         <form onSubmit={addTask} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Шаблон и клиент</label>
+                                <label className="font-oswald" style={{ fontSize: 13, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Шаблон и клиент</label>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    <select className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 400 }} value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
+                                    <select className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newTask.task_type || ''} onChange={e => handleFieldChange('task_type', e.target.value)}>
                                         <option value="">Тип задачи...</option>
                                         {TASK_TYPES.map(type => <option key={type} value={type}>{type}</option>)}
                                     </select>
-                                    <select className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 400 }} value={newTask.client_id || ''} onChange={e => handleFieldChange('client_id', e.target.value)}>
+                                    <select className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newTask.client_id || ''} onChange={e => handleFieldChange('client_id', e.target.value)}>
                                         <option value="">Без клиента</option>
                                         {myClients.map(c => <option key={c.id} value={c.id}>{c.full_name}</option>)}
                                     </select>
                                 </div>
                             </div>
                             <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 13, fontWeight: 400, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Детали</label>
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 400, marginBottom: 8 }} placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 400 }} type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
+                                <label className="font-oswald" style={{ fontSize: 13, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Детали</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, marginBottom: 8 }} placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ height: 50, borderRadius: 16, fontWeight: 400, marginTop: 8 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
+                            <button type="submit" className="btn btn-primary" style={{ height: 50, borderRadius: 16, fontWeight: 300, marginTop: 8 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
                         </form>
                     </FormCard>
                 )}
@@ -239,7 +247,7 @@ export function TasksPage() {
                 <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
                     {[['today', 'Сегодня'], ['week', 'Неделя'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
-                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 400,
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
                             background: filter === v ? 'var(--primary)' : 'white',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
@@ -260,7 +268,7 @@ export function TasksPage() {
                         <div style={{ width: 64, height: 64, background: 'var(--bg-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', color: 'var(--text-muted)' }}>
                             <Activity size={28} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)' }}>Дел нет</div>
+                        <div className="font-oswald" style={{ fontSize: 16, fontWeight: 300, color: 'var(--text-muted)' }}>Дел нет</div>
                     </div>
                 )}
             </div>

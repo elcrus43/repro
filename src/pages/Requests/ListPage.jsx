@@ -53,7 +53,7 @@ export function ListPage() {
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.05em', fontSize: 22 }}>Запросы на совпадения</span>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Запросы на совпадения</span>
                     <button className="card-clickable" onClick={() => navigate('/requests/new')} style={{ 
                         width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--primary)', color: 'white',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(0, 82, 255, 0.2)'
@@ -69,7 +69,7 @@ export function ListPage() {
                     <input 
                         className="form-input" 
                         placeholder="Поиск по клиенту или типу..." 
-                        style={{ border: 'none', background: 'transparent', padding: 0, fontSize: 15, fontWeight: 600 }}
+                        style={{ border: 'none', background: 'transparent', padding: 0, fontSize: 15, fontWeight: 300 }}
                         value={search} 
                         onChange={e => setSearch(e.target.value)} 
                     />
@@ -78,13 +78,13 @@ export function ListPage() {
                 {isAdmin && (
                     <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 12, gap: 4 }}>
                         <button style={{ 
-                            flex: 1, padding: '10px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 800, textTransform: 'uppercase',
+                            flex: 1, padding: '10px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 300,
                             background: scope === 'all' ? 'white' : 'transparent', 
                             boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'all' ? 'var(--primary)' : 'var(--text-muted)' 
                         }} onClick={() => setScope('all')}>Все</button>
                         <button style={{ 
-                            flex: 1, padding: '10px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 800, textTransform: 'uppercase',
+                            flex: 1, padding: '10px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 300,
                             background: scope === 'mine' ? 'white' : 'transparent', 
                             boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'mine' ? 'var(--primary)' : 'var(--text-muted)' 
@@ -98,7 +98,7 @@ export function ListPage() {
                     <button key={val} 
                         className={`tab-filter ${filter === val ? 'active' : ''}`} 
                         style={{ 
-                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 700,
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
                             background: filter === val ? 'var(--primary)' : 'white',
                             color: filter === val ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
@@ -116,7 +116,7 @@ export function ListPage() {
                         <div style={{ width: 80, height: 80, background: 'var(--bg-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--text-muted)' }}>
                             <Search size={32} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 700, textTransform: 'uppercase', marginBottom: 8 }}>Нет запросов</div>
+                        <div className="font-oswald" style={{ fontSize: 20, fontWeight: 300, marginBottom: 8 }}>Нет запросов</div>
                         <div style={{ color: 'var(--text-muted)', marginBottom: 24 }}>Попробуйте изменить фильтры или поиск</div>
                         <button className="btn btn-primary" onClick={() => navigate('/requests/new')}>Создать первый запрос</button>
                     </div>
@@ -130,17 +130,17 @@ export function ListPage() {
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                     <div style={{ flex: 1 }}>
-                                        <div className="font-oswald" style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', textTransform: 'uppercase', marginBottom: 4 }}>
+                                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>
                                             {client?.full_name || 'Без имени'}
                                         </div>
                                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                                             {req.property_types?.map(t => (
-                                                <span key={t} style={{ fontSize: 10, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>{PROPERTY_TYPES[t] || t}</span>
+                                                <span key={t} style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)' }}>{PROPERTY_TYPES[t] || t}</span>
                                             ))}
                                         </div>
                                     </div>
                                     <div style={{ 
-                                        padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                        padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 300, letterSpacing: '0.02em',
                                         background: `${statusColors[req.status] || statusColors.active}15`,
                                         color: statusColors[req.status] || statusColors.active
                                     }}>
@@ -148,13 +148,13 @@ export function ListPage() {
                                     </div>
                                 </div>
 
-                                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', marginBottom: 12, fontFamily: "'Oswald', sans-serif" }}>
+                                <div style={{ fontSize: 20, fontWeight: 300, color: 'var(--primary)', marginBottom: 12, fontFamily: "'Oswald', sans-serif" }}>
                                     до {formatNumber(req.budget_max)} ₽
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.03)' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#858518', fontSize: 12, fontWeight: 700 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#858518', fontSize: 12, fontWeight: 300 }}>
                                             <Sparkles size={14} />
                                             <span>{matches.length} совпадения</span>
                                         </div>
@@ -191,7 +191,7 @@ export function ListPage() {
                         >
                             <ChevronLeft size={20} />
                         </button>
-                        <span className="font-oswald" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                        <span className="font-oswald" style={{ fontSize: 14, fontWeight: 300, color: 'var(--text-secondary)' }}>
                             {currentPage} / {totalPages}
                         </span>
                         <button

@@ -184,8 +184,8 @@ export function ProfilePage() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="topbar-title font-oswald" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 22 }}>Профиль</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 800, opacity: 0.6, textTransform: 'uppercase' }}>Личный кабинет</span>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Профиль</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Личный кабинет</span>
                     </div>
                     {!isEditing && (
                         <button 
@@ -214,7 +214,7 @@ export function ProfilePage() {
                             width: 80, height: 80, borderRadius: 28, margin: '0 auto 16px',
                             background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)',
                             color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 24, fontWeight: 800, fontFamily: "'Oswald', sans-serif",
+                            fontSize: 24, fontWeight: 300, fontFamily: "'Oswald', sans-serif",
                             boxShadow: '0 12px 24px rgba(0, 82, 255, 0.2)',
                             border: '4px solid white'
                         }}>
@@ -223,11 +223,11 @@ export function ProfilePage() {
 
                         {isEditing ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 16 }}>
-                                <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
-                                <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
+                                <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
+                                <input className="form-input" style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
                                 <input
                                     className="form-input"
-                                    style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }}
+                                    style={{ borderRadius: 14, height: 48, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
                                     value={editData.phone || ''}
                                     type="tel"
                                     onChange={e => setEditData({ ...editData, phone: formatPhone(e.target.value, true) })}
@@ -240,18 +240,18 @@ export function ProfilePage() {
                             </div>
                         ) : (
                             <>
-                                <h2 className="font-oswald" style={{ fontSize: 24, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 4 }}>{user.full_name}</h2>
+                                <h2 className="font-oswald" style={{ fontSize: 24, fontWeight: 300, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 4 }}>{user.full_name}</h2>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-light)', padding: '4px 12px', borderRadius: 20 }}>
-                                        {user.role === 'admin' ? 'АДМИНИСТРАТОР' : 'РИЭЛТОР'}
+                                    <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--primary)', background: 'var(--primary-light)', padding: '4px 12px', borderRadius: 20 }}>
+                                        {user.role === 'admin' ? 'Администратор' : 'Риэлтор'}
                                     </div>
                                     {user.agency_name && (
-                                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                                             <Building2 size={14} /> {user.agency_name}
                                         </div>
                                     )}
                                 </div>
-                                <div style={{ fontSize: 14, color: 'var(--text-secondary)', opacity: 0.7 }}>{user.email} • {user.phone}</div>
+                                <div style={{ fontSize: 14, color: 'var(--text-secondary)', opacity: 0.7, fontWeight: 200 }}>{user.email} • {user.phone}</div>
                             </>
                         )}
                     </div>
@@ -260,16 +260,16 @@ export function ProfilePage() {
                 {/* Performance Stats */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                     <div className="card" style={{ padding: '24px 20px', borderRadius: 28, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'white' }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Конверсия</div>
-                        <div className="font-oswald" style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)' }}>{conversion}%</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em', marginBottom: 4 }}>Конверсия</div>
+                        <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--text)' }}>{conversion}%</div>
                         <div style={{ height: 4, background: 'var(--bg-light)', borderRadius: 2, marginTop: 12 }}>
                             <div style={{ width: `${conversion}%`, height: '100%', background: 'var(--primary)', borderRadius: 2 }} />
                         </div>
                     </div>
                     <div className="card" style={{ padding: '24px 20px', borderRadius: 28, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'white' }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Сделки</div>
-                        <div className="font-oswald" style={{ fontSize: 32, fontWeight: 700, color: 'var(--success)' }}>{deals}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, fontWeight: 600 }}>За всё время</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em', marginBottom: 4 }}>Сделки</div>
+                        <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--success)' }}>{deals}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, fontWeight: 300 }}>За всё время</div>
                     </div>
                 </div>
 
@@ -289,7 +289,7 @@ export function ProfilePage() {
                                 background: 'var(--bg-light)', color: 'var(--text)', 
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.8
                             }}>{item.icon}</span>
-                            <span style={{ flex: 1, fontWeight: 700, fontSize: 14 }}>{item.label}</span>
+                            <span style={{ flex: 1, fontWeight: 300, fontSize: 14 }}>{item.label}</span>
                             <ArrowRight size={16} style={{ color: 'var(--text-muted)', opacity: 0.3 }} />
                         </button>
                     ))}
@@ -298,11 +298,11 @@ export function ProfilePage() {
                 {/* Admin Actions */}
                 {isAdmin && (
                     <div className="card" style={{ padding: '24px', borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
-                        <div className="font-oswald" style={{ fontSize: 14, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 16, color: 'var(--text-secondary)' }}>Панель управления</div>
+                        <div className="font-oswald" style={{ fontSize: 14, fontWeight: 300, letterSpacing: '0.01em', marginBottom: 16, color: 'var(--text-secondary)' }}>Панель управления</div>
                         <button className="btn btn-secondary btn-full" style={{ justifyContent: 'space-between', borderRadius: 14, height: 50, padding: '0 20px', background: 'var(--bg-light)', border: 'none', color: 'var(--text)' }} onClick={() => navigate('/admin/users')}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <Shield size={18} />
-                                <span style={{ fontWeight: 700, fontSize: 14 }}>Управление пользователями</span>
+                                <span style={{ fontWeight: 300, fontSize: 14 }}>Управление пользователями</span>
                             </div>
                             <ArrowRight size={16} />
                         </button>
@@ -318,12 +318,12 @@ export function ProfilePage() {
                     <span style={{ width: 40, height: 40, borderRadius: 12, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <LogOut size={20} />
                     </span>
-                    <span style={{ fontWeight: 800, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Выйти из аккаунта</span>
+                    <span style={{ fontWeight: 400, fontSize: 14 }}>Выйти из аккаунта</span>
                 </button>
 
                 {/* Support Info */}
                 <div style={{ padding: '0 10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', opacity: 0.5, fontWeight: 600 }}>R Match Premium v2.4.0</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', opacity: 0.5, fontWeight: 300 }}>R Match Premium v2.4.0</div>
                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', opacity: 0.3, marginTop: 4, fontFamily: 'monospace' }}>{user.id}</div>
                 </div>
             </div>

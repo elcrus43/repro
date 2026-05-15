@@ -326,7 +326,7 @@ export function DealsPage() {
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.02em', fontSize: 22, fontWeight: 600 }}>Управление сделками</span>
+                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Управление сделками</span>
                     <button className="card-clickable" onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ 
                         width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
@@ -336,7 +336,7 @@ export function DealsPage() {
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                     <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={prevMonth}><ChevronLeft size={20} /></button>
-                    <div className="font-oswald" style={{ fontSize: 17, fontWeight: 400 }}>{monthNames[selectedMonth]} {selectedYear}</div>
+                    <div className="font-oswald" style={{ fontSize: 17, fontWeight: 300 }}>{monthNames[selectedMonth]} {selectedYear}</div>
                     <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={nextMonth}><ChevronRight size={20} /></button>
                 </div>
             </div>
@@ -350,28 +350,28 @@ export function DealsPage() {
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Activity size={16} /></div>
                             <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>В работе</span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 600 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>сд.</span></div>
-                        <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 200 }}>сд.</span></div>
+                        <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
                     </div>
                     <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={16} /></div>
                             <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>Выручка</span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 600, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
-                        <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
+                        <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
                     </div>
                 </div>
 
                 {/* Form Overlay (Simulated by rendering before list) */}
                 {showForm && (
                     <div className="card fade-in" style={{ padding: '28px', borderRadius: 32, border: 'none', boxShadow: '0 12px 48px rgba(0,82,255,0.1)', background: 'white', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 700, color: 'var(--primary)' }}>{newDeal.id ? 'Параметры сделки' : 'Запуск новой сделки'}</div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: 'var(--primary)' }}>{newDeal.id ? 'Параметры сделки' : 'Запуск новой сделки'}</div>
                         
-                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} placeholder="Название сделки (напр. Продажа 1к. на Ленина)" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
+                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} placeholder="Название сделки (напр. Продажа 1к. на Ленина)" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
 
                         <div className="form-group">
-                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Стороны сделки</label>
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Стороны сделки</label>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." />
                                 <MultiClientSelector selectedIds={newDeal.buyer_ids || []} onChange={ids => handleFieldChange('buyer_ids', ids)} clients={state.clients} placeholder="Выбрать покупателей..." />
@@ -379,25 +379,25 @@ export function DealsPage() {
                         </div>
 
                         <div className="form-group">
-                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Объект</label>
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Объект</label>
                             <SearchableSelect value={newDeal.property_id || ''} onChange={v => handleFieldChange('property_id', v)} placeholder="Выберите объект..." options={propertyOptions} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Цена</label>
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Цена</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
                             </div>
                             <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Комиссия</label>
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 600 }} value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Комиссия</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
                             </div>
                         </div>
 
                         <div className="form-group">
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', display: 'block' }}>Расходы сторон</label>
-                                <button type="button" onClick={addExpense} style={{ background: 'var(--primary-light)', color: 'var(--primary)', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 800 }}>+ Добавить</button>
+                                <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', display: 'block' }}>Расходы сторон</label>
+                                <button type="button" onClick={addExpense} style={{ background: 'var(--primary-light)', color: 'var(--primary)', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 300 }}>+ Добавить</button>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 {newDeal.expenses?.map(exp => (
@@ -415,7 +415,7 @@ export function DealsPage() {
                         </div>
 
                         <div style={{ display: 'flex', gap: 10 }}>
-                            <button className="btn btn-primary" style={{ flex: 1, height: 50, borderRadius: 16, fontWeight: 700 }} onClick={saveDeal}>Сохранить</button>
+                            <button className="btn btn-primary" style={{ flex: 1, height: 50, borderRadius: 16, fontWeight: 300 }} onClick={saveDeal}>Сохранить</button>
                             <button className="btn btn-secondary" style={{ flex: 1, height: 50, borderRadius: 16, background: 'var(--bg-light)', border: 'none', color: 'var(--text-secondary)' }} onClick={() => { setShowForm(false); resetForm(); }}>Отмена</button>
                         </div>
                     </div>
@@ -425,7 +425,7 @@ export function DealsPage() {
                 <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
                     {[['active', 'Активные'], ['closed', 'Закрытые'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
-                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 400,
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
                             background: filter === v ? 'var(--primary)' : 'white',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)',

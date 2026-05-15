@@ -58,10 +58,10 @@ export function DetailsPage() {
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.01em', color: 'var(--text)' }}>
                         Профиль клиента
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Управление</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Управление</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button className="card-clickable" onClick={() => navigate(`/clients/${id}/edit`)} style={{ 
@@ -77,16 +77,16 @@ export function DetailsPage() {
                 
                 {/* Profile Card */}
                 <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white', textAlign: 'center' }}>
-                    <div className="font-oswald" style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
+                    <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                         {client.client_types?.map(t => (
                             <span key={t} style={{ 
-                                padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 300, letterSpacing: '0.01em',
                                 background: 'var(--primary-light)', color: 'var(--primary)'
                             }}>{typeLabels[t]}</span>
                         ))}
                         <span style={{ 
-                            padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                            padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 300, letterSpacing: '0.01em',
                             background: client.status === 'active' ? '#ecfdf5' : '#fef3c7',
                             color: client.status === 'active' ? '#10b981' : '#f59e0b'
                         }}>{statusLabels[client.status]}</span>
@@ -112,24 +112,24 @@ export function DetailsPage() {
                 {/* Finance Metrics */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.8 }}>Потенциальная комиссия</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 13, letterSpacing: '0.05em', opacity: 0.8 }}>Потенциальная комиссия</div>
                         <TrendingUp size={20} style={{ opacity: 0.8 }} />
                     </div>
-                    <div style={{ fontSize: 32, fontWeight: 800, marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{formatNumber(totalCommission)} ₽</div>
+                    <div style={{ fontSize: 32, fontWeight: 300, marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{formatNumber(totalCommission)} ₽</div>
                     <div style={{ fontSize: 13, opacity: 0.9 }}>Рассчитано на основе активных объектов и запросов</div>
                 </div>
 
                 {/* Contacts Section */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
-                    <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)', marginBottom: 20 }}>Контактные данные</div>
+                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 20 }}>Контактные данные</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                             <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                 <Phone size={20} />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Телефон</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{formatPhone(client.phone)}</div>
+                                <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)' }}>Телефон</div>
+                                <div style={{ fontSize: 16, fontWeight: 300, color: 'var(--text)' }}>{formatPhone(client.phone)}</div>
                             </div>
                         </div>
                         {client.email && (
@@ -138,8 +138,8 @@ export function DetailsPage() {
                                     <Mail size={20} />
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Email</div>
-                                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{client.email}</div>
+                                    <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)' }}>Email</div>
+                                    <div style={{ fontSize: 16, fontWeight: 300, color: 'var(--text)' }}>{client.email}</div>
                                 </div>
                             </div>
                         )}
@@ -148,8 +148,8 @@ export function DetailsPage() {
                                 <Calendar size={20} />
                             </div>
                             <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Клиент с</div>
-                                <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{new Date(client.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+                                <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)' }}>Клиент с</div>
+                                <div style={{ fontSize: 16, fontWeight: 300, color: 'var(--text)' }}>{new Date(client.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
                             </div>
                         </div>
                     </div>
@@ -158,19 +158,19 @@ export function DetailsPage() {
                 {/* Objects & Requests Summary */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div className="card card-clickable" onClick={() => navigate(`/properties?client=${id}`)} style={{ padding: '20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)', marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{myProperties.length}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Объектов</div>
+                        <div style={{ fontSize: 24, fontWeight: 300, color: 'var(--primary)', marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{myProperties.length}</div>
+                        <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)' }}>Объектов</div>
                     </div>
                     <div className="card card-clickable" onClick={() => navigate(`/requests?client=${id}`)} style={{ padding: '20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)', marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{myRequests.length}</div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Запросов</div>
+                        <div style={{ fontSize: 24, fontWeight: 300, color: 'var(--primary)', marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{myRequests.length}</div>
+                        <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)' }}>Запросов</div>
                     </div>
                 </div>
 
                 {/* Recent Items List */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)' }}>Последняя активность</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Последняя активность</div>
                         <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)}><Plus size={18} /></button>
                     </div>
                     
@@ -181,8 +181,8 @@ export function DetailsPage() {
                             {myProperties.map(p => (
                                 <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)} style={{ padding: '16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>Объект в продаже</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700 }}>{p.address || p.city}</div>
+                                        <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--primary)' }}>Объект в продаже</div>
+                                        <div style={{ fontSize: 14, fontWeight: 300 }}>{p.address || p.city}</div>
                                     </div>
                                     <ChevronRight size={16} color="var(--text-muted)" />
                                 </div>
@@ -190,8 +190,8 @@ export function DetailsPage() {
                             {myRequests.map(r => (
                                 <div key={r.id} className="card-clickable" onClick={() => navigate(`/requests/${r.id}`)} style={{ padding: '16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div>
-                                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }}>Запрос на покупку</div>
-                                        <div style={{ fontSize: 14, fontWeight: 700 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ')}</div>
+                                        <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--primary)' }}>Запрос на покупку</div>
+                                        <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ')}</div>
                                     </div>
                                     <ChevronRight size={16} color="var(--text-muted)" />
                                 </div>
@@ -203,7 +203,7 @@ export function DetailsPage() {
                 {/* Notes Card */}
                 {client.notes && (
                     <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)', marginBottom: 12 }}>Особые заметки</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 12 }}>Особые заметки</div>
                         <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{client.notes}</div>
                     </div>
                 )}

@@ -56,9 +56,9 @@ function EstimationWidget({ prop }) {
                         <Calculator size={18} />
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 600, fontSize: 14 }}>Оценка по аналогам</div>
+                        <div style={{ fontWeight: 300, fontSize: 14 }}>Оценка по аналогам</div>
                         {result ? (
-                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 600 }}>
+                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 300 }}>
                                 {result.estimated_avg.toLocaleString()} ₽
                                 {params.deal_type === 'RENT' ? '/мес' : ''}
                                 &nbsp;·&nbsp;{avgPerM2?.toLocaleString()} ₽/м²
@@ -134,7 +134,7 @@ function EstimationWidget({ prop }) {
 
                         {/* Area — optional, use typical if blank */}
                         <div className="form-group">
-                            <label className="form-label">Площадь м² <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)' }}>(необ.)</span></label>
+                            <label className="form-label">Площадь м² <span style={{ fontWeight: 300, fontSize: 10, color: 'var(--text-muted)' }}>(необ.)</span></label>
                             <input
                                 className="form-input"
                                 type="number"
@@ -157,10 +157,10 @@ function EstimationWidget({ prop }) {
                         <div style={{ marginTop: 16 }} className="fade-in">
                             {/* Result block */}
                             <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '16px', textAlign: 'center', marginBottom: 12 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: 0.5, marginBottom: 4 }}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, letterSpacing: 0.5, marginBottom: 4 }}>
                                     Оценочная стоимость {params.deal_type === 'RENT' ? '(аренда/мес)' : '(продажа)'}
                                 </div>
-                                <div style={{ fontSize: 28, fontWeight: 600, color: 'var(--primary)', letterSpacing: -1 }}>
+                                <div style={{ fontSize: 28, fontWeight: 300, color: 'var(--primary)', letterSpacing: -1 }}>
                                     {result.estimated_avg.toLocaleString()} ₽
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -197,7 +197,7 @@ function EstimationWidget({ prop }) {
                             </a>
 
                             {/* Analogs list */}
-                            <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: 'var(--text-secondary)' }}>
+                            <div style={{ fontSize: 13, fontWeight: 300, marginBottom: 8, color: 'var(--text-secondary)' }}>
                                 Поиск аналогов на Авито
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -210,7 +210,7 @@ function EstimationWidget({ prop }) {
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
                                                 <span className="badge badge-subtle" style={{ fontSize: 11 }}>{a.label}</span>
-                                                <span style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                                                <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--text)' }}>
                                                     {a.price.toLocaleString()} ₽
                                                     {params.deal_type === 'RENT' ? '/мес' : ''}
                                                 </span>
@@ -1011,12 +1011,12 @@ function BannerGenerator({ property, currentUser, onClose }) {
                     
                     {/* Format & Design */}
                     <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Формат</label>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Формат</label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
                             <button className={`btn ${format === 'story' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setFormat('story')}>Story (9:16)</button>
                             <button className={`btn ${format === 'post' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setFormat('post')}>Post (1:1)</button>
                         </div>
-                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
+                        <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                             <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('classic')}>🖼 Классика</button>
                             <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('minimal')}>📋 Паспарту</button>
@@ -1027,7 +1027,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
                     {/* Accent Color */}
                     <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Акцентный цвет</label>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Акцентный цвет</label>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                             {COLOR_OPTIONS.map(c => (
                                 <button 
@@ -1045,7 +1045,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
                     {/* Stickers */}
                     <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginBottom: 8, display: 'block' }}>Стикеры преимуществ</label>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Стикеры преимуществ</label>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                             {STICKER_OPTIONS.map(s => (
                                 <button 
@@ -1171,7 +1171,7 @@ export function DetailsPage() {
                 }}>
                     <ChevronLeft size={20} />
                 </button>
-                <span className="topbar-title font-oswald" style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.01em' }}>Объект не найден</span>
+                <span className="topbar-title font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.01em' }}>Объект не найден</span>
             </div>
         </div>
     );
@@ -1201,10 +1201,10 @@ export function DetailsPage() {
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="font-oswald" style={{ fontSize: 17, fontWeight: 500, letterSpacing: '0.01em', color: 'var(--text)' }}>
+                    <span className="font-oswald" style={{ fontSize: 17, fontWeight: 300, letterSpacing: '0.01em', color: 'var(--text)' }}>
                         Объект
                     </span>
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
                     <button className="card-clickable" onClick={() => navigate(`/properties/${id}/edit`)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
@@ -1230,17 +1230,17 @@ export function DetailsPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>
+                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 400, color: 'var(--text)', lineHeight: 1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
                                     </div>
                                     {prop.area_total > 0 && (
-                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 400, marginTop: 4, opacity: 0.6 }}>
+                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 200, marginTop: 4, opacity: 0.6 }}>
                                             {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
                                         </div>
                                     )}
                                 </div>
                             </div>
-                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, marginTop: 12, color: 'var(--text)', lineHeight: 1.2 }}>
+                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 400, marginTop: 12, color: 'var(--text)', lineHeight: 1.2 }}>
                                 {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 200, opacity: 0.7 }}>
@@ -1316,12 +1316,12 @@ export function DetailsPage() {
                                         width: 40, height: 40, borderRadius: '50%',
                                         background: 'var(--bg-light)', color: 'var(--text-secondary)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 15, fontWeight: 400, flexShrink: 0, letterSpacing: 0.5,
+                                        fontSize: 15, fontWeight: 300, flexShrink: 0, letterSpacing: 0.5,
                                     }}>
                                         {initials(c.full_name)}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500 }}>{c.full_name}</div>
+                                        <div style={{ fontWeight: 300 }}>{c.full_name}</div>
                                         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
                                     </div>
                                     <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
@@ -1337,26 +1337,26 @@ export function DetailsPage() {
                         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Building2 size={22} />
                         </div>
-                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
                         {prop.build_year && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Год постройки</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.build_year}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Год постройки</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.build_year}</span>
                             </div>
                         )}
                         {prop.building_type && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Тип дома</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Тип дома</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
                             </div>
                         )}
                         {prop.floors_total && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Этажность</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.floors_total}</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этажность</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floors_total}</span>
                             </div>
                         )}
                         {prop.elevator_type && prop.elevator_type !== 'none' && (
@@ -1387,37 +1387,37 @@ export function DetailsPage() {
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Этаж</span>
-                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этаж</span>
+                            <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Общая площадь</span>
-                            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.area_total} м²</span>
+                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Общая площадь</span>
+                            <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_total} м²</span>
                         </div>
                         {prop.area_living > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Жилая</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.area_living} м²</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Жилая</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_living} м²</span>
                             </div>
                         )}
                         {prop.area_kitchen > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Кухня</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.area_kitchen} м²</span>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Кухня</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_kitchen} м²</span>
                             </div>
                         )}
                         {prop.renovation && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Ремонт</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Ремонт</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
                                     {{ none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' }[prop.renovation] || prop.renovation}
                                 </span>
                             </div>
                         )}
                         {prop.bathroom && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Санузел</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Санузел</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
                                     {{ combined: 'Совмещённый', separate: 'Раздельный', two: 'Два и более' }[prop.bathroom] || prop.bathroom}
                                 </span>
                             </div>
@@ -1434,7 +1434,7 @@ export function DetailsPage() {
                 {/* ИСТОРИЯ — Timeline Style */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История ({events.length})</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История ({events.length})</div>
                         <button className="card-clickable" onClick={() => navigate(`/history/new?property_id=${id}`)} style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,82,255,0.05)' }}>
                             <Calendar size={20} />
                         </button>
@@ -1458,7 +1458,7 @@ export function DetailsPage() {
                                                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{dateStr} {timeStr}</span>
                                                 </div>
                                                 {ev.buyer && (
-                                                    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                                                    <div style={{ fontSize: 14, fontWeight: 300, color: 'var(--text)' }}>
                                                         {ev.buyer.full_name}
                                                     </div>
                                                 )}
@@ -1481,7 +1481,7 @@ export function DetailsPage() {
 
                 {prop.notes && (
                     <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 16 }}>Описание</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 16 }}>Описание</div>
                         <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{prop.notes}</div>
                     </div>
                 )}

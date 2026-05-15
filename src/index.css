@@ -242,7 +242,7 @@ a:focus:not(:focus-visible) {
 .topbar-title {
   flex: 1;
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 300;
   font-family: 'Oswald', sans-serif;
   color: var(--text);
 }
@@ -329,7 +329,7 @@ a:focus:not(:focus-visible) {
 
 .nav-item .nav-label {
   font-size: 10px;
-  font-weight: 500;
+  font-weight: 300;
   color: #64748b;
   transition: all 0.2s;
 }
@@ -341,7 +341,7 @@ a:focus:not(:focus-visible) {
 
 .nav-item.active .nav-label {
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .nav-badge {
@@ -564,7 +564,7 @@ a:focus:not(:focus-visible) {
   padding: 6px 12px;
   border-radius: 99px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 300;
   border: 1.5px solid var(--border);
   background: var(--bg);
   color: var(--text-secondary);
@@ -591,7 +591,7 @@ a:focus:not(:focus-visible) {
   padding: 4px 10px;
   border-radius: 99px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 300;
 }
 
 .badge-success {
@@ -773,13 +773,13 @@ a:focus:not(:focus-visible) {
 
 .section-title {
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 300;
   color: var(--text);
 }
 
 .section-link {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 300;
   color: var(--primary);
   cursor: pointer;
 }

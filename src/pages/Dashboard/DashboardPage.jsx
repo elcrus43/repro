@@ -58,16 +58,16 @@ export function DashboardPage() {
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div className="fade-in" style={{ animationDelay: '0.1s' }}>
-                        <h1 className="font-oswald" style={{ fontSize: 34, fontWeight: 700, color: 'var(--text)', lineHeight: 1, letterSpacing: '-0.02em', textTransform: 'uppercase' }}>
-                            ПРИВЕТ, {user.full_name?.split(' ')[1] || user.full_name?.split(' ')[0] || user.full_name}!
+                        <h1 className="font-oswald" style={{ fontSize: 34, fontWeight: 300, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
+                            Привет, {user.full_name?.split(' ')[1] || user.full_name?.split(' ')[0] || user.full_name}!
                         </h1>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
                             <div style={{ 
-                                padding: '6px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                                padding: '6px 12px', fontSize: 10, fontWeight: 400, letterSpacing: '0.05em',
                                 background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 6
                             }}>
                                 <Target size={12} /> 
-                                {user.agency_name || 'ЧАСТНЫЙ РИЭЛТОР'}
+                                {user.agency_name || 'Частный риэлтор'}
                             </div>
                         </div>
                     </div>
@@ -76,7 +76,7 @@ export function DashboardPage() {
                         background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
                         color: 'white',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 16, fontWeight: 800,
+                        fontSize: 16, fontWeight: 400,
                         boxShadow: '0 12px 24px rgba(0, 82, 255, 0.25)',
                         border: '2px solid white',
                         fontFamily: "'Oswald', sans-serif"
@@ -97,8 +97,8 @@ export function DashboardPage() {
                             <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
                         <div style={{ marginTop: 20 }}>
-                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)' }}>{myClients.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', marginTop: 4 }}>Клиенты</div>
+                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--text)' }}>{myClients.length}</div>
+                            <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Клиенты</div>
                         </div>
                     </div>
                     <div className="card card-clickable" onClick={() => navigate('/properties')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
@@ -109,8 +109,8 @@ export function DashboardPage() {
                             <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
                         <div style={{ marginTop: 20 }}>
-                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)' }}>{myProperties.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', marginTop: 4 }}>Объекты</div>
+                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--text)' }}>{myProperties.length}</div>
+                            <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Объекты</div>
                         </div>
                     </div>
                     <div className="card card-clickable" onClick={() => navigate('/requests')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
@@ -121,8 +121,8 @@ export function DashboardPage() {
                             <ArrowRight size={14} color="var(--text-muted)" />
                         </div>
                         <div style={{ marginTop: 20 }}>
-                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 700, color: 'var(--text)' }}>{myRequests.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.05em', marginTop: 4 }}>Запросы</div>
+                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--text)' }}>{myRequests.length}</div>
+                            <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Запросы</div>
                         </div>
                     </div>
                     <div className="card card-clickable" onClick={() => navigate('/matches')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 12px 32px rgba(212, 212, 43, 0.15)', background: 'linear-gradient(135deg, var(--accent) 0%, #b8b825 100%)', color: 'white' }}>
@@ -133,8 +133,8 @@ export function DashboardPage() {
                             <ArrowRight size={14} color="white" />
                         </div>
                         <div style={{ marginTop: 20 }}>
-                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 700 }}>{myMatches.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 700, letterSpacing: '0.05em', marginTop: 4 }}>Совпадения</div>
+                            <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300 }}>{myMatches.length}</div>
+                            <div className="font-oswald" style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Совпадения</div>
                         </div>
                     </div>
                 </div>
@@ -143,8 +143,8 @@ export function DashboardPage() {
                 {newMatches.length > 0 && (
                     <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <span className="font-oswald" style={{ fontSize: 18, fontWeight: 700, letterSpacing: '0.05em' }}>Новые совпадения</span>
-                            <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase' }} onClick={() => navigate('/matches')}>Все →</span>
+                            <span className="font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.05em' }}>Новые совпадения</span>
+                            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--primary)' }} onClick={() => navigate('/matches')}>Все →</span>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             {newMatches.map(m => {
@@ -153,19 +153,19 @@ export function DashboardPage() {
                                 const client = req ? state.clients.find(c => c.id === req.client_id) : null;
                                 return (
                                     <div key={m.id} className="card card-clickable" onClick={() => navigate(`/matches/${m.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 24, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'white' }}>
-                                        <div style={{ width: 48, height: 48, borderRadius: 16, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 800, fontSize: 15, fontFamily: "'Oswald', sans-serif" }}>
+                                        <div style={{ width: 48, height: 48, borderRadius: 16, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 300, fontSize: 15, fontFamily: "'Oswald', sans-serif" }}>
                                             {m.score}%
                                         </div>
                                         <div style={{ flex: 1 }}>
-                                            <div className="font-oswald" style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', textTransform: 'uppercase' }}>{client?.full_name?.split(' ')[0]}</div>
+                                            <div className="font-oswald" style={{ fontWeight: 400, fontSize: 15, color: 'var(--text)' }}>{client?.full_name?.split(' ')[0]}</div>
                                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{prop?.address || 'Объект без адреса'}</div>
                                         </div>
                                         <div style={{ 
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 9, fontWeight: 700, 
+                                            padding: '4px 8px', borderRadius: 6, fontSize: 9, fontWeight: 400, 
                                             background: m.match_level === 'perfect' ? 'var(--success-light)' : 'var(--warning-light)',
                                             color: m.match_level === 'perfect' ? 'var(--success)' : 'var(--warning)'
                                         }}>
-                                            {m.match_level === 'perfect' ? 'ИДЕАЛ' : 'ХОРОШО'}
+                                            {m.match_level === 'perfect' ? 'Идеал' : 'Хорошо'}
                                         </div>
                                     </div>
                                 );
@@ -177,7 +177,7 @@ export function DashboardPage() {
                 {/* Analytics Widget */}
                 <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 600, letterSpacing: '0.05em' }}>Эффективность</span>
+                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.05em' }}>Эффективность</span>
                         <TrendingUp size={18} color="var(--primary)" />
                     </div>
                     <div className="card" style={{ 
@@ -192,15 +192,15 @@ export function DashboardPage() {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 32, position: 'relative', zIndex: 1 }}>
                             <div>
-                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Конверсия</div>
-                                <div className="font-oswald" style={{ fontSize: 42, fontWeight: 700, marginTop: 4, display: 'flex', alignItems: 'baseline' }}>
+                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', fontWeight: 400 }}>Конверсия</div>
+                                <div className="font-oswald" style={{ fontSize: 42, fontWeight: 300, marginTop: 4, display: 'flex', alignItems: 'baseline' }}>
                                     82<span style={{ fontSize: 18, opacity: 0.6, marginLeft: 2 }}>%</span>
                                 </div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Цикл сделки</div>
-                                <div className="font-oswald" style={{ fontSize: 42, fontWeight: 700, marginTop: 4, display: 'flex', alignItems: 'baseline' }}>
-                                    14<span style={{ fontSize: 18, opacity: 0.6, marginLeft: 2 }}>ДН</span>
+                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', fontWeight: 400 }}>Цикл сделки</div>
+                                <div className="font-oswald" style={{ fontSize: 42, fontWeight: 300, marginTop: 4, display: 'flex', alignItems: 'baseline' }}>
+                                    14<span style={{ fontSize: 18, opacity: 0.6, marginLeft: 2 }}>дн</span>
                                 </div>
                             </div>
                         </div>
@@ -220,10 +220,10 @@ export function DashboardPage() {
 
                 {/* Quick actions */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <button className="btn btn-primary" style={{ borderRadius: 20, height: 56, fontSize: 14, fontWeight: 700, letterSpacing: '0.05em' }} onClick={() => navigate('/properties/new')}>
+                    <button className="btn btn-primary" style={{ borderRadius: 20, height: 56, fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/properties/new')}>
                         + Объект
                     </button>
-                    <button className="btn btn-secondary" style={{ borderRadius: 20, height: 56, background: 'white', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 14, fontWeight: 700, letterSpacing: '0.05em' }} onClick={() => navigate('/clients/new')}>
+                    <button className="btn btn-secondary" style={{ borderRadius: 20, height: 56, background: 'white', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/clients/new')}>
                         + Клиент
                     </button>
                 </div>
