@@ -59,8 +59,8 @@ export function ListPage() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="topbar-title font-oswald" style={{ textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: 22 }}>Клиенты</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 800, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>База контактов</span>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22 }}>Клиенты</span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>База контактов</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
@@ -80,19 +80,19 @@ export function ListPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div className="search-bar" style={{ background: 'white', border: '1px solid rgba(0,0,0,0.04)', height: 50, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <span className="search-icon"><Search size={18} /></span>
-                        <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 600 }} />
+                        <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 400 }} />
                     </div>
                     
                     <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', padding: 4, borderRadius: 16, gap: 4 }}>
                         <button style={{ 
-                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 400,
                             background: scope === 'all' ? 'white' : 'transparent', 
                             boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)',
                             transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
                         }} onClick={() => setScope('all')}>Общая база</button>
                         <button style={{ 
-                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 400,
                             background: scope === 'mine' ? 'white' : 'transparent', 
                             boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)',
@@ -112,7 +112,7 @@ export function ListPage() {
                                     whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
                                     background: filter === val ? 'var(--primary)' : 'white',
                                     color: filter === val ? 'white' : 'var(--text-secondary)',
-                                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    fontSize: 13, fontWeight: 400,
                                     fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
                                 }}
                             >
@@ -151,28 +151,28 @@ export function ListPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
+                                        <div style={{ fontWeight: 500, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
                                         <div style={{ 
-                                            padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                            padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em',
                                             background: client.status === 'active' ? '#ecfdf5' : '#fef3c7',
                                             color: client.status === 'active' ? '#10b981' : '#f59e0b'
                                         }}>
                                             {statusLabels[client.status] || client.status}
                                         </div>
                                     </div>
-                                    <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 700, marginBottom: 4 }}>
+                                    <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 400, marginBottom: 4 }}>
                                         {formatPhone(client.phone)}
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                         <div style={{ display: 'flex', gap: 4 }}>
                                             {client.client_types?.map(t => (
-                                                <span key={t} style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, background: 'var(--bg-light)', padding: '2px 8px', borderRadius: 6 }}>
+                                                <span key={t} style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, background: 'var(--bg-light)', padding: '2px 8px', borderRadius: 6 }}>
                                                     {typeLabels[t]}
                                                 </span>
                                             ))}
                                         </div>
                                         {matches.length > 0 && (
-                                            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>
+                                            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 400 }}>
                                                 {matches.length} совпадений
                                             </span>
                                         )}

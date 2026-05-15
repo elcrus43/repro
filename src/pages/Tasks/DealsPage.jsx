@@ -348,18 +348,18 @@ export function DealsPage() {
                     <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Activity size={16} /></div>
-                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>В работе</span>
+                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>В работе</span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 800 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>сд.</span></div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 500 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>сд.</span></div>
+                        <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
                     </div>
                     <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={16} /></div>
-                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)' }}>Выручка</span>
+                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>Выручка</span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 800, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
+                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 500, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
+                        <div style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
                     </div>
                 </div>
 
@@ -425,10 +425,11 @@ export function DealsPage() {
                 <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
                     {[['active', 'Активные'], ['closed', 'Закрытые'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
-                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700,
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 400,
                             background: filter === v ? 'var(--primary)' : 'white',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                            fontFamily: 'Oswald'
                         }} onClick={() => setFilter(v)}>{l}</button>
                     ))}
                 </div>

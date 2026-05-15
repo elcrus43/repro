@@ -199,11 +199,11 @@ export function TasksPage() {
                 {/* Quick Actions Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <button className="card-clickable" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={18} /></div>
+                        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} /></div>
                         <span className="font-oswald" style={{ fontSize: 14, fontWeight: 400, letterSpacing: '0.02em' }}>Встреча</span>
                     </button>
                     <button className="card-clickable" onClick={() => navigate('/tasks/call')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-                        <div style={{ width: 36, height: 36, borderRadius: 10, background: '#10b98115', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Phone size={18} /></div>
+                        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Phone size={20} /></div>
                         <span className="font-oswald" style={{ fontSize: 14, fontWeight: 400, letterSpacing: '0.02em' }}>Звонок</span>
                     </button>
                 </div>
@@ -239,10 +239,11 @@ export function TasksPage() {
                 <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
                     {[['today', 'Сегодня'], ['week', 'Неделя'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
-                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 12, fontWeight: 700,
+                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 400,
                             background: filter === v ? 'var(--primary)' : 'white',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                            fontFamily: 'Oswald'
                         }} onClick={() => setFilter(v)}>{l}</button>
                     ))}
                 </div>

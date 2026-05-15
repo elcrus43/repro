@@ -117,7 +117,7 @@ body {
   min-height: 100vh;
   overscroll-behavior: none;
   -webkit-font-smoothing: antialiased;
-  font-weight: 400;
+  font-weight: 300;
 }
 
 /* ===== Global: отменяем uppercase везде — используем Oswald с разными весами вместо капса ===== */
@@ -144,7 +144,7 @@ a {
 button {
   cursor: pointer;
   font-family: inherit;
-  font-weight: 400;
+  font-weight: 300;
 }
 
 input,

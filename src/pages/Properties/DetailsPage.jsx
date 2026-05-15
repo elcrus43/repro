@@ -1254,10 +1254,10 @@ export function DetailsPage() {
                             className="card-clickable"
                             style={{ 
                                 flex: 1.5, height: 48, borderRadius: 14, border: 'none',
-                                background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
-                                color: 'white', fontWeight: 400, fontSize: 15,
+                                background: 'var(--primary-light)', 
+                                color: 'var(--primary)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                boxShadow: '0 8px 20px rgba(0, 82, 255, 0.15)',
+                                boxShadow: '0 4px 12px rgba(0, 82, 255, 0.05)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
                             onClick={() => navigate(`/matches?property_id=${id}`)}
@@ -1268,9 +1268,9 @@ export function DetailsPage() {
                             className="card-clickable"
                             style={{ 
                                 flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
-                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 14,
+                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
                             onClick={() => setShowBannerGen(true)}
@@ -1314,14 +1314,14 @@ export function DetailsPage() {
                                 <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
                                     <div style={{
                                         width: 40, height: 40, borderRadius: '50%',
-                                        background: 'var(--border)', color: 'var(--text-secondary)',
+                                        background: 'var(--bg-light)', color: 'var(--text-secondary)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         fontSize: 15, fontWeight: 400, flexShrink: 0, letterSpacing: 0.5,
                                     }}>
                                         {initials(c.full_name)}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 700 }}>{c.full_name}</div>
+                                        <div style={{ fontWeight: 500 }}>{c.full_name}</div>
                                         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
                                     </div>
                                     <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
@@ -1334,10 +1334,10 @@ export function DetailsPage() {
                 {/* ── О ДОМЕ — Premium Section ── */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Building2 size={20} />
+                        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Building2 size={22} />
                         </div>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
+                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
@@ -1379,10 +1379,10 @@ export function DetailsPage() {
                 {/* ── О КВАРТИРЕ — Premium Section ── */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Home size={20} />
+                        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Home size={22} />
                         </div>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, letterSpacing: '0.02em' }}>О квартире</div>
+                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em' }}>О квартире</div>
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
@@ -1434,7 +1434,7 @@ export function DetailsPage() {
                 {/* ИСТОРИЯ — Timeline Style */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                        <div className="font-oswald" style={{ fontWeight: 700, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История ({events.length})</div>
+                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История ({events.length})</div>
                         <button className="card-clickable" onClick={() => navigate(`/history/new?property_id=${id}`)} style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,82,255,0.05)' }}>
                             <Calendar size={20} />
                         </button>
@@ -1454,7 +1454,7 @@ export function DetailsPage() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                    <span style={{ fontSize: 13, fontWeight: 800, color: 'var(--primary)', letterSpacing: '0.01em', fontFamily: 'Oswald' }}>{ev.typeLabel}</span>
+                                                    <span style={{ fontSize: 13, fontWeight: 400, color: 'var(--primary)', letterSpacing: '0.01em', fontFamily: 'Oswald' }}>{ev.typeLabel}</span>
                                                     <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{dateStr} {timeStr}</span>
                                                 </div>
                                                 {ev.buyer && (

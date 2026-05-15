@@ -136,7 +136,7 @@ export function ListPage() {
                                     whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
                                     background: filter === val ? 'var(--primary)' : 'white',
                                     color: filter === val ? 'white' : 'var(--text-secondary)',
-                                    fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    fontSize: 12, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em',
                                     fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
                                 }}
                             >
@@ -214,7 +214,7 @@ export function ListPage() {
 
                                 {/* CONTENT WRAPPER */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', lineHeight: 1.1 }}>
+                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 400, color: 'var(--text)', lineHeight: 1.1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 13, opacity: 0.6 }}>₽</span>
                                     </div>
                                     <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -237,10 +237,10 @@ export function ListPage() {
                                     
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.03)', paddingTop: 10 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <div style={{ width: 20, height: 20, borderRadius: 6, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Share2 size={10} color="var(--primary)" />
+                                            <div style={{ width: 22, height: 22, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <Share2 size={12} color="var(--primary)" />
                                             </div>
-                                            <span style={{ fontSize: 11, fontWeight: 800, color: 'var(--primary)' }}>{matches.length} совпадений</span>
+                                            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--primary)' }}>{matches.length} совпадений</span>
                                         </div>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }} onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}>
@@ -267,7 +267,7 @@ export function ListPage() {
                             style={{ 
                                 padding: '10px 20px', borderRadius: 14, border: 'none', background: 'white',
                                 opacity: hasPrev ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
-                                fontWeight: 800, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                fontWeight: 400, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
                         >
                             <ChevronLeft size={16} /> НАЗАД
@@ -282,7 +282,7 @@ export function ListPage() {
                             style={{ 
                                 padding: '10px 20px', borderRadius: 14, border: 'none', background: 'white',
                                 opacity: hasNext ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
-                                fontWeight: 800, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                fontWeight: 400, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
                         >
                             ВПЕРЁД <ChevronRight size={16} />
