@@ -6,7 +6,8 @@ import {
     Pencil, Trash, Sparkles, Building2, Calculator, ExternalLink, 
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
-    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft
+    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
+    Wand2
 } from 'lucide-react';
 
 
@@ -255,7 +256,9 @@ function BannerGenerator({ property, currentUser, onClose }) {
         { name: 'Золотой', value: '#D4AF37' },
         { name: 'Зеленый', value: '#2E7D32' },
         { name: 'Красный', value: '#C62828' },
-        { name: 'Черный', value: '#1A1A1A' }
+        { name: 'Черный', value: '#1A1A1A' },
+        { name: 'Оранжевый (PornHub)', value: '#f47b20' },
+        { name: 'Розовый', value: '#e31b6d' }
     ];
 
     const formats = {
@@ -1007,7 +1010,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
                     background: 'rgba(255,255,255,0.05)', borderRadius: 24, padding: 24, 
                     overflowY: 'auto', maxHeight: window.innerWidth < 768 ? 'none' : '100%' 
                 }}>
-                    <h3 style={{ marginBottom: 20, fontFamily: 'Oswald', letterSpacing: 1 }}>НАСТРОЙКИ БАННЕРА</h3>
+                    <h3 style={{ marginBottom: 20, fontFamily: 'Oswald', fontWeight: 600, letterSpacing: 1, color: '#000' }}>Настройки баннера</h3>
                     
                     {/* Format & Design */}
                     <div style={{ marginBottom: 24 }}>
@@ -1018,10 +1021,10 @@ function BannerGenerator({ property, currentUser, onClose }) {
                         </div>
                         <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('classic')}>🖼 Классика</button>
-                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('minimal')}>📋 Паспарту</button>
-                            <button className={`btn ${design === 'stripe' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('stripe')}>⚡ Полоса</button>
-                            <button className={`btn ${design === 'split' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('split')}>◧ Сплит</button>
+                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('classic')}>Классика</button>
+                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('minimal')}>Паспарту</button>
+                            <button className={`btn ${design === 'stripe' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('stripe')}>Полоса</button>
+                            <button className={`btn ${design === 'split' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('split')}>Сплит</button>
                         </div>
                     </div>
 
@@ -1120,6 +1123,7 @@ export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
     const [showBannerGen, setShowBannerGen] = useState(false);
+    const [showAdGen, setShowAdGen] = useState(false);
     const [showPortfolio, setShowPortfolio] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
 
@@ -1253,16 +1257,28 @@ export function DetailsPage() {
                         <button
                             className="card-clickable"
                             style={{ 
-                                flex: 1.5, height: 48, borderRadius: 14, border: 'none',
-                                background: 'var(--primary-light)', 
-                                color: 'var(--primary)', fontWeight: 400, fontSize: 15,
+                                flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                boxShadow: '0 4px 12px rgba(0, 82, 255, 0.05)',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
                             onClick={() => navigate(`/matches?property_id=${id}`)}
                         >
                             <Sparkles size={16} /> Совпадения ({matches.length})
+                        </button>
+                        <button
+                            className="card-clickable"
+                            style={{ 
+                                flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                fontFamily: "'Oswald', sans-serif"
+                            }}
+                            onClick={() => setShowAdGen(prev => !prev)}
+                        >
+                            <Wand2 size={16} /> Объявление
                         </button>
                         <button
                             className="card-clickable"
@@ -1321,7 +1337,7 @@ export function DetailsPage() {
                                         {initials(c.full_name)}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 300 }}>{c.full_name}</div>
+                                        <div style={{ fontWeight: 400 }}>{c.full_name}</div>
                                         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
                                     </div>
                                     <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
@@ -1334,7 +1350,7 @@ export function DetailsPage() {
                 {/* ── О ДОМЕ — Premium Section ── */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Building2 size={22} />
                         </div>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
@@ -1379,7 +1395,7 @@ export function DetailsPage() {
                 {/* ── О КВАРТИРЕ — Premium Section ── */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Home size={22} />
                         </div>
                         <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em' }}>О квартире</div>
@@ -1426,7 +1442,7 @@ export function DetailsPage() {
                 </div>
 
                 {/* AI Ad Generator */}
-                <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} />
+                {showAdGen && <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} initiallyOpen={true} />}
 
                 {/* Estimation Widget */}
                 <EstimationWidget prop={prop} />

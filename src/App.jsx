@@ -163,9 +163,10 @@ function LoadingScreen() {
         }} />
       </div>
 
-      <p style={{ 
-          marginTop: 20, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, 
-          textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6 
+      <p className="font-oswald" style={{ 
+          marginTop: 20, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 200, 
+          textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6,
+          fontFamily: "'Oswald', sans-serif"
       }}>Загрузка данных</p>
       
       {showRetry && (

@@ -15,12 +15,11 @@ export function FormCard({ title, children, style = {} }) {
         }}>
             {title && (
                 <div className="font-oswald" style={{ 
-                    fontWeight: 700, 
-                    fontSize: 14, 
-                    textTransform: 'uppercase', 
-                    letterSpacing: '0.05em', 
-                    color: 'var(--text-muted)',
-                    marginBottom: 4
+                    fontWeight: 600, 
+                    fontSize: 16, 
+                    color: '#000',
+                    marginBottom: 8,
+                    letterSpacing: '0.01em'
                 }}>
                     {title}
                 </div>

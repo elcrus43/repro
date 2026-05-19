@@ -302,8 +302,8 @@ function LoadingStatus({ step }) {
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
-export function AdGenerator({ prop, realtorName }) {
-    const [open, setOpen]       = useState(false);
+export function AdGenerator({ prop, realtorName, initiallyOpen = false }) {
+    const [open, setOpen]       = useState(initiallyOpen);
     const [loading, setLoading] = useState(false);
     const [loadStep, setLoadStep] = useState(0);
     const [result, setResult]   = useState('');
@@ -351,7 +351,7 @@ export function AdGenerator({ prop, realtorName }) {
     ];
 
     return (
-        <div className="card" style={{ padding: 0, overflow: 'hidden', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+        <div className="card" style={{ padding: 0, overflow: 'hidden', border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.04)', borderRadius: 36, background: 'white' }}>
             {/* Header toggle */}
             <button
                 id="ad-generator-toggle"
@@ -363,17 +363,18 @@ export function AdGenerator({ prop, realtorName }) {
                 }}
                 onClick={() => setOpen(o => !o)}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{
                         background: 'linear-gradient(135deg, var(--primary), #3b82f6)',
-                        padding: 10, borderRadius: 14, color: 'white',
-                        boxShadow: '0 4px 12px rgba(0,82,255,0.2)'
+                        width: 52, height: 52, borderRadius: 16, color: 'white',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 8px 20px rgba(0,82,255,0.15)'
                     }}>
-                        <Wand2 size={20} />
+                        <Wand2 size={24} />
                     </div>
                     <div style={{ textAlign: 'left' }}>
-                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Генератор объявления</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                        <div className="font-oswald" style={{ fontWeight: 500, fontSize: 18, color: 'var(--text)', letterSpacing: '0.01em' }}>Объявление</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2, fontWeight: 300 }}>
                             {result ? 'Объявление готово' : 'AI + глубокий анализ данных'}
                         </div>
                     </div>
