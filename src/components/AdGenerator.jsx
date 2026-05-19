@@ -409,18 +409,20 @@ export function AdGenerator({ prop, realtorName, initiallyOpen = false }) {
                     </div>
 
                     {/* Generate button */}
-                    <button
-                        id="ad-generator-btn"
-                        className="btn btn-primary btn-full"
-                        style={{ marginTop: 16, height: 52, borderRadius: 16 }}
-                        onClick={generate}
-                        disabled={loading}
-                    >
-                        {loading
-                            ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Анализирую...</>
-                            : <><Wand2 size={18} /> {result ? 'Перегенерировать' : 'Сгенерировать объявление'}</>
-                        }
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 16 }}>
+                        <button
+                            id="ad-generator-btn"
+                            className="btn btn-primary"
+                            style={{ height: 52, borderRadius: 16, padding: '0 24px', width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+                            onClick={generate}
+                            disabled={loading}
+                        >
+                            {loading
+                                ? <><Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Анализирую...</>
+                                : <><Wand2 size={18} /> {result ? 'Перегенерировать' : 'Сгенерировать объявление'}</>
+                            }
+                        </button>
+                    </div>
 
                     {/* Loading status */}
                     {loading && <LoadingStatus step={loadStep} />}
@@ -467,17 +469,19 @@ export function AdGenerator({ prop, realtorName, initiallyOpen = false }) {
                                 <AdText text={result} />
                             </div>
 
-                            <button
-                                id="ad-copy-btn"
-                                className="btn btn-secondary btn-full"
-                                style={{ height: 52, borderRadius: 16, background: 'white', color: 'var(--text)' }}
-                                onClick={handleCopy}
-                            >
-                                {copied
-                                    ? <><Check size={18} /> Скопировано!</>
-                                    : <><Copy size={18} /> Копировать текст</>
-                                }
-                            </button>
+                            <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                                <button
+                                    id="ad-copy-btn"
+                                    className="btn btn-secondary"
+                                    style={{ height: 52, borderRadius: 16, background: 'white', color: 'var(--text)', padding: '0 24px', width: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}
+                                    onClick={handleCopy}
+                                >
+                                    {copied
+                                        ? <><Check size={18} /> Скопировано!</>
+                                        : <><Copy size={18} /> Копировать текст</>
+                                    }
+                                </button>
+                            </div>
 
                             <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', opacity: 0.8 }}>
                                 * Проверьте текст перед публикацией на соответствие правилам площадки.

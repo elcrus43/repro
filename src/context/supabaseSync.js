@@ -26,7 +26,7 @@ export function sanitizeObj(obj) {
   if (!obj || typeof obj !== 'object') return obj;
   // Массивы (client_ids и др.) обрабатываем без UUID-проверки элементов
   if (Array.isArray(obj)) return obj.map(item => {
-    if (typeof item === 'string') return item; // строки в массивах не заменяем null
+    if (typeof item === 'string') return item === '' ? null : item; // строки в массивах не заменяем null, кроме пустых строк
     return sanitizeObj(item);
   });
 
@@ -50,7 +50,7 @@ export function sanitizeObj(obj) {
     } else if (Array.isArray(val)) {
       // Массивы (client_ids, images и др.) обрабатываем через рекурсию без UUID-замены
       sanitized[key] = val.map(item => {
-        if (typeof item === 'string') return item; // строки (UUID, URL) — не трогаем
+        if (typeof item === 'string') return item === '' ? null : item; // строки (UUID, URL) — не трогаем, кроме пустых строк
         return sanitizeObj(item);
       });
     } else if (typeof val === 'object' && val !== null) {

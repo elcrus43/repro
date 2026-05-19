@@ -74,47 +74,18 @@ function EstimationWidget({ prop }) {
 
             {open && (
                 <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-light)' }}>
-                    {/* Compact 3-field form */}
+                    {/* Compact form containing only City and Rooms */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
                         {/* City */}
-                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                        <div className="form-group">
                             <label className="form-label">Город</label>
                             <select
                                 className="form-select"
                                 value={params.city}
-                                onChange={e => setParams({ ...params, city: e.target.value, district: '' })}
+                                onChange={e => setParams({ ...params, city: e.target.value })}
                             >
                                 {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
-                        </div>
-
-                        {/* District / Location */}
-                        <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                            <label className="form-label">Район / Локация</label>
-                            {districtOptions.length > 0 ? (
-                                <select
-                                    className="form-select"
-                                    value={params.district}
-                                    onChange={e => setParams({ ...params, district: e.target.value })}
-                                >
-                                    <option value="">— Выбрать район —</option>
-                                    {KIROV_DISTRICTS.map(d => (
-                                        <optgroup key={d.name} label={d.name}>
-                                            <option value={d.name}>{d.name} (весь район)</option>
-                                            {d.microdistricts.map(m => (
-                                                <option key={m} value={m}>{m}</option>
-                                            ))}
-                                        </optgroup>
-                                    ))}
-                                </select>
-                            ) : (
-                                <input
-                                    className="form-input"
-                                    value={params.district}
-                                    onChange={e => setParams({ ...params, district: e.target.value })}
-                                    placeholder="Район (необязательно)"
-                                />
-                            )}
                         </div>
 
                         {/* Rooms */}
@@ -132,27 +103,17 @@ function EstimationWidget({ prop }) {
                                 <option value={4}>4+</option>
                             </select>
                         </div>
-
-                        {/* Area — optional, use typical if blank */}
-                        <div className="form-group">
-                            <label className="form-label">Площадь м² <span style={{ fontWeight: 300, fontSize: 10, color: 'var(--text-muted)' }}>(необ.)</span></label>
-                            <input
-                                className="form-input"
-                                type="number"
-                                value={params.total_area || ''}
-                                onChange={e => setParams({ ...params, total_area: parseFloat(e.target.value) || 0 })}
-                                placeholder="Авто"
-                            />
-                        </div>
                     </div>
 
-                    <button
-                        className="btn btn-primary"
-                        style={{ width: '100%', marginTop: 12 }}
-                        onClick={calculate}
-                    >
-                        <Calculator size={16} /> Рассчитать стоимость
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12 }}>
+                        <button
+                            className="btn btn-primary"
+                            style={{ height: 44, borderRadius: 14, padding: '0 20px', display: 'flex', alignItems: 'center', gap: 8 }}
+                            onClick={calculate}
+                        >
+                            <Calculator size={16} /> Анализ
+                        </button>
+                    </div>
 
                     {result && (
                         <div style={{ marginTop: 16 }} className="fade-in">
@@ -1253,13 +1214,14 @@ export function DetailsPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                         <button
                             className="card-clickable"
                             style={{ 
-                                flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
                                 background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                padding: '0 16px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
@@ -1270,9 +1232,10 @@ export function DetailsPage() {
                         <button
                             className="card-clickable"
                             style={{ 
-                                flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
                                 background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                padding: '0 16px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
@@ -1283,9 +1246,10 @@ export function DetailsPage() {
                         <button
                             className="card-clickable"
                             style={{ 
-                                flex: 1, height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
                                 background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                padding: '0 16px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
