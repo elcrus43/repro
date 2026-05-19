@@ -3,201 +3,17 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { 
-    Pencil, Trash, Sparkles, Building2, Calculator, ExternalLink, 
+    Pencil, Trash, Sparkles, Building2, 
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
     Wand2
 } from 'lucide-react';
 
-
-import { PROPERTY_TYPES, BUILDING_TYPES } from '../../data/constants';
-import { CITIES, KIROV_DISTRICTS } from '../../data/location';
-import { estimateOffline } from '../../utils/estimation';
 import { AdGenerator } from '../../components/AdGenerator';
 
 
 
-/* ─── Inline Estimation Widget (offline, no backend needed) ─────────────────── */
-function EstimationWidget({ prop }) {
-    const [open, setOpen] = useState(false);
-    const [result, setResult] = useState(null);
-    const [params, setParams] = useState({
-        city: prop?.city || 'Киров',
-        district: prop?.district || prop?.microdistrict || '',
-        rooms: prop?.rooms ?? 1,
-        total_area: prop?.area_total || 0,
-        deal_type: prop?.deal_type === 'rent' ? 'RENT' : 'SALE',
-    });
-
-    // Get all districts + microdistricts for current city
-    const districtOptions = params.city === 'Киров'
-        ? KIROV_DISTRICTS.flatMap(d => [d.name, ...d.microdistricts])
-        : [];
-
-    const calculate = () => {
-        const res = estimateOffline(params);
-        setResult(res);
-    };
-
-    const avgPerM2 = result?.price_per_m2;
-
-    return (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <button
-                style={{
-                    width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: 'inherit',
-                }}
-                onClick={() => setOpen(o => !o)}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ background: 'var(--primary-light)', padding: 8, borderRadius: 8, color: 'var(--primary)' }}>
-                        <Calculator size={18} />
-                    </div>
-                    <div style={{ textAlign: 'left' }}>
-                        <div style={{ fontWeight: 300, fontSize: 14 }}>Оценка по аналогам</div>
-                        {result ? (
-                            <div style={{ fontSize: 12, color: 'var(--success)', fontWeight: 300 }}>
-                                {result.estimated_avg.toLocaleString()} ₽
-                                {params.deal_type === 'RENT' ? '/мес' : ''}
-                                &nbsp;·&nbsp;{avgPerM2?.toLocaleString()} ₽/м²
-                            </div>
-                        ) : (
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Нажмите для расчёта</div>
-                        )}
-                    </div>
-                </div>
-                {open ? <ChevronUp size={18} color="var(--text-muted)" /> : <ChevronDown size={18} color="var(--text-muted)" />}
-            </button>
-
-            {open && (
-                <div style={{ padding: '0 16px 16px', borderTop: '1px solid var(--border-light)' }}>
-                    {/* Compact form containing only City and Rooms */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
-                        {/* City */}
-                        <div className="form-group">
-                            <label className="form-label">Город</label>
-                            <select
-                                className="form-select"
-                                value={params.city}
-                                onChange={e => setParams({ ...params, city: e.target.value })}
-                            >
-                                {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
-
-                        {/* Rooms */}
-                        <div className="form-group">
-                            <label className="form-label">Комнат</label>
-                            <select
-                                className="form-select"
-                                value={params.rooms}
-                                onChange={e => setParams({ ...params, rooms: parseInt(e.target.value) })}
-                            >
-                                <option value={0}>Студия</option>
-                                <option value={1}>1</option>
-                                <option value={2}>2</option>
-                                <option value={3}>3</option>
-                                <option value={4}>4+</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: 12 }}>
-                        <button
-                            className="btn btn-primary"
-                            style={{ height: 44, borderRadius: 14, padding: '0 20px', display: 'flex', alignItems: 'center', gap: 8 }}
-                            onClick={calculate}
-                        >
-                            <Calculator size={16} /> Анализ
-                        </button>
-                    </div>
-
-                    {result && (
-                        <div style={{ marginTop: 16 }} className="fade-in">
-                            {/* Result block */}
-                            <div style={{ background: 'var(--primary-light)', borderRadius: 12, padding: '16px', textAlign: 'center', marginBottom: 12 }}>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, letterSpacing: 0.5, marginBottom: 4 }}>
-                                    Оценочная стоимость {params.deal_type === 'RENT' ? '(аренда/мес)' : '(продажа)'}
-                                </div>
-                                <div style={{ fontSize: 28, fontWeight: 300, color: 'var(--primary)', letterSpacing: -1 }}>
-                                    {result.estimated_avg.toLocaleString()} ₽
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'center', gap: 20, marginTop: 6, fontSize: 12, color: 'var(--text-secondary)' }}>
-                                    <span>от {result.estimated_min.toLocaleString()}</span>
-                                    <span>до {result.estimated_max.toLocaleString()}</span>
-                                </div>
-                                <div style={{ marginTop: 10, display: 'flex', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <span className={`badge badge-${result.confidence === 'HIGH' ? 'success' : 'warning'}`} style={{ fontSize: 11 }}>
-                                        {result.confidence === 'HIGH' ? '✓ Высокая точность' : '~ Средняя точность'}
-                                    </span>
-                                    <span className="badge badge-muted" style={{ fontSize: 11 }}>
-                                        {result.price_per_m2.toLocaleString()} ₽/м²
-                                    </span>
-                                </div>
-                                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
-                                    Расчёт на основе средних цен {new Date().toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}
-                                </div>
-                            </div>
-
-                            {/* Avito search link */}
-                            <a
-                                href={result.avito_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-secondary"
-                                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16, textDecoration: 'none' }}
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    window.open(result.avito_url, '_blank', 'noopener,noreferrer');
-                                }}
-                            >
-                                <ExternalLink size={16} />
-                                Смотреть объявления на Авито
-                            </a>
-
-                            {/* Analogs list */}
-                            <div style={{ fontSize: 13, fontWeight: 300, marginBottom: 8, color: 'var(--text-secondary)' }}>
-                                Поиск аналогов на Авито
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {result.analogs.map(a => (
-                                    <div
-                                        key={a.id}
-                                        className="list-row"
-                                        onClick={() => window.open(a.source_url, '_blank', 'noopener,noreferrer')}
-                                    >
-                                        <div style={{ flex: 1 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                                                <span className="badge badge-subtle" style={{ fontSize: 11 }}>{a.label}</span>
-                                                <span style={{ fontWeight: 400, fontSize: 14, color: 'var(--text)' }}>
-                                                    {a.price.toLocaleString()} ₽
-                                                    {params.deal_type === 'RENT' ? '/мес' : ''}
-                                                </span>
-                                            </div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                                {typeof a.rooms === 'number' ? `${a.rooms}к` : a.rooms} · {a.total_area} м² · {a.district}
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--primary)' }}>
-                                            {a.source} <ExternalLink size={10} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-
-                            <div style={{ marginTop: 12, fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', lineHeight: 1.5 }}>
-                                * Оценка носит справочный характер. Ссылки ведут на поиск Авито по аналогичным параметрам.
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-        </div>
-    );
-}
 
 /* ─── BannerGenerator (Inlined to avoid module issues) ─────────────────────── */
 function BannerGenerator({ property, currentUser, onClose }) {
@@ -1406,10 +1222,7 @@ export function DetailsPage() {
                 </div>
 
                 {/* AI Ad Generator */}
-                {showAdGen && <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} initiallyOpen={true} />}
-
-                {/* Estimation Widget */}
-                <EstimationWidget prop={prop} />
+                {showAdGen && <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} initiallyOpen={true} autoGenerate={true} />}
 
                 {/* ИСТОРИЯ — Timeline Style */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>

@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Share2 } from 'lucide-react';
+import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -168,12 +168,6 @@ export function ListPage() {
                         const matches = state.matches.filter(m => m.property_id === prop.id);
                         const status = prop.status || 'active';
                         
-                        const handleDelete = (e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`Удалить объект ${prop.address || prop.city}?`)) {
-                                dispatch({ type: 'DELETE_PROPERTY', id: prop.id });
-                            }
-                        };
 
                         return (
                             <div 
@@ -235,22 +229,7 @@ export function ListPage() {
                                         </span>
                                     </div>
                                     
-                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, borderTop: '1px solid rgba(0,0,0,0.03)', paddingTop: 10 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <div style={{ width: 22, height: 22, borderRadius: 8, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                <Share2 size={12} color="var(--primary)" />
-                                            </div>
-                                            <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--primary)' }}>{matches.length} совпадений</span>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: 8 }}>
-                                            <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }} onClick={(e) => { e.stopPropagation(); navigate(`/properties/${prop.id}/edit`); }}>
-                                                <Pencil size={14} />
-                                            </button>
-                                            <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, border: 'none', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }} onClick={handleDelete}>
-                                                <Trash size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
+
                                 </div>
                             </div>
                         );

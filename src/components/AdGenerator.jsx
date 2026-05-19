@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Wand2, Copy, Check, ChevronDown, ChevronUp, Loader, RefreshCw } from 'lucide-react';
 import { BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS, MARKET_LABELS } from '../data/constants';
 
@@ -302,7 +302,7 @@ function LoadingStatus({ step }) {
 
 /* ─── Main Component ─────────────────────────────────────────────────────── */
 
-export function AdGenerator({ prop, realtorName, initiallyOpen = false }) {
+export function AdGenerator({ prop, realtorName, initiallyOpen = false, autoGenerate = false }) {
     const [open, setOpen]       = useState(initiallyOpen);
     const [loading, setLoading] = useState(false);
     const [loadStep, setLoadStep] = useState(0);
@@ -335,6 +335,14 @@ export function AdGenerator({ prop, realtorName, initiallyOpen = false }) {
             setLoading(false);
         }
     }, [prop, tone]);
+
+    // Auto-generate when mounted with autoGenerate=true
+    useEffect(() => {
+        if (autoGenerate && !result && !loading) {
+            generate();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoGenerate]);
 
     const handleCopy = useCallback(() => {
         const plain = result.replace(/\*\*(.+?)\*\*/g, '$1');
