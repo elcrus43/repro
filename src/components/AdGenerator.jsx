@@ -2,38 +2,83 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Wand2, Copy, Check, ChevronDown, ChevronUp, Loader, RefreshCw } from 'lucide-react';
 import { BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS, MARKET_LABELS } from '../data/constants';
 
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const ZHIPU_API_KEY = import.meta.env.VITE_ZHIPU_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
 
-/* ─── Low-level Gemini fetch ──────────────────────────────────────────────── */
+/* ─── Low-level Zhipu AI / GLM-4-Flash fetch ──────────────────────────────── */
 
 async function geminiRequest(contents, { useSearch = false, maxTokens = 600 } = {}) {
-    if (!GEMINI_API_KEY) throw new Error('Добавьте VITE_GEMINI_API_KEY в файл .env');
+    if (!ZHIPU_API_KEY) throw new Error('Добавьте VITE_ZHIPU_API_KEY или VITE_GEMINI_API_KEY в файл .env');
 
-    // v1beta needed for google_search tool; v1 for regular generation
-    const api = useSearch ? 'v1beta' : 'v1';
-    const url = `https://generativelanguage.googleapis.com/${api}/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+    const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+
+    // Convert Gemini structure to Zhipu / OpenAI structure
+    const messages = [];
+    let hasImage = false;
+
+    for (const msg of contents) {
+        const role = msg.role || 'user';
+        const parts = msg.parts || [];
+        const containsImage = parts.some(p => p.inlineData);
+
+        if (containsImage) {
+            hasImage = true;
+            const content = [];
+            for (const part of parts) {
+                if (part.text) {
+                    content.push({ type: 'text', text: part.text });
+                } else if (part.inlineData) {
+                    const mime = part.inlineData.mimeType || 'image/jpeg';
+                    const data = part.inlineData.data;
+                    content.push({
+                        type: 'image_url',
+                        image_url: {
+                            url: `data:${mime};base64,${data}`
+                        }
+                    });
+                }
+            }
+            messages.push({ role, content });
+        } else {
+            const textContent = parts.map(p => p.text || '').join('\n');
+            messages.push({ role, content: textContent });
+        }
+    }
+
+    const model = hasImage ? 'glm-4v-flash' : 'glm-4-flash';
 
     const body = {
-        contents,
-        generationConfig: { temperature: 0.6, maxOutputTokens: maxTokens },
+        model,
+        messages,
+        temperature: 0.6,
+        max_tokens: maxTokens,
     };
-    if (useSearch) {
-        body.tools = [{ google_search: {} }];
+
+    if (useSearch && !hasImage) {
+        body.tools = [{
+            type: 'web_search',
+            web_search: {
+                enable: true,
+                search_result: true
+            }
+        }];
     }
 
     const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ZHIPU_API_KEY}`
+        },
         body: JSON.stringify(body),
     });
 
     if (!res.ok) {
         const errText = await res.text();
-        throw new Error(`Gemini API error ${res.status}: ${errText}`);
+        throw new Error(`Zhipu API error ${res.status}: ${errText}`);
     }
 
     const data = await res.json();
-    return data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+    return data?.choices?.[0]?.message?.content?.trim() || '';
 }
 
 /* ─── Step 0: analyze property photos via Gemini Vision ─────────────────── */
@@ -94,9 +139,9 @@ async function fetchBuildingAndInfra(address, city) {
 1. О доме: Архитектурный стиль, год постройки, статус (бизнес/комфорт/премиум), безопасность (закрытая территория, охрана, видеонаблюдение), уровень входных групп, лифты (KONE/Otis и т.д.).
 2. Инфраструктура ценности: Премиальные фитнес-центры, частные школы/сады, популярные рестораны, парки, транспортные развязки, бизнес-кластеры в пешей доступности.
 Формат ответа — строго два блока:
-=== ГЛУБОКИЙ АНАЛИЗ ДОМА ===
+=== О ДОМЕ ===
 (факты-преимущества)
-=== ИНФРАСТРУКТУРА И ОКРУЖЕНИЕ ===
+=== ИНФРАСТРУКТУРА ===
 (факты-аргументы)
 Без общих фраз. Только конкретика, которая повышает цену.` ;
 
