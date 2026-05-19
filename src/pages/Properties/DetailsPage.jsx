@@ -18,10 +18,12 @@ import { AdGenerator } from '../../components/AdGenerator';
 /* ─── BannerGenerator (Inlined to avoid module issues) ─────────────────────── */
 function BannerGenerator({ property, currentUser, onClose }) {
     const canvasRef = React.useRef(null);
-    const [format, setFormat] = React.useState('story'); // 'story' (9:16) | 'post' (1:1)
-    const [theme, setTheme] = React.useState('light'); // 'light' | 'dark'
-    const [design, setDesign] = React.useState('minimal'); // 'classic' | 'minimal' | 'stripe' | 'split'
+    const [format, setFormat] = React.useState('story');
+    const [theme, setTheme] = React.useState('light');
+    const [design, setDesign] = React.useState('minimal');
     const [accentColor, setAccentColor] = React.useState('#0052FF');
+    const [accentColor2, setAccentColor2] = React.useState('#7C3AED');
+    const [borderWidth, setBorderWidth] = React.useState(8);
     const [stickers, setStickers] = React.useState([]);
     const [customSticker, setCustomSticker] = React.useState('');
     const [loading, setLoading] = React.useState(true);
@@ -34,8 +36,18 @@ function BannerGenerator({ property, currentUser, onClose }) {
         { name: 'Зеленый', value: '#2E7D32' },
         { name: 'Красный', value: '#C62828' },
         { name: 'Черный', value: '#1A1A1A' },
-        { name: 'Оранжевый (PornHub)', value: '#f47b20' },
-        { name: 'Розовый', value: '#e31b6d' }
+        { name: 'Оранжевый', value: '#f47b20' },
+        { name: 'Розовый', value: '#e31b6d' },
+        { name: 'Фиолетовый', value: '#7C3AED' },
+        { name: 'Бирюза', value: '#0891B2' },
+    ];
+    const GRADIENT_PRESETS = [
+        { name: 'Океан', a: '#0052FF', b: '#00C6FF' },
+        { name: 'Закат', a: '#F7971E', b: '#FFD200' },
+        { name: 'Малахит', a: '#11998e', b: '#38ef7d' },
+        { name: 'Аметист', a: '#7C3AED', b: '#EC4899' },
+        { name: 'Уголь', a: '#1A1A1A', b: '#434343' },
+        { name: 'Рубин', a: '#C62828', b: '#E91E63' },
     ];
 
     const formats = {
@@ -45,7 +57,7 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
     React.useEffect(() => {
         renderBanner();
-    }, [format, theme, design, property, imageOffset, accentColor, stickers, customSticker]);
+    }, [format, theme, design, property, imageOffset, accentColor, accentColor2, borderWidth, stickers, customSticker]);
 
     const renderBanner = async () => {
         setLoading(true);
@@ -162,12 +174,26 @@ function BannerGenerator({ property, currentUser, onClose }) {
 
             renderMinimalText(ctx, canvas, textSpace);
         } else if (design === 'stripe') {
-            // STRIPE: collage photos (main + thumbnails) + accent stripe at bottom
             renderStripeOverlay(ctx, canvas, loadedImages, drawCover);
         } else if (design === 'split') {
-            // SPLIT: left = photo(s) + gradient, right = dark/light panel with accent text
             const splitX = Math.round(canvas.width * 0.55);
             renderSplitOverlay(ctx, canvas, splitX, loadedImages, drawCover);
+        } else if (design === 'gradient') {
+            renderGradientOverlay(ctx, canvas, loadedImages, drawCover);
+        } else if (design === 'luxury') {
+            renderLuxuryOverlay(ctx, canvas, loadedImages, drawCover);
+        }
+
+        // Draw border frame (for non-luxury/gradient designs)
+        if (borderWidth > 0 && design !== 'luxury' && design !== 'gradient') {
+            const bw = borderWidth * 3;
+            const gradB = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+            gradB.addColorStop(0, accentColor);
+            gradB.addColorStop(1, accentColor2);
+            ctx.strokeStyle = gradB;
+            ctx.lineWidth = bw;
+            const m = bw / 2;
+            ctx.strokeRect(m, m, canvas.width - bw, canvas.height - bw);
         }
 
         // Draw Stickers
@@ -754,6 +780,112 @@ function BannerGenerator({ property, currentUser, onClose }) {
     };
 
 
+    // ── GRADIENT design: full-bleed photo + diagonal gradient overlay ──────
+    const renderGradientOverlay = (ctx, canvas, imgs, drawCover) => {
+        const w = canvas.width; const h = canvas.height;
+        drawCover(imgs[0], 0, 0, w, h);
+        // Diagonal gradient
+        const grad = ctx.createLinearGradient(0, h * 0.3, w, h);
+        grad.addColorStop(0, accentColor + 'CC');
+        grad.addColorStop(1, accentColor2 + 'EE');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+        // Border frame
+        if (borderWidth > 0) {
+            ctx.strokeStyle = accentColor2;
+            ctx.lineWidth = borderWidth * 3;
+            const m = borderWidth * 5;
+            ctx.strokeRect(m, m, w - m * 2, h - m * 2);
+        }
+        // Text block
+        const isDark = true;
+        const px = format === 'story' ? 90 : 70;
+        let y = format === 'story' ? h * 0.52 : h * 0.48;
+        const priceSize = format === 'story' ? 130 : 100;
+        ctx.font = `700 ${priceSize}px Oswald, sans-serif`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowColor = 'rgba(0,0,0,0.5)'; ctx.shadowBlur = 20;
+        ctx.fillText(formatNumber(property.price) + ' ₽', px, y);
+        ctx.shadowBlur = 0;
+        y += format === 'story' ? 70 : 55;
+        ctx.font = `300 ${format === 'story' ? 55 : 40}px Oswald, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+        ctx.fillText(getCleanAddress().slice(0, 38), px, y);
+        y += format === 'story' ? 55 : 42;
+        const parts = [];
+        if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : property.rooms + '-комн.');
+        if (property.area_total) parts.push(property.area_total + ' м²');
+        if (property.floor) parts.push(property.floor + '/' + (property.floors_total || '?') + ' эт.');
+        ctx.font = `200 ${format === 'story' ? 38 : 28}px Oswald, sans-serif`;
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillText(parts.join('  ·  '), px, y);
+        // Phone at bottom
+        const phoneY = h - (format === 'story' ? 160 : 120);
+        ctx.font = `600 ${format === 'story' ? 52 : 38}px Oswald, sans-serif`;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, phoneY);
+        if (currentUser?.full_name) {
+            ctx.font = `300 ${format === 'story' ? 34 : 24}px Oswald, sans-serif`;
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.fillText(currentUser.full_name, px, phoneY + (format === 'story' ? 48 : 36));
+        }
+    };
+
+    // ── LUXURY design: dark bg + gold gradient border + centered photo ──────
+    const renderLuxuryOverlay = (ctx, canvas, imgs, drawCover) => {
+        const w = canvas.width; const h = canvas.height;
+        const isDark = theme === 'dark';
+        // Dark or light background
+        const bg = isDark ? '#0A0A0A' : '#FAFAFA';
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
+        // Gradient border frame
+        const bw = borderWidth * 6;
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, accentColor);
+        grad.addColorStop(0.5, accentColor2);
+        grad.addColorStop(1, accentColor);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = bw;
+        ctx.strokeRect(bw / 2, bw / 2, w - bw, h - bw);
+        // Inner photo with padding
+        const pad = bw + (format === 'story' ? 30 : 22);
+        const photoH = format === 'story' ? h * 0.62 : h * 0.58;
+        drawCover(imgs[0], pad, pad, w - pad * 2, photoH - pad);
+        // Gradient accent line under photo
+        ctx.fillStyle = grad;
+        ctx.fillRect(pad, photoH + 4, w - pad * 2, format === 'story' ? 6 : 4);
+        // Text block
+        const textColor = isDark ? '#FFFFFF' : '#0A0A0A';
+        const px = pad + (format === 'story' ? 20 : 15);
+        let y = photoH + (format === 'story' ? 90 : 70);
+        ctx.font = `600 ${format === 'story' ? 110 : 80}px Oswald, sans-serif`;
+        ctx.fillStyle = grad;
+        ctx.fillText(formatNumber(property.price) + ' ₽', px, y);
+        y += format === 'story' ? 65 : 48;
+        ctx.font = `300 ${format === 'story' ? 48 : 34}px Oswald, sans-serif`;
+        ctx.fillStyle = textColor;
+        ctx.fillText(getCleanAddress().slice(0, 34), px, y);
+        y += format === 'story' ? 50 : 38;
+        const parts = [];
+        if (property.rooms !== undefined) parts.push(property.rooms === 0 ? 'Студия' : property.rooms + '-комн.');
+        if (property.area_total) parts.push(property.area_total + ' м²');
+        if (property.floor) parts.push(property.floor + '/' + (property.floors_total || '?') + ' эт.');
+        ctx.font = `200 ${format === 'story' ? 34 : 24}px Oswald, sans-serif`;
+        ctx.fillStyle = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)';
+        ctx.fillText(parts.join('  ·  '), px, y);
+        // Phone
+        const phoneY = h - (format === 'story' ? 170 : 130) - bw;
+        ctx.font = `600 ${format === 'story' ? 50 : 36}px Oswald, sans-serif`;
+        ctx.fillStyle = grad;
+        ctx.fillText(currentUser?.phone || '+7 (999) 000-00-00', px, phoneY);
+        if (currentUser?.full_name) {
+            ctx.font = `300 ${format === 'story' ? 32 : 22}px Oswald, sans-serif`;
+            ctx.fillStyle = isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)';
+            ctx.fillText(currentUser.full_name, px, phoneY + (format === 'story' ? 44 : 32));
+        }
+    };
+
     const download = () => {
         const link = document.createElement('a');
         link.download = `banner-${property.id}-${format}.png`;
@@ -798,65 +930,80 @@ function BannerGenerator({ property, currentUser, onClose }) {
                         </div>
                         <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Стиль дизайна</label>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <button className={`btn ${design === 'classic' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('classic')}>Классика</button>
-                            <button className={`btn ${design === 'minimal' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('minimal')}>Паспарту</button>
-                            <button className={`btn ${design === 'stripe' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('stripe')}>Полоса</button>
-                            <button className={`btn ${design === 'split' ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign('split')}>Сплит</button>
+                            {[['classic','Классика'],['minimal','Паспарту'],['stripe','Полоса'],['split','Сплит'],['gradient','Градиент'],['luxury','Люкс']].map(([d,l]) => (
+                                <button key={d} className={`btn ${design === d ? 'btn-primary' : 'btn-secondary'}`} style={{ fontSize: 13, padding: '8px' }} onClick={() => setDesign(d)}>{l}</button>
+                            ))}
                         </div>
                     </div>
 
-                    {/* Accent Color */}
-                    <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Акцентный цвет</label>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {/* Accent Colors */}
+                    <div style={{ marginBottom: 16 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Цвет 1 (акцент)</label>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                             {COLOR_OPTIONS.map(c => (
-                                <button 
-                                    key={c.value}
-                                    onClick={() => setAccentColor(c.value)}
-                                    style={{ 
-                                        width: 40, height: 40, borderRadius: '50%', background: c.value, border: accentColor === c.value ? '3px solid white' : 'none', cursor: 'pointer',
-                                        transition: 'transform 0.2s'
-                                    }}
-                                    title={c.name}
-                                />
+                                <button key={c.value} onClick={() => setAccentColor(c.value)}
+                                    style={{ width: 36, height: 36, borderRadius: '50%', background: c.value, border: accentColor === c.value ? '3px solid white' : '2px solid transparent', cursor: 'pointer' }}
+                                    title={c.name} />
+                            ))}
+                            <input type="color" value={accentColor} onChange={e => setAccentColor(e.target.value)}
+                                style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'none', padding: 0 }} />
+                        </div>
+                    </div>
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Цвет 2 (градиент)</label>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {COLOR_OPTIONS.map(c => (
+                                <button key={c.value} onClick={() => setAccentColor2(c.value)}
+                                    style={{ width: 36, height: 36, borderRadius: '50%', background: c.value, border: accentColor2 === c.value ? '3px solid white' : '2px solid transparent', cursor: 'pointer' }}
+                                    title={c.name} />
+                            ))}
+                            <input type="color" value={accentColor2} onChange={e => setAccentColor2(e.target.value)}
+                                style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer', background: 'none', padding: 0 }} />
+                        </div>
+                    </div>
+
+                    {/* Gradient Presets */}
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Готовые градиенты</label>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {GRADIENT_PRESETS.map(g => (
+                                <button key={g.name} onClick={() => { setAccentColor(g.a); setAccentColor2(g.b); }}
+                                    title={g.name}
+                                    style={{ width: 36, height: 36, borderRadius: 10, cursor: 'pointer', border: '2px solid rgba(255,255,255,0.2)',
+                                        background: `linear-gradient(135deg, ${g.a}, ${g.b})` }} />
                             ))}
                         </div>
+                    </div>
+
+                    {/* Border Width */}
+                    <div style={{ marginBottom: 20 }}>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Рамка: {borderWidth > 0 ? borderWidth : 'нет'}</label>
+                        <input type="range" min={0} max={20} value={borderWidth} onChange={e => setBorderWidth(Number(e.target.value))}
+                            style={{ width: '100%', accentColor: accentColor }} />
                     </div>
 
                     {/* Stickers */}
                     <div style={{ marginBottom: 24 }}>
-                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Стикеры преимуществ</label>
+                        <label style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 8, display: 'block' }}>Стикеры</label>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                             {STICKER_OPTIONS.map(s => (
-                                <button 
-                                    key={s}
-                                    onClick={() => setStickers(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
-                                    style={{ 
-                                        padding: '8px 12px', borderRadius: 10, fontSize: 12, border: 'none', cursor: 'pointer',
-                                        background: stickers.includes(s) ? accentColor : 'rgba(255,255,255,0.1)',
-                                        color: 'white', fontWeight: 400
-                                    }}
-                                >
+                                <button key={s} onClick={() => setStickers(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])}
+                                    style={{ padding: '8px 12px', borderRadius: 10, fontSize: 12, border: 'none', cursor: 'pointer',
+                                        background: stickers.includes(s) ? accentColor : 'rgba(255,255,255,0.1)', color: 'white' }}>
                                     {s}
                                 </button>
                             ))}
                         </div>
-                        <input 
-                            type="text" 
-                            placeholder="Свой текст на стикер..." 
-                            value={customSticker}
+                        <input type="text" placeholder="Свой текст на стикер..." value={customSticker}
                             onChange={(e) => setCustomSticker(e.target.value)}
-                            style={{ 
-                                width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                borderRadius: 10, padding: '10px 14px', color: 'white', fontSize: 12, outline: 'none'
-                            }}
-                        />
+                            style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: 10, padding: '10px 14px', color: 'white', fontSize: 12, outline: 'none' }} />
                     </div>
 
                     {/* Actions */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 40 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 }}>
                         <button className="btn btn-secondary" style={{ padding: '12px' }} onClick={() => setImageOffset(o => o + 1)}>Другие фото</button>
-                        <button className="btn btn-secondary" style={{ padding: '12px' }} onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>{theme === 'light' ? 'Темная тема' : 'Светлая тема'}</button>
+                        <button className="btn btn-secondary" style={{ padding: '12px' }} onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}>{theme === 'light' ? '🌙 Тёмная' : '☀️ Светлая'}</button>
                     </div>
                 </div>
 
