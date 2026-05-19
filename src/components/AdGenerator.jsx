@@ -16,7 +16,8 @@ async function geminiRequest(contents, { useSearch = false, maxTokens = 600 } = 
     let hasImage = false;
 
     for (const msg of contents) {
-        const role = msg.role || 'user';
+        let role = msg.role || 'user';
+        if (role === 'model') role = 'assistant';
         const parts = msg.parts || [];
         const containsImage = parts.some(p => p.inlineData);
 
