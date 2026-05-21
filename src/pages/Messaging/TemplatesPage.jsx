@@ -108,11 +108,11 @@ export function TemplatesPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000,
+                background: 'var(--topbar-bg)', backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px', borderBottom: '1px solid var(--border-light)', zIndex: 1000,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-                <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
@@ -128,14 +128,14 @@ export function TemplatesPage() {
 
             <div className="page-content" style={{ padding: '20px 20px 120px' }}>
                 {offline && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: '#fef2f2', borderRadius: 16, border: '1px solid #fee2e2', fontSize: 12, fontWeight: 700, color: '#dc2626', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', background: 'var(--danger-light)', borderRadius: 16, border: '1px solid rgba(239,68,68,0.2)', fontSize: 12, fontWeight: 700, color: 'var(--danger)', marginBottom: 20 }}>
                         <WifiOff size={16} />
                         <span>Сервер недоступен — данные сохраняются локально</span>
                     </div>
                 )}
 
                 {showNew && (
-                    <div className="card fade-in" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 12px 48px rgba(0,82,255,0.08)', background: 'white', marginBottom: 24 }}>
+                    <div className="card fade-in" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 12px 48px rgba(0,82,255,0.08)', background: 'var(--surface)', marginBottom: 24 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
                             <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Layout size={20} />
@@ -146,12 +146,12 @@ export function TemplatesPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Название</label>
-                                <input className="form-input" style={{ height: 50, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={newTpl.name} onChange={e => setNewTpl({ ...newTpl, name: e.target.value })} placeholder="Например: Приглашение на показ" autoFocus />
+                                <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--surface)', border: '1.5px solid rgba(0,0,0,0.05)' }} value={newTpl.name} onChange={e => setNewTpl({ ...newTpl, name: e.target.value })} placeholder="Например: Приглашение на показ" autoFocus />
                             </div>
 
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Категория</label>
-                                <select className="form-select" style={{ height: 50, borderRadius: 14, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)' }} value={newTpl.category} onChange={e => setNewTpl({ ...newTpl, category: e.target.value })}>
+                                <select className="form-select" style={{ height: 50, borderRadius: 14, background: 'var(--surface)', border: '1.5px solid rgba(0,0,0,0.05)' }} value={newTpl.category} onChange={e => setNewTpl({ ...newTpl, category: e.target.value })}>
                                     <option value="Common">Общее</option>
                                     <option value="Viewing">Показ</option>
                                     <option value="Offer">Предложение</option>
@@ -161,7 +161,7 @@ export function TemplatesPage() {
 
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Текст сообщения</label>
-                                <textarea className="form-textarea" style={{ borderRadius: 16, background: '#f8fafc', border: '1.5px solid rgba(0,0,0,0.05)', padding: 16 }} rows="5" value={newTpl.body} onChange={e => setNewTpl({ ...newTpl, body: e.target.value })} placeholder={`Здравствуйте, {{client_name}}!`} />
+                                <textarea className="form-textarea" style={{ borderRadius: 16, background: 'var(--surface)', border: '1.5px solid rgba(0,0,0,0.05)', padding: 16 }} rows="5" value={newTpl.body} onChange={e => setNewTpl({ ...newTpl, body: e.target.value })} placeholder={`Здравствуйте, {{client_name}}!`} />
                                 <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, fontWeight: 600, opacity: 0.6 }}>
                                     Переменные: {'{{client_name}}'}, {'{{property_address}}'}, {'{{agent_name}}'}
                                 </div>
@@ -181,7 +181,7 @@ export function TemplatesPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {templates.length === 0 && !showNew && (
                             <div style={{ textAlign: 'center', padding: '60px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-                                <div style={{ width: 80, height: 80, borderRadius: 32, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: 0.2, boxShadow: '0 8px 24px rgba(0,0,0,0.03)' }}>
+                                <div style={{ width: 80, height: 80, borderRadius: 32, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)', opacity: 0.2, boxShadow: '0 8px 24px rgba(0,0,0,0.03)' }}>
                                     <MessageSquare size={40} />
                                 </div>
                                 <div>
@@ -194,7 +194,7 @@ export function TemplatesPage() {
                             </div>
                         )}
                         {templates.map(t => (
-                            <div key={t.id} className="card fade-in" style={{ padding: 24, borderRadius: 28, border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)', background: 'white' }}>
+                            <div key={t.id} className="card fade-in" style={{ padding: 24, borderRadius: 28, border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                                     <div style={{ flex: 1 }}>
                                         <div className="font-oswald" style={{ fontWeight: 800, fontSize: 18, textTransform: 'uppercase', color: 'var(--text)' }}>{t.name}</div>
@@ -204,7 +204,7 @@ export function TemplatesPage() {
                                                 {categoryLabel[t.category] || t.category}
                                             </div>
                                             {t._local && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: '#fef2f2', color: '#dc2626', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: 'var(--danger-light)', color: 'var(--danger)', fontSize: 10, fontWeight: 800, textTransform: 'uppercase' }}>
                                                     <WifiOff size={12} />
                                                     Локальный
                                                 </div>
@@ -218,13 +218,13 @@ export function TemplatesPage() {
                                 <div style={{
                                     fontSize: 13,
                                     color: 'var(--text-secondary)',
-                                    background: '#f8fafc',
+                                    background: 'var(--bg-light)',
                                     padding: '16px',
                                     borderRadius: 16,
                                     lineHeight: 1.6,
                                     whiteSpace: 'pre-wrap',
                                     fontFamily: 'monospace',
-                                    border: '1px solid rgba(0,0,0,0.02)',
+                                    border: '1px solid var(--border-light)',
                                     fontWeight: 500
                                 }}>
                                     {t.body}

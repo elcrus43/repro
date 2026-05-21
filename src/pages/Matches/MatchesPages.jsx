@@ -39,10 +39,10 @@ export function MatchesPage() {
         <div className="page fade-in">
             {/* Sticky Header — Open Design */}
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -62,7 +62,7 @@ export function MatchesPage() {
                         className={`tab-filter ${filter === v ? 'active' : ''}`} 
                         style={{ 
                             padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: filter === v ? 'var(--primary)' : 'white',
+                            background: filter === v ? 'var(--primary)' : 'var(--surface)',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
                         }}
@@ -104,7 +104,7 @@ function MatchCard({ match: m, onClick }) {
 
     return (
         <div className="card card-clickable" onClick={onClick} style={{ 
-            padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', position: 'relative', overflow: 'hidden'
+            padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative', overflow: 'hidden'
         }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -146,7 +146,7 @@ function MatchCard({ match: m, onClick }) {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'center', margin: '-6px 0' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 1 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 1 }}>
                         <TrendingUp size={16} />
                     </div>
                 </div>
@@ -259,7 +259,7 @@ export function MatchDetailPage() {
 
     return (
         <div className="page fade-in" style={{ paddingBottom: 120 }}>
-            <div className="topbar" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)', padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <div className="topbar" style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)', padding: '20px', borderBottom: '1px solid var(--border-light)' }}>
                 <button className="topbar-back" onClick={() => navigate('/matches')} style={{ borderRadius: 14 }}>←</button>
                 <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontWeight: 300 }}>Анализ совпадения</span>
                 <div style={{ 
@@ -274,7 +274,7 @@ export function MatchDetailPage() {
             <div className="page-content" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 
                 {/* Score Summary Card */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                         <span className="font-oswald" style={{ fontWeight: 300, fontSize: 18 }}>{lvl.label}</span>
                         <div style={{ 
@@ -293,7 +293,7 @@ export function MatchDetailPage() {
 
                 {/* Property Card */}
                 {prop && (
-                    <div className="card card-clickable" onClick={() => navigate(`/properties/${prop.id}`)} style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate(`/properties/${prop.id}`)} style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 300, color: 'var(--primary)', fontSize: 11, marginBottom: 8 }}>Объект в продаже</div>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 4 }}>{formatPrice(prop.price)}</div>
                         <div style={{ fontSize: 14, fontWeight: 300, marginBottom: 4 }}>{prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} · {prop.area_total}м² · {prop.floor}/{prop.floors_total} эт.</div>
@@ -302,14 +302,14 @@ export function MatchDetailPage() {
                 )}
 
                 <div style={{ display: 'flex', justifyContent: 'center', margin: '-8px 0' }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', boxShadow: '0 8px 24px rgba(0,0,0,0.06)', zIndex: 1 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', boxShadow: '0 8px 24px rgba(0,0,0,0.06)', zIndex: 1 }}>
                         <TrendingUp size={20} />
                     </div>
                 </div>
 
                 {/* Buyer Card */}
                 {buyer && (
-                    <div className="card card-clickable" onClick={() => navigate(`/clients/${buyer.id}`)} style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate(`/clients/${buyer.id}`)} style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 300, color: '#f59e0b', fontSize: 11, marginBottom: 8 }}>Запрос на покупку</div>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 4 }}>{buyer.full_name}</div>
                         {req && (
@@ -322,7 +322,7 @@ export function MatchDetailPage() {
                 )}
 
                 {/* Comments Card */}
-                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div className="font-oswald" style={{ fontWeight: 300, fontSize: 14, marginBottom: 12, color: 'var(--text-muted)' }}>Заметки риелтора</div>
                     <textarea className="form-textarea" style={{ minHeight: 80, borderRadius: 16, background: 'var(--bg-light)', border: 'none', padding: 12, fontWeight: 300 }} value={comment} onChange={e => setComment(e.target.value)} placeholder="Заметки по этому совпадению..." />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
@@ -337,7 +337,7 @@ export function MatchDetailPage() {
 
                 {/* Showing Form Section */}
                 {showShowingForm && (
-                    <div className="card fade-in" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', borderRadius: 32, background: 'white' }}>
+                    <div className="card fade-in" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.1)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 300, marginBottom: 12 }}>Назначить показ</div>
                         <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', marginBottom: 12 }} type="datetime-local" value={showingDate} onChange={e => setShowingDate(e.target.value)} />
                         <div style={{ display: 'flex', gap: 8 }}>
@@ -357,18 +357,18 @@ export function MatchDetailPage() {
                         {buyer && (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                                 <a href={`tel:${buyer.phone}`} className="card-clickable" style={{ 
-                                    height: 56, borderRadius: 18, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--primary)', border: '1px solid var(--border-light)'
+                                    height: 56, borderRadius: 18, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--primary)', border: '1px solid var(--border-light)'
                                 }}><Phone size={18} /> <span style={{ fontSize: 13, fontWeight: 300 }}>Звонок</span></a>
                                 
                                 <button className="card-clickable" style={{ 
-                                    height: 56, borderRadius: 18, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--primary)', border: '1px solid var(--border-light)'
+                                    height: 56, borderRadius: 18, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--primary)', border: '1px solid var(--border-light)'
                                 }} onClick={() => setIsMsgModalOpen(true)}><Send size={18} /> <span style={{ fontSize: 13, fontWeight: 300 }}>Шаблон</span></button>
                             </div>
                         )}
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             <button className="card-clickable" style={{ 
-                                height: 56, borderRadius: 18, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-secondary)', border: '1px solid var(--border-light)'
+                                height: 56, borderRadius: 18, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-secondary)', border: '1px solid var(--border-light)'
                             }} onClick={handleGeneratePublicLink} disabled={isGeneratingLink}>
                                 <Share2 size={18} /> <span style={{ fontSize: 13, fontWeight: 300 }}>Ссылка</span>
                             </button>

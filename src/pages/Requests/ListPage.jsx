@@ -43,10 +43,10 @@ export function ListPage() {
         <div className="page fade-in">
             {/* Sticky Header — Open Design */}
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(20px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -79,13 +79,13 @@ export function ListPage() {
                     <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 12, gap: 4 }}>
                         <button style={{ 
                             flex: 1, padding: '10px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 300,
-                            background: scope === 'all' ? 'white' : 'transparent', 
+                            background: scope === 'all' ? 'var(--surface)' : 'transparent', 
                             boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'all' ? 'var(--primary)' : 'var(--text-muted)' 
                         }} onClick={() => setScope('all')}>Все</button>
                         <button style={{ 
                             flex: 1, padding: '10px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 300,
-                            background: scope === 'mine' ? 'white' : 'transparent', 
+                            background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
                             boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'mine' ? 'var(--primary)' : 'var(--text-muted)' 
                         }} onClick={() => setScope('mine')}>Мои</button>
@@ -99,7 +99,7 @@ export function ListPage() {
                         className={`tab-filter ${filter === val ? 'active' : ''}`} 
                         style={{ 
                             padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: filter === val ? 'var(--primary)' : 'white',
+                            background: filter === val ? 'var(--primary)' : 'var(--surface)',
                             color: filter === val ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
                         }}
@@ -126,7 +126,7 @@ export function ListPage() {
                         const matches = state.matches.filter(m => m.request_id === req.id);
                         return (
                             <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)} style={{ 
-                                padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', position: 'relative'
+                                padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative'
                             }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                                     <div style={{ flex: 1 }}>
@@ -184,7 +184,7 @@ export function ListPage() {
                             onClick={prevPage}
                             disabled={!hasPrev}
                             style={{ 
-                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'white', color: 'var(--text)',
+                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasPrev ? 1 : 0.4,
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
@@ -199,7 +199,7 @@ export function ListPage() {
                             onClick={nextPage}
                             disabled={!hasNext}
                             style={{ 
-                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'white', color: 'var(--text)',
+                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasNext ? 1 : 0.4,
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}

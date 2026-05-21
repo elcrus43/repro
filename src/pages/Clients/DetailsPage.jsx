@@ -13,7 +13,7 @@ export function DetailsPage() {
 
     if (!client) return (
         <div className="page">
-            <div className="topbar" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)' }}>
+            <div className="topbar" style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)' }}>
                 <button className="topbar-back" onClick={() => navigate('/clients')}>←</button>
                 <span className="topbar-title font-oswald">Клиент не найден</span>
             </div>
@@ -45,16 +45,16 @@ export function DetailsPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 zIndex: 1000,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
             }}>
-                <button onClick={() => navigate('/clients')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                <button onClick={() => navigate('/clients')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
@@ -76,7 +76,7 @@ export function DetailsPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 
                 {/* Profile Card */}
-                <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white', textAlign: 'center' }}>
+                <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)', textAlign: 'center' }}>
                     <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                         {client.client_types?.map(t => (
@@ -120,7 +120,7 @@ export function DetailsPage() {
                 </div>
 
                 {/* Contacts Section */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 20 }}>Контактные данные</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -157,18 +157,18 @@ export function DetailsPage() {
 
                 {/* Objects & Requests Summary */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div className="card card-clickable" onClick={() => navigate(`/properties?client=${id}`)} style={{ padding: '20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate(`/properties?client=${id}`)} style={{ padding: '20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
                         <div style={{ fontSize: 24, fontWeight: 300, color: 'var(--primary)', marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{myProperties.length}</div>
                         <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)' }}>Объектов</div>
                     </div>
-                    <div className="card card-clickable" onClick={() => navigate(`/requests?client=${id}`)} style={{ padding: '20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate(`/requests?client=${id}`)} style={{ padding: '20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
                         <div style={{ fontSize: 24, fontWeight: 300, color: 'var(--primary)', marginBottom: 4, fontFamily: "'Oswald', sans-serif" }}>{myRequests.length}</div>
                         <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)' }}>Запросов</div>
                     </div>
                 </div>
 
                 {/* Recent Items List */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Последняя активность</div>
                         <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)}><Plus size={18} /></button>
@@ -202,7 +202,7 @@ export function DetailsPage() {
 
                 {/* Notes Card */}
                 {client.notes && (
-                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 12 }}>Особые заметки</div>
                         <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{client.notes}</div>
                     </div>

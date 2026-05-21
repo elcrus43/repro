@@ -36,11 +36,11 @@ export function DetailsPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000,
+                background: 'var(--topbar-bg)', backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px', borderBottom: '1px solid var(--border-light)', zIndex: 1000,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between'
             }}>
-                <button onClick={() => navigate('/requests')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                <button onClick={() => navigate('/requests')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
@@ -62,7 +62,7 @@ export function DetailsPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 16 }}>
                 
                 {/* Header Card */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
                         <div style={{ flex: 1 }}>
                             <div className="font-oswald" style={{ fontSize: 22, fontWeight: 800, marginBottom: 6, textTransform: 'uppercase' }}>
@@ -97,7 +97,7 @@ export function DetailsPage() {
                 </div>
 
                 {/* Clients Card */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)', marginBottom: 20 }}>Покупатели</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {clients.map(c => (
@@ -119,7 +119,7 @@ export function DetailsPage() {
                 </div>
 
                 {/* Requirements Card */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div className="font-oswald" style={{ fontWeight: 700, fontSize: 18, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)', marginBottom: 20 }}>Характеристики</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -147,7 +147,7 @@ export function DetailsPage() {
 
                 {/* Notes Card */}
                 {req.notes && (
-                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 700, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)', marginBottom: 12 }}>Комментарий</div>
                         <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{req.notes}</div>
                     </div>

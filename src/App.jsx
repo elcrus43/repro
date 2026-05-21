@@ -63,8 +63,8 @@ function BottomNav() {
         position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
         width: '100%', maxWidth: 430,
         height: 'calc(76px + env(safe-area-inset-bottom))', 
-        background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(24px) saturate(180%)',
-        borderTop: '1px solid rgba(0,0,0,0.05)',
+        background: 'var(--nav-bg)', backdropFilter: 'blur(24px) saturate(180%)',
+        borderTop: '1px solid var(--nav-border)',
         display: 'flex', justifyContent: 'space-around', alignItems: 'center',
         padding: `0 4px calc(12px + env(safe-area-inset-bottom))`, zIndex: 1000,
         boxShadow: '0 -10px 40px rgba(0,0,0,0.05)'
@@ -97,14 +97,14 @@ function BottomNav() {
             )}
           </div>
           <span style={{ 
-              fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.01em',
-              opacity: isActive(tab.path) ? 1 : 0.6,
-              fontFamily: "'Oswald', sans-serif",
+              fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
+              color: isActive(tab.path) ? 'var(--primary)' : 'var(--text-secondary)',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               width: '100%',
-              textAlign: 'center'
+              textAlign: 'center',
+              opacity: isActive(tab.path) ? 1 : 0.75,
           }}>{tab.label}</span>
           
 
@@ -128,7 +128,7 @@ function LoadingScreen() {
     <div className="loading-screen" style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       height: '100vh', width: '100vw', position: 'fixed', top: 0, left: 0,
-      background: 'radial-gradient(circle at center, #f8fafc 0%, #f1f5f9 100%)',
+      background: 'radial-gradient(circle at center, var(--surface) 0%, var(--bg) 100%)',
       zIndex: 9999, overflow: 'hidden'
     }}>
       {/* Background Decorative Elements */}
@@ -155,7 +155,7 @@ function LoadingScreen() {
         }} />
       </div>
 
-      <div style={{ width: 140, height: 4, background: 'rgba(0,0,0,0.05)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+      <div style={{ width: 140, height: 4, background: 'var(--border)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
         <div className="loading-progress" style={{ 
             position: 'absolute', height: '100%', width: '40%', 
             background: 'linear-gradient(90deg, var(--primary) 0%, #3b82f6 100%)',
@@ -192,8 +192,8 @@ function LoadingScreen() {
             <button 
               className="card-clickable"
               style={{ 
-                  height: 52, borderRadius: 16, border: '1px solid rgba(0,0,0,0.1)', 
-                  background: 'white', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13
+                  height: 52, borderRadius: 16, border: '1px solid var(--border)', 
+                  background: 'var(--surface)', color: 'var(--text-secondary)', fontWeight: 600, fontSize: 13
               }}
               onClick={() => {
                 localStorage.clear();

@@ -486,21 +486,6 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         result = await withRetry(() => supabase.from('matches').upsert(action.match));
         break;
 
-      /* ── Закрытие сделки ─────────────────────────────────────────────── */
-      case 'CLOSE_DEAL': {
-        const { matchId, propertyId, requestId, now } = action;
-        const results = await Promise.all([
-          supabase.from('matches').update({ status: 'deal', updated_at: now }).eq('id', matchId),
-          supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('property_id', propertyId).neq('id', matchId),
-          supabase.from('matches').update({ status: 'rejected', updated_at: now }).eq('request_id', requestId).neq('id', matchId),
-          supabase.from('properties').update({ status: 'sold', updated_at: now }).eq('id', propertyId),
-          supabase.from('requests').update({ status: 'found', updated_at: now }).eq('id', requestId),
-        ]);
-        results.forEach((res, i) => {
-          if (res.error) console.error(`[Supabase Deal Sync Error ${i}]`, res.error);
-        });
-        return; // Ранний выход — нет единственного result для проверки
-      }
 
       /* ── Показы ──────────────────────────────────────────────────────── */
       case 'ADD_SHOWING': {
@@ -667,7 +652,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       case 'CLOSE_DEAL': {
         const { propertyId, requestId, matchId, now } = action;
         // Run updates in parallel
-        await Promise.all([
+        const results = await Promise.all([
           withRetry(() => supabase.from('properties').update({ status: 'sold', updated_at: now }).eq('id', propertyId)),
           withRetry(() => supabase.from('requests').update({ status: 'found', updated_at: now }).eq('id', requestId)),
           withRetry(() => supabase.from('matches').update({ status: 'deal', updated_at: now }).eq('id', matchId)),
@@ -678,6 +663,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
               .neq('id', matchId)
           )
         ]);
+        const firstError = results.find(res => res?.error);
+        if (firstError) {
+          result = firstError;
+        }
         break;
       }
 

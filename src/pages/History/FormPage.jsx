@@ -12,7 +12,7 @@ function FormCard({ title, children, description }) {
         <div className="card fade-in" style={{ 
             padding: '20px', marginBottom: 16, border: 'none', 
             boxShadow: '0 4px 16px rgba(0,0,0,0.03)', borderRadius: 20,
-            background: 'white'
+            background: 'var(--surface)'
         }}>
             <div style={{ marginBottom: 16 }}>
                 <div className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
@@ -112,10 +112,10 @@ export function FormPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -125,7 +125,7 @@ export function FormPage() {
                     onClick={() => navigate(-1)}
                     className="card-clickable"
                     style={{ 
-                        width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white',
+                        width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', 
                         boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)'
                     }}
@@ -160,7 +160,7 @@ export function FormPage() {
                     <FormCard title="Детали события" icon={<Home size={20} />} description="Выберите объект и тип встречи">
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Объект недвижимости *</label>
-                            <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: '#f8fafc' }}>
+                            <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="">— Выбрать объект —</option>
                                 {allProperties.map(p => (
                                     <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
@@ -170,7 +170,7 @@ export function FormPage() {
 
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Тип события</label>
-                            <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: '#f8fafc' }}>
+                            <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="showing">Показ</option>
                                 <option value="meeting">Встреча с собственником</option>
                                 <option value="viewing">Просмотр</option>
@@ -194,11 +194,11 @@ export function FormPage() {
                             </div>
 
                             {showNewClient ? (
-                                <div className="fade-in" style={{ background: '#f8fafc', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'white' }} placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
+                                <div className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
                                     <input
                                         className="form-input"
-                                        style={{ borderRadius: 12, height: 44, background: 'white' }}
+                                        style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
                                         placeholder="+7 (___) ___-__-__"
                                         value={newClientPhone}
                                         type="tel"
@@ -222,12 +222,12 @@ export function FormPage() {
                     <FormCard title="Время и статус" icon={<Clock size={20} />} description="Когда состоится встреча">
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Дата и время *</label>
-                            <input className="form-input" type="datetime-local" value={form.showing_date} onChange={e => setForm({ ...form, showing_date: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: '#f8fafc' }} />
+                            <input className="form-input" type="datetime-local" value={form.showing_date} onChange={e => setForm({ ...form, showing_date: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }} />
                         </div>
 
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Текущий статус</label>
-                            <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: '#f8fafc' }}>
+                            <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="planned">Запланирован</option>
                                 <option value="completed">Проведен</option>
                                 <option value="failed">Не состоялся</option>
@@ -238,7 +238,7 @@ export function FormPage() {
                     <FormCard title="Итоги" icon={<MessageSquare size={20} />} description="Зафиксируйте результат встречи">
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Отзыв клиента</label>
-                            <select className="form-select" value={form.client_feedback || ''} onChange={e => setForm({ ...form, client_feedback: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: '#f8fafc' }}>
+                            <select className="form-select" value={form.client_feedback || ''} onChange={e => setForm({ ...form, client_feedback: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="">— Выбрать —</option>
                                 <option value="interested">Заинтересован</option>
                                 <option value="other_options">Ищет другие варианты</option>
@@ -252,7 +252,7 @@ export function FormPage() {
 
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Комментарий</label>
-                            <textarea className="form-textarea" rows={4} value={form.feedback_comment || ''} onChange={e => setForm({ ...form, feedback_comment: e.target.value })} placeholder="Заметки по встрече, договоренности..." style={{ borderRadius: 16, border: '1.5px solid rgba(0,0,0,0.05)', background: '#f8fafc', padding: 16 }} />
+                            <textarea className="form-textarea" rows={4} value={form.feedback_comment || ''} onChange={e => setForm({ ...form, feedback_comment: e.target.value })} placeholder="Заметки по встрече, договоренности..." style={{ borderRadius: 16, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)', padding: 16 }} />
                         </div>
                     </FormCard>
 

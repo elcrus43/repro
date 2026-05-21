@@ -80,10 +80,10 @@ export function ListPage() {
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             {/* Premium Glassmorphic Topbar */}
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -143,11 +143,11 @@ export function ListPage() {
 
                             return (
                                 <div key={s.id} className="card" style={{ 
-                                    border: '1.5px solid #fee2e2', background: '#fffafa', marginBottom: 16,
+                                    border: '1.5px solid rgba(239, 68, 68, 0.2)', background: 'var(--danger-light)', marginBottom: 16,
                                     boxShadow: '0 8px 24px rgba(220, 38, 38, 0.04)'
                                 }}>
                                     <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-                                        <div style={{ width: 40, height: 40, borderRadius: 12, background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <AlertCircle size={20} />
                                         </div>
                                         <div>
@@ -163,7 +163,7 @@ export function ListPage() {
                                                     <button key={f.val} className="card-clickable" 
                                                         style={{ 
                                                             flex: 1, minWidth: '80px', padding: '12px 8px', borderRadius: 14, 
-                                                            background: 'white', border: '1px solid rgba(0,0,0,0.05)',
+                                                            background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.05)',
                                                             fontSize: 11, fontWeight: 700, textAlign: 'center'
                                                         }} 
                                                         onClick={() => saveFeedback(s, f.val)}
@@ -174,7 +174,7 @@ export function ListPage() {
                                             </div>
                                             <textarea 
                                                 className="form-textarea" 
-                                                style={{ borderRadius: 16, fontSize: 13, background: 'white' }}
+                                                style={{ borderRadius: 16, fontSize: 13, background: 'var(--surface)' }}
                                                 value={feedbackComment} 
                                                 onChange={e => setFeedbackComment(e.target.value)} 
                                                 placeholder="Детали встречи..." 
@@ -196,7 +196,7 @@ export function ListPage() {
                                             </button>
                                             <button 
                                                 className="card-clickable" 
-                                                style={{ flex: 1, height: 44, background: 'white', border: '1px solid #fee2e2', color: '#dc2626', borderRadius: 14, fontWeight: 700, fontSize: 12 }} 
+                                                style={{ flex: 1, height: 44, background: 'var(--surface)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', borderRadius: 14, fontWeight: 700, fontSize: 12 }} 
                                                 onClick={() => { if (window.confirm('Отметить как "Не состоялся"?')) saveFeedback(s, 'failed'); }}
                                             >
                                                 НЕТ
@@ -210,13 +210,13 @@ export function ListPage() {
                 )}
 
                 {/* Premium Calendar */}
-                <div className="card" style={{ padding: '24px 20px', marginBottom: 32 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
-                        <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.03)' }} onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}>
+                <div className="card" style={{ padding: '20px 16px', marginBottom: 24, border: '1px solid var(--border)', borderRadius: 24 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                        <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}>
                             <ChevronLeft size={18} />
                         </button>
-                        <span className="font-oswald" style={{ fontWeight: 800, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{monthNames[calMonth]} {calYear}</span>
-                        <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.03)' }} onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}>
+                        <span className="font-oswald" style={{ fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)' }}>{monthNames[calMonth]} {calYear}</span>
+                        <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}>
                             <ChevronRight size={18} />
                         </button>
                     </div>
@@ -238,7 +238,7 @@ export function ListPage() {
                                     onClick={() => setSelectedDate(ds)}
                                     style={{
                                         aspectRatio: '1/1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                        borderRadius: 12, border: 'none', fontSize: 14, fontWeight: isSel ? 800 : 600,
+                                        borderRadius: 10, border: 'none', fontSize: 13, fontWeight: isSel ? 800 : 600,
                                         background: isSel ? 'var(--primary)' : isToday ? 'var(--primary-light)' : 'transparent',
                                         color: isSel ? 'white' : isToday ? 'var(--primary)' : 'var(--text)',
                                         position: 'relative', transition: 'all 0.2s', cursor: 'pointer',
@@ -247,7 +247,7 @@ export function ListPage() {
                                 >
                                     {d}
                                     {hasEv && !isSel && (
-                                        <div style={{ position: 'absolute', bottom: 4, width: 4, height: 4, borderRadius: '50%', background: isToday ? 'var(--primary)' : 'rgba(0,0,0,0.2)' }} />
+                                        <div style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: '50%', background: isToday ? 'var(--primary)' : 'var(--text-muted)' }} />
                                     )}
                                 </button>
                             );
@@ -316,7 +316,7 @@ export function ListPage() {
 
                                     {s.client_feedback && (
                                         <div style={{ 
-                                            marginTop: 16, padding: '12px 14px', borderRadius: 14, background: '#f8fafc',
+                                            marginTop: 16, padding: '12px 14px', borderRadius: 14, background: 'var(--bg-light)',
                                             borderLeft: '3px solid var(--primary)'
                                         }}>
                                             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: 4 }}>Результат</div>
@@ -349,7 +349,7 @@ export function ListPage() {
                                                     <button key={f.val} className="card-clickable" 
                                                         style={{ 
                                                             flex: 1, padding: '12px 4px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)',
-                                                            fontSize: 10, fontWeight: 800, background: 'white'
+                                                            fontSize: 10, fontWeight: 800, background: 'var(--surface)'
                                                         }} 
                                                         onClick={() => saveFeedback(s, f.val)}
                                                     >
@@ -394,7 +394,7 @@ export function ListPage() {
                                 return (
                                     <div key={s.id} className="card-clickable" style={{ 
                                         display: 'flex', gap: 16, padding: '16px', borderRadius: 20, 
-                                        background: 'white', border: '1px solid rgba(0,0,0,0.02)'
+                                        background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.02)'
                                     }} onClick={() => navigate(`/history/new?id=${s.id}`)}>
                                         <div style={{ 
                                             display: 'flex', flexDirection: 'column', alignItems: 'center', 

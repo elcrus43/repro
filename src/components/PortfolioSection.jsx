@@ -166,7 +166,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         setTimeout(() => setCopiedId(null), 2000);
     };
 
-    const handlePortfolioFileUpload = async (e, section) => {
+    async function handlePortfolioFileUpload(e, section) {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
         for (const file of files) {
@@ -190,7 +190,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                 }
             });
         }
-    };
+    }
 
     const deletePortfolioFile = (id, section) => {
         let setFiles, field;
@@ -245,7 +245,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
     };
 
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'white', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10000, background: 'var(--surface)', display: 'flex', flexDirection: 'column' }}>
             <style>{ANIMATIONS}</style>
             <div className="topbar">
                 <button className="topbar-back" onClick={onClose}>←</button>
@@ -331,7 +331,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                     {allFiles.length > 0 && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
                             {allFiles.map(file => (
-                                <div key={file.id} className="fade-in" style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.12)', background: 'white', border: '1px solid var(--border-light)' }}>
+                                <div key={file.id} className="fade-in" style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.12)', background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
                                     {file.loading ? (
                                         <div style={{ padding: 60, display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>
                                     ) : (
@@ -392,7 +392,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {manualLinks.map(link => (
-                            <div key={link.id} className="fade-in" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '1px solid var(--border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                            <div key={link.id} className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, overflow: 'hidden', border: '1px solid var(--border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                                 {link.screenshotUrl && (
                                     <div style={{ width: '100%', height: 160, overflow: 'hidden', borderBottom: '1px solid var(--border-light)' }}>
                                         <img src={link.screenshotUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

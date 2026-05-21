@@ -233,7 +233,7 @@ export function DealsPage() {
         const cfg = statusConfig[deal.status] || statusConfig.active;
 
         return (
-            <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
+            <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', marginBottom: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                     <div style={{ flex: 1 }}>
                         <div className="font-oswald" style={{ fontWeight: 600, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
@@ -263,29 +263,29 @@ export function DealsPage() {
                     {property && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(0,82,255,0.03)', borderRadius: 14 }}>
                             <MapPin size={18} color="var(--primary)" />
-                            <div style={{ fontSize: 13, fontWeight: 700 }}>{property.address || property.city}</div>
+                            <div style={{ fontSize: 13, fontWeight: 400 }}>{property.address || property.city}</div>
                         </div>
                     )}
                     <div style={{ display: 'flex', gap: 8 }}>
                         {sellers.length > 0 && (
                             <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
-                                <div style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: 9, marginBottom: 2 }}>Продавец</div>
-                                <div style={{ fontWeight: 700 }}>{sellers.map(s => s.full_name).join(', ')}</div>
+                                <div style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 9, marginBottom: 2 }}>Продавец</div>
+                                <div style={{ fontWeight: 400 }}>{sellers.map(s => s.full_name).join(', ')}</div>
                             </div>
                         )}
                         {buyers.length > 0 && (
                             <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
-                                <div style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: 9, marginBottom: 2 }}>Покупатель</div>
-                                <div style={{ fontWeight: 700 }}>{buyers.map(b => b.full_name).join(', ')}</div>
+                                <div style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 9, marginBottom: 2 }}>Покупатель</div>
+                                <div style={{ fontWeight: 400 }}>{buyers.map(b => b.full_name).join(', ')}</div>
                             </div>
                         )}
                     </div>
                     {deal.expenses && deal.expenses.length > 0 && (
-                        <div style={{ marginTop: 12, padding: '12px', background: '#fff9e6', borderRadius: 16, border: '1px dashed #ffd43b' }}>
-                            <div style={{ fontSize: 9, fontWeight: 900, color: '#856404', marginBottom: 8, textTransform: 'uppercase' }}>Расходы сторон</div>
+                        <div style={{ marginTop: 12, padding: '12px', background: 'var(--warning-light)', borderRadius: 16, border: '1px dashed rgba(245, 158, 11, 0.4)' }}>
+                            <div style={{ fontSize: 9, fontWeight: 400, color: 'var(--warning)', marginBottom: 8, textTransform: 'uppercase' }}>Расходы сторон</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 {deal.expenses.map(exp => (
-                                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
+                                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 400 }}>
                                         <span style={{ color: 'var(--text-secondary)' }}>{exp.title} ({exp.payer === 'seller' ? 'Прод.' : 'Покуп.'})</span>
                                         <span style={{ color: 'var(--text)' }}>{Number(exp.amount).toLocaleString()} ₽</span>
                                     </div>
@@ -297,7 +297,7 @@ export function DealsPage() {
 
                 <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 16 }}>
                     {deal.status === 'active' && (
-                        <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
+                        <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 500, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
                             <CheckCircle size={18} /> Закрыть
                         </button>
                     )}
@@ -316,10 +316,10 @@ export function DealsPage() {
         <div className="page fade-in">
             {/* Sticky Header — Open Design */}
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -334,7 +334,7 @@ export function DealsPage() {
                     </button>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'white', padding: '8px 12px', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)', padding: '8px 12px', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
                     <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={prevMonth}><ChevronLeft size={20} /></button>
                     <div className="font-oswald" style={{ fontSize: 17, fontWeight: 300 }}>{monthNames[selectedMonth]} {selectedYear}</div>
                     <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={nextMonth}><ChevronRight size={20} /></button>
@@ -345,7 +345,7 @@ export function DealsPage() {
                 
                 {/* Statistics Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Activity size={16} /></div>
                             <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>В работе</span>
@@ -353,7 +353,7 @@ export function DealsPage() {
                         <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 200 }}>сд.</span></div>
                         <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
                     </div>
-                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                             <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={16} /></div>
                             <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>Выручка</span>
@@ -365,7 +365,7 @@ export function DealsPage() {
 
                 {/* Form Overlay (Simulated by rendering before list) */}
                 {showForm && (
-                    <div className="card fade-in" style={{ padding: '28px', borderRadius: 32, border: 'none', boxShadow: '0 12px 48px rgba(0,82,255,0.1)', background: 'white', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div className="card fade-in" style={{ padding: '28px', borderRadius: 32, border: 'none', boxShadow: '0 12px 48px rgba(0,82,255,0.1)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 16 }}>
                         <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: 'var(--primary)' }}>{newDeal.id ? 'Параметры сделки' : 'Запуск новой сделки'}</div>
                         
                         <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} placeholder="Название сделки (напр. Продажа 1к. на Ленина)" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
@@ -426,7 +426,7 @@ export function DealsPage() {
                     {[['active', 'Активные'], ['closed', 'Закрытые'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
                             padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: filter === v ? 'var(--primary)' : 'white',
+                            background: filter === v ? 'var(--primary)' : 'var(--surface)',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                             fontFamily: 'Oswald'
@@ -438,7 +438,7 @@ export function DealsPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {filteredDeals.length === 0 ? (
                         <div className="empty-state" style={{ padding: '40px 0' }}>
-                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)' }}>Сделок не найдено</div>
+                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 300, color: 'var(--text-muted)' }}>Сделок не найдено</div>
                         </div>
                     ) : (
                         filteredDeals.map(d => <DealCard key={d.id} deal={d} />)

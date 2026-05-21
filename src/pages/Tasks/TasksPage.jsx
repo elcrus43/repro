@@ -23,12 +23,12 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
     const priorColors = { high: 'var(--danger)', medium: 'var(--warning)', low: 'var(--success)' };
     
     return (
-        <div style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: '1px solid rgba(0,0,0,0.05)', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'flex-start' }}>
             <button
                 onClick={() => onToggle(task)}
                 style={{
                     width: 26, height: 26, border: `2px solid ${task.status === 'done' ? '#10b981' : 'var(--border)'}`,
-                    borderRadius: 8, background: task.status === 'done' ? '#10b981' : 'white',
+                    borderRadius: 8, background: task.status === 'done' ? '#10b981' : 'var(--surface)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                     flexShrink: 0, marginTop: 2, color: 'white', fontSize: 14, fontWeight: 400,
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
@@ -72,7 +72,7 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
 function Group({ label, tasks: ts, color, onToggle, onDelete, onEdit }) {
     if (ts.length === 0) return null;
     return (
-        <div className="card" style={{ padding: '24px', borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white', marginBottom: 16 }}>
+        <div className="card" style={{ padding: '24px', borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', marginBottom: 16 }}>
             <div className="font-oswald" style={{ fontWeight: 300, fontSize: 14, color, letterSpacing: '0.01em', marginBottom: 12, display: 'flex', justifyContent: 'space-between' }}>
                 {label} <span>{ts.length}</span>
             </div>
@@ -183,10 +183,10 @@ export function TasksPage() {
         <div className="page fade-in">
             {/* Sticky Header — Open Design */}
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -206,11 +206,11 @@ export function TasksPage() {
                 
                 {/* Quick Actions Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <button className="card-clickable" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                    <button className="card-clickable" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: '16px', borderRadius: 24, background: 'var(--surface)', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} /></div>
                         <span className="font-oswald" style={{ fontSize: 14, fontWeight: 300, letterSpacing: '0.02em' }}>Встреча</span>
                     </button>
-                    <button className="card-clickable" onClick={() => navigate('/tasks/call')} style={{ padding: '16px', borderRadius: 24, background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
+                    <button className="card-clickable" onClick={() => navigate('/tasks/call')} style={{ padding: '16px', borderRadius: 24, background: 'var(--surface)', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Phone size={20} /></div>
                         <span className="font-oswald" style={{ fontSize: 14, fontWeight: 300, letterSpacing: '0.02em' }}>Звонок</span>
                     </button>
@@ -248,7 +248,7 @@ export function TasksPage() {
                     {[['today', 'Сегодня'], ['week', 'Неделя'], ['all', 'Все']].map(([v, l]) => (
                         <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
                             padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: filter === v ? 'var(--primary)' : 'white',
+                            background: filter === v ? 'var(--primary)' : 'var(--surface)',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                             fontFamily: 'Oswald'

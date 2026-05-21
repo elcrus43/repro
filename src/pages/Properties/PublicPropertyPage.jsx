@@ -87,13 +87,13 @@ export function PublicPropertyPage() {
 
                 {/* Specs Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
-                    <div style={{ background: 'white', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
+                    <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
                         <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 4 }}>Площадь</div>
                         <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Maximize size={16} color="#4F46E5" /> {property.area_total} м²
                         </div>
                     </div>
-                    <div style={{ background: 'white', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
+                    <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
                         <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 4 }}>Этаж</div>
                         <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Layers size={16} color="#4F46E5" /> {property.floor} / {property.floors_total}
@@ -111,7 +111,7 @@ export function PublicPropertyPage() {
 
                 {/* Agent Card */}
                 {agent && (
-                    <div style={{ background: 'white', padding: 16, borderRadius: 16, border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ background: 'var(--surface)', padding: 16, borderRadius: 16, border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{ width: 48, height: 48, borderRadius: 24, background: '#4F46E5', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700 }}>
                             {agent.full_name[0]}
                         </div>
@@ -124,7 +124,7 @@ export function PublicPropertyPage() {
             </div>
 
             {/* Sticky Actions */}
-            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'white', padding: '12px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 12, zIndex: 100 }}>
+            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', padding: '12px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 12, zIndex: 100 }}>
                 <a href={`tel:${agent?.phone}`} style={{ flex: 1, height: 48, background: '#4F46E5', color: 'white', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', fontWeight: 600 }}>
                     <Phone size={20} /> Позвонить
                 </a>

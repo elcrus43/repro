@@ -3,14 +3,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { 
-    Pencil, Trash, Sparkles, Building2, 
+    Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
-    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    Wand2
+    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft
 } from 'lucide-react';
 
-import { AdGenerator } from '../../components/AdGenerator';
 import { BUILDING_TYPES } from '../../data/constants';
 
 
@@ -27,14 +25,12 @@ export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
     const [showBannerGen, setShowBannerGen] = useState(false);
-    const [showAdGen, setShowAdGen] = useState(false);
     const [showPortfolio, setShowPortfolio] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
 
 
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
-    const agent = state.profiles.find(p => p.id === prop?.realtor_id);
     
     // Normalize client_ids to always be an array
     let propClientIds = prop?.client_ids || [];
@@ -71,9 +67,9 @@ export function DetailsPage() {
 
     if (!prop) return (
         <div className="page" style={{ background: 'var(--bg)' }}>
-            <div className="topbar" style={{ padding: '24px 20px', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)' }}>
+            <div className="topbar" style={{ padding: '24px 20px', background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)' }}>
                 <button className="card-clickable" onClick={() => navigate('/properties')} style={{ 
-                    width: 40, height: 40, borderRadius: 12, border: 'none', background: 'white',
+                    width: 40, height: 40, borderRadius: 12, border: 'none', background: 'var(--surface)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
                     color: 'var(--text)'
                 }}>
@@ -84,9 +80,7 @@ export function DetailsPage() {
         </div>
     );
 
-    const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
-    const statusColors = { active: 'lime', paused: 'blue', deal_closed: 'green', refused: 'red' };
-    const status = prop.status || 'active';
+
 
     function handleDelete() {
         if (window.confirm('Удалить этот объект?')) {
@@ -101,11 +95,11 @@ export function DetailsPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000,
+                background: 'var(--topbar-bg)', backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px', borderBottom: '1px solid var(--border-light)', zIndex: 1000,
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between'
             }}>
-                <button onClick={() => navigate('/properties')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                <button onClick={() => navigate('/properties')} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
@@ -115,7 +109,7 @@ export function DetailsPage() {
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                    <button className="card-clickable" onClick={() => navigate(`/properties/${id}/edit`)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                    <button className="card-clickable" onClick={() => navigate(`/properties/${id}/edit`)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                         <Pencil size={20} />
                     </button>
                     <button className="card-clickable" onClick={handleDelete} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
@@ -126,7 +120,7 @@ export function DetailsPage() {
 
             <div className="page-content" style={{ padding: '24px 20px 120px' }}>
                 {/* Header Card — Premium Open Design */}
-                <div className="card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.04)', borderRadius: 36, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.04)', borderRadius: 36, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
                         <div className="card-clickable" style={{ width: 130, height: 130, borderRadius: 28, overflow: 'hidden', flexShrink: 0, boxShadow: '0 15px 30px rgba(0,0,0,0.12)', border: '1px solid rgba(0,0,0,0.02)' }} onClick={() => setShowGallery(true)}>
                             <img 
@@ -162,7 +156,7 @@ export function DetailsPage() {
                             className="card-clickable"
                             style={{ 
                                 height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
-                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
+                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 padding: '0 16px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
@@ -176,21 +170,7 @@ export function DetailsPage() {
                             className="card-clickable"
                             style={{ 
                                 height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
-                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
-                            onClick={() => setShowAdGen(prev => !prev)}
-                        >
-                            <Wand2 size={16} /> Объявление
-                        </button>
-                        <button
-                            className="card-clickable"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
-                                background: 'white', color: 'var(--text)', fontWeight: 400, fontSize: 15,
+                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 padding: '0 16px',
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
@@ -255,7 +235,7 @@ export function DetailsPage() {
                 )}
 
                 {/* ── О ДОМЕ — Premium Section ── */}
-                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                         <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Building2 size={22} />
@@ -300,7 +280,7 @@ export function DetailsPage() {
                 </div>
 
                 {/* ── О КВАРТИРЕ — Premium Section ── */}
-                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'white' }}>
+                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                         <div style={{ color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Home size={22} />
@@ -348,11 +328,31 @@ export function DetailsPage() {
                     </div>
                 </div>
 
-                {/* AI Ad Generator */}
-                {showAdGen && <AdGenerator prop={prop} realtorName={state.currentUser?.full_name} initiallyOpen={true} autoGenerate={true} />}
+                {/* ── РАСПОЛОЖЕНИЕ — Map Section ── */}
+                {prop.address && (
+                    <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                            <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <MapPin size={22} />
+                            </div>
+                            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>Расположение</div>
+                        </div>
+                        <div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', border: '1px solid var(--border-light)' }}>
+                            <iframe 
+                                src={(prop.latitude && prop.longitude)
+                                    ? `https://yandex.ru/map-widget/v1/?ll=${prop.longitude},${prop.latitude}&z=16&pt=${prop.longitude},${prop.latitude},pm2rdm`
+                                    : `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent((prop.city || '') + ', ' + (prop.address || '').split(/,\s*(?:кв|кв\.|квартира|оф|оф\.|офис|пом|пом\.|помещение|каб|каб\.|кабинет)\s*\d+/i)[0].trim())}&z=16`} 
+                                width="100%" 
+                                height="260" 
+                                style={{ display: 'block', border: 'none' }}
+                                allowFullScreen
+                            />
+                        </div>
+                    </div>
+                )}
 
                 {/* ИСТОРИЯ — Timeline Style */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История ({events.length})</div>
                         <button className="card-clickable" onClick={() => navigate(`/history/new?property_id=${id}`)} style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,82,255,0.05)' }}>
@@ -400,7 +400,7 @@ export function DetailsPage() {
                 </div>
 
                 {prop.notes && (
-                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'white' }}>
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 16 }}>Описание</div>
                         <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{prop.notes}</div>
                     </div>

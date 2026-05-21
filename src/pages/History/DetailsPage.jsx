@@ -1,4 +1,6 @@
 import { ChevronLeft, Building2, Users, Clock, Calendar, MessageSquare, Pencil } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useApp } from '../../context/AppContext';
 
 export function DetailsPage() {
     const { id } = useParams();
@@ -10,10 +12,10 @@ export function DetailsPage() {
         return (
             <div className="page fade-in" style={{ background: 'var(--surface)' }}>
                 <div className="topbar sticky" style={{ 
-                    background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
-                    padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000
+                    background: 'var(--topbar-bg)', backdropFilter: 'blur(24px) saturate(180%)',
+                    padding: '20px', borderBottom: '1px solid var(--border-light)', zIndex: 1000
                 }}>
-                    <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                    <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                         <ChevronLeft size={20} />
                     </button>
                     <span className="font-oswald" style={{ flex: 1, textAlign: 'center', fontSize: 18, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text)' }}>Не найдено</span>
@@ -41,11 +43,11 @@ export function DetailsPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px', borderBottom: '1px solid rgba(0,0,0,0.05)', zIndex: 1000,
+                background: 'var(--topbar-bg)', backdropFilter: 'blur(24px) saturate(180%)',
+                padding: '20px', borderBottom: '1px solid var(--border-light)', zIndex: 1000,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
-                <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
+                <button onClick={() => navigate(-1)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
                     <ChevronLeft size={20} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
@@ -54,13 +56,13 @@ export function DetailsPage() {
                     </span>
                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>История</span>
                 </div>
-                <button onClick={() => navigate(`/history/new?id=${showing.id}`)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--primary)' }}>
+                <button onClick={() => navigate(`/history/new?id=${showing.id}`)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--primary)' }}>
                     <Pencil size={18} />
                 </button>
             </div>
 
             <div className="page-content" style={{ padding: '20px 20px 120px' }}>
-                <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)', background: 'white' }}>
+                <div className="card" style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                         <span style={{ 
                             fontSize: 10, fontWeight: 800, textTransform: 'uppercase', padding: '6px 12px', 
@@ -112,7 +114,7 @@ export function DetailsPage() {
                         
                         {(showing.client_feedback || showing.feedback_comment) && (
                             <div style={{ 
-                                marginTop: 8, padding: 20, borderRadius: 24, background: '#f8fafc',
+                                marginTop: 8, padding: 20, borderRadius: 24, background: 'var(--bg-light)',
                                 borderLeft: '4px solid var(--primary)'
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>

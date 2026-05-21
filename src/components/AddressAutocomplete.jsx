@@ -194,7 +194,7 @@ export function AddressAutocomplete({
             {open && suggestions.length > 0 && (
                 <div style={{
                     position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 1000,
-                    background: 'white', border: '1.5px solid var(--border)',
+                    background: 'var(--surface)', border: '1.5px solid var(--border)',
                     borderTop: 'none', borderRadius: '0 0 14px 14px',
                     boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
                     overflow: 'hidden',
@@ -219,7 +219,7 @@ export function AddressAutocomplete({
                                     borderBottom: i < suggestions.length - 1 ? '1px solid var(--border-light, #f1f5f9)' : 'none',
                                 }}
                             >
-                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
                                     {main}
                                 </span>
                                 {secondary && (

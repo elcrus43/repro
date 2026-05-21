@@ -88,7 +88,7 @@ export function FormPage() {
 
     return (
         <div className="page fade-in" style={{ paddingBottom: 120 }}>
-            <div className="topbar" style={{ background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px) saturate(180%)' }}>
+            <div className="topbar" style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)' }}>
                 <button className="topbar-back" onClick={() => navigate(id ? `/clients/${id}` : '/clients')} style={{ borderRadius: 14 }}>←</button>
                 <span className="topbar-title font-oswald" style={{ textTransform: 'uppercase', letterSpacing: '0.05em' }}>{id ? 'Редактировать клиента' : 'Новый контакт'}</span>
             </div>
@@ -200,7 +200,7 @@ export function FormPage() {
                             onClick={() => setShowPassport(!showPassport)}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
                                     <span className="font-oswald" style={{ fontWeight: 600 }}><ShieldCheck size={20} /></span>
                                 </div>
                                 <span className="font-oswald" style={{ fontWeight: 600, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Паспортные данные</span>

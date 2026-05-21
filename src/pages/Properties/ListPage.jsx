@@ -50,10 +50,10 @@ export function ListPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -86,7 +86,7 @@ export function ListPage() {
                 {/* SEARCH & FILTERS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ 
-                        background: 'white', borderRadius: 20, padding: '6px 16px', 
+                        background: 'var(--surface)', borderRadius: 20, padding: '6px 16px', 
                         display: 'flex', alignItems: 'center', gap: 12,
                         boxShadow: '0 4px 12px rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' 
                     }}>
@@ -100,12 +100,12 @@ export function ListPage() {
                         />
                     </div>
 
-                    <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', padding: 4, borderRadius: 16, gap: 4 }}>
+                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
                         <button 
                             className="card-clickable font-oswald" 
                             style={{ 
                                 flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
-                                background: scope === 'all' ? 'white' : 'transparent', 
+                                background: scope === 'all' ? 'var(--surface)' : 'transparent', 
                                 boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                                 color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)', 
                                 textTransform: 'uppercase', letterSpacing: '0.05em' 
@@ -116,7 +116,7 @@ export function ListPage() {
                             className="card-clickable font-oswald" 
                             style={{ 
                                 flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
-                                background: scope === 'mine' ? 'white' : 'transparent', 
+                                background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
                                 boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                                 color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)', 
                                 textTransform: 'uppercase', letterSpacing: '0.05em' 
@@ -134,7 +134,7 @@ export function ListPage() {
                                 onClick={() => setFilter(val)} 
                                 style={{ 
                                     whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
-                                    background: filter === val ? 'var(--primary)' : 'white',
+                                    background: filter === val ? 'var(--primary)' : 'var(--surface)',
                                     color: filter === val ? 'white' : 'var(--text-secondary)',
                                     fontSize: 12, fontWeight: 200, textTransform: 'uppercase', letterSpacing: '0.05em',
                                     fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
@@ -177,13 +177,13 @@ export function ListPage() {
                                 style={{ 
                                     display: 'flex', gap: 16, padding: '16px', alignItems: 'center', 
                                     border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)',
-                                    background: 'white', borderRadius: 24
+                                    background: 'var(--surface)', borderRadius: 24
                                 }}
                             >
                                 {/* IMAGE WRAPPER */}
                                 <div style={{ 
                                     width: 100, height: 100, minWidth: 100, borderRadius: 20, 
-                                    overflow: 'hidden', background: '#f8fafc', position: 'relative',
+                                    overflow: 'hidden', background: 'var(--bg-light)', position: 'relative',
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                                 }}>
                                     {prop.images?.[0] ? (
@@ -244,7 +244,7 @@ export function ListPage() {
                             onClick={prevPage}
                             disabled={!hasPrev}
                             style={{ 
-                                padding: '10px 20px', borderRadius: 14, border: 'none', background: 'white',
+                                padding: '10px 20px', borderRadius: 14, border: 'none', background: 'var(--surface)',
                                 opacity: hasPrev ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
                                 fontWeight: 200, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
@@ -259,7 +259,7 @@ export function ListPage() {
                             onClick={nextPage}
                             disabled={!hasNext}
                             style={{ 
-                                padding: '10px 20px', borderRadius: 14, border: 'none', background: 'white',
+                                padding: '10px 20px', borderRadius: 14, border: 'none', background: 'var(--surface)',
                                 opacity: hasNext ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
                                 fontWeight: 200, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}

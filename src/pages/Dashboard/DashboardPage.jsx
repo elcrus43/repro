@@ -89,7 +89,7 @@ export function DashboardPage() {
             <div className="page-content" style={{ gap: 28, padding: '24px 20px', paddingBottom: 120 }}>
                 {/* Stats Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="card card-clickable" onClick={() => navigate('/clients')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate('/clients')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ background: 'var(--bg-light)', padding: 12, borderRadius: 14, color: 'var(--primary)' }}>
                                 <Users size={22} />
@@ -101,7 +101,7 @@ export function DashboardPage() {
                             <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Клиенты</div>
                         </div>
                     </div>
-                    <div className="card card-clickable" onClick={() => navigate('/properties')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate('/properties')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ background: 'var(--bg-light)', padding: 12, borderRadius: 14, color: 'var(--primary)' }}>
                                 <Home size={22} />
@@ -113,7 +113,7 @@ export function DashboardPage() {
                             <div className="font-oswald" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Объекты</div>
                         </div>
                     </div>
-                    <div className="card card-clickable" onClick={() => navigate('/requests')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'white' }}>
+                    <div className="card card-clickable" onClick={() => navigate('/requests')} style={{ padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div style={{ background: 'var(--bg-light)', padding: 12, borderRadius: 14, color: 'var(--primary)' }}>
                                 <Search size={22} />
@@ -152,7 +152,7 @@ export function DashboardPage() {
                                 const req = state.requests.find(r => r.id === m.request_id);
                                 const client = req ? state.clients.find(c => c.id === req.client_id) : null;
                                 return (
-                                    <div key={m.id} className="card card-clickable" onClick={() => navigate(`/matches/${m.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 24, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'white' }}>
+                                    <div key={m.id} className="card card-clickable" onClick={() => navigate(`/matches/${m.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 24, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'var(--surface)' }}>
                                         <div style={{ width: 48, height: 48, borderRadius: 16, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 300, fontSize: 15, fontFamily: "'Oswald', sans-serif" }}>
                                             {m.score}%
                                         </div>
@@ -223,7 +223,7 @@ export function DashboardPage() {
                     <button className="btn btn-primary" style={{ borderRadius: 20, height: 56, fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/properties/new')}>
                         + Объект
                     </button>
-                    <button className="btn btn-secondary" style={{ borderRadius: 20, height: 56, background: 'white', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/clients/new')}>
+                    <button className="btn btn-secondary" style={{ borderRadius: 20, height: 56, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/clients/new')}>
                         + Клиент
                     </button>
                 </div>

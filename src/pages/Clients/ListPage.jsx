@@ -48,10 +48,10 @@ export function ListPage() {
         <div className="page fade-in" style={{ paddingBottom: 100 }}>
             {/* Premium Sticky Topbar — Open Design */}
             <div className="topbar sticky" style={{ 
-                background: 'rgba(255,255,255,0.7)', 
+                background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
-                borderBottom: '1px solid rgba(0,0,0,0.05)',
+                borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: 16,
@@ -78,22 +78,22 @@ export function ListPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
                 {/* Modern Search & Filters */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div className="search-bar" style={{ background: 'white', border: '1px solid rgba(0,0,0,0.04)', height: 50, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                    <div className="search-bar" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.04)', height: 50, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
                         <span className="search-icon"><Search size={18} /></span>
                         <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 200 }} />
                     </div>
                     
-                    <div style={{ display: 'flex', background: 'rgba(0,0,0,0.03)', padding: 4, borderRadius: 16, gap: 4 }}>
+                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
                         <button style={{ 
                             flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: scope === 'all' ? 'white' : 'transparent', 
+                            background: scope === 'all' ? 'var(--surface)' : 'transparent', 
                             boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)',
                             transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
                         }} onClick={() => setScope('all')}>Общая база</button>
                         <button style={{ 
                             flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: scope === 'mine' ? 'white' : 'transparent', 
+                            background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
                             boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
                             color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)',
                             transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
@@ -110,7 +110,7 @@ export function ListPage() {
                                 onClick={() => setFilter(val)}
                                 style={{ 
                                     whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
-                                    background: filter === val ? 'var(--primary)' : 'white',
+                                    background: filter === val ? 'var(--primary)' : 'var(--surface)',
                                     color: filter === val ? 'white' : 'var(--text-secondary)',
                                     fontSize: 13, fontWeight: 300,
                                     fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
@@ -123,7 +123,7 @@ export function ListPage() {
                 </div>
 
                 {clients.length === 0 && (
-                    <div className="empty-state" style={{ background: 'white', borderRadius: 28, padding: '60px 40px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }}>
+                    <div className="empty-state" style={{ background: 'var(--surface)', borderRadius: 28, padding: '60px 40px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }}>
                         <div className="empty-title font-oswald" style={{ fontSize: 20, fontWeight: 300 }}>Нет клиентов</div>
                         <div className="empty-desc" style={{ fontWeight: 200 }}>Самое время добавить новый контакт в базу</div>
                         <button className="card-clickable" style={{ 
@@ -144,7 +144,7 @@ export function ListPage() {
 
                     return (
                         <div key={client.id} className="card card-clickable" style={{ 
-                            padding: '16px', border: 'none', background: 'white', borderRadius: 24, 
+                            padding: '16px', border: 'none', background: 'var(--surface)', borderRadius: 24, 
                             boxShadow: '0 8px 32px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden',
                             borderLeft: `4px solid ${avatarBg}`
                         }} onClick={() => navigate(`/clients/${client.id}`)}>
@@ -154,8 +154,8 @@ export function ListPage() {
                                         <div style={{ fontWeight: 400, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
                                         <div style={{ 
                                             padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 300, letterSpacing: '0.05em',
-                                            background: client.status === 'active' ? '#ecfdf5' : '#fef3c7',
-                                            color: client.status === 'active' ? '#10b981' : '#f59e0b'
+                                            background: client.status === 'active' ? 'var(--success-light)' : 'var(--warning-light)',
+                                            color: client.status === 'active' ? 'var(--success)' : 'var(--warning)'
                                         }}>
                                             {statusLabels[client.status] || client.status}
                                         </div>
@@ -191,7 +191,7 @@ export function ListPage() {
                             onClick={prevPage}
                             disabled={!hasPrev}
                             style={{ 
-                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'white', color: 'var(--text)',
+                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasPrev ? 1 : 0.4,
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}
@@ -206,7 +206,7 @@ export function ListPage() {
                             onClick={nextPage}
                             disabled={!hasNext}
                             style={{ 
-                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'white', color: 'var(--text)',
+                                width: 44, height: 44, borderRadius: 12, border: 'none', background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: hasNext ? 1 : 0.4,
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
                             }}

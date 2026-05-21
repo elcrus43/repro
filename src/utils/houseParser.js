@@ -218,38 +218,65 @@ ${urlHints ? `\nПрямые ссылки для поиска:\n${urlHints}\n\n�
 
     const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
 
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ZHIPU_API_KEY}`
-        },
-        body: JSON.stringify({
-            model: 'glm-4-flash',
-            messages: [{ role: 'user', content: prompt }],
-            tools: [{
-                type: 'web_search',
-                web_search: {
-                    enable: true,
-                    search_result: true
-                }
-            }],
-            temperature: 0.05,
-            max_tokens: 2000,
-        }),
-    });
+    const modelCandidates = ['glm-4.7-flash', 'glm-4-flash', 'glm-4.5-air', 'glm-5-turbo'];
+    let lastError = null;
+    let responseObj = null;
 
-    if (!res.ok) {
-        const errText = await res.text();
-        let msg = `Ошибка API: ${res.status}`;
+    for (const modelName of modelCandidates) {
         try {
-            const parsed = JSON.parse(errText);
-            msg = parsed?.error?.message || msg;
-        } catch {}
-        throw new Error(msg);
+            console.log(`[houseParser] Trying model ${modelName}...`);
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${ZHIPU_API_KEY}`
+                },
+                body: JSON.stringify({
+                    model: modelName,
+                    messages: [{ role: 'user', content: prompt }],
+                    tools: [{
+                        type: 'web_search',
+                        web_search: {
+                            enable: true,
+                            search_result: true
+                        }
+                    }],
+                    temperature: 0.05,
+                    max_tokens: 2000,
+                }),
+            });
+
+            const resText = await response.clone().text();
+
+            if (response.ok) {
+                responseObj = response;
+                break;
+            }
+
+            if (resText.includes('1211') || resText.includes('1305')) {
+                console.warn(`[houseParser] Model ${modelName} failed (1211/1305). Trying next...`);
+                continue;
+            }
+
+            let msg = `Ошибка API: ${response.status}`;
+            try {
+                const parsed = JSON.parse(resText);
+                msg = parsed?.error?.message || msg;
+            } catch {}
+            throw new Error(msg);
+        } catch (err) {
+            lastError = err;
+            if (!err.message.includes('1211') && !err.message.includes('1305')) {
+                throw err;
+            }
+        }
     }
 
-    const data = await res.json();
+    if (!responseObj) {
+        throw lastError || new Error('Не удалось выполнить запрос: все модели недоступны.');
+    }
+
+    const data = await responseObj.json();
     const rawText = data?.choices?.[0]?.message?.content?.trim() || '';
 
     if (!rawText) {
