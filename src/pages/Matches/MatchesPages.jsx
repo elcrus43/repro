@@ -3,10 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
-import { stripPhone, formatNumber } from '../../utils/format';
+import { formatNumber } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp } from 'lucide-react';
 import { API_BASE } from '../../config';
+import { PROPERTY_TYPES } from '../../data/constants';
 
 export function MatchesPage() {
     const { state } = useApp();
@@ -92,11 +93,9 @@ export function MatchesPage() {
 
 function MatchCard({ match: m, onClick }) {
     const { state } = useApp();
-    const user = state.currentUser;
     const prop = state.properties.find(p => p.id === m.property_id);
     const req = state.requests.find(r => r.id === m.request_id);
     const buyer = req ? state.clients.find(c => c.id === req.client_id) : null;
-    const seller = prop ? state.clients.find(c => c.id === prop.client_id) : null;
     const lvl = getLevelLabel(m.match_level);
 
     const statusLabels = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ', showing_done: 'Показ проведён', rejected: 'Отклонён', deal: 'Сделка' };
@@ -183,7 +182,7 @@ export function MatchDetailPage() {
         if (match && match.status === 'new') {
             dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
         }
-    }, [match?.id]);
+    }, [match, dispatch]);
 
     if (!match) return (
         <div className="page">
@@ -296,7 +295,34 @@ export function MatchDetailPage() {
                     <div className="card card-clickable" onClick={() => navigate(`/properties/${prop.id}`)} style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div className="font-oswald" style={{ fontWeight: 300, color: 'var(--primary)', fontSize: 11, marginBottom: 8 }}>Объект в продаже</div>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 4 }}>{formatPrice(prop.price)}</div>
-                        <div style={{ fontSize: 14, fontWeight: 300, marginBottom: 4 }}>{prop.rooms > 0 ? `${prop.rooms}-комнатная` : 'Студия'} · {prop.area_total}м² · {prop.floor}/{prop.floors_total} эт.</div>
+                        <div style={{ fontSize: 14, fontWeight: 300, marginBottom: 4 }}>
+                            {(() => {
+                                const type = prop.property_type;
+                                const parts = [];
+                                if (type === 'apartment') {
+                                    parts.push(prop.rooms === 0 ? 'Студия' : `${prop.rooms}-комнатная`);
+                                } else if (type === 'room') {
+                                    parts.push('Комната');
+                                } else if (type === 'house') {
+                                    parts.push(prop.rooms > 0 ? `${prop.rooms}-комнатный дом` : 'Дом');
+                                }
+                                
+                                if (prop.area_total) {
+                                    parts.push(`${prop.area_total} м²`);
+                                }
+                                
+                                if (['apartment', 'room', 'commercial'].includes(type) && prop.floor) {
+                                    parts.push(`${prop.floor}/${prop.floors_total || '—'} эт.`);
+                                } else if (type === 'house' && prop.floors_total) {
+                                    parts.push(`${prop.floors_total} эт.`);
+                                }
+                                
+                                if (parts.length === 0) {
+                                    parts.push(PROPERTY_TYPES[type] || 'Объект');
+                                }
+                                return parts.join(' · ');
+                            })()}
+                        </div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 200 }}>{prop.address}</div>
                     </div>
                 )}
@@ -380,7 +406,7 @@ export function MatchDetailPage() {
                         </div>
 
                         {match.status === 'showing_done' && (
-                            <button className="btn btn-success btn-full" style={{ height: 56, borderRadius: 18, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', fontWeight: 300 }}>Оформить сделку</button>
+                            <button className="btn btn-success btn-full" style={{ height: 56, borderRadius: 18, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', fontWeight: 300 }} onClick={handleDeal}>Оформить сделку</button>
                         )}
                     </div>
                 )}

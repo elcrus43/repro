@@ -22,6 +22,7 @@ export const EMPTY_STATE = {
   loading:      true,
   error:        null,
   calendarStatus: null, // null | 'loading' | 'ok' | 'error'
+  priceHistory: [],
 };
 
 export function reducer(state, action) {
@@ -202,6 +203,13 @@ export function reducer(state, action) {
 
     case 'DELETE_DEAL':
       return { ...state, deals: state.deals.filter(d => d.id !== action.id) };
+
+    /* ── История цен ──────────────────────────────────────────── */
+    case 'ADD_PRICE_HISTORY':
+      return { ...state, priceHistory: [...(state.priceHistory || []), action.entry] };
+
+    case 'SET_PRICE_HISTORY':
+      return { ...state, priceHistory: action.data };
 
     default:
       return state;

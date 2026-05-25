@@ -28,7 +28,8 @@ export const MARKET_LABELS = {
 export const PROPERTY_TYPES = {
     apartment: 'Квартира',
     house: 'Дом',
-    land: 'Участок',
+    land: 'Земельный участок',
+    garden: 'Сад',
     commercial: 'Коммерческая',
     room: 'Комната'
 };

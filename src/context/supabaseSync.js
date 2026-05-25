@@ -603,6 +603,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           mortgage_bank: action.deal.mortgage_bank || null,
           mortgage_amount: action.deal.mortgage_amount || 0,
           mortgage_expiry: action.deal.mortgage_expiry || null,
+          lawyer: action.deal.lawyer || null,
         };
         // Remove undefined
         Object.keys(dealData).forEach(key => {
@@ -631,6 +632,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           mortgage_bank: dData.mortgage_bank || null,
           mortgage_amount: dData.mortgage_amount || 0,
           mortgage_expiry: dData.mortgage_expiry || null,
+          lawyer: dData.lawyer || null,
         };
         Object.keys(updateData).forEach(key => {
           if (updateData[key] === undefined) delete updateData[key];
@@ -772,7 +774,7 @@ function _stripNewPropertyFields(data, error) {
 // NOTE: client_ids removed from these lists — migration 035 applied
 const NEW_REQUEST_FIELDS = ['mortgage'];
 const NEW_SHOWING_FIELDS = ['event_type'];
-const NEW_DEAL_FIELDS    = ['mortgage', 'expenses', 'mortgage_bank', 'mortgage_amount', 'mortgage_expiry'];
+const NEW_DEAL_FIELDS    = ['mortgage', 'expenses', 'mortgage_bank', 'mortgage_amount', 'mortgage_expiry', 'lawyer'];
 
 function _isNewRequestColumnError(error) {
     if (!error) return false;

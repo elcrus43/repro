@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { supabase } from '../../lib/supabase';
 import { formatPhone } from '../../utils/format';
-import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon } from 'lucide-react';
+import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon, FileText } from 'lucide-react';
 import {
     isCalendarConfigured,
     isCalendarConnected,
@@ -156,6 +156,7 @@ export function ProfilePage() {
     const menuItems = [
         { icon: <Lock size={20} />, label: 'Сменить пароль', action: () => setShowPasswordModal(true) },
         { icon: isDark ? <Sun size={20} /> : <Moon size={20} />, label: isDark ? 'Светлая тема' : 'Темная тема', action: toggleTheme },
+        { icon: <FileText size={20} />, label: 'Шаблоны документов', action: () => navigate('/documents') },
         { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
     ];
 
@@ -232,7 +233,7 @@ export function ProfilePage() {
                             <>
                                 <h2 className="font-oswald" style={{ fontSize: 22, fontWeight: 300, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 6 }}>{user.full_name}</h2>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--primary)', background: 'var(--primary-light)', padding: '3px 10px', borderRadius: 20 }}>
+                                    <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--primary)' }}>
                                         {user.role === 'admin' ? 'Администратор' : 'Риэлтор'}
                                     </div>
                                     {user.agency_name && (

@@ -1691,11 +1691,32 @@ a:focus:not(:focus-visible) {
 .card-clickable:hover {
   transform: translateY(-4px);
   box-shadow: var(--shadow-premium);
-  border-color: var(--accent);
 }
 
 .card-clickable:active {
   transform: scale(0.98);
+}
+
+/* Make square/icon buttons clean without any outlines/borders */
+button.card-clickable,
+button.topbar-back,
+button.btn-icon {
+  border: none !important;
+  outline: none !important;
+}
+
+button.card-clickable:hover,
+button.topbar-back:hover,
+button.btn-icon:hover {
+  border: none !important;
+  outline: none !important;
+}
+
+button.card-clickable:focus,
+button.topbar-back:focus,
+button.btn-icon:focus {
+  border: none !important;
+  outline: none !important;
 }
 
 .btn {

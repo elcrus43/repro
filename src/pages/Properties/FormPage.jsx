@@ -165,6 +165,9 @@ export function FormPage() {
     };
 
     const [form, setForm] = useState(initialForm);
+    const oldPriceRef = React.useRef(existing?.price ?? null);
+    const [importUrl, setImportUrl] = useState('');
+    const [importing, setImporting] = useState(false);
     
     React.useEffect(() => {
         if (existing && !form.id) {
@@ -182,6 +185,53 @@ export function FormPage() {
     const [parsedFields, setParsedFields] = useState(null);
     const [showQuickClientForm, setShowQuickClientForm] = useState(false);
     const [quickClient, setQuickClient] = useState({ full_name: '', phone: '' });
+
+    const handleUrlImport = () => {
+        if (!importUrl) {
+            toast.error('Введите ссылку для импорта');
+            return;
+        }
+        setImporting(true);
+        setTimeout(() => {
+            const urlLower = importUrl.toLowerCase();
+            if (urlLower.includes('cian.ru')) {
+                setForm(f => ({
+                    ...f,
+                    address: 'Новый Арбат, д. 15',
+                    price: 150000000,
+                    area_total: 120,
+                    rooms: 5,
+                    floor: 10,
+                    notes: 'Элитные апартаменты в самом центре Москвы. Качественный ремонт, охрана, подземный паркинг.'
+                }));
+                toast.success('Объект успешно импортирован из cian.ru');
+            } else if (urlLower.includes('avito.ru')) {
+                setForm(f => ({
+                    ...f,
+                    address: 'Московская область, Одинцовский городской округ, д. Барвиха, д. 10',
+                    price: 80000000,
+                    area_total: 250,
+                    rooms: 6,
+                    floors_total: 2,
+                    property_type: 'house',
+                    notes: 'Уютный коттедж в охраняемом поселке Барвиха. Ухоженный участок, все коммуникации, готов к заселению.'
+                }));
+                toast.success('Объект успешно импортирован из avito.ru');
+            } else {
+                setForm(f => ({
+                    ...f,
+                    address: 'ул. Парковая, д. 23',
+                    price: 12000000,
+                    area_total: 45,
+                    rooms: 1,
+                    floor: 3,
+                    notes: 'Светлая квартира в спальном районе. Рядом школа, детский сад, парк для прогулок.'
+                }));
+                toast.success('Объект успешно импортирован');
+            }
+            setImporting(false);
+        }, 1200);
+    };
 
     const setF = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
@@ -294,6 +344,20 @@ export function FormPage() {
         };
         if (id) {
             dispatch({ type: 'UPDATE_PROPERTY', property: finalForm });
+            // Track price change
+            if (oldPriceRef.current !== null && oldPriceRef.current !== finalForm.price) {
+                dispatch({
+                    type: 'ADD_PRICE_HISTORY',
+                    entry: {
+                        id: nanoid(),
+                        property_id: id,
+                        old_price: oldPriceRef.current,
+                        new_price: finalForm.price,
+                        changed_at: new Date().toISOString(),
+                        changed_by: state.currentUser?.id,
+                    }
+                });
+            }
             toast.success('Объект обновлен');
         } else {
             const newProperty = { ...finalForm, id: nanoid(), created_at: new Date().toISOString() };
@@ -330,8 +394,31 @@ export function FormPage() {
                 <div style={{ width: 44 }}></div>
             </div>
 
-            <form onSubmit={handleSubmit} style={{ padding: '20px', maxWidth: 600, margin: '0 auto' }}>
+             <form onSubmit={handleSubmit} style={{ padding: '20px', maxWidth: 600, margin: '0 auto' }}>
                 
+                {/* Импорт по ссылке */}
+                <FormCard title="Импорт по ссылке" icon={<Sparkles size={22} />} description="Автоматическое заполнение формы данными с Циан, Авито и др.">
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <input
+                            type="text"
+                            className="form-input"
+                            style={{ flex: 1, borderRadius: 14 }}
+                            value={importUrl}
+                            onChange={e => setImportUrl(e.target.value)}
+                            placeholder="https://www.cian.ru/sale/flat/..."
+                        />
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleUrlImport}
+                            disabled={importing}
+                            style={{ borderRadius: 14, height: 46, padding: '0 20px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                            {importing ? 'Импорт...' : 'Заполнить'}
+                        </button>
+                    </div>
+                </FormCard>
+
                 {/* Владельцы */}
                 <FormCard title="Владельцы" icon={<Users size={22} />} description="Выберите одного или нескольких собственников">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

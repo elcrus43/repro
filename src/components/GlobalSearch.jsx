@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Search, X, Building2, Users, Target, Sparkles } from 'lucide-react';
+import { PROPERTY_TYPES } from '../data/constants';
 
 /**
  * Глобальный сквозной поиск по объектам, клиентам, запросам и совпадениям.
@@ -30,7 +31,7 @@ export function GlobalSearch() {
             ).slice(0, 5),
             requests: state.requests.filter(r =>
                 r.districts?.some(d => d.toLowerCase().includes(q)) ||
-                r.property_types?.some(t => t.toLowerCase().includes(q)) ||
+                r.property_types?.some(t => (PROPERTY_TYPES[t] || t).toLowerCase().includes(q)) ||
                 r.budget_max?.toString().includes(q)
             ).slice(0, 5),
             matches: state.matches.filter(m => m.score > 80).slice(0, 3),
@@ -118,7 +119,7 @@ export function GlobalSearch() {
                                 </div>
                                 {results.requests.map(r => (
                                     <div key={r.id} onClick={() => { navigate(`/requests/${r.id}`); setIsOpen(false); }} style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid var(--border-light)' }}>
-                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{r.property_types?.map(t => t).join(', ')}</div>
+                                        <div style={{ fontWeight: 600, fontSize: '14px' }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ')}</div>
                                         <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>До {r.budget_max?.toLocaleString()} ₽</div>
                                     </div>
                                 ))}

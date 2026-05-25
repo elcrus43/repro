@@ -9,12 +9,22 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkSchema() {
-  const { data, error } = await supabase.rpc('exec_sql', { 
-    query: "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'properties' AND column_name = 'portfolio_analog_links';" 
-  });
+  const query = `
+    DO $$
+    DECLARE
+      v_cols text;
+    BEGIN
+      SELECT string_agg(column_name || ' (' || data_type || ')', ', ') INTO v_cols
+      FROM information_schema.columns 
+      WHERE table_name = 'properties';
+      
+      RAISE EXCEPTION 'COLUMNS: %', v_cols;
+    END $$;
+  `;
+  const { data, error } = await supabase.rpc('exec_sql', { query });
 
   if (error) {
-    console.error('Error fetching schema:', error);
+    console.log('Result error message:', error.message);
   } else {
     console.log('Column info:', data);
   }

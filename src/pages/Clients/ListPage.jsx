@@ -5,10 +5,12 @@ import { formatPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
 import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { useExport } from '../../hooks/useExport';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const { exportToCSV } = useExport();
     const user = state.currentUser;
     const isAdmin = user?.role === 'admin';
     const [search, setSearch] = useState('');
@@ -44,6 +46,19 @@ export function ListPage() {
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
 
+    const handleExport = () => {
+        const headers = [
+            { key: 'full_name', label: 'ФИО' },
+            { key: 'phone', label: 'Телефон' },
+            { key: 'email', label: 'Email' },
+            { 
+                label: 'Тип клиента', 
+                resolve: (c) => c.client_types?.map(t => typeLabels[t] || t).join(', ') || '' 
+            }
+        ];
+        exportToCSV(filteredClients, 'clients_export', headers);
+    };
+
     return (
         <div className="page fade-in" style={{ paddingBottom: 100 }}>
             {/* Premium Sticky Topbar — Open Design */}
@@ -64,6 +79,18 @@ export function ListPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
+                        <button
+                            className="card-clickable font-oswald"
+                            onClick={handleExport}
+                            style={{
+                                padding: '0 12px', height: 44, borderRadius: 14, border: 'none',
+                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em'
+                            }}
+                        >
+                            Экспорт CSV
+                        </button>
                         <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
                             width: 44, height: 44, borderRadius: 14, border: 'none', 
                             background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',

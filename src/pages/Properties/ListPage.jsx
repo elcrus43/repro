@@ -2,19 +2,36 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter } from 'lucide-react';
+import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { PipelinePage } from './PipelinePage';
+import { useExport } from '../../hooks/useExport';
 
 export function ListPage() {
-    const { state, dispatch } = useApp();
+    const { state } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
-    const isAdmin = user?.role === 'admin';
+    const { exportToCSV } = useExport();
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState('all');
+    const [viewMode, setViewMode] = useState('list');
+    const [priceMin, setPriceMin] = useState('');
+    const [priceMax, setPriceMax] = useState('');
+    const [selectedIds, setSelectedIds] = useState([]);
+
+    const handleExport = () => {
+        const headers = [
+            { key: 'address', label: 'Адрес' },
+            { key: 'price', label: 'Цена' },
+            { key: 'area_total', label: 'Площадь' },
+            { key: 'floor', label: 'Этаж' },
+            { key: 'realtor_id', label: 'Realtor ID' }
+        ];
+        exportToCSV(filteredProperties, 'properties_export', headers);
+    };
 
     const filteredProperties = useMemo(() => {
         return state.properties
@@ -32,12 +49,26 @@ export function ListPage() {
                 return (p.address || '').toLowerCase().includes(search.toLowerCase()) ||
                     (p.city || '').toLowerCase().includes(search.toLowerCase()) ||
                     (client?.full_name || '').toLowerCase().includes(search.toLowerCase());
-            });
-    }, [state.properties, scope, user?.id, filter, search, state.clients]);
+            })
+            .filter(p => (!priceMin || p.price >= Number(priceMin)) && (!priceMax || p.price <= Number(priceMax)));
+    }, [state.properties, scope, user?.id, filter, search, state.clients, priceMin, priceMax]);
 
     const { paginatedItems: properties, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage, resetPage } = usePagination(filteredProperties, 20);
 
     useEffect(() => { resetPage(); }, [filteredProperties, resetPage]);
+
+    const handleToggleSelect = (id) => {
+        setSelectedIds(prev => {
+            if (prev.includes(id)) {
+                return prev.filter(x => x !== id);
+            }
+            if (prev.length >= 4) {
+                alert('Вы можете сравнить не более 4 объектов одновременно.');
+                return prev;
+            }
+            return [...prev, id];
+        });
+    };
 
     const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
     const statusColors = { 
@@ -64,8 +95,33 @@ export function ListPage() {
                         <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Объекты</span>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Портфель недвижимости</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 10 }}>
                         <GlobalSearch />
+                        <button
+                            className="card-clickable font-oswald"
+                            onClick={handleExport}
+                            style={{
+                                padding: '0 12px', height: 44, borderRadius: 14, border: 'none',
+                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em'
+                            }}
+                        >
+                            Экспорт CSV
+                        </button>
+                        <button
+                            className="card-clickable"
+                            onClick={() => setViewMode(m => m === 'list' ? 'pipeline' : 'list')}
+                            style={{
+                                width: 44, height: 44, borderRadius: 14, border: 'none',
+                                background: 'var(--bg-light)',
+                                color: viewMode === 'pipeline' ? 'var(--primary)' : 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}
+                            title={viewMode === 'list' ? 'Воронка продаж' : 'Список'}
+                        >
+                            {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                        </button>
                         <button 
                             className="card-clickable" 
                             onClick={() => navigate('/properties/new')} 
@@ -133,20 +189,53 @@ export function ListPage() {
                                 key={val} 
                                 onClick={() => setFilter(val)} 
                                 style={{ 
-                                    whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
-                                    background: filter === val ? 'var(--primary)' : 'var(--surface)',
-                                    color: filter === val ? 'white' : 'var(--text-secondary)',
+                                    whiteSpace: 'nowrap', padding: '8px 16px', border: 'none',
+                                    background: 'transparent',
+                                    color: filter === val ? 'var(--primary)' : 'var(--text-secondary)',
                                     fontSize: 12, fontWeight: 200, textTransform: 'uppercase', letterSpacing: '0.05em',
-                                    fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
+                                    fontFamily: "'Oswald', sans-serif"
                                 }}
                             >
                                 {label}
                             </button>
                         ))}
                     </div>
+
+                    {/* Price Range Filter */}
+                    <div style={{
+                        background: 'var(--bg-light)', padding: '8px 16px', borderRadius: 16,
+                        display: 'flex', alignItems: 'center', gap: 8
+                    }}>
+                        <SlidersHorizontal size={14} style={{ opacity: 0.4, flexShrink: 0, color: 'var(--text-secondary)' }} />
+                        <input
+                            type="number"
+                            value={priceMin}
+                            onChange={e => setPriceMin(e.target.value)}
+                            placeholder="от"
+                            style={{
+                                border: 'none', background: 'transparent', fontSize: 13,
+                                width: 90, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
+                            }}
+                        />
+                        <span style={{ color: 'var(--text-secondary)', fontSize: 13, opacity: 0.5 }}>—</span>
+                        <input
+                            type="number"
+                            value={priceMax}
+                            onChange={e => setPriceMax(e.target.value)}
+                            placeholder="до"
+                            style={{
+                                border: 'none', background: 'transparent', fontSize: 13,
+                                width: 90, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
+                            }}
+                        />
+                    </div>
                 </div>
 
-                {properties.length === 0 && (
+                {/* PIPELINE VIEW */}
+                {viewMode === 'pipeline' && <PipelinePage />}
+
+                {/* LIST VIEW */}
+                {viewMode === 'list' && properties.length === 0 && (
                     <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 30, background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                             <Building2 size={40} style={{ opacity: 0.2 }} />
@@ -156,18 +245,11 @@ export function ListPage() {
                         <button className="card-clickable" onClick={() => navigate('/properties/new')} style={{ padding: '12px 24px', borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 13 }}>Добавить объект</button>
                     </div>
                 )}
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+                {viewMode === 'list' && <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {properties.map(prop => {
-                        let propClientIds = prop.client_ids || [];
-                        if (typeof propClientIds === 'string') {
-                            propClientIds = propClientIds.replace(/{|}/g, '').split(',').filter(Boolean);
-                        }
-                        const clientId = propClientIds.length > 0 ? propClientIds[0] : prop.client_id;
-                        const client = state.clients.find(c => c.id === clientId);
-                        const matches = state.matches.filter(m => m.property_id === prop.id);
                         const status = prop.status || 'active';
-                        
+                        const isSelected = selectedIds.includes(prop.id);
 
                         return (
                             <div 
@@ -176,8 +258,10 @@ export function ListPage() {
                                 onClick={() => navigate(`/properties/${prop.id}`)}
                                 style={{ 
                                     display: 'flex', gap: 16, padding: '16px', alignItems: 'center', 
-                                    border: 'none', boxShadow: '0 8px 30px rgba(0,0,0,0.03)',
-                                    background: 'var(--surface)', borderRadius: 24
+                                    border: isSelected ? '2px solid var(--primary)' : 'none', 
+                                    boxShadow: '0 8px 30px rgba(0,0,0,0.03)',
+                                    background: 'var(--surface)', borderRadius: 24,
+                                    position: 'relative'
                                 }}
                             >
                                 {/* IMAGE WRAPPER */}
@@ -204,6 +288,31 @@ export function ListPage() {
                                             {statusLabels[status]}
                                         </div>
                                     </div>
+                                    {/* Selection Checkbox */}
+                                    <div 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleToggleSelect(prop.id);
+                                        }}
+                                        style={{ 
+                                            position: 'absolute', 
+                                            bottom: 8, 
+                                            right: 8, 
+                                            zIndex: 10,
+                                            width: 22, 
+                                            height: 22, 
+                                            borderRadius: 6,
+                                            background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.8)',
+                                            border: '2px solid ' + (isSelected ? 'var(--primary)' : '#9ca3af'),
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                                        }}
+                                    >
+                                        {isSelected && <Check size={14} color="white" strokeWidth={3} />}
+                                    </div>
                                 </div>
 
                                 {/* CONTENT WRAPPER */}
@@ -212,8 +321,18 @@ export function ListPage() {
                                         {formatNumber(prop.price)} <span style={{ fontSize: 13, opacity: 0.6 }}>₽</span>
                                     </div>
                                     <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span>{prop.rooms > 0 ? `${prop.rooms}к` : 'Студия'}</span>
-                                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                        {['apartment', 'room', 'house'].includes(prop.property_type) && (
+                                            <>
+                                                <span>
+                                                    {prop.property_type === 'room' 
+                                                        ? 'Комната' 
+                                                        : prop.property_type === 'house'
+                                                            ? (prop.rooms > 0 ? `${prop.rooms}к` : 'Дом')
+                                                            : (prop.rooms > 0 ? `${prop.rooms}к` : 'Студия')}
+                                                </span>
+                                                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                            </>
+                                        )}
                                         <span>{prop.area_total} м²</span>
                                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                         <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{PROPERTY_TYPES[prop.property_type]}</span>
@@ -234,10 +353,10 @@ export function ListPage() {
                             </div>
                         );
                     })}
-                </div>
+                </div>}
 
-                {/* PAGINATION */}
-                {totalPages > 1 && (
+                {/* PAGINATION — only in list mode */}
+                {viewMode === 'list' && totalPages > 1 && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 32 }}>
                         <button
                             className="card-clickable"
@@ -270,6 +389,57 @@ export function ListPage() {
                 )}
             </div>
 
+            {selectedIds.length >= 1 && (
+                <div style={{
+                    position: 'fixed',
+                    bottom: 80,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 2000,
+                    display: 'flex',
+                    gap: 12
+                }}>
+                    <button 
+                        className="card-clickable" 
+                        onClick={() => setSelectedIds([])}
+                        style={{
+                            height: 48,
+                            padding: '0 20px',
+                            borderRadius: 24,
+                            border: '1px solid var(--border)',
+                            background: 'var(--surface)',
+                            color: 'var(--text-secondary)',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            boxShadow: '0 8px 30px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        Сбросить
+                    </button>
+                    <button 
+                        className="card-clickable" 
+                        disabled={selectedIds.length < 2}
+                        onClick={() => navigate(`/compare?ids=${selectedIds.join(',')}`)}
+                        style={{
+                            height: 48,
+                            padding: '0 24px',
+                            borderRadius: 24,
+                            border: 'none',
+                            background: selectedIds.length >= 2 ? 'var(--primary)' : '#9ca3af',
+                            color: 'white',
+                            fontWeight: 600,
+                            fontSize: 14,
+                            boxShadow: '0 8px 30px rgba(0, 82, 255, 0.2)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            cursor: selectedIds.length >= 2 ? 'pointer' : 'not-allowed'
+                        }}
+                    >
+                        Сравнить ({selectedIds.length})
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

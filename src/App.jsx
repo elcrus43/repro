@@ -4,7 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
-import { Building2, Users, Sparkles, FileCheck, UserCircle, History } from 'lucide-react';
+import { Building2, Users, Sparkles, FileCheck, UserCircle, History, Bell } from 'lucide-react';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -15,10 +15,13 @@ const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'));
 const ClientsPage = lazy(() => import('./pages/Clients/index.js'));
 const ClientCardPage = lazy(() => import('./pages/Clients/index.js').then(m => ({ default: m.ClientCardPage })));
 const ClientFormPage = lazy(() => import('./pages/Clients/index.js').then(m => ({ default: m.ClientFormPage })));
+const PublicClientPage = lazy(() => import('./pages/Clients/index.js').then(m => ({ default: m.PublicClientPage })));
 const PropertiesPage = lazy(() => import('./pages/Properties/index.js'));
 const PropertyCardPage = lazy(() => import('./pages/Properties/index.js').then(m => ({ default: m.PropertyCardPage })));
 const PropertyFormPage = lazy(() => import('./pages/Properties/index.js').then(m => ({ default: m.PropertyFormPage })));
 const PublicPropertyPage = lazy(() => import('./pages/Properties/index.js').then(m => ({ default: m.PublicPropertyPage })));
+const ComparePage = lazy(() => import('./pages/Properties/index.js').then(m => ({ default: m.ComparePage })));
+const DocumentsPage = lazy(() => import('./pages/Documents/DocumentsPage'));
 const RequestsPage = lazy(() => import('./pages/Requests/index.js'));
 const RequestCardPage = lazy(() => import('./pages/Requests/index.js').then(m => ({ default: m.RequestCardPage })));
 const RequestFormPage = lazy(() => import('./pages/Requests/index.js').then(m => ({ default: m.RequestFormPage })));
@@ -34,6 +37,7 @@ const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
 const EstimationPage = lazy(() => import('./pages/Properties/EstimationPage'));
 const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
 const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
+const RemindersPage = lazy(() => import('./pages/Tasks/RemindersPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 
 /* ─── BottomNav ────────────────────────────────────────────────────────────── */
@@ -46,6 +50,10 @@ function BottomNav() {
   const newMatchCount = state.matches.filter(m => m.realtor_id === state.currentUser?.id && m.status === 'new').length;
   const isAdminUser = state.currentUser?.role === 'admin';
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
+  const overdueTasksCount = state.tasks.filter(t => {
+    const today = new Date().toISOString().slice(0, 10);
+    return t.due_date < today && t.status !== 'done' && t.realtor_id === state.currentUser?.id;
+  }).length;
 
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
@@ -53,6 +61,7 @@ function BottomNav() {
     { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
     { path: '/history', icon: <History size={22} />, label: 'История' },
     { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
+    { path: '/reminders', icon: <Bell size={22} />, label: 'Задачи', badge: overdueTasksCount > 0 },
     { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
 
@@ -234,7 +243,7 @@ function RequireAuth({ children }) {
 
 function AppLayout({ children }) {
   const { pathname } = useLocation();
-  const noNav = ['/login', '/register', '/auth/callback', '/update-password'].includes(pathname) || pathname.startsWith('/p/');
+  const noNav = ['/login', '/register', '/auth/callback', '/update-password', '/compare', '/documents'].includes(pathname) || pathname.startsWith('/p/') || pathname.startsWith('/c/');
 
   return (
     <div className="app-layout">
@@ -294,10 +303,14 @@ function AppRoutes() {
           <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
           <Route path="/tasks/meeting-owner" element={<RequireAuth><MeetingOwnerFormPage /></RequireAuth>} />
           <Route path="/tasks/call" element={<RequireAuth><CallFormPage /></RequireAuth>} />
+          <Route path="/reminders" element={<RequireAuth><RemindersPage /></RequireAuth>} />
 
           {/* Messaging */}
           <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
           <Route path="/p/:slug" element={<PublicPropertyPage />} />
+          <Route path="/c/:token" element={<PublicClientPage />} />
+          <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
+          <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
           <Route path="/debug" element={<DebugPage />} />
 
           {/* Profile — доступно всем, но админские функции защищены внутри компонента */}

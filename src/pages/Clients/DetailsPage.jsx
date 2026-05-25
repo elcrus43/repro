@@ -1,14 +1,16 @@
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
-import { Pencil, Trash, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft } from 'lucide-react';
+import { Pencil, Trash, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2 } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 
 export function DetailsPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const { id } = useParams();
+    const { toast } = useToastContext();
     const client = state.clients.find(c => c.id === id);
 
     if (!client) return (
@@ -26,6 +28,7 @@ export function DetailsPage() {
     const propMatches = state.matches.filter(m => state.properties.find(p => p.id === m.property_id && p.client_id === id));
     const reqMatches = state.matches.filter(m => state.requests.find(r => r.id === m.request_id && r.client_id === id));
     const allMatches = [...new Map([...propMatches, ...reqMatches].map(m => [m.id, m])).values()];
+    const likedMatchesCount = allMatches.filter(m => m.status === 'liked').length;
     const totalCommission = [...myProperties, ...myRequests].reduce((sum, item) => sum + (item.commission || 0), 0);
 
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
@@ -36,6 +39,31 @@ export function DetailsPage() {
             dispatch({ type: 'DELETE_CLIENT', id });
             navigate('/clients');
         }
+    }
+
+    function handleCall() {
+        const callNote = {
+            id: crypto.randomUUID(),
+            realtor_id: state.currentUser?.id,
+            client_id: id,
+            type: 'call',
+            date: new Date().toISOString().slice(0, 10),
+            notes: `Звонок клиенту ${client.full_name}`,
+            created_at: new Date().toISOString(),
+        };
+        dispatch({ type: 'ADD_SHOWING', showing: callNote });
+        toast.success('Звонок зарегистрирован');
+    }
+
+    function handleShareLink() {
+        if (!client.public_token) {
+            toast.error('У клиента нет публичного токена');
+            return;
+        }
+        const link = window.location.origin + '/c/' + client.public_token;
+        navigator.clipboard.writeText(link)
+            .then(() => toast.success('Ссылка скопирована в буфер обмена'))
+            .catch(() => toast.error('Не удалось скопировать ссылку'));
     }
 
     const initial = client.full_name?.charAt(0).toUpperCase() || '?';
@@ -78,7 +106,7 @@ export function DetailsPage() {
                 {/* Profile Card */}
                 <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)', textAlign: 'center' }}>
                     <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
                         {client.client_types?.map(t => (
                             <span key={t} style={{ 
                                 padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 300, letterSpacing: '0.01em',
@@ -90,10 +118,24 @@ export function DetailsPage() {
                             background: client.status === 'active' ? '#ecfdf5' : '#fef3c7',
                             color: client.status === 'active' ? '#10b981' : '#f59e0b'
                         }}>{statusLabels[client.status]}</span>
+                        <span style={{ 
+                            padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 300, letterSpacing: '0.01em',
+                            background: '#dbeafe', color: '#1e40af'
+                        }}>❤️ Одобрено: {likedMatchesCount}</span>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'center' }}>
-                        <a href={`tel:${client.phone}`} className="card-clickable" style={{ 
+                    {client.public_token && (
+                        <button className="card-clickable" onClick={handleShareLink} style={{
+                            width: '100%', height: 44, borderRadius: 12, border: '1px solid var(--border)',
+                            background: 'var(--surface)', color: 'var(--primary)', fontWeight: 600, fontSize: 14,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 16
+                        }}>
+                            <Share2 size={16} /> Поделиться подборкой
+                        </button>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 12, marginTop: 12, justifyContent: 'center' }}>
+                        <a href={`tel:${client.phone}`} className="card-clickable" onClick={handleCall} style={{ 
                             width: 48, height: 48, borderRadius: 16, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)'
                         }}><Phone size={20} /></a>
                         <a href={`https://wa.me/${stripPhone(client.phone)}`} target="_blank" rel="noopener noreferrer" className="card-clickable" style={{ 

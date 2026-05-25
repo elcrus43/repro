@@ -86,19 +86,34 @@ export function PublicPropertyPage() {
                 </div>
 
                 {/* Specs Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 24 }}>
+                <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: (['apartment', 'room', 'commercial'].includes(property.property_type) && property.floor) || (property.property_type === 'house' && property.floors_total) ? 'repeat(2, 1fr)' : '1fr', 
+                    gap: 12, 
+                    marginBottom: 24 
+                }}>
                     <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
                         <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 4 }}>Площадь</div>
                         <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Maximize size={16} color="#4F46E5" /> {property.area_total} м²
                         </div>
                     </div>
-                    <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
-                        <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 4 }}>Этаж</div>
-                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Layers size={16} color="#4F46E5" /> {property.floor} / {property.floors_total}
+                    {['apartment', 'room', 'commercial'].includes(property.property_type) && property.floor && (
+                        <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
+                            <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 4 }}>Этаж</div>
+                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Layers size={16} color="#4F46E5" /> {property.floor} {property.floors_total ? `/ ${property.floors_total}` : ''}
+                            </div>
                         </div>
-                    </div>
+                    )}
+                    {property.property_type === 'house' && property.floors_total && (
+                        <div style={{ background: 'var(--surface)', padding: 12, borderRadius: 12, border: '1px solid #F3F4F6' }}>
+                            <div style={{ color: '#9CA3AF', fontSize: 12, marginBottom: 4 }}>Этажность</div>
+                            <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Layers size={16} color="#4F46E5" /> {property.floors_total} эт.
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Description */}

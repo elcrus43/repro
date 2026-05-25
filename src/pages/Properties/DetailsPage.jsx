@@ -6,10 +6,11 @@ import {
     Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
-    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft
+    Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
+    TrendingDown
 } from 'lucide-react';
 
-import { BUILDING_TYPES } from '../../data/constants';
+import { BUILDING_TYPES, PROPERTY_TYPES } from '../../data/constants';
 
 
 
@@ -43,6 +44,7 @@ export function DetailsPage() {
     const clients = state.clients.filter(c => clientIds.includes(c.id));
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
+    const priceHistory = (state.priceHistory || []).filter(h => h.property_id === id).sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
 
     // Unified history from showings with event_type
     const eventTypeLabels = {
@@ -146,7 +148,30 @@ export function DetailsPage() {
                                 {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
                             </div>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 200, opacity: 0.7 }}>
-                                {prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к. кв.`} · {prop.area_total} м² · {prop.floor}/{prop.floors_total} эт.
+                                {(() => {
+                                    const type = prop.property_type;
+                                    const parts = [];
+                                    if (type === 'apartment') {
+                                        parts.push(prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к. кв.`);
+                                    } else if (type === 'room') {
+                                        parts.push('Комната');
+                                    } else if (type === 'house') {
+                                        parts.push(prop.rooms > 0 ? `${prop.rooms}-к. дом` : 'Дом');
+                                    }
+                                    
+                                    if (prop.area_total) {
+                                        parts.push(`${prop.area_total} м²`);
+                                    }
+                                    
+                                    if (['apartment', 'room', 'commercial'].includes(type) && prop.floor) {
+                                        parts.push(`${prop.floor}/${prop.floors_total || '—'} эт.`);
+                                    } else if (type === 'house' && prop.floors_total) {
+                                        parts.push(`${prop.floors_total} эт.`);
+                                    }
+                                    
+                                    parts.push(PROPERTY_TYPES[type] || 'Объект');
+                                    return parts.join(' · ');
+                                })()}
                             </div>
                         </div>
                     </div>
@@ -234,82 +259,100 @@ export function DetailsPage() {
                     </div>
                 )}
 
-                {/* ── О ДОМЕ — Premium Section ── */}
-                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                        <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <Building2 size={22} />
+                {/* ── О ДОМЕ / ЗДАНИИ — Premium Section ── */}
+                {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && (
+                    <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                            <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Building2 size={22} />
+                            </div>
+                            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>
+                                {prop.property_type === 'commercial' ? 'О здании' : 'О доме'}
+                            </div>
                         </div>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>О доме</div>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
+                            {prop.build_year && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Год постройки</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.build_year}</span>
+                                </div>
+                            )}
+                            {prop.building_type && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Тип здания</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
+                                </div>
+                            )}
+                            {prop.floors_total && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этажность</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floors_total}</span>
+                                </div>
+                            )}
+                            {prop.elevator_type && prop.elevator_type !== 'none' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Лифт</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
+                                        {{ passenger: 'Пассажирский', cargo: 'Грузовой', both: 'Пасс. + Груз.' }[prop.elevator_type] || prop.elevator_type}
+                                    </span>
+                                </div>
+                            )}
+                            {prop.ceiling_height && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Потолки</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.ceiling_height} м</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
-                        {prop.build_year && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Год постройки</span>
-                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.build_year}</span>
-                            </div>
-                        )}
-                        {prop.building_type && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Тип дома</span>
-                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
-                            </div>
-                        )}
-                        {prop.floors_total && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этажность</span>
-                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floors_total}</span>
-                            </div>
-                        )}
-                        {prop.elevator_type && prop.elevator_type !== 'none' && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Лифт</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-                                    {{ passenger: 'Пассажирский', cargo: 'Грузовой', both: 'Пасс. + Груз.' }[prop.elevator_type] || prop.elevator_type}
-                                </span>
-                            </div>
-                        )}
-                        {prop.ceiling_height && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.02em' }}>Потолки</span>
-                                <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{prop.ceiling_height} м</span>
-                            </div>
-                        )}
-                    </div>
-                </div>
+                )}
 
-                {/* ── О КВАРТИРЕ — Premium Section ── */}
+                {/* ── О КВАРТИРЕ / УЧАСТКЕ / ПОМЕЩЕНИИ — Premium Section ── */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
                         <div style={{ color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <Home size={22} />
                         </div>
-                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em' }}>О квартире</div>
+                        <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em' }}>
+                            {prop.property_type === 'house' 
+                                ? 'О доме' 
+                                : prop.property_type === 'land' 
+                                    ? 'О земельном участке' 
+                                    : prop.property_type === 'garden' 
+                                        ? 'О саде' 
+                                        : prop.property_type === 'commercial' 
+                                            ? 'О помещении' 
+                                            : prop.property_type === 'room' 
+                                                ? 'О комнате' 
+                                                : 'О квартире'}
+                        </div>
                     </div>
                     
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этаж</span>
-                            <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</span>
-                        </div>
+                        {['apartment', 'room', 'commercial'].includes(prop.property_type) && prop.floor && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этаж</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</span>
+                            </div>
+                        )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Общая площадь</span>
                             <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_total} м²</span>
                         </div>
-                        {prop.area_living > 0 && (
+                        {['apartment', 'room', 'house'].includes(prop.property_type) && prop.area_living > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Жилая</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_living} м²</span>
                             </div>
                         )}
-                        {prop.area_kitchen > 0 && (
+                        {['apartment', 'room', 'house'].includes(prop.property_type) && prop.area_kitchen > 0 && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Кухня</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_kitchen} м²</span>
                             </div>
                         )}
-                        {prop.renovation && (
+                        {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && prop.renovation && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Ремонт</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
@@ -317,7 +360,7 @@ export function DetailsPage() {
                                 </span>
                             </div>
                         )}
-                        {prop.bathroom && (
+                        {['apartment', 'room', 'house'].includes(prop.property_type) && prop.bathroom && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Санузел</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
@@ -347,6 +390,52 @@ export function DetailsPage() {
                                 style={{ display: 'block', border: 'none' }}
                                 allowFullScreen
                             />
+                        </div>
+                    </div>
+                )}
+
+                {/* ── ИСТОРИЯ ЦЕН ── */}
+                {priceHistory.length > 0 && (
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                            <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                                <TrendingDown size={22} />
+                            </div>
+                            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>История цен</div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            {priceHistory.map((entry, i) => {
+                                const went = entry.new_price > entry.old_price ? 'up' : 'down';
+                                const diff = Math.abs(entry.new_price - entry.old_price);
+                                const diffPct = entry.old_price > 0 ? Math.round((diff / entry.old_price) * 100) : 0;
+                                return (
+                                    <div key={entry.id || i} style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '14px 18px', background: 'var(--bg-light)',
+                                        borderRadius: 20, border: '1px solid rgba(0,0,0,0.02)'
+                                    }}>
+                                        <div>
+                                            <div className="font-oswald" style={{ fontWeight: 400, fontSize: 16, color: 'var(--text)' }}>
+                                                {formatNumber(entry.new_price)} ₽
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                {entry.old_price ? `было ${formatNumber(entry.old_price)} ₽` : 'первая цена'}
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{
+                                                fontSize: 13, fontWeight: 400,
+                                                color: went === 'up' ? '#ef4444' : '#10b981'
+                                            }}>
+                                                {went === 'up' ? '↑' : '↓'} {diffPct}%
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                {new Date(entry.changed_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}
