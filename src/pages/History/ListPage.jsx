@@ -39,8 +39,28 @@ export function ListPage() {
     const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     const todayStr = toLocalDateStr(new Date());
 
+    // Российские праздники 2025-2026 (формат MM-DD)
+    const RU_HOLIDAYS = new Set([
+        '01-01','01-02','01-03','01-04','01-05','01-06','01-07','01-08', // Новый год, Рождество
+        '02-23', // День защитника Отечества
+        '03-08', // Международный женский день
+        '05-01', // Праздник Весны и Труда
+        '05-09', // День Победы
+        '06-12', // День России
+        '11-04', // День народного единства
+        '12-31', // Канун Нового года (перенос)
+    ]);
+
+    function isWeekendOrHoliday(year, month, day) {
+        const date = new Date(year, month, day);
+        const dow = date.getDay(); // 0=вс, 6=сб
+        if (dow === 0 || dow === 6) return true;
+        const mmdd = `${String(month + 1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        return RU_HOLIDAYS.has(mmdd);
+    }
+
     const calDays = [];
-    const startPad = (firstDay.getDay() + 6) % 7; 
+    const startPad = (firstDay.getDay() + 6) % 7;
     for (let i = 0; i < startPad; i++) calDays.push(null);
     for (let d = 1; d <= lastDay.getDate(); d++) calDays.push(d);
 
@@ -216,21 +236,22 @@ export function ListPage() {
                     </div>
                 )}
 
-                {/* Premium Calendar */}
-                <div className="card" style={{ padding: '20px 16px', marginBottom: 24, border: '1px solid var(--border)', borderRadius: 24 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                        <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}>
-                            <ChevronLeft size={18} />
+                {/* Compact Calendar */}
+                <div className="card" style={{ padding: '12px 10px', marginBottom: 20, border: '1px solid var(--border)', borderRadius: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <button className="card-clickable" style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}>
+                            <ChevronLeft size={14} />
                         </button>
-                        <span className="font-oswald" style={{ fontWeight: 500, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)' }}>{monthNames[calMonth]} {calYear}</span>
-                        <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}>
-                            <ChevronRight size={18} />
+                        <span className="font-oswald" style={{ fontWeight: 500, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)' }}>{monthNames[calMonth]} {calYear}</span>
+                        <button className="card-clickable" style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}>
+                            <ChevronRight size={14} />
                         </button>
                     </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
-                        {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => (
-                            <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 400, color: 'var(--text-secondary)', opacity: 0.5, marginBottom: 8 }}>{d}</div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2 }}>
+                        {['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map((d, i) => (
+                            <div key={d} style={{ textAlign: 'center', fontSize: 9, fontWeight: 600, marginBottom: 4,
+                                color: i >= 5 ? '#ef4444' : 'var(--text-secondary)', opacity: i >= 5 ? 0.8 : 0.5 }}>{d}</div>
                         ))}
                         {calDays.map((d, i) => {
                             if (!d) return <div key={`e-${i}`} />;
@@ -238,23 +259,30 @@ export function ListPage() {
                             const hasEv = myShowings.some(s => toLocalDateStr(s.showing_date) === ds);
                             const isToday = ds === todayStr;
                             const isSel = ds === selectedDate;
-                            
+                            const isRed = isWeekendOrHoliday(calYear, calMonth, d);
+
                             return (
-                                <button 
-                                    key={d} 
+                                <button
+                                    key={d}
                                     onClick={() => setSelectedDate(ds)}
                                     style={{
-                                        aspectRatio: '1/1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                        borderRadius: 10, border: 'none', fontSize: 13, fontWeight: isSel ? 600 : 300,
+                                        width: 30, height: 30, margin: '0 auto', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center',
+                                        borderRadius: 7, border: 'none', fontSize: 13,
+                                        fontWeight: isSel ? 700 : 400,
                                         background: isSel ? 'var(--primary)' : isToday ? 'var(--primary-light)' : 'transparent',
-                                        color: isSel ? 'white' : isToday ? 'var(--primary)' : 'var(--text)',
-                                        position: 'relative', transition: 'all 0.2s', cursor: 'pointer',
+                                        color: isSel ? 'white' : isToday ? 'var(--primary)' : isRed ? '#ef4444' : 'var(--text)',
+                                        position: 'relative', transition: 'all 0.15s', cursor: 'pointer',
                                         fontFamily: "'Oswald', sans-serif"
                                     }}
                                 >
                                     {d}
-                                    {hasEv && !isSel && (
-                                        <div style={{ position: 'absolute', bottom: 3, width: 4, height: 4, borderRadius: '50%', background: isToday ? 'var(--primary)' : 'var(--text-muted)' }} />
+                                    {hasEv && (
+                                        <div style={{
+                                            position: 'absolute', bottom: 2,
+                                            width: 3, height: 3, borderRadius: '50%',
+                                            background: isSel ? 'rgba(255,255,255,0.8)' : isRed ? '#ef4444' : 'var(--primary)'
+                                        }} />
                                     )}
                                 </button>
                             );
@@ -282,9 +310,15 @@ export function ListPage() {
                             const time = new Date(s.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
                             return (
-                                <div key={s.id} className="card" style={{ padding: 20 }}>
+                                <div key={s.id} className="card" style={{ 
+                                    padding: 20,
+                                    border: s.status === 'failed' ? '1.5px solid rgba(220,38,38,0.2)' : '1px solid var(--border-light)',
+                                    background: s.status === 'failed' ? 'rgba(254,242,242,0.6)' : 'var(--surface)'
+                                }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 200, color: '#000000', lineHeight: 1 }}>{time}</div>
+                                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 200, lineHeight: 1,
+                                            color: s.status === 'failed' ? '#dc2626' : '#000000'
+                                        }}>{time}</div>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <span style={{ 
                                                 fontSize: 10, fontWeight: 600, textTransform: 'uppercase', padding: '4px 10px', 
@@ -307,7 +341,7 @@ export function ListPage() {
                                                 <Building2 size={14} color="var(--text-secondary)" />
                                             </div>
                                             <div style={{ fontSize: 14, fontWeight: 200, color: 'var(--text)', lineHeight: 1.4 }}>
-                                                <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{eventTypeLabels[s.event_type] || 'Событие'}</span>: <span style={{ fontWeight: 600 }}>{prop?.address || 'Объект не указан'}</span>
+                                                <span style={{ fontWeight: 600, color: s.status === 'failed' ? '#dc2626' : 'var(--primary)' }}>{eventTypeLabels[s.event_type] || 'Событие'}</span>: <span style={{ fontWeight: 600 }}>{prop?.address || 'Объект не указан'}</span>
                                             </div>
                                         </div>
 
@@ -385,8 +419,22 @@ export function ListPage() {
                 </div>
 
                 {/* Timeline Section */}
-                <div style={{ marginTop: 40 }}>
-                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 20 }}>Лента событий</div>
+                <div style={{ marginTop: 32 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <div className="font-oswald" style={{ fontSize: 15, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Лента событий</div>
+                        <button
+                            className="card-clickable"
+                            onClick={() => navigate('/history/new')}
+                            style={{
+                                width: 32, height: 32, borderRadius: 10, border: 'none',
+                                background: 'var(--primary)', color: 'white',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                boxShadow: '0 4px 12px rgba(0,82,255,0.2)'
+                            }}
+                        >
+                            <Plus size={16} />
+                        </button>
+                    </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {myShowings
                             .sort((a, b) => new Date(b.showing_date).getTime() - new Date(a.showing_date).getTime())
@@ -399,22 +447,29 @@ export function ListPage() {
                                 const timeStr = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                                 
                                 return (
-                                    <div key={s.id} className="card-clickable" style={{ 
-                                        display: 'flex', gap: 16, padding: '16px', borderRadius: 20, 
-                                        background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.02)'
+                                    <div key={s.id} className="card-clickable" style={{
+                                        display: 'flex', gap: 16, padding: '16px', borderRadius: 20,
+                                        background: s.status === 'failed' ? 'rgba(254,242,242,0.5)' : 'var(--surface)',
+                                        border: s.status === 'failed' ? '1px solid rgba(220,38,38,0.15)' : '1px solid rgba(0,0,0,0.02)'
                                     }} onClick={() => navigate(`/history/new?id=${s.id}`)}>
-                                        <div style={{ 
-                                            display: 'flex', flexDirection: 'column', alignItems: 'center', 
+                                        <div style={{
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center',
                                             justifyContent: 'center', width: 50, flexShrink: 0,
                                             borderRight: '1px solid rgba(0,0,0,0.05)', paddingRight: 16
                                         }}>
-                                            <div className="font-oswald" style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase' }}>{dateStr}</div>
+                                            <div className="font-oswald" style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+                                                color: s.status === 'failed' ? '#dc2626' : 'var(--primary)'
+                                            }}>{dateStr}</div>
                                             <div style={{ fontSize: 10, fontWeight: 200, color: '#000000' }}>{timeStr}</div>
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase' }}>{eventTypeLabels[s.event_type] || 'Событие'}</div>
-                                                <div style={{ fontSize: 10, fontWeight: 600, color: s.status === 'completed' ? '#059669' : '#94a3b8' }}>{getEventStatusLabel(s.event_type, s.status)}</div>
+                                                <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase',
+                                                    color: s.status === 'failed' ? '#dc2626' : 'var(--primary)'
+                                                }}>{eventTypeLabels[s.event_type] || 'Событие'}</div>
+                                                <div style={{ fontSize: 10, fontWeight: 600,
+                                                    color: s.status === 'completed' ? '#059669' : s.status === 'failed' ? '#dc2626' : '#94a3b8'
+                                                }}>{getEventStatusLabel(s.event_type, s.status)}</div>
                                             </div>
                                             <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{prop?.address || 'Без объекта'}</div>
                                             <div style={{ fontSize: 12, color: '#000000', fontWeight: 200 }}>{clientNames || '—'}</div>

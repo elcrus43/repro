@@ -70,12 +70,19 @@ export function ListPage() {
         });
     };
 
-    const statusLabels = { active: 'В продаже', paused: 'Пауза', deal_closed: 'Продано', refused: 'Снято' };
-    const statusColors = { 
-        active: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)', 
-        paused: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)', 
-        deal_closed: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-        refused: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)' 
+    const statusLabels = {
+        meeting: 'Встреча',
+        agreement: 'АД',
+        advertising: 'В рекламе',
+        deposit: 'Задаток',
+        deal: 'Сделка'
+    };
+    const statusColors = {
+        meeting: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
+        agreement: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+        advertising: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
+        deposit: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+        deal: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)'
     };
 
     return (
@@ -258,9 +265,9 @@ export function ListPage() {
                                 onClick={() => navigate(`/properties/${prop.id}`)}
                                 style={{ 
                                     display: 'flex', gap: 16, padding: '16px', alignItems: 'center', 
-                                    border: isSelected ? '2px solid var(--primary)' : 'none', 
-                                    boxShadow: '0 8px 30px rgba(0,0,0,0.03)',
-                                    background: 'var(--surface)', borderRadius: 24,
+                                    border: isSelected ? '2px solid var(--primary)' : '1.5px solid rgba(59,130,246,0.18)', 
+                                    boxShadow: '0 4px 16px rgba(59,130,246,0.06)',
+                                    background: 'rgba(239,246,255,0.55)', borderRadius: 24,
                                     position: 'relative'
                                 }}
                             >
@@ -278,16 +285,7 @@ export function ListPage() {
                                             <div style={{ fontSize: 8, fontWeight: 600, marginTop: 4 }}>Нет фото</div>
                                         </div>
                                     )}
-                                    <div style={{ position: 'absolute', top: 8, left: 8 }}>
-                                        <div style={{ 
-                                            background: statusColors[status] || '#94a3b8', 
-                                            color: 'white', fontSize: 8, fontWeight: 600, 
-                                            padding: '3px 8px', borderRadius: 7,
-                                            boxShadow: '0 4px 8px rgba(0,0,0,0.2)'
-                                        }}>
-                                            {statusLabels[status]}
-                                        </div>
-                                    </div>
+                                    {/* Selection Checkbox only — status badge moved to content */}
                                     {/* Selection Checkbox */}
                                     <div 
                                         onClick={(e) => {
@@ -339,12 +337,22 @@ export function ListPage() {
                                     </div>
                                     <div style={{ 
                                         fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, 
-                                        display: 'flex', alignItems: 'flex-start', gap: 4,
-                                        fontWeight: 200, opacity: 0.8
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
                                     }}>
-                                        <MapPin size={12} style={{ marginTop: 2, flexShrink: 0, color: 'var(--primary)' }} />
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' }}>
-                                            {prop.address || prop.city}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 200, opacity: 0.8, minWidth: 0 }}>
+                                            <MapPin size={12} style={{ marginTop: 1, flexShrink: 0, color: 'var(--primary)' }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {prop.address || prop.city}
+                                            </span>
+                                        </div>
+                                        <span style={{
+                                            flexShrink: 0, fontSize: 10, fontWeight: 400,
+                                            color: status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
+                                            background: status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
+                                            padding: '3px 8px', borderRadius: 20, border: '1px solid currentColor',
+                                            borderColor: status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)',
+                                        }}>
+                                            {statusLabels[status] || status}
                                         </span>
                                     </div>
                                     

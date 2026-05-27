@@ -118,7 +118,7 @@ export function FormPage() {
         property_type: 'apartment',
         deal_type: 'sale',
         market_type: 'secondary',
-        status: 'active',
+        status: 'meeting',
         city: 'Киров',
         address: '',
         latitude: null,
@@ -450,12 +450,11 @@ export function FormPage() {
                         <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Статус объекта</label>
                             <select className="form-select" value={form.status} onChange={e => setF('status', e.target.value)} style={{ borderRadius: 14 }}>
-                                <option value="active">В продаже</option>
+                                <option value="meeting">Встреча</option>
+                                <option value="agreement">АД (агент. договор)</option>
                                 <option value="advertising">В рекламе</option>
-                                <option value="paused">Пауза / Думает</option>
-                                <option value="reserved">Резерв</option>
-                                <option value="sold">Продано</option>
-                                <option value="withdrawn">Снято с продажи</option>
+                                <option value="deposit">Задаток</option>
+                                <option value="deal">Сделка</option>
                             </select>
                         </div>
                     </div>

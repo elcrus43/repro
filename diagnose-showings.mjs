@@ -47,9 +47,15 @@ async function diagnose() {
   }
 
   // Проверяем что происходило с RLS
-  const { data: rls } = await sb.rpc('exec_sql', {
-    query: "SELECT schemaname, tablename, policyname, cmd FROM pg_policies WHERE tablename = 'showings'"
-  }).catch(() => ({ data: null }));
+  let rls = null;
+  try {
+    const { data } = await sb.rpc('exec_sql', {
+      query: "SELECT schemaname, tablename, policyname, cmd FROM pg_policies WHERE tablename = 'showings'"
+    });
+    rls = data;
+  } catch (e) {
+    console.warn('Failed to fetch RLS policies:', e.message);
+  }
   
   if (rls) {
     console.log('\n🔐 RLS политики для showings:', JSON.stringify(rls, null, 2));

@@ -176,6 +176,47 @@ export function DetailsPage() {
                         </div>
                     </div>
 
+                    {/* Quick Stage Switcher */}
+                    {(() => {
+                        const STAGES = [
+                            { id: 'meeting',     label: '\u0412\u0441\u0442\u0440\u0435\u0447\u0430',    color: '#3b82f6' },
+                            { id: 'agreement',   label: '\u0410\u0414',         color: '#f59e0b' },
+                            { id: 'advertising', label: '\u0420\u0435\u043a\u043b\u0430\u043c\u0430',   color: '#8b5cf6' },
+                            { id: 'deposit',     label: '\u0417\u0430\u0434\u0430\u0442\u043e\u043a',   color: '#10b981' },
+                            { id: 'deal',        label: '\u0421\u0434\u0435\u043b\u043a\u0430',     color: '#22c55e' },
+                        ];
+                        const cur = prop.status;
+                        return (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {STAGES.map((s, idx) => {
+                                    const isActive = cur === s.id;
+                                    const isPast = STAGES.findIndex(x => x.id === cur) > idx;
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            className="card-clickable"
+                                            onClick={() => dispatch({ 
+                                                type: 'UPDATE_PROPERTY', 
+                                                property: { ...prop, status: s.id }
+                                            })}
+                                            style={{
+                                                padding: '6px 14px', borderRadius: 20, border: 'none', fontSize: 12,
+                                                fontFamily: "'Oswald', sans-serif", fontWeight: isActive ? 600 : 300,
+                                                background: isActive ? s.color : isPast ? `${s.color}22` : 'var(--bg-light)',
+                                                color: isActive ? 'white' : isPast ? s.color : 'var(--text-secondary)',
+                                                boxShadow: isActive ? `0 4px 12px ${s.color}44` : 'none',
+                                                transition: 'all 0.2s',
+                                                opacity: isActive ? 1 : 0.75,
+                                            }}
+                                        >
+                                            {isActive ? '● ' : isPast ? '✓ ' : ''}{s.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()}
+
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
                         <button
                             className="card-clickable"

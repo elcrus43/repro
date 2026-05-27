@@ -427,6 +427,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         });
 
         result = await withRetry(() => supabase.from('properties').update(normalizedData).eq('id', pId));
+        if (result?.error) console.error('[UPDATE_PROPERTY ERROR]', JSON.stringify(result.error));
 
         // Retry without notes if column missing
         if (result?.error && result.error.message?.includes('notes')) {
