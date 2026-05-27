@@ -131,18 +131,18 @@ export async function loadUserData(userId, role) {
   }
 
   // Загружаем основные таблицы сначала (Batch 1: 4 параллельных запроса)
+  // properties и requests — загружаем ВСЕ (для матчинга между риэлторами)
+  // clients, showings, tasks, deals — только свои
   const [
     clientsRes, propertiesRes, requestsRes, matchesRes
   ] = await Promise.all([
     isAdmin
       ? safeQuery((signal) => supabase.from('clients').select('*').abortSignal(signal))
       : safeQuery((signal) => supabase.from('clients').select('*').eq('realtor_id', userId).abortSignal(signal)),
-    isAdmin
-      ? safeQuery((signal) => supabase.from('properties').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('properties').select('*').eq('realtor_id', userId).abortSignal(signal)),
-    isAdmin
-      ? safeQuery((signal) => supabase.from('requests').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('requests').select('*').eq('realtor_id', userId).abortSignal(signal)),
+    // Все объекты видны всем риэлторам (нужно для матчинга и совместной работы)
+    safeQuery((signal) => supabase.from('properties').select('*').abortSignal(signal)),
+    // Все запросы видны всем риэлторам (нужно для матчинга)
+    safeQuery((signal) => supabase.from('requests').select('*').abortSignal(signal)),
     isAdmin
       ? safeQuery((signal) => supabase.from('matches').select('*').abortSignal(signal))
       : safeQuery((signal) => supabase.from('matches').select('*').eq('realtor_id', userId).abortSignal(signal)),
