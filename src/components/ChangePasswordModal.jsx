@@ -50,12 +50,22 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
 
             if (updateErr) {
                 console.error('[ChangePassword] Supabase error:', updateErr);
-                setError('Ошибка Supabase: ' + updateErr.message);
+                // Переводим типовые ошибки Supabase на русский
+                const msg = updateErr.message || '';
+                let friendlyMsg = msg;
+                if (msg.includes('different from the old password')) {
+                    friendlyMsg = 'Новый пароль должен отличаться от текущего';
+                } else if (msg.includes('at least') || msg.includes('characters')) {
+                    friendlyMsg = 'Пароль слишком короткий';
+                } else if (msg.includes('weak')) {
+                    friendlyMsg = 'Пароль слишком простой, используйте буквы и цифры';
+                }
+                setError(friendlyMsg);
                 return;
             }
 
             console.log('[ChangePassword] Success!');
-            onSuccess();
+            onSuccess?.();
         } catch (err) {
             console.error('[ChangePassword] Unexpected error:', err);
             setError('Произошла ошибка: ' + (err.message || 'неизвестная ошибка'));

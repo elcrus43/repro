@@ -35,18 +35,25 @@ export default function RemindersPage() {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
 
+  const toLocalDateStr = (dateOrStr) => {
+    if (!dateOrStr) return '';
+    const d = new Date(dateOrStr);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   const emptyForm = {
     title: '',
     type: 'call',
-    due_date: new Date().toISOString().slice(0, 10),
+    due_date: toLocalDateStr(new Date()),
     property_id: '',
     client_id: '',
     notes: '',
   };
   const [form, setForm] = useState(emptyForm);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const today = toLocalDateStr(new Date());
+  const tomorrow = toLocalDateStr(new Date(Date.now() + 86400000));
 
   const myTasks = useMemo(() => {
     const userId = state.currentUser?.id;
@@ -58,22 +65,22 @@ export default function RemindersPage() {
     {
       label: '🔴 Просрочено',
       color: '#ef4444',
-      items: myTasks.filter(t => t.due_date < today && t.status !== 'done'),
+      items: myTasks.filter(t => toLocalDateStr(t.due_date) < today && t.status !== 'done'),
     },
     {
       label: '📅 Сегодня',
       color: '#f59e0b',
-      items: myTasks.filter(t => t.due_date === today && t.status !== 'done'),
+      items: myTasks.filter(t => toLocalDateStr(t.due_date) === today && t.status !== 'done'),
     },
     {
       label: '⏰ Завтра',
       color: '#3b82f6',
-      items: myTasks.filter(t => t.due_date === tomorrow && t.status !== 'done'),
+      items: myTasks.filter(t => toLocalDateStr(t.due_date) === tomorrow && t.status !== 'done'),
     },
     {
       label: 'Позже',
       color: 'var(--text-secondary)',
-      items: myTasks.filter(t => t.due_date > tomorrow && t.status !== 'done'),
+      items: myTasks.filter(t => toLocalDateStr(t.due_date) > tomorrow && t.status !== 'done'),
     },
     {
       label: '✓ Выполнено',

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, toLocalISOString, parseLocalDateTime } from '../../utils/format';
 import { Calendar, User, Phone, UserPlus, X, ChevronLeft, Save, Clock } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
@@ -23,10 +23,10 @@ export function CallFormPage() {
 
     const [form, setForm] = useState(() => existing ? {
         ...existing,
-        due_date: existing.due_date ? new Date(existing.due_date).toISOString().slice(0, 16) : '',
+        due_date: existing.due_date ? toLocalISOString(existing.due_date) : '',
     } : {
         client_id: prefillClientId || '',
-        due_date: new Date(Date.now() + 1800000).toISOString().slice(0, 16),
+        due_date: toLocalISOString(new Date(Date.now() + 1800000)),
         status: 'pending',
         priority: 'medium',
         description: '',
@@ -74,7 +74,7 @@ export function CallFormPage() {
             property_id: null,
             title: `Позвонить — ${client?.full_name || ''}`,
             description: form.description || '',
-            due_date: new Date(form.due_date).toISOString(),
+            due_date: parseLocalDateTime(form.due_date)?.toISOString() || new Date().toISOString(),
             status: form.status,
             priority: form.priority,
             task_type: 'Позвонить',

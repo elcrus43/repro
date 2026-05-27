@@ -1,6 +1,7 @@
 import { ChevronLeft, Building2, Users, Clock, Calendar, MessageSquare, Pencil } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { getEventStatusLabel } from '../../utils/format';
 
 export function DetailsPage() {
     const { id } = useParams();
@@ -38,7 +39,7 @@ export function DetailsPage() {
         call: 'Звонок'
     };
     
-    const statusLabels = { planned: 'Запланирован', completed: 'Проведен', failed: 'Не состоялся' };
+
 
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
@@ -69,7 +70,7 @@ export function DetailsPage() {
                             borderRadius: 12, background: showing.status === 'completed' ? '#ecfdf5' : showing.status === 'failed' ? '#fef2f2' : 'var(--primary-light)',
                             color: showing.status === 'completed' ? '#059669' : showing.status === 'failed' ? '#dc2626' : 'var(--primary)'
                         }}>
-                            {statusLabels[showing.status] || showing.status}
+                            {getEventStatusLabel(showing.event_type, showing.status)}
                         </span>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', fontWeight: 700 }}>
                             <Calendar size={14} />

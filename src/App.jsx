@@ -51,8 +51,14 @@ function BottomNav() {
   const isAdminUser = state.currentUser?.role === 'admin';
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
   const overdueTasksCount = state.tasks.filter(t => {
-    const today = new Date().toISOString().slice(0, 10);
-    return t.due_date < today && t.status !== 'done' && t.realtor_id === state.currentUser?.id;
+    const toLocalDateStr = (dateOrStr) => {
+      if (!dateOrStr) return '';
+      const d = new Date(dateOrStr);
+      if (isNaN(d.getTime())) return '';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+    const today = toLocalDateStr(new Date());
+    return toLocalDateStr(t.due_date) < today && t.status !== 'done' && t.realtor_id === state.currentUser?.id;
   }).length;
 
   const tabs = [

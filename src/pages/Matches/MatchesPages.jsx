@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
-import { formatNumber } from '../../utils/format';
+import { formatNumber, parseLocalDateTime } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp } from 'lucide-react';
 import { API_BASE } from '../../config';
@@ -228,7 +228,7 @@ export function MatchDetailPage() {
         if (!showingDate) return;
         dispatch({
             type: 'ADD_SHOWING',
-            showing: { match_id: matchId, property_id: match.property_id, client_id: req?.client_id, realtor_id: match.realtor_id, showing_date: showingDate, status: 'planned' }
+            showing: { match_id: matchId, property_id: match.property_id, client_id: req?.client_id, realtor_id: match.realtor_id, showing_date: parseLocalDateTime(showingDate)?.toISOString(), status: 'planned' }
         });
         dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'viewed' } });
         setShowShowingForm(false);

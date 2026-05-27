@@ -8,8 +8,10 @@ import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX,
 import {
     isCalendarConfigured,
     isCalendarConnected,
-    requestAccessToken,
+    connectCalendar,
     disconnectCalendar,
+    initCalendarAuth,
+    addEventToCalendar,
 } from '../../lib/googleCalendar';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 
@@ -26,6 +28,8 @@ export function ProfilePage() {
     const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
     const [showPasswordModal, setShowPasswordModal] = React.useState(false);
     const [gcalConnected, setGcalConnected] = React.useState(() => isCalendarConnected());
+    const [calTestResult, setCalTestResult] = React.useState(null); // null | { ok, message, link }
+    const [calTesting, setCalTesting] = React.useState(false);
     
     const user = state.currentUser;
     const [editData, setEditData] = React.useState({
@@ -40,6 +44,15 @@ export function ProfilePage() {
     const setPassport = (field, value) => setEditData(prev => ({ ...prev, passport_details: { ...prev.passport_details, [field]: value } }));
 
     const isAdmin = user?.role === 'admin';
+
+    // Initialize Google Calendar auth with current Supabase session
+    React.useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.access_token) {
+                initCalendarAuth(session.access_token, !!state.currentUser?.google_refresh_token);
+            }
+        });
+    }, [state.currentUser]);
 
     React.useEffect(() => {
         const handler = (e) => {
@@ -85,6 +98,35 @@ export function ProfilePage() {
     const handleSave = () => {
         dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
         setIsEditing(false);
+    };
+
+    const handleConnectCalendar = async () => {
+        try {
+            // Ensure we have fresh Supabase session for Edge Function auth
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.access_token) initCalendarAuth(session.access_token);
+
+            await connectCalendar();
+            if (session?.access_token) initCalendarAuth(session.access_token, true);
+            setGcalConnected(true);
+            toast.success('Google Calendar успешно подключен! Теперь токен обновляется автоматически.');
+        } catch (err) {
+            console.error(err);
+            toast.error('Не удалось подключить Google Calendar: ' + err.message);
+        }
+    };
+
+    const handleDisconnectCalendar = async () => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            await disconnectCalendar();
+            if (session?.access_token) initCalendarAuth(session.access_token, false);
+            setGcalConnected(false);
+            toast.success('Google Calendar отключен');
+        } catch (err) {
+            console.error(err);
+            toast.error('Ошибка при отключении Google Calendar');
+        }
     };
 
     const myClients = state.clients.filter(c => isAdmin || c.realtor_id === user.id);
@@ -286,6 +328,158 @@ export function ProfilePage() {
                     ))}
                 </div>
 
+                {/* Google Calendar Integration Card */}
+                <div className="card" style={{ padding: '24px', borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ 
+                            width: 40, height: 40, borderRadius: 12, 
+                            background: 'var(--bg-light)', color: 'var(--text)', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.8
+                        }}>
+                            <Calendar size={20} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                            <div className="font-oswald" style={{ fontSize: 15, fontWeight: 300, color: 'var(--text)' }}>Google Календарь</div>
+                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, fontWeight: 300 }}>
+                                {!isCalendarConfigured() ? (
+                                    <span style={{ color: 'var(--danger)' }}>Не настроен (укажите VITE_GOOGLE_CLIENT_ID в .env)</span>
+                                ) : gcalConnected ? (
+                                    <span style={{ color: 'var(--success)' }}>✓ Подключен и активен</span>
+                                ) : (
+                                    <span style={{ color: 'var(--danger)' }}>✗ Не подключён — события не синхронизируются</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Token debug info */}
+                    {isCalendarConfigured() && (() => {
+                        const token = localStorage.getItem('gcal_access_token');
+                        const expiry = localStorage.getItem('gcal_token_expiry');
+                        const hasToken = !!token;
+                        const isValid = expiry && Date.now() < Number(expiry);
+                        const expiresIn = expiry ? Math.round((Number(expiry) - Date.now()) / 60000) : null;
+                        const hasDbToken = !!state.currentUser?.google_refresh_token;
+                        return (
+                            <div style={{ 
+                                padding: '12px 14px', borderRadius: 14, 
+                                background: 'var(--bg-light)', 
+                                fontSize: 11, fontWeight: 600,
+                                display: 'flex', flexDirection: 'column', gap: 4
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Токен в браузере:</span>
+                                    <span style={{ color: hasToken && isValid ? '#059669' : '#dc2626' }}>
+                                        {hasToken && isValid ? `✓ Активен (${expiresIn} мин)` : hasToken ? '✗ Истёк' : '✗ Нет'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Refresh-токен в БД:</span>
+                                    <span style={{ color: hasDbToken ? '#059669' : '#dc2626' }}>
+                                        {hasDbToken ? '✓ Есть' : '✗ Нет — нужно подключить'}
+                                    </span>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {isCalendarConfigured() && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {gcalConnected ? (
+                                <>
+                                    {/* Test event button */}
+                                    <button
+                                        className="btn btn-primary btn-full card-clickable"
+                                        style={{ borderRadius: 14, height: 48, fontSize: 13, gap: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        disabled={calTesting}
+                                        onClick={async () => {
+                                            setCalTesting(true);
+                                            setCalTestResult(null);
+                                            try {
+                                                const now = new Date();
+                                                const start = new Date(now.getTime() + 5 * 60 * 1000); // +5 минут
+                                                const event = await addEventToCalendar({
+                                                    title: '🏠 Тест R Match — проверка синхронизации',
+                                                    description: `Тестовое событие создано ${now.toLocaleString('ru-RU')}`,
+                                                    startDateTime: start.toISOString(),
+                                                    durationMinutes: 30,
+                                                });
+                                                setCalTestResult({
+                                                    ok: true,
+                                                    message: `✓ Событие создано! ID: ${event.id?.slice(0, 12)}...`,
+                                                    link: event.htmlLink,
+                                                    calendarId: event.organizer?.email || 'primary',
+                                                });
+                                            } catch (e) {
+                                                setCalTestResult({ ok: false, message: e.message });
+                                            } finally {
+                                                setCalTesting(false);
+                                            }
+                                        }}
+                                    >
+                                        {calTesting ? <RefreshCw size={14} className="spin" /> : <Calendar size={14} />}
+                                        {calTesting ? 'Создаём тестовое событие...' : 'Создать тестовое событие'}
+                                    </button>
+
+                                    {/* Test result */}
+                                    {calTestResult && (
+                                        <div style={{
+                                            padding: '12px 14px', borderRadius: 14,
+                                            background: calTestResult.ok ? '#ecfdf5' : '#fef2f2',
+                                            display: 'flex', flexDirection: 'column', gap: 6
+                                        }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700, color: calTestResult.ok ? '#059669' : '#dc2626' }}>
+                                                {calTestResult.message}
+                                            </div>
+                                            {calTestResult.ok && (
+                                                <>
+                                                    <div style={{ fontSize: 11, color: '#059669', fontWeight: 600 }}>
+                                                        Календарь: {calTestResult.calendarId}
+                                                    </div>
+                                                    <a
+                                                        href={calTestResult.link}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        style={{
+                                                            display: 'block', textAlign: 'center',
+                                                            padding: '8px', borderRadius: 10,
+                                                            background: '#059669', color: 'white',
+                                                            fontSize: 12, fontWeight: 700, textDecoration: 'none'
+                                                        }}
+                                                    >
+                                                        Открыть в Google Calendar →
+                                                    </a>
+                                                </>
+                                            )}
+                                            {!calTestResult.ok && (
+                                                <div style={{ fontSize: 11, color: '#dc2626', fontWeight: 600 }}>
+                                                    Возможные причины: Google Calendar API отключён, токен недействителен
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <button
+                                        className="btn btn-secondary btn-full card-clickable"
+                                        style={{ borderRadius: 14, height: 44, fontSize: 13 }}
+                                        onClick={handleDisconnectCalendar}
+                                    >
+                                        Отключить и переподключить
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    className="btn btn-primary btn-full card-clickable"
+                                    style={{ borderRadius: 14, height: 44, fontSize: 13 }}
+                                    onClick={handleConnectCalendar}
+                                >
+                                    Подключить Google Календарь
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* Admin Actions */}
                 {isAdmin && (
                     <div className="card" style={{ padding: '24px', borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
@@ -324,6 +518,10 @@ export function ProfilePage() {
                 isOpen={showPasswordModal}
                 onClose={() => setShowPasswordModal(false)}
                 userEmail={user?.email}
+                onSuccess={() => {
+                    setShowPasswordModal(false);
+                    toast.success('Пароль успешно изменён');
+                }}
             />
         </div>
     );

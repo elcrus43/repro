@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { formatPhone, stripPhone, formatNumber } from '../utils/format'
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../utils/format'
 import { formatDate, formatDateTime, cleanPrice, formatPrice, getLevelLabel } from '../utils/matching'
 
 // ─── Date Formatting ────────────────────────────────────────────────────────
@@ -171,5 +171,75 @@ describe('formatNumber', () => {
 
   it('returns "0" for NaN', () => {
     expect(formatNumber('abc')).toBe('0')
+  })
+})
+
+describe('getEventStatusLabel', () => {
+  it('formats deposit status labels correctly', () => {
+    expect(getEventStatusLabel('deposit', 'planned')).toBe('Задаток запланирован')
+    expect(getEventStatusLabel('deposit', 'completed')).toBe('Задаток передан')
+    expect(getEventStatusLabel('deposit', 'failed')).toBe('Задаток расторгнут')
+  })
+
+  it('formats deal status labels correctly', () => {
+    expect(getEventStatusLabel('deal', 'planned')).toBe('Сделка запланирована')
+    expect(getEventStatusLabel('deal', 'completed')).toBe('Сделка прошла успешно')
+    expect(getEventStatusLabel('deal', 'failed')).toBe('Сделка не состоялась')
+  })
+
+  it('formats showing status labels correctly', () => {
+    expect(getEventStatusLabel('showing', 'planned')).toBe('Показ запланирован')
+    expect(getEventStatusLabel('showing', 'completed')).toBe('Показ проведен')
+    expect(getEventStatusLabel('showing', 'failed')).toBe('Показ не состоялся')
+  })
+
+  it('fallbacks to showing labels or raw status for unknown event types', () => {
+    expect(getEventStatusLabel('unknown', 'planned')).toBe('Показ запланирован')
+    expect(getEventStatusLabel('unknown', 'completed')).toBe('Показ проведен')
+    expect(getEventStatusLabel('unknown', 'custom')).toBe('custom')
+  })
+})
+
+describe('toLocalISOString', () => {
+  it('formats dates to local YYYY-MM-DDTHH:mm format', () => {
+    const d = new Date(2026, 4, 26, 20, 0, 0); // May 26, 2026 at 20:00 local time
+    expect(toLocalISOString(d)).toBe('2026-05-26T20:00');
+  })
+
+  it('formats ISO string correctly to local components', () => {
+    const d = new Date(2026, 4, 26, 9, 30, 0);
+    const iso = d.toISOString(); // e.g. UTC representation
+    expect(toLocalISOString(iso)).toBe('2026-05-26T09:30');
+  })
+
+  it('returns empty string for null or undefined', () => {
+    expect(toLocalISOString(null)).toBe('');
+    expect(toLocalISOString(undefined)).toBe('');
+  })
+})
+
+describe('parseLocalDateTime', () => {
+  it('correctly parses local datetime-local string to local Date object', () => {
+    const parsed = parseLocalDateTime('2026-05-27T12:30');
+    expect(parsed).toBeInstanceOf(Date);
+    expect(parsed.getFullYear()).toBe(2026);
+    expect(parsed.getMonth()).toBe(4); // 0-indexed May
+    expect(parsed.getDate()).toBe(27);
+    expect(parsed.getHours()).toBe(12);
+    expect(parsed.getMinutes()).toBe(30);
+  })
+
+  it('returns null for null, undefined, or empty string', () => {
+    expect(parseLocalDateTime(null)).toBeNull();
+    expect(parseLocalDateTime(undefined)).toBeNull();
+    expect(parseLocalDateTime('')).toBeNull();
+  })
+
+  it('falls back to default parser for partial or invalid formats', () => {
+    const parsed = parseLocalDateTime('2026-05-27');
+    expect(parsed).toBeInstanceOf(Date);
+    expect(parsed.getFullYear()).toBe(2026);
+    expect(parsed.getMonth()).toBe(4);
+    expect(parsed.getDate()).toBe(27);
   })
 })

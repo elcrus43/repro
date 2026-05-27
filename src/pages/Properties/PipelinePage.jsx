@@ -44,12 +44,15 @@ export function PipelinePage() {
   };
 
   return (
-    <div style={{
+    <div className="pipeline-scrollbar" style={{
       overflowX: 'auto',
       scrollbarWidth: 'none',
       display: 'flex',
       gap: 12,
-      padding: '16px 4px 24px',
+      padding: '16px 20px 24px',
+      margin: '0 -20px',
+      width: 'calc(100% + 40px)',
+      boxSizing: 'border-box',
       minHeight: 400,
     }}>
       <style>{`

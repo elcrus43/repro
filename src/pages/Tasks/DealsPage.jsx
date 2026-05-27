@@ -6,6 +6,7 @@ import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { nanoid } from '../../utils/nanoid';
+import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 
 export function DealsPage() {
     const { state, dispatch } = useApp();
@@ -168,8 +169,8 @@ export function DealsPage() {
             price: Number(parsePriceInput(String(newDeal.price))) || 0,
             deposit_amount: Number(parsePriceInput(String(newDeal.deposit_amount))) || 0,
             commission: Number(parsePriceInput(String(newDeal.commission))) || 0,
-            deal_date: newDeal.deal_date || null,
-            deposit_date: newDeal.deposit_date || null,
+            deal_date: newDeal.deal_date ? parseLocalDateTime(newDeal.deal_date)?.toISOString() : null,
+            deposit_date: newDeal.deposit_date ? parseLocalDateTime(newDeal.deposit_date)?.toISOString() : null,
             status: newDeal.status || 'active',
             mortgage: newDeal.mortgage || false,
             mortgage_bank: newDeal.mortgage_bank || '',
@@ -214,8 +215,8 @@ export function DealsPage() {
             price: deal.price ? deal.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deposit_amount: deal.deposit_amount ? deal.deposit_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             commission: deal.commission ? deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
-            deal_date: deal.deal_date ? deal.deal_date.slice(0, 16) : '',
-            deposit_date: deal.deposit_date ? deal.deposit_date.slice(0, 16) : '',
+            deal_date: deal.deal_date ? toLocalISOString(deal.deal_date) : '',
+            deposit_date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
             mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             lawyer: deal.lawyer || '',
         });

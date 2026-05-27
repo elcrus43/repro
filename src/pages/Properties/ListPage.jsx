@@ -192,7 +192,7 @@ export function ListPage() {
                                     whiteSpace: 'nowrap', padding: '8px 16px', border: 'none',
                                     background: 'transparent',
                                     color: filter === val ? 'var(--primary)' : 'var(--text-secondary)',
-                                    fontSize: 12, fontWeight: 200, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    fontSize: 12, fontWeight: filter === val ? 700 : 400, textTransform: 'uppercase', letterSpacing: '0.05em',
                                     fontFamily: "'Oswald', sans-serif"
                                 }}
                             >
@@ -214,7 +214,7 @@ export function ListPage() {
                             placeholder="от"
                             style={{
                                 border: 'none', background: 'transparent', fontSize: 13,
-                                width: 90, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
+                                flex: 1, minWidth: 0, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
                             }}
                         />
                         <span style={{ color: 'var(--text-secondary)', fontSize: 13, opacity: 0.5 }}>—</span>
@@ -225,7 +225,7 @@ export function ListPage() {
                             placeholder="до"
                             style={{
                                 border: 'none', background: 'transparent', fontSize: 13,
-                                width: 90, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
+                                flex: 1, minWidth: 0, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
                             }}
                         />
                     </div>

@@ -1,272 +1,339 @@
 /**
- * Google Calendar integration via Google Identity Services (GSI)
- * Uses OAuth 2.0 implicit flow — no backend needed
+ * Google Calendar integration — Authorization Code Flow with Refresh Tokens
  *
- * Token persistence: access tokens are stored in sessionStorage
- * so they survive page reloads within the same browser tab session.
+ * Architecture:
+ *  - Frontend: gets authorization code via Google Identity Services
+ *  - Edge Function: exchanges code for tokens, stores refresh_token server-side
+ *  - Access token: cached in localStorage (~1 hour), auto-refreshed via Edge Function
+ *  - Refresh token: stored in profiles.google_refresh_token (never sent to client)
  */
 
-const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+const CLIENT_ID   = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const SCOPES      = 'https://www.googleapis.com/auth/calendar.events';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const EDGE_FN_URL  = `${SUPABASE_URL}/functions/v1/google-calendar-token`;
 
-let tokenClient = null;
-let accessToken = null;
-let tokenExpiry = 0;
+// Redirect URI must match what's registered in Google Cloud Console
+const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-calendar-token/callback`;
 
-const STORAGE_KEY = 'gcal_access_token';
-const STORAGE_EXPIRY_KEY = 'gcal_token_expiry';
+// localStorage keys
+const STORAGE_ACCESS_TOKEN = 'gcal_access_token';
+const STORAGE_EXPIRY       = 'gcal_token_expiry';
 
-/** Restore token from sessionStorage if available */
+// In-memory state
+let accessToken    = null;
+let tokenExpiry    = 0;
+let autoRefreshTimer    = null;
+let silentRefreshPromise = null;
+let hasRefreshToken = false;
+
+// Supabase auth token — set by init() so Edge Function can authenticate us
+let supabaseAuthToken = null;
+
+/* ─── Init ─────────────────────────────────────────────────────────────────── */
+
+/**
+ * Initialize with current Supabase session token and refresh token status.
+ * Call this once after user logs in (from AppContext or auth listener).
+ */
+export function initCalendarAuth(sessionToken, userHasRefreshToken = false) {
+    supabaseAuthToken = sessionToken;
+    if (userHasRefreshToken) {
+        hasRefreshToken = true;
+    }
+    // Try to restore cached access token
+    restoreToken();
+}
+
+/* ─── Storage ───────────────────────────────────────────────────────────────── */
+
 function restoreToken() {
-    if (accessToken) return true;
+    if (accessToken && Date.now() < tokenExpiry) return true;
     try {
-        const stored = sessionStorage.getItem(STORAGE_KEY);
-        const expiry = sessionStorage.getItem(STORAGE_EXPIRY_KEY);
+        const stored = localStorage.getItem(STORAGE_ACCESS_TOKEN);
+        const expiry = localStorage.getItem(STORAGE_EXPIRY);
         if (stored && expiry && Date.now() < Number(expiry)) {
             accessToken = stored;
             tokenExpiry = Number(expiry);
+            scheduleAutoRefresh();
             return true;
         }
-    } catch {
-        // sessionStorage may be disabled
-    }
+    } catch { /* localStorage disabled */ }
     return false;
 }
 
-/** Persist token to sessionStorage */
-function persistToken(token, expiryMs) {
+function saveToken(token, expiresInSeconds) {
+    accessToken = token;
+    tokenExpiry = Date.now() + (expiresInSeconds - 60) * 1000;
     try {
-        sessionStorage.setItem(STORAGE_KEY, token);
-        sessionStorage.setItem(STORAGE_EXPIRY_KEY, String(expiryMs));
-    } catch {
-        // sessionStorage may be disabled — non-critical
-    }
+        localStorage.setItem(STORAGE_ACCESS_TOKEN, token);
+        localStorage.setItem(STORAGE_EXPIRY, String(tokenExpiry));
+    } catch { /* non-critical */ }
+    scheduleAutoRefresh();
 }
 
-/** Clear persisted token */
-function clearPersistedToken() {
+function clearToken() {
+    accessToken = null;
+    tokenExpiry = 0;
+    if (autoRefreshTimer) { clearTimeout(autoRefreshTimer); autoRefreshTimer = null; }
     try {
-        sessionStorage.removeItem(STORAGE_KEY);
-        sessionStorage.removeItem(STORAGE_EXPIRY_KEY);
+        localStorage.removeItem(STORAGE_ACCESS_TOKEN);
+        localStorage.removeItem(STORAGE_EXPIRY);
     } catch { /* ignore */ }
 }
 
-/** Load the GSI script dynamically */
+/* ─── Auto-refresh ──────────────────────────────────────────────────────────── */
+
+const REFRESH_BEFORE_MS = 5 * 60 * 1000; // refresh 5 min before expiry
+
+function scheduleAutoRefresh() {
+    if (autoRefreshTimer) clearTimeout(autoRefreshTimer);
+    if (!tokenExpiry) return;
+
+    const delay = tokenExpiry - Date.now() - REFRESH_BEFORE_MS;
+    if (delay <= 0) {
+        refreshViaEdgeFunction();
+        return;
+    }
+
+    console.info(`[Google Calendar] Auto-refresh in ${Math.round(delay / 60000)} min`);
+    autoRefreshTimer = setTimeout(() => {
+        autoRefreshTimer = null;
+        refreshViaEdgeFunction();
+    }, delay);
+}
+
+async function refreshViaEdgeFunction() {
+    if (silentRefreshPromise) return silentRefreshPromise;
+
+    silentRefreshPromise = (async () => {
+        try {
+            if (!supabaseAuthToken) {
+                console.info('[Google Calendar] No Supabase session — skip refresh');
+                return false;
+            }
+
+            const res = await fetch(`${EDGE_FN_URL}/refresh`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${supabaseAuthToken}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                console.warn('[Google Calendar] Refresh failed:', body.error);
+                // 401 = refresh token revoked — clear local cache
+                if (res.status === 401) clearToken();
+                return false;
+            }
+
+            const { access_token, expires_in } = await res.json();
+            saveToken(access_token, expires_in);
+            console.info('[Google Calendar] Token refreshed via Edge Function ✓');
+            return true;
+        } catch (e) {
+            console.warn('[Google Calendar] Refresh error:', e.message);
+            return false;
+        } finally {
+            silentRefreshPromise = null;
+        }
+    })();
+
+    return silentRefreshPromise;
+}
+
+/* ─── GSI helpers ───────────────────────────────────────────────────────────── */
+
 function loadGsiScript() {
     return new Promise((resolve, reject) => {
         if (window.google?.accounts) return resolve();
-        const script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
+        const s = document.createElement('script');
+        s.src = 'https://accounts.google.com/gsi/client';
+        s.async = true; s.defer = true;
+        s.onload = resolve; s.onerror = reject;
+        document.head.appendChild(s);
     });
 }
 
-/** Initialize or get token client */
-async function getTokenClient() {
-    await loadGsiScript();
-    if (!tokenClient) {
-        tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: CLIENT_ID,
-            scope: SCOPES,
-            callback: () => { }, // will be overridden per-request
-        });
-    }
-    return tokenClient;
-}
+/* ─── Public API ─────────────────────────────────────────────────────────────── */
 
-/**
- * Check if Google Calendar is configured and connected.
- * @returns {boolean}
- */
 export function isCalendarConfigured() {
     return !!CLIENT_ID && CLIENT_ID !== 'your_google_client_id.apps.googleusercontent.com';
 }
 
-/**
- * Check if user has a valid access token (connected their Google Calendar).
- * @returns {boolean}
- */
 export function isCalendarConnected() {
-    return !!accessToken && Date.now() < tokenExpiry;
+    if (accessToken && Date.now() < tokenExpiry) return true;
+    if (restoreToken()) return true;
+    return hasRefreshToken;
 }
 
 /**
- * Request access token (shows Google consent popup if needed).
- * @param {boolean} forceConsent - if true, always show consent popup
- * @returns {Promise<string>} access token
+ * Connect Google Calendar — shows consent popup, exchanges code via Edge Function.
+ * @returns {Promise<void>}
  */
-export function requestAccessToken(forceConsent = false) {
+export async function connectCalendar() {
     return new Promise((resolve, reject) => {
-        // Try to restore token from sessionStorage first
-        if (!forceConsent && restoreToken()) {
-            resolve(accessToken);
-            return;
-        }
+        loadGsiScript().then(() => {
+            try {
+                const codeClient = window.google.accounts.oauth2.initCodeClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    ux_mode: 'popup',
+                    prompt: 'consent',
+                    // access_type=offline tells Google to return a refresh_token
+                    callback: async (response) => {
+                        if (response.error) {
+                            return reject(new Error(response.error_description || response.error));
+                        }
 
-        getTokenClient().then(client => {
-            client.callback = (response) => {
-                if (response.error) {
-                    reject(new Error(response.error));
-                } else {
-                    accessToken = response.access_token;
-                    tokenExpiry = Date.now() + (response.expires_in - 60) * 1000;
-                    persistToken(accessToken, tokenExpiry);
-                    resolve(accessToken);
-                }
-            };
-            // If we have a valid token and not forcing consent, skip popup
-            if (!forceConsent && accessToken && Date.now() < tokenExpiry) {
-                resolve(accessToken);
-                return;
+                        try {
+                            // Exchange code for tokens via Edge Function (server-side)
+                            const res = await fetch(`${EDGE_FN_URL}/exchange`, {
+                                method: 'POST',
+                                headers: {
+                                    Authorization: `Bearer ${supabaseAuthToken}`,
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    code: response.code,
+                                    redirect_uri: window.location.origin,
+                                }),
+                            });
+
+                            if (!res.ok) {
+                                const err = await res.json().catch(() => ({}));
+                                throw new Error(err.error || 'Ошибка обмена токена');
+                            }
+
+                            const { access_token, expires_in } = await res.json();
+                            saveToken(access_token, expires_in);
+                            resolve();
+                        } catch (e) {
+                            reject(e);
+                        }
+                    },
+                });
+
+                // prompt=consent + access_type=offline → Google returns refresh_token
+                codeClient.requestCode();
+            } catch (e) {
+                reject(e);
             }
-            client.requestAccessToken({ prompt: forceConsent ? 'consent' : '' });
         }).catch(reject);
     });
 }
 
 /**
- * Disconnect Google Calendar (clear tokens).
- * This revokes the access token and clears local storage.
+ * Get current valid access token (auto-refreshes if needed).
+ * Used internally by calendar API calls.
  */
-export async function disconnectCalendar() {
-    if (accessToken) {
-        try {
-            // Revoke the token on Google's side
-            await fetch(`https://oauth2.googleapis.com/revoke?token=${accessToken}`, {
-                method: 'POST',
-            });
-        } catch {
-            // Token revocation may fail — non-critical
-        }
-    }
-    accessToken = null;
-    tokenExpiry = 0;
-    clearPersistedToken();
-    tokenClient = null;
+async function getAccessToken() {
+    // 1. Valid token in memory/localStorage
+    if (restoreToken()) return accessToken;
+
+    // 2. Try to refresh via Edge Function
+    const refreshed = await refreshViaEdgeFunction();
+    if (refreshed && accessToken) return accessToken;
+
+    throw new Error('Google Calendar не подключён. Зайдите в Профиль и нажмите «Подключить Google Календарь».');
 }
 
 /**
- * Add an event to the user's primary Google Calendar
- * @param {Object} params
- * @param {string} params.title - Event title
- * @param {string} params.description - Event description
- * @param {string} params.startDateTime - ISO datetime string (e.g. "2025-03-10T14:00:00")
- * @param {number} [params.durationMinutes=60] - Duration in minutes
- * @returns {Promise<Object>} Created event object from Google API
+ * Disconnect — revokes tokens server-side and clears local cache.
  */
-export async function addEventToCalendar({ title, description = '', startDateTime, durationMinutes = 60 }) {
-    const token = await requestAccessToken();
+export async function disconnectCalendar() {
+    clearToken();
 
+    if (!supabaseAuthToken) return;
+    try {
+        await fetch(`${EDGE_FN_URL}/revoke`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${supabaseAuthToken}` },
+        });
+    } catch { /* non-critical */ }
+}
+
+/* ─── Calendar API ───────────────────────────────────────────────────────────── */
+
+async function handleApiError(response) {
+    const err = await response.json().catch(() => ({}));
+    const status = response.status;
+    if (status === 401) clearToken();
+    const msg = err.error?.message || `HTTP ${status}`;
+    const hint = status === 403
+        ? ' (Проверьте что Google Calendar API включён в Google Cloud Console)'
+        : status === 401
+        ? ' (Токен истёк — переподключите Google Calendar в профиле)'
+        : '';
+    throw new Error(msg + hint);
+}
+
+function buildEvent(title, description, startDateTime, durationMinutes) {
     const start = new Date(startDateTime);
+    if (isNaN(start.getTime())) throw new Error(`Некорректная дата: ${startDateTime}`);
     const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-
-    const event = {
+    const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return {
         summary: title,
         description,
-        start: {
-            dateTime: start.toISOString(),
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-        end: {
-            dateTime: end.toISOString(),
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
+        start: { dateTime: start.toISOString(), timeZone },
+        end:   { dateTime: end.toISOString(),   timeZone },
     };
+}
 
-    const response = await fetch(
+export async function addEventToCalendar({ title, description = '', startDateTime, durationMinutes = 60 }) {
+    const token = await getAccessToken();
+    const event = buildEvent(title, description, startDateTime, durationMinutes);
+
+    console.info('[Google Calendar] Creating event:', { title, start: event.start.dateTime });
+
+    const res = await fetch(
         'https://www.googleapis.com/calendar/v3/calendars/primary/events',
         {
             method: 'POST',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(event),
         }
     );
+    if (!res.ok) await handleApiError(res);
 
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || 'Google Calendar API error');
-    }
-
-    return response.json();
+    const created = await res.json();
+    console.info('[Google Calendar] Event created:', created.id, created.htmlLink);
+    return created;
 }
 
-/**
- * Update an existing event in the user's primary Google Calendar
- * @param {string} eventId - Google Calendar event ID
- * @param {Object} params - Event data (title, description, startDateTime, durationMinutes)
- */
 export async function updateEventInCalendar(eventId, { title, description = '', startDateTime, durationMinutes = 60 }) {
-    if (!eventId) throw new Error('Google Event ID is required for update');
-    const token = await requestAccessToken();
+    if (!eventId) throw new Error('Google Event ID is required');
+    const token = await getAccessToken();
+    const event = buildEvent(title, description, startDateTime, durationMinutes);
 
-    const start = new Date(startDateTime);
-    const end = new Date(start.getTime() + durationMinutes * 60 * 1000);
-
-    const event = {
-        summary: title,
-        description,
-        start: {
-            dateTime: start.toISOString(),
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-        end: {
-            dateTime: end.toISOString(),
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-        },
-    };
-
-    const response = await fetch(
+    const res = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
         {
             method: 'PATCH',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-            },
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(event),
         }
     );
-
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error?.message || 'Google Calendar API update error');
-    }
-
-    return response.json();
+    if (!res.ok) await handleApiError(res);
+    return res.json();
 }
 
-/**
- * Delete an event from the user's primary Google Calendar
- * @param {string} eventId - Google Calendar event ID
- */
 export async function deleteEventFromCalendar(eventId) {
-    if (!eventId) return; // Silent return if no ID
-    const token = await requestAccessToken();
-
-    const response = await fetch(
+    if (!eventId) return;
+    const token = await getAccessToken();
+    const res = await fetch(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
         {
             method: 'DELETE',
-            headers: {
-                Authorization: `Bearer ${token}`,
-                'Accept': 'application/json',
-            },
+            headers: { Authorization: `Bearer ${token}` },
         }
     );
-
-    if (!response.ok && response.status !== 404) { // Ignore 404 if already deleted
-        const err = await response.json();
-        throw new Error(err.error?.message || 'Google Calendar API deletion error');
-    }
-
+    if (!res.ok && res.status !== 404) await handleApiError(res);
     return true;
 }
+
+// Legacy compatibility (used in calendarSync.js checks)
+export { isCalendarConfigured as default };

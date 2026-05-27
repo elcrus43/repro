@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone } from '../../utils/format';
-import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare } from 'lucide-react';
+import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString } from '../../utils/format';
+import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2 } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 
@@ -39,7 +39,7 @@ export function FormPage() {
     const [form, setForm] = useState(existingShowing ? {
         ...existingShowing,
         client_ids: existingShowing.client_ids || (existingShowing.client_id ? [existingShowing.client_id] : []),
-        showing_date: existingShowing.showing_date ? new Date(existingShowing.showing_date).toISOString().slice(0, 16) : '',
+        showing_date: existingShowing.showing_date ? toLocalISOString(existingShowing.showing_date) : '',
     } : {
         property_id: prePropId || '',
         client_id: preClientId || '',
@@ -98,7 +98,7 @@ export function FormPage() {
         const showing = {
             ...form,
             client_id: form.client_ids[0],
-            showing_date: new Date(form.showing_date).toISOString()
+            showing_date: parseLocalDateTime(form.showing_date)?.toISOString()
         };
 
         if (editId) {
@@ -106,6 +106,13 @@ export function FormPage() {
         } else {
             dispatch({ type: 'ADD_SHOWING', showing });
         }
+        navigate('/history');
+    }
+
+    function handleDelete() {
+        if (!window.confirm('Удалить это событие? Это действие нельзя отменить.')) return;
+        dispatch({ type: 'DELETE_SHOWING', id: editId });
+        toast.success('Событие удалено');
         navigate('/history');
     }
 
@@ -145,14 +152,21 @@ export function FormPage() {
                 {state.calendarStatus && (
                     <div style={{
                         marginBottom: 20, padding: '12px 16px', borderRadius: 16, fontSize: 12, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', gap: 10,
+                        display: 'flex', flexDirection: 'column', gap: 6,
                         background: state.calendarStatus === 'ok' ? '#ecfdf5' : state.calendarStatus === 'error' ? '#fef2f2' : '#eff6ff',
-                        color: state.calendarStatus === 'ok' ? '#059669' : state.calendarStatus === 'error' ? '#dc2626' : '#2563eb'
+                        color: state.calendarStatus === 'ok' ? '#059669' : state.calendarStatus === 'error' ? '#dc2626' : '#2563eb',
                     }}>
-                        {state.calendarStatus === 'loading' ? <Clock size={14} className="spin" /> : <Info size={14} />}
-                        {state.calendarStatus === 'loading' && 'Синхронизация...'}
-                        {state.calendarStatus === 'ok' && 'Календарь синхронизирован'}
-                        {state.calendarStatus === 'error' && 'Локальное сохранение'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            {state.calendarStatus === 'loading' ? <Clock size={14} className="spin" /> : <Info size={14} />}
+                            {state.calendarStatus === 'loading' && 'Синхронизация с Google Calendar...'}
+                            {state.calendarStatus === 'ok' && '✓ Событие добавлено в Google Calendar'}
+                            {state.calendarStatus === 'error' && '✗ Ошибка синхронизации с Google Calendar'}
+                        </div>
+                        {state.calendarStatus === 'error' && state.calendarErrorMessage && (
+                            <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 600, paddingLeft: 22 }}>
+                                {state.calendarErrorMessage}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -228,9 +242,9 @@ export function FormPage() {
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Текущий статус</label>
                             <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
-                                <option value="planned">Запланирован</option>
-                                <option value="completed">Проведен</option>
-                                <option value="failed">Не состоялся</option>
+                                <option value="planned">{getEventStatusLabel(form.event_type, 'planned')}</option>
+                                <option value="completed">{getEventStatusLabel(form.event_type, 'completed')}</option>
+                                <option value="failed">{getEventStatusLabel(form.event_type, 'failed')}</option>
                             </select>
                         </div>
                     </FormCard>
@@ -257,7 +271,7 @@ export function FormPage() {
                     </FormCard>
 
                     {(!editId || form.realtor_id === state.currentUser?.id) && (
-                        <div style={{ marginTop: 20 }}>
+                        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <button 
                                 type="submit" 
                                 className="card-clickable" 
@@ -272,6 +286,22 @@ export function FormPage() {
                                 <Save size={20} />
                                 {editId ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'СОХРАНИТЬ СОБЫТИЕ'}
                             </button>
+
+                            {editId && (
+                                <button
+                                    type="button"
+                                    className="card-clickable"
+                                    onClick={handleDelete}
+                                    style={{
+                                        width: '100%', height: 48, borderRadius: 16, border: '1.5px solid #fca5a5',
+                                        background: 'transparent', color: '#dc2626', fontWeight: 700, fontSize: 13,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                                    }}
+                                >
+                                    <Trash2 size={16} />
+                                    Удалить событие
+                                </button>
+                            )}
                         </div>
                     )}
                     

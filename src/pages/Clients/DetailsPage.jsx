@@ -46,10 +46,14 @@ export function DetailsPage() {
             id: crypto.randomUUID(),
             realtor_id: state.currentUser?.id,
             client_id: id,
-            type: 'call',
-            date: new Date().toISOString().slice(0, 10),
-            notes: `Звонок клиенту ${client.full_name}`,
+            property_id: null,
+            showing_date: new Date().toISOString(),
+            status: 'completed',
+            client_feedback: 'interested',
+            feedback_comment: `Звонок клиенту ${client.full_name}`,
+            event_type: 'call',
             created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
         };
         dispatch({ type: 'ADD_SHOWING', showing: callNote });
         toast.success('Звонок зарегистрирован');

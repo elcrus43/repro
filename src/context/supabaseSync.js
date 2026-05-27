@@ -70,7 +70,7 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+      setTimeout(() => reject(new Error('TIMEOUT')), 30000)
     );
 
     try {
@@ -89,7 +89,7 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
       return result;
     } catch (err) {
       const isTimeout = err.message === 'TIMEOUT';
-      lastError = { error: { message: isTimeout ? 'Превышено время ожидания (15с)' : err.message, code: isTimeout ? 'TIMEOUT' : 'NETWORK' } };
+      lastError = { error: { message: isTimeout ? 'Превышено время ожидания (30с)' : err.message, code: isTimeout ? 'TIMEOUT' : 'NETWORK' } };
       
       if (attempt < retries) {
         await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
@@ -111,60 +111,58 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 export async function loadUserData(userId, role) {
   const isAdmin = role === 'admin';
 
-  /**
-   * Безопасный запрос с таймаутом.
-   * Promise.race более надежен в старых мобильных браузерах, чем AbortController.
-   */
   async function safeQuery(queryFn, timeoutMs = 30000) {
-    let timer;
-    const timeoutPromise = new Promise((_, reject) => {
-      timer = setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs);
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     
     try {
-      const res = await Promise.race([queryFn(), timeoutPromise]);
+      const res = await queryFn(controller.signal);
       clearTimeout(timer);
       return res;
     } catch (e) {
       clearTimeout(timer);
-      const isTimeout = e?.message === 'TIMEOUT';
-      const message = isTimeout
+      const isAbort = e?.name === 'AbortError' || e?.message === 'aborted' || controller.signal.aborted;
+      const message = isAbort
         ? 'Превышено время ожидания (30с)'
         : (e?.message || 'Сетевая ошибка');
       console.error('[safeQuery] Error:', message, e?.name);
-      return { data: null, error: { message, code: isTimeout ? 'TIMEOUT' : 'NETWORK' } };
+      return { data: null, error: { message, code: isAbort ? 'TIMEOUT' : 'NETWORK' } };
     }
   }
 
-  // Загружаем все данные параллельно (один батч)
-  // Современные браузеры отлично справляются с 8+ запросами одновременно
+  // Загружаем основные таблицы сначала (Batch 1: 4 параллельных запроса)
   const [
-    clientsRes, propertiesRes, requestsRes, matchesRes,
+    clientsRes, propertiesRes, requestsRes, matchesRes
+  ] = await Promise.all([
+    isAdmin
+      ? safeQuery((signal) => supabase.from('clients').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('clients').select('*').eq('realtor_id', userId).abortSignal(signal)),
+    isAdmin
+      ? safeQuery((signal) => supabase.from('properties').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('properties').select('*').eq('realtor_id', userId).abortSignal(signal)),
+    isAdmin
+      ? safeQuery((signal) => supabase.from('requests').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('requests').select('*').eq('realtor_id', userId).abortSignal(signal)),
+    isAdmin
+      ? safeQuery((signal) => supabase.from('matches').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('matches').select('*').eq('realtor_id', userId).abortSignal(signal)),
+  ]);
+
+  // Загружаем вспомогательные таблицы (Batch 2: 5 параллельных запросов)
+  const [
     showingsRes, tasksRes, priceRes, dealsRes, profilesRes
   ] = await Promise.all([
     isAdmin
-      ? safeQuery(() => supabase.from('clients').select('*'))
-      : safeQuery(() => supabase.from('clients').select('*').eq('realtor_id', userId)),
+      ? safeQuery((signal) => supabase.from('showings').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('showings').select('*').eq('realtor_id', userId).abortSignal(signal)),
     isAdmin
-      ? safeQuery(() => supabase.from('properties').select('*'))
-      : safeQuery(() => supabase.from('properties').select('*').eq('realtor_id', userId)),
+      ? safeQuery((signal) => supabase.from('tasks').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('tasks').select('*').eq('realtor_id', userId).abortSignal(signal)),
+    safeQuery((signal) => supabase.from('pricelist').select('*').abortSignal(signal)),
     isAdmin
-      ? safeQuery(() => supabase.from('requests').select('*'))
-      : safeQuery(() => supabase.from('requests').select('*').eq('realtor_id', userId)),
-    isAdmin
-      ? safeQuery(() => supabase.from('matches').select('*'))
-      : safeQuery(() => supabase.from('matches').select('*').eq('realtor_id', userId)),
-    isAdmin
-      ? safeQuery(() => supabase.from('showings').select('*'))
-      : safeQuery(() => supabase.from('showings').select('*').eq('realtor_id', userId)),
-    isAdmin
-      ? safeQuery(() => supabase.from('tasks').select('*'))
-      : safeQuery(() => supabase.from('tasks').select('*').eq('realtor_id', userId)),
-    safeQuery(() => supabase.from('pricelist').select('*')),
-    isAdmin
-      ? safeQuery(() => supabase.from('deals').select('*'))
-      : safeQuery(() => supabase.from('deals').select('*').eq('realtor_id', userId)),
-    safeQuery(() => supabase.from('profiles').select('*')),
+      ? safeQuery((signal) => supabase.from('deals').select('*').abortSignal(signal))
+      : safeQuery((signal) => supabase.from('deals').select('*').eq('realtor_id', userId).abortSignal(signal)),
+    safeQuery((signal) => supabase.from('profiles').select('*').abortSignal(signal)),
   ]);
 
   const profiles = profilesRes?.data ?? [];
@@ -489,7 +487,19 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Показы ──────────────────────────────────────────────────────── */
       case 'ADD_SHOWING': {
-        const showingData = sanitizeObj(action.showing);
+        const VALID_SHOWING_COLUMNS = [
+          'id', 'realtor_id', 'match_id', 'property_id', 'client_id',
+          'showing_date', 'status', 'client_feedback', 'feedback_comment',
+          'created_at', 'updated_at', 'event_type', 'client_ids', 'google_event_id'
+        ];
+        const rawShowing = {};
+        VALID_SHOWING_COLUMNS.forEach(col => {
+          if (action.showing[col] !== undefined) {
+            rawShowing[col] = action.showing[col];
+          }
+        });
+        const showingData = sanitizeObj(rawShowing);
+        
         // Ensure property_id null not empty string
         if (showingData.property_id === '') showingData.property_id = null;
         const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
@@ -508,10 +518,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (retryResult?.error) {
             console.error('[Supabase ADD_SHOWING retry error]', retryResult.error);
             handleError(`Ошибка сохранения события: ${retryResult.error.message}`);
+            if (typeof onRollback === 'function') onRollback(action);
           }
         } else if (results[0]?.error) {
           console.error('[Supabase ADD_SHOWING error]', results[0].error);
           handleError(`Ошибка сохранения события: ${results[0].error.message}`);
+          if (typeof onRollback === 'function') onRollback(action);
         }
         
         results.slice(1).forEach((res, i) => {
@@ -521,7 +533,19 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       }
 
       case 'UPDATE_SHOWING': {
-        const showingData = sanitizeObj(action.showing);
+        const VALID_SHOWING_COLUMNS = [
+          'id', 'realtor_id', 'match_id', 'property_id', 'client_id',
+          'showing_date', 'status', 'client_feedback', 'feedback_comment',
+          'created_at', 'updated_at', 'event_type', 'client_ids', 'google_event_id'
+        ];
+        const rawShowing = {};
+        VALID_SHOWING_COLUMNS.forEach(col => {
+          if (action.showing[col] !== undefined) {
+            rawShowing[col] = action.showing[col];
+          }
+        });
+        const showingData = sanitizeObj(rawShowing);
+        
         if (showingData.property_id === '') showingData.property_id = null;
         const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
         if (action.matches && action.showing.match_id) {
@@ -537,10 +561,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (retryResult?.error) {
             console.error('[Supabase UPDATE_SHOWING retry error]', retryResult.error);
             handleError(`Ошибка обновления события: ${retryResult.error.message}`);
+            if (typeof onRollback === 'function') onRollback(action);
           }
         } else if (results[0]?.error) {
           console.error('[Supabase UPDATE_SHOWING error]', results[0].error);
           handleError(`Ошибка обновления события: ${results[0].error.message}`);
+          if (typeof onRollback === 'function') onRollback(action);
         }
         return;
       }

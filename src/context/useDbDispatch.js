@@ -19,6 +19,7 @@ import { nanoid } from '../utils/nanoid';
 import { runMatchingForProperty, runMatchingForRequest } from '../utils/matching';
 import { syncAction, loadUserData } from './supabaseSync';
 import { syncWithCalendar, deleteCalendarEvent } from './calendarSync';
+import { isCalendarConnected, isCalendarConfigured } from '../lib/googleCalendar';
 
 /**
  * @param {object}   state     — текущий state из useReducer
@@ -232,16 +233,27 @@ export function useDbDispatch(state, dispatch, onError) {
     await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
 
     /* ── Google Calendar sync ─────────────────────────────────────────── */
-    if (action.type === 'ADD_TASK' || action.type === 'UPDATE_TASK') {
-      syncWithCalendar(action.type, enhancedAction.task, dispatch);
-    } else if (action.type === 'ADD_SHOWING' || action.type === 'UPDATE_SHOWING') {
-      syncWithCalendar(action.type, enhancedAction.showing, dispatch);
-    } else if (action.type === 'DELETE_TASK' || action.type === 'DELETE_SHOWING') {
-      const items = action.type === 'DELETE_TASK'
-        ? stateRef.current.tasks
-        : stateRef.current.showings;
-      const item = items.find(i => i.id === action.id);
-      deleteCalendarEvent(item, dispatch);
+    // Sync only if Google Calendar is configured AND the user has an active token.
+    // Without an active token, requestAccessToken() would try to open a popup
+    // which is blocked by browsers (no user gesture) and causes a 30s timeout.
+    if (isCalendarConfigured() && isCalendarConnected()) {
+      if (action.type === 'ADD_TASK' || action.type === 'UPDATE_TASK') {
+        syncWithCalendar(action.type, enhancedAction.task, dispatch);
+      } else if (action.type === 'ADD_SHOWING' || action.type === 'UPDATE_SHOWING') {
+        // Обогащаем showing адресом объекта для заголовка события в Calendar
+        const sh = enhancedAction.showing;
+        const prop = stateRef.current.properties?.find(p => p.id === sh.property_id);
+        const propAddress = prop?.address || prop?.title || null;
+        syncWithCalendar(action.type, { ...sh, _propertyAddress: propAddress }, dispatch);
+      } else if (action.type === 'DELETE_TASK' || action.type === 'DELETE_SHOWING') {
+        const items = action.type === 'DELETE_TASK'
+          ? stateRef.current.tasks
+          : stateRef.current.showings;
+        const item = items.find(i => i.id === action.id);
+        deleteCalendarEvent(item, dispatch);
+      }
+    } else if (isCalendarConfigured() && !isCalendarConnected()) {
+      console.info('[Google Calendar Sync] Skipped — user not connected (token expired or not set)');
     }
 
   }, [dispatch, onError]);

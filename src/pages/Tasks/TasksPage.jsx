@@ -4,6 +4,7 @@ import { Pencil, Trash, Calendar, Phone, User, Plus, CheckCircle, Activity, Cloc
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
+import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 import { FormCard } from '../../components/FormCard';
 import {
     isCalendarConfigured,
@@ -12,9 +13,16 @@ import {
     disconnectCalendar,
 } from '../../lib/googleCalendar';
 
-const today = new Date().toISOString().slice(0, 10);
-const tomorrow = new Date(new Date().getTime() + 86400000).toISOString().slice(0, 10);
-const weekEnd = new Date(new Date().getTime() + 7 * 86400000).toISOString().slice(0, 10);
+const toLocalDateStr = (dateOrStr) => {
+    if (!dateOrStr) return '';
+    const d = new Date(dateOrStr);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const today = toLocalDateStr(new Date());
+const tomorrow = toLocalDateStr(new Date(Date.now() + 86400000));
+const weekEnd = toLocalDateStr(new Date(Date.now() + 7 * 86400000));
 
 function TaskItem({ task, onToggle, onDelete, onEdit }) {
     const { state } = useApp();
@@ -129,16 +137,16 @@ export function TasksPage() {
         .filter(t => user?.role === 'admin' || t.realtor_id === user?.id)
         .filter(t => {
             if (t.status === 'done' && filter !== 'all') return false;
-            const taskDate = t.due_date?.slice(0, 10);
+            const taskDate = toLocalDateStr(t.due_date);
             if (filter === 'today') return taskDate <= today;
             if (filter === 'week') return taskDate <= weekEnd;
             return true;
         });
 
-    const overdue = tasks.filter(t => t.due_date < today && t.status === 'pending');
-    const todayT = tasks.filter(t => t.due_date?.startsWith(today) && t.status === 'pending');
-    const tomorrowT = tasks.filter(t => t.due_date?.startsWith(tomorrow) && t.status === 'pending');
-    const later = tasks.filter(t => t.due_date?.slice(0, 10) > tomorrow && t.status === 'pending');
+    const overdue = tasks.filter(t => toLocalDateStr(t.due_date) < today && t.status === 'pending');
+    const todayT = tasks.filter(t => toLocalDateStr(t.due_date) === today && t.status === 'pending');
+    const tomorrowT = tasks.filter(t => toLocalDateStr(t.due_date) === tomorrow && t.status === 'pending');
+    const later = tasks.filter(t => toLocalDateStr(t.due_date) > tomorrow && t.status === 'pending');
     const done = tasks.filter(t => t.status === 'done');
 
     function toggleDone(task) {
@@ -152,7 +160,7 @@ export function TasksPage() {
             return;
         }
         const taskId = newTask.id || nanoid();
-        const taskToSave = { ...newTask, id: taskId, realtor_id: user.id, client_id: newTask.client_id || null, property_id: null, due_date: newTask.due_date || null, status: newTask.status || 'pending', priority: 'medium' };
+        const taskToSave = { ...newTask, id: taskId, realtor_id: user.id, client_id: newTask.client_id || null, property_id: null, due_date: newTask.due_date ? parseLocalDateTime(newTask.due_date)?.toISOString() : null, status: newTask.status || 'pending', priority: 'medium' };
         try {
             if (newTask.id) {
                 dispatch({ type: 'UPDATE_TASK', task: taskToSave });
@@ -236,7 +244,7 @@ export function TasksPage() {
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 13, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Детали</label>
                                 <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, marginBottom: 8 }} placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} type="datetime-local" value={newTask.due_date ? newTask.due_date.slice(0, 16) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} type="datetime-local" value={newTask.due_date ? toLocalISOString(newTask.due_date) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
                             </div>
                             <button type="submit" className="btn btn-primary" style={{ height: 50, borderRadius: 16, fontWeight: 300, marginTop: 8 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
                         </form>

@@ -206,9 +206,15 @@ export function DashboardPage() {
 
                 {/* Today's Tasks Widget */}
                 {(() => {
-                    const today = new Date().toISOString().slice(0, 10);
-                    const todayTasks = (state.tasks || []).filter(t => t.date === today || t.due_date === today);
-                    const todayShowings = (state.showings || []).filter(s => s.date === today);
+                    const toLocalDateStr = (dateOrStr) => {
+                        if (!dateOrStr) return '';
+                        const d = new Date(dateOrStr);
+                        if (isNaN(d.getTime())) return '';
+                        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    };
+                    const today = toLocalDateStr(new Date());
+                    const todayTasks = (state.tasks || []).filter(t => toLocalDateStr(t.due_date) === today);
+                    const todayShowings = (state.showings || []).filter(s => toLocalDateStr(s.showing_date) === today);
                     const todayItems = [...todayTasks, ...todayShowings].slice(0, 5);
                     if (todayItems.length === 0) return null;
                     return (

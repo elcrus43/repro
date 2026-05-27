@@ -12,48 +12,80 @@ export default function AuthCallbackPage() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const [error, setError] = useState('');
+    const [status, setStatus] = useState('Проверяем ссылку...');
 
     useEffect(() => {
         let cancelled = false;
 
         async function handleCallback() {
-            // Проверяем URL параметры сначала
-            const type = searchParams.get('type');
             const errorParam = searchParams.get('error');
             const errorDescription = searchParams.get('error_description');
+            const type = searchParams.get('type');
+            // PKCE flow uses "code" param
+            const code = searchParams.get('code');
 
-            console.log('[AuthCallback] URL params:', { type, error: errorParam });
+            console.log('[AuthCallback] Params:', { type, code: !!code, error: errorParam });
 
             if (errorParam) {
-                if (cancelled) return;
-                setError(`Ошибка: ${errorDescription || errorParam}`);
+                if (!cancelled) setError(`Ошибка: ${errorDescription || errorParam}`);
                 return;
             }
 
-            // Для recovery — сразу перенаправляем, не дожидаясь сессии
-            if (type === 'recovery') {
-                console.log('[AuthCallback] Recovery flow, navigating to /update-password');
-                if (!cancelled) {
-                    navigate('/update-password');
+            // PKCE / code-based flow (Supabase v2 default)
+            if (code) {
+                setStatus('Обмениваем код на сессию...');
+                const { data, error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code);
+                if (cancelled) return;
+                if (exchangeErr) {
+                    setError('Ошибка обмена кода: ' + exchangeErr.message);
+                    return;
+                }
+                if (data?.session?.user) {
+                    // Supabase помечает recovery сессии
+                    const isRecovery = type === 'recovery';
+                    if (isRecovery) {
+                        navigate('/update-password', { replace: true });
+                    } else {
+                        navigate('/', { replace: true });
+                    }
                 }
                 return;
             }
 
-            // Для остальных типов — ждём сессию
-            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            // Legacy hash-based flow — ждём сессию через onAuthStateChange
+            setStatus('Ожидаем сессию...');
 
+            const { data: { session } } = await supabase.auth.getSession();
             if (cancelled) return;
 
-            if (sessionError) {
-                setError('Ошибка: ' + sessionError.message);
+            if (session) {
+                if (type === 'recovery') {
+                    navigate('/update-password', { replace: true });
+                } else {
+                    navigate('/', { replace: true });
+                }
                 return;
             }
 
-            if (session?.user) {
-                navigate('/', { replace: true });
-            } else {
-                setError('Сессия не найдена. Ссылка может быть устаревшей.');
-            }
+            // Ждём событие от Supabase (hash flow)
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
+                if (cancelled) return;
+                console.log('[AuthCallback] Auth event:', event);
+                if (event === 'PASSWORD_RECOVERY') {
+                    subscription.unsubscribe();
+                    navigate('/update-password', { replace: true });
+                } else if (sess) {
+                    subscription.unsubscribe();
+                    navigate('/', { replace: true });
+                }
+            });
+
+            // Таймаут — если за 8 секунд сессия не появилась
+            setTimeout(() => {
+                if (cancelled) return;
+                subscription.unsubscribe();
+                setError('Ссылка устарела или уже использована. Запросите сброс пароля заново.');
+            }, 8000);
         }
 
         handleCallback();
@@ -80,7 +112,7 @@ export default function AuthCallbackPage() {
                         </div>
                     </div>
                 ) : (
-                    <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Проверяем ссылку...</p>
+                    <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>{status}</p>
                 )}
             </div>
         </div>

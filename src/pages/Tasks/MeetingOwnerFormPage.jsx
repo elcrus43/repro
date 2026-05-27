@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, toLocalISOString, parseLocalDateTime } from '../../utils/format';
 import { Calendar, User, Home, UserPlus, X, ChevronLeft, Save, Clock, AlertCircle } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
@@ -24,11 +24,11 @@ export function MeetingOwnerFormPage() {
 
     const [form, setForm] = useState(() => existing ? {
         ...existing,
-        due_date: existing.due_date ? new Date(existing.due_date).toISOString().slice(0, 16) : '',
+        due_date: existing.due_date ? toLocalISOString(existing.due_date) : '',
     } : {
         client_id: prefillClientId || '',
         property_id: prefillPropertyId || '',
-        due_date: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
+        due_date: toLocalISOString(new Date(Date.now() + 3600000)),
         status: 'pending',
         priority: 'high',
         description: '',
@@ -76,7 +76,7 @@ export function MeetingOwnerFormPage() {
             property_id: form.property_id || null,
             title: `Встреча с собственником — ${state.clients.find(c => c.id === form.client_id)?.full_name || ''}`,
             description: form.description || '',
-            due_date: new Date(form.due_date).toISOString(),
+            due_date: parseLocalDateTime(form.due_date)?.toISOString() || new Date().toISOString(),
             status: form.status,
             priority: form.priority,
             task_type: 'Встреча с собственником',

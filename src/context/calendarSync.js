@@ -15,7 +15,17 @@ import {
   updateEventInCalendar,
   deleteEventFromCalendar,
   isCalendarConfigured,
+  isCalendarConnected,
 } from '../lib/googleCalendar';
+
+const EVENT_TYPE_LABELS = {
+  showing: 'Показ',
+  meeting: 'Встреча с собственником',
+  viewing: 'Просмотр',
+  deposit: 'Задаток',
+  deal: 'Сделка',
+  call: 'Звонок',
+};
 
 /**
  * Синхронизирует задачу или показ с Google Calendar.
@@ -33,14 +43,35 @@ export async function syncWithCalendar(actionType, item, dispatch) {
     return;
   }
 
+  // Если токен не активен — пропускаем синхронизацию без ошибки.
+  // requestAccessToken() без активной сессии попытается открыть popup Google,
+  // что заблокировано браузером (нет user gesture) и ведёт к 30с timeout.
+  if (!isCalendarConnected()) {
+    console.info('[Google Calendar Sync] Skipped — no active token (connect Google Calendar in Profile)');
+    return;
+  }
+
   const isShowing = actionType.includes('SHOWING');
   const table = isShowing ? 'showings' : 'tasks';
   const updateKey = isShowing ? 'showing' : 'task';
   const updateType = isShowing ? 'UPDATE_SHOWING' : 'UPDATE_TASK';
 
   const date = item.due_date || item.showing_date;
-  const title = item.title || `Показ: ${item.showing_date}`;
-  const description = item.description || '';
+  // Заголовок: "Тип события: Адрес объекта" или "Тип события: дата" если адреса нет
+  const eventTypeLabel = EVENT_TYPE_LABELS[item.event_type] || 'Событие';
+  const defaultTitle = isShowing
+    ? item._propertyAddress
+      ? `${eventTypeLabel}: ${item._propertyAddress}`
+      : `${eventTypeLabel}${item.showing_date ? ': ' + new Date(item.showing_date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}`
+    : `Задача: ${item.title || (item.due_date ? new Date(item.due_date).toLocaleDateString('ru-RU') : '')}`;
+  const title = item.title || defaultTitle;
+  // Описание события — дата + адрес + заметки
+  const dateStr = date ? new Date(date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+  const descParts = [];
+  if (dateStr) descParts.push(`📅 ${dateStr}`);
+  if (item._propertyAddress) descParts.push(`🏠 ${item._propertyAddress}`);
+  if (item.description) descParts.push(`📝 ${item.description}`);
+  const description = descParts.join('\n');
 
   // Нет даты и нет существующего события — ничего не делаем
   if (!date && !item.google_event_id) {
@@ -83,8 +114,8 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   } catch (err) {
     console.error('[Google Calendar Sync Error]', err);
     // Не блокируем создание задачи — ошибка только в статусе
-    dispatch({ type: 'SET_CALENDAR_STATUS', status: 'error' });
-    setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null }), 4000);
+    dispatch({ type: 'SET_CALENDAR_STATUS', status: 'error', errorMessage: err.message || 'Неизвестная ошибка' });
+    setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null, errorMessage: null }), 5000);
   }
 }
 

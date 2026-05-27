@@ -22,6 +22,7 @@ export const EMPTY_STATE = {
   loading:      true,
   error:        null,
   calendarStatus: null, // null | 'loading' | 'ok' | 'error'
+  calendarErrorMessage: null,
   priceHistory: [],
 };
 
@@ -62,7 +63,7 @@ export function reducer(state, action) {
       return { ...state, ...action.data, loading: false };
 
     case 'SET_CALENDAR_STATUS':
-      return { ...state, calendarStatus: action.status };
+      return { ...state, calendarStatus: action.status, calendarErrorMessage: action.errorMessage || null };
 
     /* ── Клиенты ────────────────────────────────────────────────────────── */
     case 'ADD_CLIENT':

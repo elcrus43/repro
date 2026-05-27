@@ -17,15 +17,35 @@ export default function UpdatePasswordPage() {
     const [error, setError] = useState('');
     const [sessionReady, setSessionReady] = useState(false);
 
-    // Проверяем что сессия существует (recovery создаёт временную сессию)
+    // Проверяем сессию — recovery создаёт временную сессию после перехода по ссылке
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session }, error: err }) => {
-            if (err || !session) {
-                setError('Сессия истекла. Запросите сброс пароля заново.');
-            } else {
+        // Сначала проверим текущую сессию
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
                 setSessionReady(true);
             }
         });
+
+        // Также слушаем событие PASSWORD_RECOVERY (hash flow)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('[UpdatePassword] Auth event:', event);
+            if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+                setSessionReady(true);
+            }
+        });
+
+        // Таймаут — если сессия не пришла за 5 секунд
+        const timer = setTimeout(() => {
+            setSessionReady(prev => {
+                if (!prev) setError('Сессия истекла. Запросите сброс пароля заново.');
+                return prev;
+            });
+        }, 5000);
+
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(timer);
+        };
     }, []);
 
     async function handleSubmit() {
@@ -48,7 +68,14 @@ export default function UpdatePasswordPage() {
             const { error: err } = await supabase.auth.updateUser({ password });
 
             if (err) {
-                setError('Ошибка: ' + err.message);
+                const msg = err.message || '';
+                if (msg.includes('different from the old password')) {
+                    setError('Новый пароль должен отличаться от текущего');
+                } else if (msg.includes('at least') || msg.includes('characters')) {
+                    setError('Пароль слишком короткий');
+                } else {
+                    setError('Ошибка: ' + msg);
+                }
                 setLoading(false);
                 return;
             }

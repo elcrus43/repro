@@ -1,14 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, getEventStatusLabel } from '../../utils/format';
 import { Trash, Pencil, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle2, AlertCircle, Plus, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
+    const toLocalDateStr = (dateOrStr) => {
+        if (!dateOrStr) return '';
+        const d = new Date(dateOrStr);
+        if (isNaN(d.getTime())) return '';
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const [selectedDate, setSelectedDate] = useState(toLocalDateStr(new Date()));
     const [feedbackId, setFeedbackId] = useState(null);
     const [feedbackComment, setFeedbackComment] = useState('');
     
@@ -30,16 +37,16 @@ export function ListPage() {
     const firstDay = new Date(calYear, calMonth, 1);
     const lastDay = new Date(calYear, calMonth + 1, 0);
     const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = toLocalDateStr(new Date());
 
     const calDays = [];
     const startPad = (firstDay.getDay() + 6) % 7; 
     for (let i = 0; i < startPad; i++) calDays.push(null);
     for (let d = 1; d <= lastDay.getDate(); d++) calDays.push(d);
 
-    const showingsOnDate = myShowings.filter(s => s.showing_date?.startsWith(selectedDate));
+    const showingsOnDate = myShowings.filter(s => toLocalDateStr(s.showing_date) === selectedDate);
 
-    const statusLabels = { planned: 'Запланирован', completed: 'Проведен', failed: 'Не состоялся' };
+
     const feedbackOptions = [
         { val: 'liked', label: 'Понравилось' },
         { val: 'thinking', label: 'Думает' },
@@ -90,10 +97,10 @@ export function ListPage() {
                 zIndex: 1000
             }}>
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span className="font-oswald" style={{ fontSize: 24, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                    <span className="font-oswald" style={{ fontSize: 24, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
                         История
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Журнал событий</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Журнал событий</span>
                 </div>
                 
                 <button 
@@ -132,7 +139,7 @@ export function ListPage() {
                 {/* Pending Feedback alerted cards */}
                 {pendingFeedbackShowings.length > 0 && (
                     <div style={{ marginBottom: 32 }}>
-                        <div className="font-oswald" style={{ fontSize: 14, fontWeight: 700, color: '#dc2626', marginBottom: 12, textTransform: 'uppercase' }}>
+                        <div className="font-oswald" style={{ fontSize: 14, fontWeight: 500, color: '#dc2626', marginBottom: 12, textTransform: 'uppercase' }}>
                             Требуют подтверждения ({pendingFeedbackShowings.length})
                         </div>
                         {pendingFeedbackShowings.map(s => {
@@ -151,7 +158,7 @@ export function ListPage() {
                                             <AlertCircle size={20} />
                                         </div>
                                         <div>
-                                            <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--text)' }}>Результат события?</div>
+                                            <div style={{ fontWeight: 500, fontSize: 15, color: 'var(--text)' }}>Результат события?</div>
                                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{prop?.address || 'Объект не указан'}</div>
                                         </div>
                                     </div>
@@ -164,7 +171,7 @@ export function ListPage() {
                                                         style={{ 
                                                             flex: 1, minWidth: '80px', padding: '12px 8px', borderRadius: 14, 
                                                             background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.05)',
-                                                            fontSize: 11, fontWeight: 700, textAlign: 'center'
+                                                            fontSize: 11, fontWeight: 400, textAlign: 'center'
                                                         }} 
                                                         onClick={() => saveFeedback(s, f.val)}
                                                     >
@@ -181,7 +188,7 @@ export function ListPage() {
                                                 rows={2} 
                                             />
                                             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                                                <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'rgba(0,0,0,0.03)', border: 'none', fontSize: 12, fontWeight: 700 }} onClick={() => saveFeedback(s, 'failed')}>Не состоялся</button>
+                                                <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'rgba(0,0,0,0.03)', border: 'none', fontSize: 12, fontWeight: 400 }} onClick={() => saveFeedback(s, 'failed')}>Не состоялся</button>
                                                 <button className="card-clickable" style={{ width: 80, height: 44, borderRadius: 12, border: 'none', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12 }} onClick={() => setFeedbackId(null)}>Отмена</button>
                                             </div>
                                         </div>
@@ -189,14 +196,14 @@ export function ListPage() {
                                         <div style={{ display: 'flex', gap: 10 }}>
                                             <button 
                                                 className="card-clickable" 
-                                                style={{ flex: 2, height: 44, background: '#dc2626', color: 'white', border: 'none', borderRadius: 14, fontWeight: 800, fontSize: 13, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase' }} 
+                                                style={{ flex: 2, height: 44, background: '#dc2626', color: 'white', border: 'none', borderRadius: 14, fontWeight: 500, fontSize: 13, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase' }} 
                                                 onClick={() => completShowing(s)}
                                             >
                                                 Записать
                                             </button>
                                             <button 
                                                 className="card-clickable" 
-                                                style={{ flex: 1, height: 44, background: 'var(--surface)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', borderRadius: 14, fontWeight: 700, fontSize: 12 }} 
+                                                style={{ flex: 1, height: 44, background: 'var(--surface)', border: '1px solid rgba(239, 68, 68, 0.3)', color: 'var(--danger)', borderRadius: 14, fontWeight: 400, fontSize: 12 }} 
                                                 onClick={() => { if (window.confirm('Отметить как "Не состоялся"?')) saveFeedback(s, 'failed'); }}
                                             >
                                                 НЕТ
@@ -215,7 +222,7 @@ export function ListPage() {
                         <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 0) { setCalMonth(11); setCalYear(y => y - 1); } else setCalMonth(m => m - 1); }}>
                             <ChevronLeft size={18} />
                         </button>
-                        <span className="font-oswald" style={{ fontWeight: 800, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)' }}>{monthNames[calMonth]} {calYear}</span>
+                        <span className="font-oswald" style={{ fontWeight: 500, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text)' }}>{monthNames[calMonth]} {calYear}</span>
                         <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--border)', background: 'var(--bg-light)', color: 'var(--text)' }} onClick={() => { if (calMonth === 11) { setCalMonth(0); setCalYear(y => y + 1); } else setCalMonth(m => m + 1); }}>
                             <ChevronRight size={18} />
                         </button>
@@ -223,12 +230,12 @@ export function ListPage() {
                     
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
                         {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => (
-                            <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 800, color: 'var(--text-secondary)', opacity: 0.5, marginBottom: 8 }}>{d}</div>
+                            <div key={d} style={{ textAlign: 'center', fontSize: 10, fontWeight: 400, color: 'var(--text-secondary)', opacity: 0.5, marginBottom: 8 }}>{d}</div>
                         ))}
                         {calDays.map((d, i) => {
                             if (!d) return <div key={`e-${i}`} />;
                             const ds = dStr(calYear, calMonth, d);
-                            const hasEv = myShowings.some(s => s.showing_date?.startsWith(ds));
+                            const hasEv = myShowings.some(s => toLocalDateStr(s.showing_date) === ds);
                             const isToday = ds === todayStr;
                             const isSel = ds === selectedDate;
                             
@@ -238,7 +245,7 @@ export function ListPage() {
                                     onClick={() => setSelectedDate(ds)}
                                     style={{
                                         aspectRatio: '1/1', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                                        borderRadius: 10, border: 'none', fontSize: 13, fontWeight: isSel ? 800 : 600,
+                                        borderRadius: 10, border: 'none', fontSize: 13, fontWeight: isSel ? 600 : 300,
                                         background: isSel ? 'var(--primary)' : isToday ? 'var(--primary-light)' : 'transparent',
                                         color: isSel ? 'white' : isToday ? 'var(--primary)' : 'var(--text)',
                                         position: 'relative', transition: 'all 0.2s', cursor: 'pointer',
@@ -257,7 +264,7 @@ export function ListPage() {
 
                 {/* Selected Date Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
                         {selectedDate === todayStr ? 'Сегодня' : new Date(selectedDate + 'T12:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}
                         <span style={{ marginLeft: 8, opacity: 0.3 }}>({showingsOnDate.length})</span>
                     </div>
@@ -266,7 +273,7 @@ export function ListPage() {
                 {/* Event Cards */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {showingsOnDate.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)', opacity: 0.5, fontSize: 13, fontWeight: 600 }}>Нет событий на этот день</div>
+                        <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)', opacity: 0.5, fontSize: 13, fontWeight: 300 }}>Нет событий на этот день</div>
                     ) : (
                         showingsOnDate.map(s => {
                             const prop = state.properties.find(p => p.id === s.property_id);
@@ -277,14 +284,14 @@ export function ListPage() {
                             return (
                                 <div key={s.id} className="card" style={{ padding: 20 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>{time}</div>
+                                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 200, color: '#000000', lineHeight: 1 }}>{time}</div>
                                         <div style={{ display: 'flex', gap: 8 }}>
                                             <span style={{ 
-                                                fontSize: 10, fontWeight: 800, textTransform: 'uppercase', padding: '4px 10px', 
+                                                fontSize: 10, fontWeight: 600, textTransform: 'uppercase', padding: '4px 10px', 
                                                 borderRadius: 20, background: s.status === 'completed' ? '#ecfdf5' : s.status === 'failed' ? '#fef2f2' : 'var(--primary-light)',
                                                 color: s.status === 'completed' ? '#059669' : s.status === 'failed' ? '#dc2626' : 'var(--primary)'
                                             }}>
-                                                {statusLabels[s.status] || s.status}
+                                                    {getEventStatusLabel(s.event_type, s.status)}
                                             </span>
                                             {s.realtor_id === user?.id && (
                                                 <button className="card-clickable" onClick={() => navigate(`/history/new?id=${s.id}`)} style={{ border: 'none', background: 'transparent', color: 'var(--text-secondary)', padding: 0 }}>
@@ -299,8 +306,8 @@ export function ListPage() {
                                             <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                 <Building2 size={14} color="var(--text-secondary)" />
                                             </div>
-                                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', lineHeight: 1.4 }}>
-                                                {eventTypeLabels[s.event_type] || 'Событие'}: {prop?.address || 'Объект не указан'}
+                                            <div style={{ fontSize: 14, fontWeight: 200, color: 'var(--text)', lineHeight: 1.4 }}>
+                                                <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{eventTypeLabels[s.event_type] || 'Событие'}</span>: <span style={{ fontWeight: 600 }}>{prop?.address || 'Объект не указан'}</span>
                                             </div>
                                         </div>
 
@@ -309,7 +316,7 @@ export function ListPage() {
                                                 <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(0,0,0,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                                     <Users size={14} color="var(--text-secondary)" />
                                                 </div>
-                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 600 }}>{clientNames}</div>
+                                                <div style={{ fontSize: 13, color: '#000000', fontWeight: 200 }}>{clientNames}</div>
                                             </div>
                                         )}
                                     </div>
@@ -319,10 +326,10 @@ export function ListPage() {
                                             marginTop: 16, padding: '12px 14px', borderRadius: 14, background: 'var(--bg-light)',
                                             borderLeft: '3px solid var(--primary)'
                                         }}>
-                                            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: 4 }}>Результат</div>
-                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: 4 }}>Результат</div>
+                                            <div style={{ fontSize: 13, fontWeight: 300, color: 'var(--text)' }}>
                                                 {feedbackOptions.find(f => f.val === s.client_feedback)?.label}
-                                                {s.feedback_comment && <span style={{ opacity: 0.5, fontWeight: 500 }}> · {s.feedback_comment}</span>}
+                                                {s.feedback_comment && <span style={{ opacity: 0.5, fontWeight: 300 }}> · {s.feedback_comment}</span>}
                                             </div>
                                         </div>
                                     )}
@@ -332,7 +339,7 @@ export function ListPage() {
                                             className="card-clickable" 
                                             style={{ 
                                                 marginTop: 16, width: '100%', height: 44, borderRadius: 14, border: 'none', 
-                                                background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12,
+                                                background: 'var(--primary)', color: 'white', fontWeight: 500, fontSize: 12,
                                                 fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em'
                                             }} 
                                             onClick={() => completShowing(s)}
@@ -343,13 +350,13 @@ export function ListPage() {
                                     
                                     {feedbackId === s.id && (
                                         <div style={{ marginTop: 20, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 20 }}>
-                                            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 12 }}>Итог встречи</div>
+                                            <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 12 }}>Итог встречи</div>
                                             <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                                                 {feedbackOptions.map(f => (
                                                     <button key={f.val} className="card-clickable" 
                                                         style={{ 
                                                             flex: 1, padding: '12px 4px', borderRadius: 12, border: '1px solid rgba(0,0,0,0.05)',
-                                                            fontSize: 10, fontWeight: 800, background: 'var(--surface)'
+                                                            fontSize: 10, fontWeight: 400, background: 'var(--surface)'
                                                         }} 
                                                         onClick={() => saveFeedback(s, f.val)}
                                                     >
@@ -366,7 +373,7 @@ export function ListPage() {
                                                 rows={2} 
                                             />
                                             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                                                <button className="card-clickable" style={{ flex: 1, height: 40, borderRadius: 12, background: '#f1f5f9', border: 'none', fontSize: 11, fontWeight: 700 }} onClick={() => saveFeedback(s, 'failed')}>Не состоялся</button>
+                                                <button className="card-clickable" style={{ flex: 1, height: 40, borderRadius: 12, background: '#f1f5f9', border: 'none', fontSize: 11, fontWeight: 400 }} onClick={() => saveFeedback(s, 'failed')}>Не состоялся</button>
                                                 <button className="card-clickable" style={{ width: 70, height: 40, borderRadius: 12, border: 'none', background: 'transparent', color: 'var(--text-secondary)', fontSize: 11 }} onClick={() => setFeedbackId(null)}>Отмена</button>
                                             </div>
                                         </div>
@@ -379,7 +386,7 @@ export function ListPage() {
 
                 {/* Timeline Section */}
                 <div style={{ marginTop: 40 }}>
-                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 20 }}>Лента событий</div>
+                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 20 }}>Лента событий</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {myShowings
                             .sort((a, b) => new Date(b.showing_date).getTime() - new Date(a.showing_date).getTime())
@@ -401,16 +408,16 @@ export function ListPage() {
                                             justifyContent: 'center', width: 50, flexShrink: 0,
                                             borderRight: '1px solid rgba(0,0,0,0.05)', paddingRight: 16
                                         }}>
-                                            <div className="font-oswald" style={{ fontSize: 11, fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>{dateStr}</div>
-                                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-secondary)', opacity: 0.6 }}>{timeStr}</div>
+                                            <div className="font-oswald" style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase' }}>{dateStr}</div>
+                                            <div style={{ fontSize: 10, fontWeight: 200, color: '#000000' }}>{timeStr}</div>
                                         </div>
                                         <div style={{ flex: 1 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                                                <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{eventTypeLabels[s.event_type] || 'Событие'}</div>
-                                                <div style={{ fontSize: 10, fontWeight: 700, color: s.status === 'completed' ? '#059669' : '#94a3b8' }}>{statusLabels[s.status] || s.status}</div>
+                                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase' }}>{eventTypeLabels[s.event_type] || 'Событие'}</div>
+                                                <div style={{ fontSize: 10, fontWeight: 600, color: s.status === 'completed' ? '#059669' : '#94a3b8' }}>{getEventStatusLabel(s.event_type, s.status)}</div>
                                             </div>
-                                            <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>{prop?.address || 'Без объекта'}</div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>{clientNames || '—'}</div>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{prop?.address || 'Без объекта'}</div>
+                                            <div style={{ fontSize: 12, color: '#000000', fontWeight: 200 }}>{clientNames || '—'}</div>
                                         </div>
                                     </div>
                                 );
@@ -425,7 +432,7 @@ export function ListPage() {
                             <History size={32} />
                         </div>
                         <div>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>История пуста</div>
+                            <div style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', marginBottom: 4 }}>История пуста</div>
                             <div style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 200 }}>Добавляйте события, чтобы отслеживать активность по объектам.</div>
                         </div>
                     </div>

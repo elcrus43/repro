@@ -15,6 +15,7 @@ import { reducer, EMPTY_STATE } from './reducer';
 import { loadUserData, getCachedData, setCachedData, clearCachedData } from './supabaseSync';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
+import { initCalendarAuth } from '../lib/googleCalendar';
 
 /* ─── Context ──────────────────────────────────────────────────────────────── */
 
@@ -179,6 +180,12 @@ export function AppProvider({ children }) {
       const enriched = { ...profile, id: sessionUser.id };
       dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
       sessionUserRef.current = enriched;
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        initCalendarAuth(session.access_token, !!profile.google_refresh_token);
+      }
+
       await loadData(enriched);
     }
 
@@ -198,6 +205,8 @@ export function AppProvider({ children }) {
 
       if (session?.user) {
         console.log('[Auth Init] User found:', session.user.id);
+        // Initialize Google Calendar with Supabase session token
+        if (session.access_token) initCalendarAuth(session.access_token);
         await loadProfileAndData(session.user);
       } else {
         console.log('[Auth Init] No session found, showing login page');
@@ -214,6 +223,8 @@ export function AppProvider({ children }) {
         sessionUserRef.current = null;
         dispatch({ type: 'LOGOUT' });
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
+        // Keep Google Calendar auth token in sync with Supabase session
+        if (session.access_token) initCalendarAuth(session.access_token);
         if (!isInitial) await loadProfileAndData(session.user);
       }
     });
