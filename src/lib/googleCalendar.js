@@ -8,7 +8,7 @@
  *  - Refresh token: stored in profiles.google_refresh_token (never sent to client)
  */
 
-const CLIENT_ID   = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const CLIENT_ID   = import.meta.env.VITE_GOOGLE_CLIENT_ID || '991093392145-f09fodb4e2gf8smrh0tgpco9t4rqserf.apps.googleusercontent.com';
 const SCOPES      = 'https://www.googleapis.com/auth/calendar.events';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const EDGE_FN_URL  = `${SUPABASE_URL}/functions/v1/google-calendar-token`;
