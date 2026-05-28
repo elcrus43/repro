@@ -111,12 +111,16 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 export async function loadUserData(userId, role) {
   const isAdmin = role === 'admin';
 
-  async function safeQuery(queryFn, timeoutMs = 30000) {
+  async function safeQuery(queryFn, name, timeoutMs = 30000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     
     try {
+      console.warn(`[safeQuery] Start query for: ${name}`);
+      const start = Date.now();
       const res = await queryFn(controller.signal);
+      const duration = Date.now() - start;
+      console.warn(`[safeQuery] Completed query for: ${name} in ${duration}ms. Success: ${res?.error == null}`);
       clearTimeout(timer);
       return res;
     } catch (e) {
@@ -125,44 +129,39 @@ export async function loadUserData(userId, role) {
       const message = isAbort
         ? 'Превышено время ожидания (30с)'
         : (e?.message || 'Сетевая ошибка');
-      console.error('[safeQuery] Error:', message, e?.name);
+      console.warn(`[safeQuery] Failed query for: ${name}. Error: ${message}`, e);
       return { data: null, error: { message, code: isAbort ? 'TIMEOUT' : 'NETWORK' } };
     }
   }
 
-  // Загружаем основные таблицы сначала (Batch 1: 4 параллельных запроса)
+  // Загружаем все 9 таблиц полностью параллельно (оптимально для HTTP/2)
   // properties и requests — загружаем ВСЕ (для матчинга между риэлторами)
   // clients, showings, tasks, deals — только свои
   const [
-    clientsRes, propertiesRes, requestsRes, matchesRes
-  ] = await Promise.all([
-    isAdmin
-      ? safeQuery((signal) => supabase.from('clients').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('clients').select('*').eq('realtor_id', userId).abortSignal(signal)),
-    // Все объекты видны всем риэлторам (нужно для матчинга и совместной работы)
-    safeQuery((signal) => supabase.from('properties').select('*').abortSignal(signal)),
-    // Все запросы видны всем риэлторам (нужно для матчинга)
-    safeQuery((signal) => supabase.from('requests').select('*').abortSignal(signal)),
-    isAdmin
-      ? safeQuery((signal) => supabase.from('matches').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('matches').select('*').eq('realtor_id', userId).abortSignal(signal)),
-  ]);
-
-  // Загружаем вспомогательные таблицы (Batch 2: 5 параллельных запросов)
-  const [
+    clientsRes, propertiesRes, requestsRes, matchesRes,
     showingsRes, tasksRes, priceRes, dealsRes, profilesRes
   ] = await Promise.all([
     isAdmin
-      ? safeQuery((signal) => supabase.from('showings').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('showings').select('*').eq('realtor_id', userId).abortSignal(signal)),
+      ? safeQuery((signal) => supabase.from('clients').select('*').abortSignal(signal), 'clients')
+      : safeQuery((signal) => supabase.from('clients').select('*').eq('realtor_id', userId).abortSignal(signal), 'clients'),
+    // Все объекты видны всем риэлторам (нужно для матчинга и совместной работы)
+    safeQuery((signal) => supabase.from('properties').select('*').abortSignal(signal), 'properties'),
+    // Все запросы видны всем риэлторам (нужно для матчинга)
+    safeQuery((signal) => supabase.from('requests').select('*').abortSignal(signal), 'requests'),
     isAdmin
-      ? safeQuery((signal) => supabase.from('tasks').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('tasks').select('*').eq('realtor_id', userId).abortSignal(signal)),
-    safeQuery((signal) => supabase.from('pricelist').select('*').abortSignal(signal)),
+      ? safeQuery((signal) => supabase.from('matches').select('*').abortSignal(signal), 'matches')
+      : safeQuery((signal) => supabase.from('matches').select('*').eq('realtor_id', userId).abortSignal(signal), 'matches'),
     isAdmin
-      ? safeQuery((signal) => supabase.from('deals').select('*').abortSignal(signal))
-      : safeQuery((signal) => supabase.from('deals').select('*').eq('realtor_id', userId).abortSignal(signal)),
-    safeQuery((signal) => supabase.from('profiles').select('*').abortSignal(signal)),
+      ? safeQuery((signal) => supabase.from('showings').select('*').abortSignal(signal), 'showings')
+      : safeQuery((signal) => supabase.from('showings').select('*').eq('realtor_id', userId).abortSignal(signal), 'showings'),
+    isAdmin
+      ? safeQuery((signal) => supabase.from('tasks').select('*').abortSignal(signal), 'tasks')
+      : safeQuery((signal) => supabase.from('tasks').select('*').eq('realtor_id', userId).abortSignal(signal), 'tasks'),
+    safeQuery((signal) => supabase.from('pricelist').select('*').abortSignal(signal), 'pricelist'),
+    isAdmin
+      ? safeQuery((signal) => supabase.from('deals').select('*').abortSignal(signal), 'deals')
+      : safeQuery((signal) => supabase.from('deals').select('*').eq('realtor_id', userId).abortSignal(signal), 'deals'),
+    safeQuery((signal) => supabase.from('profiles').select('*').abortSignal(signal), 'profiles'),
   ]);
 
   const profiles = profilesRes?.data ?? [];
@@ -198,18 +197,18 @@ export async function loadUserData(userId, role) {
   };
 }
 
-/* ─── Session Cache ─────────────────────────────────────────────────────────── */
+/* ─── Persistent Cache ──────────────────────────────────────────────────────── */
 // Ключ кеша per-user чтобы не смешивать данные разных риелторов
 const CACHE_KEY = (userId) => `rm_cache_${userId}`;
-const CACHE_TTL = 2 * 60 * 1000; // 2 минуты — данные должны быть актуальными
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 часов — для быстрого запуска и оффлайн-работы
 
 export function getCachedData(userId) {
   try {
-    const raw = sessionStorage.getItem(CACHE_KEY(userId));
+    const raw = localStorage.getItem(CACHE_KEY(userId));
     if (!raw) return null;
     const { ts, data } = JSON.parse(raw);
     if (Date.now() - ts > CACHE_TTL) {
-      sessionStorage.removeItem(CACHE_KEY(userId));
+      localStorage.removeItem(CACHE_KEY(userId));
       return null;
     }
     return data;
@@ -220,15 +219,15 @@ export function getCachedData(userId) {
 
 export function setCachedData(userId, data) {
   try {
-    sessionStorage.setItem(CACHE_KEY(userId), JSON.stringify({ ts: Date.now(), data }));
+    localStorage.setItem(CACHE_KEY(userId), JSON.stringify({ ts: Date.now(), data }));
   } catch {
-    // sessionStorage может быть недоступен в private mode — не критично
+    // localStorage может быть недоступен в приватном режиме — не критично
   }
 }
 
 export function clearCachedData(userId) {
   try {
-    if (userId) sessionStorage.removeItem(CACHE_KEY(userId));
+    if (userId) localStorage.removeItem(CACHE_KEY(userId));
   } catch { /* ignore */ }
 }
 

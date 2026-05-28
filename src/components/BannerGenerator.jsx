@@ -2,11 +2,7 @@ import React from 'react';
 import { X, Loader } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 
-const DESIGNS = [
-    ['light', 'Светлая тема'],
-    ['dark',  'Тёмная тема'],
-    ['photo', 'Фото-дизайн'],
-];
+
 
 const TRENDING_COLORS = [
     '#0052FF', // Samolet Blue
@@ -44,9 +40,7 @@ function getWrappedLines(ctx, text, maxWidth) {
 export function BannerGenerator({ property, currentUser, onClose }) {
     const canvasRef = React.useRef(null);
     const [format,   setFormat]   = React.useState('story');
-    const [design,   setDesign]   = React.useState(() => 
-        document.documentElement.classList.contains('dark') ? 'dark' : 'light'
-    );
+    const design = 'photo';
     const [stickers, setStickers] = React.useState([]);
     const [customStickerText, setCustomStickerText] = React.useState('Свой текст');
     const [loading,  setLoading]  = React.useState(true);
@@ -412,14 +406,7 @@ export function BannerGenerator({ property, currentUser, onClose }) {
                         </div>
                     </Section>
 
-                    {/* Design */}
-                    <Section label="ДИЗАЙН">
-                        <div style={{ display: 'flex', gap: '8px 16px', flexWrap: 'wrap' }}>
-                            {DESIGNS.map(([d, l]) => (
-                                <Chip key={d} active={design === d} color={activeColor} onClick={() => setDesign(d)}>{l}</Chip>
-                            ))}
-                        </div>
-                    </Section>
+
 
                     {/* Photo selection thumbnails */}
                     {propertyImages.length > 1 && (

@@ -61,7 +61,7 @@ export function AppProvider({ children }) {
       const retryData = await loadUserData(sessionUser.id, sessionUser.role);
       if (retryData.error) {
         console.warn('[Data Load] Retry also failed:', retryData.error);
-        if (!cached) toast.error('Не удалось загрузить данные. Проверьте подключение.');
+        if (!cached) toast.error('Не удалось загрузить данные: ' + retryData.error);
       } else {
         console.log('[Data Load] Retry succeeded!');
         setCachedData(sessionUser.id, retryData);
@@ -70,8 +70,9 @@ export function AppProvider({ children }) {
       return;
     }
 
-    if (data.error) {
+    if (data.error && !silent) {
       console.warn('[Data Load] Partial error:', data.error);
+      toast.error('Частичная ошибка загрузки: ' + data.error);
     }
 
     // 3. Обновляем UI свежими данными и сохраняем в кеш (с защитой от перезаписи меньшим кол-вом)

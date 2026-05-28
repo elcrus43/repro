@@ -1,5 +1,5 @@
 import React, { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
@@ -347,14 +347,14 @@ export default function App() {
      *  1. ErrorBoundary   — перехватывает ошибки рендера всего дерева
      *  2. ToastProvider   — создаёт toast API (нужен AppProvider)
      *  3. AppProvider     — использует toast из ToastProvider
-     *  4. BrowserRouter   — должен быть внутри, чтобы хуки роутинга работали
+     *  4. HashRouter      — должен быть внутри, чтобы хуки роутинга работали
      */
     <ErrorBoundary>
       <ToastProvider>
         <AppProvider>
-          <BrowserRouter>
+          <HashRouter>
             <AppRoutes />
-          </BrowserRouter>
+          </HashRouter>
         </AppProvider>
       </ToastProvider>
     </ErrorBoundary>

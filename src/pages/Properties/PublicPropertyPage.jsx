@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { MapPin, Home, Maximize, Layers, Phone, MessageCircle } from 'lucide-react';
-import { formatNumber } from '../../utils/format';
+import { formatNumber, stripPhone } from '../../utils/format';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { API_BASE } from '../../config';
 
@@ -140,10 +140,10 @@ export function PublicPropertyPage() {
 
             {/* Sticky Actions */}
             <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', padding: '12px 20px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 12, zIndex: 100 }}>
-                <a href={`tel:${agent?.phone}`} style={{ flex: 1, height: 48, background: '#4F46E5', color: 'white', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', fontWeight: 600 }}>
+                <a href={agent?.phone ? `tel:+${stripPhone(agent.phone)}` : '#'} style={{ flex: 1, height: 48, background: '#4F46E5', color: 'white', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textDecoration: 'none', fontWeight: 600 }}>
                     <Phone size={20} /> Позвонить
                 </a>
-                <a href={`https://wa.me/${agent?.phone.replace(/\D/g, '')}`} style={{ width: 48, height: 48, background: '#DCFCE7', color: '#166534', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <a href={agent?.phone ? `https://wa.me/${stripPhone(agent.phone)}` : '#'} style={{ width: 48, height: 48, background: '#DCFCE7', color: '#166534', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <MessageCircle size={24} />
                 </a>
             </div>

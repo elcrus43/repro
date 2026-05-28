@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
-import { formatNumber, parseLocalDateTime } from '../../utils/format';
+import { formatNumber, parseLocalDateTime, stripPhone } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp } from 'lucide-react';
 import { API_BASE } from '../../config';
@@ -382,7 +382,7 @@ export function MatchDetailPage() {
                         
                         {buyer && (
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                <a href={`tel:${buyer.phone}`} className="card-clickable" style={{ 
+                                <a href={`tel:+${stripPhone(buyer.phone)}`} className="card-clickable" style={{ 
                                     height: 56, borderRadius: 18, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--primary)', border: '1px solid var(--border-light)'
                                 }}><Phone size={18} /> <span style={{ fontSize: 13, fontWeight: 300 }}>Звонок</span></a>
                                 

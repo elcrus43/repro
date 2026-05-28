@@ -1,4 +1,12 @@
-// Centralized API configuration
-// Set VITE_API_URL in your .env file for production backend
-// Example: VITE_API_URL=https://your-backend.railway.app
-export const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname;
+    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `http://${hostname}:8000`;
+    }
+  }
+  return 'http://localhost:8000';
+};
+
+export const API_BASE = getApiBase();

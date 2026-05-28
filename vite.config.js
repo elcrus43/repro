@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   
   return {
+    base: './',
     plugins: [react()],
     optimizeDeps: {
       include: ['react', 'react-dom', 'react-router-dom']

@@ -139,7 +139,7 @@ export function DetailsPage() {
                     )}
 
                     <div style={{ display: 'flex', gap: 12, marginTop: 12, justifyContent: 'center' }}>
-                        <a href={`tel:${client.phone}`} className="card-clickable" onClick={handleCall} style={{ 
+                        <a href={`tel:+${stripPhone(client.phone)}`} className="card-clickable" onClick={handleCall} style={{ 
                             width: 48, height: 48, borderRadius: 16, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)'
                         }}><Phone size={20} /></a>
                         <a href={`https://wa.me/${stripPhone(client.phone)}`} target="_blank" rel="noopener noreferrer" className="card-clickable" style={{ 
@@ -169,7 +169,7 @@ export function DetailsPage() {
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 20 }}>Контактные данные</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <a href={`tel:+${stripPhone(client.phone)}`} onClick={handleCall} className="card-clickable" style={{ display: 'flex', alignItems: 'center', gap: 16, textDecoration: 'none', color: 'inherit', width: '100%', borderRadius: 14, padding: '4px', margin: '-4px' }}>
                             <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                 <Phone size={20} />
                             </div>
@@ -177,9 +177,9 @@ export function DetailsPage() {
                                 <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)' }}>Телефон</div>
                                 <div style={{ fontSize: 16, fontWeight: 300, color: 'var(--text)' }}>{formatPhone(client.phone)}</div>
                             </div>
-                        </div>
+                        </a>
                         {client.email && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <a href={`mailto:${client.email}`} className="card-clickable" style={{ display: 'flex', alignItems: 'center', gap: 16, textDecoration: 'none', color: 'inherit', width: '100%', borderRadius: 14, padding: '4px', margin: '-4px' }}>
                                 <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                                     <Mail size={20} />
                                 </div>
@@ -187,7 +187,7 @@ export function DetailsPage() {
                                     <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)' }}>Email</div>
                                     <div style={{ fontSize: 16, fontWeight: 300, color: 'var(--text)' }}>{client.email}</div>
                                 </div>
-                            </div>
+                            </a>
                         )}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                             <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
