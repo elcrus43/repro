@@ -17,7 +17,7 @@
 import { useCallback, useRef, useLayoutEffect } from 'react';
 import { nanoid } from '../utils/nanoid';
 import { runMatchingForProperty, runMatchingForRequest } from '../utils/matching';
-import { syncAction, loadUserData } from './supabaseSync';
+import { syncAction, loadUserData } from './dbSync';
 import { syncWithCalendar, deleteCalendarEvent } from './calendarSync';
 import { isCalendarConnected, isCalendarConfigured } from '../lib/googleCalendar';
 
