@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { X, Eye, EyeOff, Lock } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { authService } from '../lib/auth';
 
 /**
  * Модальное окно для смены пароля.
@@ -46,7 +46,7 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
 
         try {
             console.log('[ChangePassword] Sending update request...');
-            const { error: updateErr } = await supabase.auth.updateUser({ password: newPassword });
+            const { error: updateErr } = await authService.updateUser({ password: newPassword });
 
             if (updateErr) {
                 console.error('[ChangePassword] Supabase error:', updateErr);

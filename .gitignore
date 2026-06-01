@@ -95,3 +95,8 @@ deploy-edge-function.mjs
 generate_recovery_link.mjs
 run-migration-045.mjs
 *.mjs
+
+# ─── Firebase секреты (никогда не коммитить!) ─────────────────
+scripts/firebase-service-account.json
+*service-account*.json
+*serviceAccount*.json

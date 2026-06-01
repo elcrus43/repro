@@ -11,8 +11,12 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { reducer, EMPTY_STATE } from './reducer';
-import { loadUserData, getCachedData, setCachedData, clearCachedData } from './supabaseSync';
+import { getCachedData, setCachedData, clearCachedData } from './supabaseSync';
+import { loadUserData } from './dbSync';
+import { authService } from '../lib/auth';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
 import { initCalendarAuth } from '../lib/googleCalendar';
@@ -105,90 +109,121 @@ export function AppProvider({ children }) {
     await loadData(su, { silent: false, forceRefresh: true });
     toast.success('Данные обновлены');
   }, [loadData, toast]);
-
   /* ── Auth flow ─────────────────────────────────────────────────────────── */
 
   useEffect(() => {
     let isInitial = true;
+    const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
 
     async function loadProfileAndData(sessionUser) {
       try {
-      console.log('[Data Load] Fetching profile for:', sessionUser.id);
-      const { data: profile, error: profileErr } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', sessionUser.id)
-        .single();
+        console.log('[Data Load] Fetching profile for:', sessionUser.id);
+        let profile = null;
+        let profileErr = null;
 
-      if (profileErr && profileErr.code !== 'PGRST116') {
-        console.error('[Profile load error]', profileErr);
-        const fallback = {
-          id: sessionUser.id,
-          full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
-          email: sessionUser.email,
-          phone: sessionUser.user_metadata?.phone || '',
-          agency_name: '',
-          role: 'realtor',
-          status: 'approved',
-        };
-        dispatch({ type: 'SET_USER', user: fallback });
-        sessionUserRef.current = fallback;
-        await loadData(fallback);
-        return;
-      }
+        if (isFirebase) {
+          try {
+            const docRef = doc(db, 'profiles', sessionUser.id);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+              profile = { id: docSnap.id, ...docSnap.data() };
+            }
+          } catch (e) {
+            profileErr = e;
+          }
+        } else {
+          const res = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', sessionUser.id)
+            .single();
+          profile = res.data;
+          profileErr = res.error;
+        }
 
-      if (!profile) {
-        const isAdmin = sessionUser.email === ADMIN_EMAIL;
-        const newProfile = {
-          id: sessionUser.id,
-          full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
-          phone: sessionUser.user_metadata?.phone || '',
-          agency_name: '',
-          role: isAdmin ? 'admin' : 'realtor',
-          status: isAdmin ? 'approved' : 'pending',
-        };
+        if (profileErr && (!isFirebase && profileErr.code !== 'PGRST116')) {
+          console.error('[Profile load error]', profileErr);
+          const fallback = {
+            id: sessionUser.id,
+            full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+            email: sessionUser.email,
+            phone: sessionUser.user_metadata?.phone || '',
+            agency_name: '',
+            role: 'realtor',
+            status: 'approved',
+          };
+          dispatch({ type: 'SET_USER', user: fallback });
+          sessionUserRef.current = fallback;
+          await loadData(fallback);
+          return;
+        }
 
-        const { data: createdProfile, error: createErr } = await supabase
-          .from('profiles')
-          .insert(newProfile)
-          .select()
-          .single();
+        if (!profile) {
+          const isAdmin = sessionUser.email === ADMIN_EMAIL;
+          const newProfile = {
+            id: sessionUser.id,
+            full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || 'Пользователь',
+            phone: sessionUser.user_metadata?.phone || '',
+            agency_name: '',
+            role: isAdmin ? 'admin' : 'realtor',
+            status: isAdmin ? 'approved' : 'pending',
+          };
 
-        if (createErr) {
-          console.error('[Profile creation error]', createErr);
+          let createdProfile = null;
+          let createErr = null;
+
+          if (isFirebase) {
+            try {
+              await setDoc(doc(db, 'profiles', sessionUser.id), newProfile);
+              createdProfile = { ...newProfile, id: sessionUser.id };
+            } catch (e) {
+              createErr = e;
+            }
+          } else {
+            const res = await supabase
+              .from('profiles')
+              .insert(newProfile)
+              .select()
+              .single();
+            createdProfile = res.data;
+            createErr = res.error;
+          }
+
+          if (createErr) {
+            console.error('[Profile creation error]', createErr);
+            dispatch({ type: 'SET_LOADING', value: false });
+            return;
+          }
+
+          if (createdProfile.status === 'pending') {
+            await authService.signOut();
+            dispatch({ type: 'SET_LOADING', value: false });
+            return;
+          }
+
+          const enriched = { ...createdProfile, id: sessionUser.id };
+          dispatch({ type: 'SET_USER', user: { ...createdProfile, email: sessionUser.email } });
+          sessionUserRef.current = enriched;
+          await loadData(enriched);
+          return;
+        }
+
+        if (profile.status === 'pending' || profile.status === 'rejected') {
+          await authService.signOut();
           dispatch({ type: 'SET_LOADING', value: false });
           return;
         }
 
-        if (createdProfile.status === 'pending') {
-          await supabase.auth.signOut();
-          dispatch({ type: 'SET_LOADING', value: false });
-          return;
-        }
-
-        const enriched = { ...createdProfile, id: sessionUser.id };
-        dispatch({ type: 'SET_USER', user: { ...createdProfile, email: sessionUser.email } });
+        const enriched = { ...profile, id: sessionUser.id };
+        dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
         sessionUserRef.current = enriched;
+        
+        const { data: { session } } = await authService.getSession();
+        if (session?.access_token && !isFirebase) {
+          initCalendarAuth(session.access_token, !!profile.google_refresh_token);
+        }
+
         await loadData(enriched);
-        return;
-      }
-
-      if (profile.status === 'pending' || profile.status === 'rejected') {
-        await supabase.auth.signOut();
-        dispatch({ type: 'SET_LOADING', value: false });
-        return;
-      }
-
-      const enriched = { ...profile, id: sessionUser.id };
-      dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
-      sessionUserRef.current = enriched;
-      
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        initCalendarAuth(session.access_token, !!profile.google_refresh_token);
-      }
-
-      await loadData(enriched);
       } catch (err) {
         console.error('[loadProfileAndData] Unexpected error:', err);
         dispatch({ type: 'SET_LOADING', value: false });
@@ -198,7 +233,6 @@ export function AppProvider({ children }) {
     async function init() {
       dispatch({ type: 'SET_LOADING', value: true });
 
-      // Жёсткий глобальный таймаут: если через 45с загрузка не завершилась — останавливаем лоадер
       const hardTimeout = setTimeout(() => {
         console.warn('[Auth Hard Timeout] Force-stopping loader after 45s.');
         dispatch({ type: 'SET_LOADING', value: false });
@@ -210,14 +244,14 @@ export function AppProvider({ children }) {
         }, 10000);
 
         console.log('[Auth Init] Getting session...');
-        const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionErr } = await authService.getSession();
         clearTimeout(sessionTimeout);
 
         if (sessionErr) console.error('[Auth Init] Session error:', sessionErr);
 
         if (session?.user) {
           console.log('[Auth Init] User found:', session.user.id);
-          if (session.access_token) initCalendarAuth(session.access_token);
+          if (session.access_token && !isFirebase) initCalendarAuth(session.access_token);
           await loadProfileAndData(session.user);
         } else {
           console.log('[Auth Init] No session found, showing login page');
@@ -234,13 +268,12 @@ export function AppProvider({ children }) {
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         sessionUserRef.current = null;
         dispatch({ type: 'LOGOUT' });
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        // Keep Google Calendar auth token in sync with Supabase session
-        if (session.access_token) initCalendarAuth(session.access_token);
+        if (session.access_token && !isFirebase) initCalendarAuth(session.access_token);
         if (!isInitial) await loadProfileAndData(session.user);
       }
     });

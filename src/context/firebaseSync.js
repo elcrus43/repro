@@ -15,7 +15,7 @@ import {
 import {
   ref as storageRef, uploadBytes, getDownloadURL, deleteObject
 } from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db, storage } from '../lib/firebase';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 

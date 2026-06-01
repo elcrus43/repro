@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 import { formatPhone } from '../../utils/format';
 import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon, FileText } from 'lucide-react';
 import {
@@ -45,10 +46,10 @@ export function ProfilePage() {
 
     const isAdmin = user?.role === 'admin';
 
-    // Initialize Google Calendar auth with current Supabase session
+    // Initialize Google Calendar auth with current session
     React.useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            if (session?.access_token) {
+        authService.getSession().then(({ data: { session } }) => {
+            if (session?.access_token && import.meta.env.VITE_BACKEND !== 'firebase') {
                 initCalendarAuth(session.access_token, !!state.currentUser?.google_refresh_token);
             }
         });
@@ -205,9 +206,9 @@ export function ProfilePage() {
     async function handleLogout() {
         if (!window.confirm('Выйти из аккаунта?')) return;
         try {
-            await supabase.auth.signOut();
+            await authService.signOut();
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-')) localStorage.removeItem(key);
+                if (key.startsWith('sb-') || key.startsWith('firebase:')) localStorage.removeItem(key);
             });
             window.location.href = '/login';
         } catch (e) {

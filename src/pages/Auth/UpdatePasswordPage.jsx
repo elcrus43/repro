@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 import { useToastContext } from '../../components/Toast';
 
 /**
@@ -20,14 +20,14 @@ export default function UpdatePasswordPage() {
     // Проверяем сессию — recovery создаёт временную сессию после перехода по ссылке
     useEffect(() => {
         // Сначала проверим текущую сессию
-        supabase.auth.getSession().then(({ data: { session } }) => {
+        authService.getSession().then(({ data: { session } }) => {
             if (session) {
                 setSessionReady(true);
             }
         });
 
         // Также слушаем событие PASSWORD_RECOVERY (hash flow)
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
             console.log('[UpdatePassword] Auth event:', event);
             if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
                 setSessionReady(true);
@@ -65,7 +65,7 @@ export default function UpdatePasswordPage() {
         }
 
         try {
-            const { error: err } = await supabase.auth.updateUser({ password });
+            const { error: err } = await authService.updateUser({ password });
 
             if (err) {
                 const msg = err.message || '';

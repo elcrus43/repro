@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 
 /**
  * Страница обрабатывает редирект от Supabase после:
@@ -18,6 +19,12 @@ export default function AuthCallbackPage() {
         let cancelled = false;
 
         async function handleCallback() {
+            const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
+            if (isFirebase) {
+                navigate('/', { replace: true });
+                return;
+            }
+
             const errorParam = searchParams.get('error');
             const errorDescription = searchParams.get('error_description');
             const type = searchParams.get('type');

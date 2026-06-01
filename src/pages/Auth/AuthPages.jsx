@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { supabase } from '../../lib/supabase';
+import { authService } from '../../lib/auth';
 
 const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
@@ -27,10 +27,10 @@ export function LoginPage() {
 
         async function tryAuth() {
             if (mode === 'login') {
-                const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+                const { error: err } = await authService.signInWithPassword({ email, password });
                 if (err) throw err;
             } else {
-                const { error: err } = await supabase.auth.signUp({ email, password });
+                const { error: err } = await authService.signUp({ email, password });
                 if (err) throw err;
                 setLoading(false);
                 alert('Регистрация успешна! Проверьте email для подтверждения или войдите.');
@@ -119,7 +119,7 @@ export function LoginPage() {
                                         onClick={async () => {
                                             if (!email) { setError('Введите email для сброса пароля'); return; }
                                             setLoading(true);
-                                            const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+                                            const { error: err } = await authService.resetPasswordForEmail(email, {
                                                 redirectTo: `${window.location.origin}/auth/callback`,
                                             });
                                             setLoading(false);
