@@ -219,7 +219,7 @@ export function MatchDetailPage() {
 
         dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'deal' } });
 
-        navigate('/deals', {
+        navigate('/tasks', {
             state: {
                 prefillDeal: {
                     title: `Сделка: ${prop?.address || prop?.city || 'Объект'} — ${buyer?.full_name || 'Покупатель'}`,
