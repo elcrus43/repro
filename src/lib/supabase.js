@@ -16,7 +16,9 @@ const getSupabaseUrl = () => {
   }
   if (typeof window !== 'undefined' && window.location) {
     const hostname = window.location.hostname;
-    if (hostname && hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    const isLocalIp = /^(?:192\.168|10|172\.(?:1[6-9]|2[0-9]|3[0-1]))\./.test(hostname) || /^[0-9.]+$/.test(hostname);
+    const isLocalDomain = hostname.endsWith('.local');
+    if ((isLocalIp || isLocalDomain) && hostname !== 'localhost' && hostname !== '127.0.0.1') {
       return `http://${hostname}:8000/supabase-proxy`;
     }
   }
