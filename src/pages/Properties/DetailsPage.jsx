@@ -27,7 +27,7 @@ export function DetailsPage() {
     const { state, dispatch } = useApp();
     const [showBannerGen, setShowBannerGen] = useState(false);
     const [showPortfolio, setShowPortfolio] = useState(false);
-    const [showGallery, setShowGallery] = useState(false);
+    const [showGallery, setShowGallery] = useState(true);
     const [coverSet, setCoverSet] = useState(false);
 
     function handleSetCover(index) {
@@ -277,14 +277,14 @@ export function DetailsPage() {
                                 {prop.images.map((url, index) => (
                                     <div key={index} style={{ 
                                         width: 'calc(50% - 4px)', aspectRatio: '1', 
-                                        borderRadius: 8, overflow: 'hidden', 
+                                        borderRadius: 8,
                                         border: index === 0 ? '2px solid var(--primary)' : '1px solid var(--border-light)',
                                         position: 'relative'
                                     }}>
                                         <img 
                                             src={url} 
                                             alt={`Фото ${index + 1}`} 
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', borderRadius: 6 }} 
                                             onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} 
                                         />
                                         {/* Обложка — иконка звезды */}
@@ -293,7 +293,8 @@ export function DetailsPage() {
                                                 position: 'absolute', top: 6, left: 6,
                                                 background: 'var(--primary)', borderRadius: 6,
                                                 padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 3,
-                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Oswald'
+                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Oswald',
+                                                pointerEvents: 'none'
                                             }}>
                                                 <Star size={10} fill="#fff" /> Обложка
                                             </div>
@@ -303,10 +304,11 @@ export function DetailsPage() {
                                                 style={{
                                                     position: 'absolute', top: 6, right: 6,
                                                     width: 32, height: 32, borderRadius: 8,
-                                                    background: 'rgba(0,0,0,0.45)', border: 'none',
+                                                    background: 'rgba(0,0,0,0.5)', border: 'none',
                                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                     color: '#fff', cursor: 'pointer',
-                                                    backdropFilter: 'blur(4px)'
+                                                    backdropFilter: 'blur(4px)',
+                                                    zIndex: 2
                                                 }}
                                                 title="Сделать обложкой"
                                             >
