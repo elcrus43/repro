@@ -5,7 +5,7 @@ import { useToastContext } from '../../components/Toast';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
 import { formatNumber, parseLocalDateTime, stripPhone } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
-import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp } from 'lucide-react';
+import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp, Briefcase } from 'lucide-react';
 import { API_BASE } from '../../config';
 import { PROPERTY_TYPES } from '../../data/constants';
 
@@ -209,15 +209,25 @@ export function MatchDetailPage() {
     }
 
     function handleDeal() {
-        navigate('/tasks', {
+        // Определяем продавцов из объекта (поддерживаем оба поля)
+        const sellerIds = prop?.client_ids?.length
+            ? prop.client_ids
+            : prop?.client_id ? [prop.client_id] : (seller ? [seller.id] : []);
+
+        // Определяем покупателей из запроса
+        const buyerIds = buyer ? [buyer.id] : [];
+
+        dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'deal' } });
+
+        navigate('/deals', {
             state: {
                 prefillDeal: {
-                    title: `Сделка: ${seller?.full_name || 'Продавец'} → ${buyer?.full_name || 'Покупатель'}`,
-                    seller_id: seller?.id || '',
-                    buyer_id: buyer?.id || '',
+                    title: `Сделка: ${prop?.address || prop?.city || 'Объект'} — ${buyer?.full_name || 'Покупатель'}`,
+                    seller_ids: sellerIds,
+                    buyer_ids: buyerIds,
                     property_id: prop?.id || '',
-                    price: prop?.price || req?.budget_max || '',
-                    commission: prop?.commission || '',
+                    price: prop?.price ? String(prop.price) : (req?.budget_max ? String(req.budget_max) : ''),
+                    commission: prop?.commission ? String(prop.commission) : '',
                     deal_date: '',
                 }
             }
@@ -392,6 +402,30 @@ export function MatchDetailPage() {
                             </div>
                         )}
 
+                        {/* Кнопка Создать сделку — доступна на любом статусе */}
+                        <button
+                            className="btn btn-full card-clickable"
+                            style={{
+                                height: 60,
+                                borderRadius: 18,
+                                fontSize: 15,
+                                fontWeight: 300,
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: '#fff',
+                                border: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                boxShadow: '0 8px 24px rgba(16,185,129,0.25)',
+                                letterSpacing: '0.01em',
+                            }}
+                            onClick={handleDeal}
+                        >
+                            <Briefcase size={20} />
+                            <span>Создать сделку</span>
+                        </button>
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             <button className="card-clickable" style={{ 
                                 height: 56, borderRadius: 18, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, color: 'var(--text-secondary)', border: '1px solid var(--border-light)'
@@ -404,10 +438,6 @@ export function MatchDetailPage() {
                                 <Trash size={18} /> <span style={{ fontSize: 13, fontWeight: 300 }}>Отказ</span>
                             </button>
                         </div>
-
-                        {match.status === 'showing_done' && (
-                            <button className="btn btn-success btn-full" style={{ height: 56, borderRadius: 18, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: '#fff', fontWeight: 300 }} onClick={handleDeal}>Оформить сделку</button>
-                        )}
                     </div>
                 )}
             </div>
