@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown
+    TrendingDown, Star
 } from 'lucide-react';
 
 import { BUILDING_TYPES, PROPERTY_TYPES } from '../../data/constants';
@@ -28,7 +28,17 @@ export function DetailsPage() {
     const [showBannerGen, setShowBannerGen] = useState(false);
     const [showPortfolio, setShowPortfolio] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
+    const [coverSet, setCoverSet] = useState(false);
 
+    function handleSetCover(index) {
+        if (index === 0) return;
+        const imgs = [...(prop.images || [])];
+        const [selected] = imgs.splice(index, 1);
+        imgs.unshift(selected);
+        dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, images: imgs } });
+        setCoverSet(true);
+        setTimeout(() => setCoverSet(false), 2000);
+    }
 
     const navigate = useNavigate();
     const prop = state.properties.find(p => p.id === id);
@@ -265,11 +275,50 @@ export function DetailsPage() {
                         {showGallery && (
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 {prop.images.map((url, index) => (
-                                    <div key={index} style={{ width: 'calc(50% - 4px)', aspectRatio: '1', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                                        <img src={url} alt={`Фото ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} />
+                                    <div key={index} style={{ 
+                                        width: 'calc(50% - 4px)', aspectRatio: '1', 
+                                        borderRadius: 8, overflow: 'hidden', 
+                                        border: index === 0 ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+                                        position: 'relative'
+                                    }}>
+                                        <img 
+                                            src={url} 
+                                            alt={`Фото ${index + 1}`} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer' }} 
+                                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} 
+                                        />
+                                        {/* Обложка — иконка звезды */}
+                                        {index === 0 ? (
+                                            <div style={{
+                                                position: 'absolute', top: 6, left: 6,
+                                                background: 'var(--primary)', borderRadius: 6,
+                                                padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 3,
+                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Oswald'
+                                            }}>
+                                                <Star size={10} fill="#fff" /> Обложка
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={e => { e.stopPropagation(); handleSetCover(index); }}
+                                                style={{
+                                                    position: 'absolute', top: 6, right: 6,
+                                                    width: 32, height: 32, borderRadius: 8,
+                                                    background: 'rgba(0,0,0,0.45)', border: 'none',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#fff', cursor: 'pointer',
+                                                    backdropFilter: 'blur(4px)'
+                                                }}
+                                                title="Сделать обложкой"
+                                            >
+                                                <Star size={15} />
+                                            </button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
+                        )}
+                        {coverSet && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)', fontWeight: 300 }}>✓ Обложка обновлена</div>
                         )}
                     </div>
                 )}
