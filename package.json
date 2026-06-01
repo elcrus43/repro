@@ -21,6 +21,7 @@
     "docxtemplater": "^3.68.3",
     "dotenv": "^16.4.7",
     "file-saver": "^2.0.5",
+    "firebase": "^12.14.0",
     "lucide-react": "^0.577.0",
     "pizzip": "^3.2.0",
     "react": "^19.2.0",
