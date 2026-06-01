@@ -111,7 +111,7 @@ async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
 export async function loadUserData(userId, role) {
   const isAdmin = role === 'admin';
 
-  async function safeQuery(queryFn, name, timeoutMs = 30000) {
+  async function safeQuery(queryFn, name, timeoutMs = 60000) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     

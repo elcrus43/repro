@@ -112,6 +112,7 @@ export function AppProvider({ children }) {
     let isInitial = true;
 
     async function loadProfileAndData(sessionUser) {
+      try {
       console.log('[Data Load] Fetching profile for:', sessionUser.id);
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')
@@ -188,33 +189,47 @@ export function AppProvider({ children }) {
       }
 
       await loadData(enriched);
+      } catch (err) {
+        console.error('[loadProfileAndData] Unexpected error:', err);
+        dispatch({ type: 'SET_LOADING', value: false });
+      }
     }
 
     async function init() {
       dispatch({ type: 'SET_LOADING', value: true });
 
-      const timeout = setTimeout(() => {
-        console.warn('[Auth Timeout] Session retrieval took too long.');
+      // Жёсткий глобальный таймаут: если через 45с загрузка не завершилась — останавливаем лоадер
+      const hardTimeout = setTimeout(() => {
+        console.warn('[Auth Hard Timeout] Force-stopping loader after 45s.');
         dispatch({ type: 'SET_LOADING', value: false });
-      }, 10000);
+      }, 45000);
 
-      console.log('[Auth Init] Getting session...');
-      const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
-      clearTimeout(timeout);
+      try {
+        const sessionTimeout = setTimeout(() => {
+          console.warn('[Auth Timeout] Session retrieval took too long.');
+        }, 10000);
 
-      if (sessionErr) console.error('[Auth Init] Session error:', sessionErr);
+        console.log('[Auth Init] Getting session...');
+        const { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+        clearTimeout(sessionTimeout);
 
-      if (session?.user) {
-        console.log('[Auth Init] User found:', session.user.id);
-        // Initialize Google Calendar with Supabase session token
-        if (session.access_token) initCalendarAuth(session.access_token);
-        await loadProfileAndData(session.user);
-      } else {
-        console.log('[Auth Init] No session found, showing login page');
+        if (sessionErr) console.error('[Auth Init] Session error:', sessionErr);
+
+        if (session?.user) {
+          console.log('[Auth Init] User found:', session.user.id);
+          if (session.access_token) initCalendarAuth(session.access_token);
+          await loadProfileAndData(session.user);
+        } else {
+          console.log('[Auth Init] No session found, showing login page');
+          dispatch({ type: 'SET_LOADING', value: false });
+        }
+      } catch (err) {
+        console.error('[Auth Init] Unexpected error:', err);
         dispatch({ type: 'SET_LOADING', value: false });
+      } finally {
+        clearTimeout(hardTimeout);
+        isInitial = false;
       }
-
-      isInitial = false;
     }
 
     init();
