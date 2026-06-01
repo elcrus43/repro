@@ -11,6 +11,52 @@ import { estimateOffline } from '../utils/estimation';
 import { API_BASE } from '../config';
 import * as XLSX from 'xlsx';
 import { nanoid } from '../utils/nanoid';
+import { RENOVATION_LABELS, BUILDING_TYPES } from '../data/constants';
+
+function compressImage(file, maxW = 1200, maxH = 1200) {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) {
+            resolve(file);
+            return;
+        }
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(img.src);
+            let w = img.width;
+            let h = img.height;
+            if (w > maxW || h > maxH) {
+                if (w > h) {
+                    h = Math.round((h * maxW) / w);
+                    w = maxW;
+                } else {
+                    w = Math.round((w * maxH) / h);
+                    h = maxH;
+                }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    resolve(file);
+                    return;
+                }
+                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                resolve(compressedFile);
+            }, 'image/jpeg', 0.85); // Compress to JPEG with 85% quality
+        };
+        img.onerror = () => {
+            resolve(file);
+        };
+    });
+}
+
 
 const MARKET_RATE = 20; // 20% market rate
 const SUBSIDIZED_RATE = 14.75; // 14.75% subsidized rate
@@ -50,6 +96,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
     const [copiedId, setCopiedId] = useState(null);
     const [analogs, setAnalogs] = useState([]);
     const [saveStatus, setSaveStatus] = useState(null);
+    const [loadingLinkIds, setLoadingLinkIds] = useState([]);
     const pdfAnalogs = [];
 
     const onUpdateRef = useRef(onUpdate);
@@ -177,17 +224,19 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
             else if (section === 'new_builds') { setFiles = setNewBuildsFiles; field = 'portfolio_new_builds_files'; }
             else { setFiles = setResaleFiles; field = 'portfolio_resale_files'; }
             setFiles(prev => [...prev, newFile]);
-            uploadToCloudinary(file).then(url => {
-                if (url) {
-                    const finalFile = { ...newFile, url, loading: false, persistent: true };
-                    setFiles(prev => {
-                        const next = prev.map(f => f.id === tempId ? finalFile : f);
-                        if (onUpdateRef.current) onUpdateRef.current({ [field]: next });
-                        return next;
-                    });
-                } else {
-                    setFiles(prev => prev.filter(f => f.id !== tempId));
-                }
+            compressImage(file).then(compressedFile => {
+                uploadToCloudinary(compressedFile).then(url => {
+                    if (url) {
+                        const finalFile = { ...newFile, url, loading: false, persistent: true };
+                        setFiles(prev => {
+                            const next = prev.map(f => f.id === tempId ? finalFile : f);
+                            if (onUpdateRef.current) onUpdateRef.current({ [field]: next });
+                            return next;
+                        });
+                    } else {
+                        setFiles(prev => prev.filter(f => f.id !== tempId));
+                    }
+                });
             });
         }
     }
@@ -213,8 +262,8 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
             ["Комнат", property.rooms],
             ["Площадь", `${property.area_total} м²`],
             ["Этаж", `${property.floor} из ${property.floors_total}`],
-            ["Ремонт", property.renovation || "Не указан"],
-            ["Тип дома", property.building_type || "Не указан"],
+            ["Ремонт", RENOVATION_LABELS[property.renovation] || property.renovation || "Не указан"],
+            ["Тип дома", BUILDING_TYPES[property.building_type] || property.building_type || "Не указан"],
             ["Год постройки", property.build_year || "Не указан"],
             ["", ""],
             ["ОПИСАНИЕ", property.notes || ""]
@@ -296,11 +345,11 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Материал:</span>
-                                <span style={{ fontSize: 13, fontWeight: 800 }}>{property.material || '—'}</span>
+                                <span style={{ fontSize: 13, fontWeight: 800 }}>{BUILDING_TYPES[property.building_type] || property.building_type || '—'}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Ремонт:</span>
-                                <span style={{ fontSize: 13, fontWeight: 800 }}>{property.renovation || '—'}</span>
+                                <span style={{ fontSize: 13, fontWeight: 800 }}>{RENOVATION_LABELS[property.renovation] || property.renovation || '—'}</span>
                             </div>
                         </div>
                     </div>
@@ -407,19 +456,38 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(link.added_at).toLocaleDateString()}</div>
                                     </div>
                                     <div style={{ display: 'flex', gap: 8 }}>
-                                        <label style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                                            <ImageIcon size={18} />
+                                        <label style={{ 
+                                            width: 36, height: 36, borderRadius: 10, 
+                                            background: 'var(--primary-light)', color: 'var(--primary)', 
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                                            cursor: loadingLinkIds.includes(link.id) ? 'wait' : 'pointer',
+                                            opacity: loadingLinkIds.includes(link.id) ? 0.6 : 1
+                                        }}>
+                                            {loadingLinkIds.includes(link.id) ? (
+                                                <div className="spinner" style={{ width: 16, height: 16, border: '2px solid var(--border)', borderTopColor: 'var(--primary)' }}></div>
+                                            ) : (
+                                                <ImageIcon size={18} />
+                                            )}
                                             <input 
                                                 type="file" 
                                                 hidden 
+                                                disabled={loadingLinkIds.includes(link.id)}
                                                 onChange={async (e) => {
                                                     const file = e.target.files?.[0];
                                                     if (!file) return;
-                                                    const url = await uploadToCloudinary(file);
-                                                    if (url) {
-                                                        const next = manualLinks.map(l => l.id === link.id ? { ...l, screenshotUrl: url } : l);
-                                                        setManualLinks(next);
-                                                        if (onUpdateRef.current) onUpdateRef.current({ portfolio_analog_links: next });
+                                                    setLoadingLinkIds(prev => [...prev, link.id]);
+                                                    try {
+                                                        const compressedFile = await compressImage(file);
+                                                        const url = await uploadToCloudinary(compressedFile);
+                                                        if (url) {
+                                                            const next = manualLinks.map(l => l.id === link.id ? { ...l, screenshotUrl: url } : l);
+                                                            setManualLinks(next);
+                                                            if (onUpdateRef.current) onUpdateRef.current({ portfolio_analog_links: next });
+                                                        }
+                                                    } catch (err) {
+                                                        console.error("Screenshot upload failed", err);
+                                                    } finally {
+                                                        setLoadingLinkIds(prev => prev.filter(id => id !== link.id));
                                                     }
                                                 }} 
                                             />

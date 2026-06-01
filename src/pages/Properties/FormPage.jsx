@@ -19,6 +19,50 @@ import {
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
 
+function compressImage(file, maxW = 1200, maxH = 1200) {
+    return new Promise((resolve) => {
+        if (!file.type.startsWith('image/')) {
+            resolve(file);
+            return;
+        }
+        const img = new Image();
+        img.src = URL.createObjectURL(file);
+        img.onload = () => {
+            URL.revokeObjectURL(img.src);
+            let w = img.width;
+            let h = img.height;
+            if (w > maxW || h > maxH) {
+                if (w > h) {
+                    h = Math.round((h * maxW) / w);
+                    w = maxW;
+                } else {
+                    w = Math.round((w * maxH) / h);
+                    h = maxH;
+                }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => {
+                if (!blob) {
+                    resolve(file);
+                    return;
+                }
+                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                resolve(compressedFile);
+            }, 'image/jpeg', 0.85);
+        };
+        img.onerror = () => {
+            resolve(file);
+        };
+    });
+}
+
 /* ─── Современный переключатель ──────────────────────────────── */
 function ToggleChip({ label, value, onChange, icon }) {
     return (
@@ -286,8 +330,9 @@ export function FormPage() {
 
         for (const file of files) {
             try {
+                const compressedFile = await compressImage(file);
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', compressedFile);
                 formData.append('upload_preset', uploadPreset);
                 formData.append('folder', 'properties');
 
