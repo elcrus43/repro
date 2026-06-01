@@ -228,20 +228,6 @@ export function DetailsPage() {
                                 boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
                                 fontFamily: "'Oswald', sans-serif"
                             }}
-                            onClick={() => navigate(`/matches?property_id=${id}`)}
-                        >
-                            <Sparkles size={16} /> Совпадения ({matches.length})
-                        </button>
-                        <button
-                            className="card-clickable"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
-                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
                             onClick={() => setShowBannerGen(true)}
                         >
                             <ImageIcon size={18} /> Баннер
