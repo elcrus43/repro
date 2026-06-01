@@ -121,6 +121,9 @@ export function reducer(state, action) {
     case 'UPDATE_MATCH':
       return { ...state, matches: state.matches.map(m => m.id === action.match.id ? action.match : m) };
 
+    case 'DELETE_MATCH':
+      return { ...state, matches: state.matches.filter(m => m.id !== action.id) };
+
     case 'ADD_MATCHES':
       return { ...state, matches: [...state.matches, ...action.matches] };
 

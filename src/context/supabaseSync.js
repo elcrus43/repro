@@ -486,6 +486,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         result = await withRetry(() => supabase.from('matches').upsert(action.match));
         break;
 
+      case 'DELETE_MATCH':
+        result = await withRetry(() => supabase.from('matches').delete().eq('id', action.id));
+        break;
 
       /* ── Показы ──────────────────────────────────────────────────────── */
       case 'ADD_SHOWING': {

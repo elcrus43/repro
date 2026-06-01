@@ -217,7 +217,8 @@ export function MatchDetailPage() {
         // Определяем покупателей из запроса
         const buyerIds = buyer ? [buyer.id] : [];
 
-        dispatch({ type: 'UPDATE_MATCH', match: { ...match, status: 'deal' } });
+        // Удаляем совпадение — оно переходит в сделку
+        dispatch({ type: 'DELETE_MATCH', id: match.id });
 
         navigate('/tasks', {
             state: {
@@ -384,7 +385,7 @@ export function MatchDetailPage() {
                 )}
 
                 {/* Actions Section */}
-                {match.status !== 'rejected' && match.status !== 'deal' && (
+                {match.status !== 'rejected' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
                         {!showShowingForm && (
                             <button className="btn btn-primary btn-full" style={{ height: 56, borderRadius: 18, fontSize: 15, fontWeight: 300 }} onClick={() => setShowShowingForm(true)}>Назначить показ</button>
