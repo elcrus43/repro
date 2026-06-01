@@ -263,9 +263,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Профиль ─────────────────────────────────────────────────────── */
       case 'UPDATE_PROFILE': {
-        const { id, full_name, phone, agency_name } = action.profile;
+        const { id, full_name, phone, agency_name, inn } = action.profile;
+        const updateData = { full_name: full_name || '', phone: phone || '', agency_name: agency_name || '' };
+        if (inn !== undefined) updateData.inn = inn || null;
         result = await withRetry(() =>
-          supabase.from('profiles').update({ full_name: full_name || '', phone: phone || '', agency_name: agency_name || '' }).eq('id', id)
+          supabase.from('profiles').update(updateData).eq('id', id)
         );
         break;
       }

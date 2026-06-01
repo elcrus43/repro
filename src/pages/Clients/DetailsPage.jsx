@@ -22,11 +22,12 @@ export function DetailsPage() {
         </div>
     );
 
-    const myProperties = state.properties.filter(p => p.client_id === id);
+    const myProperties = state.properties.filter(p => p.client_id === id || (p.client_ids || []).includes(id));
     const myPropertyIds = myProperties.map(p => p.id);
-    const myRequests = state.requests.filter(r => r.client_id === id);
-    const propMatches = state.matches.filter(m => state.properties.find(p => p.id === m.property_id && p.client_id === id));
-    const reqMatches = state.matches.filter(m => state.requests.find(r => r.id === m.request_id && r.client_id === id));
+    const myRequests = state.requests.filter(r => r.client_id === id || (r.client_ids || []).includes(id));
+    const propMatches = state.matches.filter(m => state.properties.find(p => p.id === m.property_id && (p.client_id === id || (p.client_ids || []).includes(id))));
+    const reqMatches = state.matches.filter(m => state.requests.find(r => r.id === m.request_id && (r.client_id === id || (r.client_ids || []).includes(id))));
+
     const allMatches = [...new Map([...propMatches, ...reqMatches].map(m => [m.id, m])).values()];
     const likedMatchesCount = allMatches.filter(m => m.status === 'liked').length;
     const totalCommission = [...myProperties, ...myRequests].reduce((sum, item) => sum + (item.commission || 0), 0);

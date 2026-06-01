@@ -189,10 +189,16 @@ export function useDbDispatch(state, dispatch, onError) {
       case 'SET_ALL':
       case 'SET_CALENDAR_STATUS':
       case 'SET_PRICELIST':
-      case 'APPROVE_USER':
-      case 'REJECT_USER':
         dispatch(action);
         return; // Пропускаем syncAction
+
+      // APPROVE_USER / REJECT_USER требуют записи в Supabase — НЕ пропускаем syncAction
+      // (раньше ошибочно были в «чистых действиях» и не сохранялись в БД)
+      case 'APPROVE_USER':
+      case 'REJECT_USER':
+        // Обновляем локальный стейт немедленно (optimistic update)
+        dispatch(action);
+        break; // продолжаем — syncAction запишет в profiles
 
       default:
         break;

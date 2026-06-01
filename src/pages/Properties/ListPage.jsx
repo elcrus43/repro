@@ -45,10 +45,12 @@ export function ListPage() {
             })
             .filter(p => {
                 if (!search) return true;
-                const client = state.clients.find(c => c.id === p.client_id);
+                // Support both legacy client_id and new client_ids array
+                const allClientIds = [...(p.client_ids || []), ...(p.client_id ? [p.client_id] : [])];
+                const clientName = allClientIds.map(cid => state.clients.find(c => c.id === cid)?.full_name || '').join(' ');
                 return (p.address || '').toLowerCase().includes(search.toLowerCase()) ||
                     (p.city || '').toLowerCase().includes(search.toLowerCase()) ||
-                    (client?.full_name || '').toLowerCase().includes(search.toLowerCase());
+                    clientName.toLowerCase().includes(search.toLowerCase());
             })
             .filter(p => (!priceMin || p.price >= Number(priceMin)) && (!priceMax || p.price <= Number(priceMax)));
     }, [state.properties, scope, user?.id, filter, search, state.clients, priceMin, priceMax]);
