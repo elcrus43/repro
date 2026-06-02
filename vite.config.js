@@ -22,6 +22,30 @@ export default defineConfig(({ mode }) => {
           '**/dist/**',
           '**/supabase/**'
         ]
+      },
+      proxy: {
+        // Dev-прокси для Firebase Auth proxy (аналог Vercel Serverless Function)
+        // При VITE_BACKEND=firebase запросы к /api/firebase-auth идут сюда
+        '/api/firebase-auth': {
+          target: 'https://identitytoolkit.googleapis.com',
+          changeOrigin: true,
+          rewrite: (path) => {
+            // /api/firebase-auth?action=signInWithPassword
+            // → /v1/accounts:signInWithPassword?key=...
+            const url = new URL(path, 'http://localhost');
+            const action = url.searchParams.get('action') || '';
+            const apiKey = env.VITE_FIREBASE_API_KEY || '';
+            return `/v1/accounts:${action}?key=${apiKey}`;
+          }
+        },
+        '/api/firebase-token': {
+          target: 'https://securetoken.googleapis.com',
+          changeOrigin: true,
+          rewrite: (_path) => {
+            const apiKey = env.VITE_FIREBASE_API_KEY || '';
+            return `/v1/token?key=${apiKey}`;
+          }
+        }
       }
     },
     build: {
