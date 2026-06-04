@@ -141,7 +141,7 @@ export function AppProvider({ children }) {
           profileErr = res.error;
         }
 
-        if (profileErr && (!isFirebase && profileErr.code !== 'PGRST116')) {
+        if (profileErr && (isFirebase || profileErr.code !== 'PGRST116')) {
           console.error('[Profile load error]', profileErr);
           const fallback = {
             id: sessionUser.id,

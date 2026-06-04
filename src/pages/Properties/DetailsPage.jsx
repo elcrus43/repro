@@ -121,11 +121,11 @@ export function DetailsPage() {
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
-                    <button className="card-clickable" onClick={() => navigate(`/properties/${id}/edit`)} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)' }}>
-                        <Pencil size={20} />
+                    <button className="icon-btn-edit" onClick={() => navigate(`/properties/${id}/edit`)} title="Редактировать">
+                        <Pencil size={18} />
                     </button>
-                    <button className="card-clickable" onClick={handleDelete} style={{ width: 40, height: 40, borderRadius: 12, border: 'none', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                        <Trash size={20} />
+                    <button className="icon-btn-delete" onClick={handleDelete} title="Удалить">
+                        <Trash size={18} />
                     </button>
                 </div>
             </div>
@@ -197,7 +197,7 @@ export function DetailsPage() {
                         ];
                         const cur = prop.status;
                         return (
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
                                 {STAGES.map((s, idx) => {
                                     const isActive = cur === s.id;
                                     const isPast = STAGES.findIndex(x => x.id === cur) > idx;
@@ -210,7 +210,7 @@ export function DetailsPage() {
                                                 property: { ...prop, status: s.id }
                                             })}
                                             style={{
-                                                padding: '6px 14px', borderRadius: 20, border: 'none', fontSize: 12,
+                                                padding: '2px 14px', borderRadius: 20, border: 'none', fontSize: 12,
                                                 fontFamily: "'Oswald', sans-serif", fontWeight: isActive ? 600 : 300,
                                                 background: isActive ? s.color : isPast ? `${s.color}22` : 'var(--bg-light)',
                                                 color: isActive ? 'white' : isPast ? s.color : 'var(--text-secondary)',
@@ -219,7 +219,7 @@ export function DetailsPage() {
                                                 opacity: isActive ? 1 : 0.75,
                                             }}
                                         >
-                                            {isActive ? '● ' : isPast ? '✓ ' : ''}{s.label}
+                                            {s.label}
                                         </button>
                                     );
                                 })}
@@ -322,6 +322,31 @@ export function DetailsPage() {
                         {coverSet && (
                             <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)', fontWeight: 300 }}>✓ Обложка обновлена</div>
                         )}
+                    </div>
+                )}
+
+                {/* ПЛАНИРОВКА */}
+                {prop.floorplan_images && prop.floorplan_images.length > 0 && (
+                    <div className="card">
+                        <div className="section-title" style={{ marginBottom: 12 }}>
+                            Планировка ({prop.floorplan_images.length})
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {prop.floorplan_images.map((url, index) => (
+                                <div key={index} style={{
+                                    width: 'calc(50% - 4px)', aspectRatio: '1',
+                                    borderRadius: 8, border: '1px solid var(--border-light)',
+                                    background: 'var(--bg-light)', overflow: 'hidden'
+                                }}>
+                                    <img
+                                        src={url}
+                                        alt={`Планировка ${index + 1}`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
+                                        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                    />
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 

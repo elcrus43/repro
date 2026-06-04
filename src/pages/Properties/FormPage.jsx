@@ -205,7 +205,8 @@ export function FormPage() {
         cadastral_number: '',
         urgency: 'medium',
         notes: '',
-        images: []
+        images: [],
+        floorplan_images: []
     };
 
     const [form, setForm] = useState(initialForm);
@@ -224,7 +225,9 @@ export function FormPage() {
     }, [existing, form.id]);
 
     const fileInputRef = useRef();
+    const floorplanInputRef = useRef();
     const [uploading, setUploading] = useState(false);
+    const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
     const [parsing, setParsing] = useState(false);
     const [parsedFields, setParsedFields] = useState(null);
     const [showQuickClientForm, setShowQuickClientForm] = useState(false);
@@ -358,6 +361,35 @@ export function FormPage() {
         setF('images', newImages);
     };
 
+    async function handleFloorplanUpload(e) {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        if (!CLOUDINARY_CLOUD_NAME) { toast.error('Cloudinary not configured'); return; }
+        const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+        setUploadingFloorplan(true);
+        const newImages = [...(form.floorplan_images || [])];
+        for (const file of files) {
+            try {
+                const compressed = await compressImage(file);
+                const fd = new FormData();
+                fd.append('file', compressed);
+                fd.append('upload_preset', uploadPreset);
+                fd.append('folder', 'floorplans');
+                const res = await fetch(CLOUDINARY_UPLOAD_URL, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.secure_url) newImages.push(data.secure_url);
+            } catch (err) { console.error('Floorplan upload error:', err); }
+        }
+        setF('floorplan_images', newImages);
+        setUploadingFloorplan(false);
+    }
+
+    const handleRemoveFloorplan = (index) => {
+        const imgs = [...(form.floorplan_images || [])];
+        imgs.splice(index, 1);
+        setF('floorplan_images', imgs);
+    };
+
     const handleCreateQuickClient = (e) => {
         e.preventDefault();
         if (!quickClient.full_name) return;
@@ -485,6 +517,19 @@ export function FormPage() {
 
                 {/* Основное */}
                 <FormCard title="Основные данные" icon={<Zap size={22} />}>
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Цель сделки</label>
+                        <ChipGroup
+                            options={[
+                                { val: 'sale', label: 'Продажа' },
+                                { val: 'buy',  label: 'Покупка' },
+                                { val: 'rent', label: 'Аренда' },
+                                { val: 'hire', label: 'Найм' },
+                            ]}
+                            value={form.deal_type || 'sale'}
+                            onChange={val => setF('deal_type', val)}
+                        />
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Тип недвижимости</label>
@@ -833,6 +878,54 @@ export function FormPage() {
                                 style={{ display: 'none' }}
                                 onChange={handleImageUpload}
                                 disabled={uploading}
+                            />
+                        </label>
+                    </div>
+                </FormCard>
+
+                {/* Планировка */}
+                <FormCard title="Планировка" icon={<Layers size={22} />} description="Фото планировки квартиры или дома">
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                        {(form.floorplan_images || []).map((url, index) => (
+                            <div key={index} className="fade-in" style={{ position: 'relative', paddingTop: '100%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                                <img src={url} alt={`Планировка ${index + 1}`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', background: 'var(--bg-light)' }} />
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveFloorplan(index)}
+                                    style={{
+                                        position: 'absolute', top: 6, right: 6,
+                                        width: 24, height: 24, borderRadius: '50%',
+                                        background: 'rgba(220,38,38,0.9)', color: 'white',
+                                        border: 'none', cursor: 'pointer',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 14, backdropFilter: 'blur(4px)'
+                                    }}
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </div>
+                        ))}
+                        <label
+                            style={{
+                                position: 'relative', paddingTop: '100%', borderRadius: 16,
+                                border: '2px dashed var(--border)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: uploadingFloorplan ? 'wait' : 'pointer',
+                                background: 'var(--bg-light)', transition: 'all 0.2s'
+                            }}
+                            className="upload-label-hover"
+                        >
+                            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                {uploadingFloorplan ? <div className="spinner" style={{ width: 20, height: 20 }}></div> : <><Upload size={20} /><span style={{ fontSize: 10, fontWeight: 300, marginTop: 4 }}>ДОБАВИТЬ</span></>}
+                            </div>
+                            <input
+                                ref={floorplanInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                style={{ display: 'none' }}
+                                onChange={handleFloorplanUpload}
+                                disabled={uploadingFloorplan}
                             />
                         </label>
                     </div>

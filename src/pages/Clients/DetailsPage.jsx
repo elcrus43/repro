@@ -139,11 +139,7 @@ export function DetailsPage() {
                     </span>
                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Управление</span>
                 </div>
-                <button className="card-clickable" onClick={() => navigate(`/clients/${id}/edit`)} style={{
-                    width: 40, height: 40, borderRadius: 12, border: 'none',
-                    background: 'var(--primary-light)', color: 'var(--primary)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
+                <button className="icon-btn-edit" onClick={() => navigate(`/clients/${id}/edit`)} title="Редактировать">
                     <Pencil size={18} />
                 </button>
             </div>
@@ -166,15 +162,7 @@ export function DetailsPage() {
                         }}>{statusLabels[client.status]}</span>
                     </div>
 
-                    {client.public_token && (
-                        <button className="card-clickable" onClick={handleShareLink} style={{
-                            width: '100%', height: 44, borderRadius: 12, border: '1px solid var(--border)',
-                            background: 'var(--surface)', color: 'var(--primary)', fontWeight: 300, fontSize: 14,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12
-                        }}>
-                            <Share2 size={16} /> Поделиться подборкой
-                        </button>
-                    )}
+
 
                     <div style={{ display: 'flex', gap: 12, marginTop: 12, justifyContent: 'center' }}>
                         <a href={`tel:+${stripPhone(client.phone)}`} className="card-clickable" onClick={handleCall} style={{

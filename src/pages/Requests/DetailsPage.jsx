@@ -50,10 +50,7 @@ export function DetailsPage() {
                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Покупатель</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="card-clickable" onClick={() => navigate(`/requests/${id}/edit`)} style={{ 
-                        width: 40, height: 40, borderRadius: 12, border: 'none', background: 'var(--primary-light)', color: 'var(--primary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
+                    <button className="icon-btn-edit" onClick={() => navigate(`/requests/${id}/edit`)} title="Редактировать">
                         <Pencil size={18} />
                     </button>
                 </div>

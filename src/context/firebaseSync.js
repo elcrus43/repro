@@ -21,17 +21,12 @@ import { db, storage } from '../lib/firebase';
 
 /** Получить все документы из коллекции с опциональным фильтром */
 async function getAll(collectionName, filters = []) {
-  try {
-    let q = collection(db, collectionName);
-    if (filters.length > 0) {
-      q = query(q, ...filters);
-    }
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    console.error(`[Firebase] getAll(${collectionName}) error:`, e);
-    return [];
+  let q = collection(db, collectionName);
+  if (filters.length > 0) {
+    q = query(q, ...filters);
   }
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
 /** Создать или обновить документ по ID */

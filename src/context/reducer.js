@@ -93,6 +93,15 @@ export function reducer(state, action) {
         ],
       };
 
+    // Lightweight patch — merges only specified fields without replacing the whole object
+    case 'PATCH_PROPERTY':
+      return {
+        ...state,
+        properties: state.properties.map(p =>
+          p.id === action.patch.id ? { ...p, ...action.patch } : p
+        ),
+      };
+
     case 'DELETE_PROPERTY':
       return { ...state, properties: state.properties.filter(p => p.id !== action.id) };
 

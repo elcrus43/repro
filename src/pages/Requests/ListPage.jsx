@@ -166,7 +166,7 @@ export function ListPage() {
                                         )}
                                     </div>
                                     <div style={{ display: 'flex', gap: 8 }}>
-                                        <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }} onClick={(e) => { e.stopPropagation(); navigate(`/requests/${req.id}/edit`); }}>
+                                        <button className="icon-btn-edit" onClick={(e) => { e.stopPropagation(); navigate(`/requests/${req.id}/edit`); }} title="Редактировать">
                                             <Pencil size={16} />
                                         </button>
                                     </div>

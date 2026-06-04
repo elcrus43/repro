@@ -64,13 +64,13 @@ export function sanitizeObj(obj) {
  * Retry-обёртка для сетевых сбоев.
  * Не повторяет запрос при ошибках доступа (RLS) или схемы.
  */
-async function withRetry(fn, { retries = 2, delay = 500 } = {}) {
+async function withRetry(fn, { retries = 1, delay = 500, timeoutMs = 60000 } = {}) {
   const NON_RETRYABLE_CODES = ['42501', 'PGRST301', 'PGRST116', '42703', 'PGRST204'];
   let lastError;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('TIMEOUT')), 30000)
+      setTimeout(() => reject(new Error('TIMEOUT')), timeoutMs)
     );
 
     try {
@@ -353,6 +353,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           price_min: action.property.price_min || null,
           notes: action.property.notes || null,
           images: action.property.images || [],
+          floorplan_images: action.property.floorplan_images || [],
           commission: action.property.commission ?? 0,
           client_ids: action.property.client_ids || (action.property.client_id ? [action.property.client_id] : []),
           client_id: (action.property.client_ids && action.property.client_ids.length > 0) 
@@ -413,6 +414,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           price_min: pData.price_min || null,
           notes: pData.notes || null,
           images: pData.images || [],
+          floorplan_images: pData.floorplan_images || [],
           commission: pData.commission ?? 0,
           client_ids: pData.client_ids || (pData.client_id ? [pData.client_id] : []),
           client_id: (pData.client_ids && pData.client_ids.length > 0)
@@ -453,6 +455,18 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           const matchResult = await withRetry(() => supabase.from('matches').upsert(action.matches));
           if (matchResult?.error) console.error('[Supabase Match Sync Error]', matchResult.error);
         }
+        break;
+      }
+
+      case 'PATCH_PROPERTY': {
+        // Lightweight patch — only sends specified fields (price, status, etc.)
+        // Use this instead of UPDATE_PROPERTY when changing a single field
+        const { id: patchId, ...patchData } = action.patch;
+        // Remove any undefined fields
+        Object.keys(patchData).forEach(k => { if (patchData[k] === undefined) delete patchData[k]; });
+        result = await withRetry(() =>
+          supabase.from('properties').update({ ...patchData, updated_at: new Date().toISOString() }).eq('id', patchId)
+        );
         break;
       }
 
@@ -777,6 +791,7 @@ const NEW_PROPERTY_FIELDS = [
   'portfolio_resale_files',
   'portfolio_mortgage_files',
   'portfolio_analog_links',
+  'floorplan_images',
   // 'client_ids' — REMOVED: migration 035 applied, column exists
 ];
 

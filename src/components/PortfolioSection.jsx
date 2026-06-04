@@ -178,6 +178,12 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         if (onUpdateRef.current) onUpdateRef.current({ portfolio_analog_links: next });
     };
 
+    const removeScreenshot = (id) => {
+        const next = manualLinks.map(l => l.id === id ? { ...l, screenshotUrl: null } : l);
+        setManualLinks(next);
+        if (onUpdateRef.current) onUpdateRef.current({ portfolio_analog_links: next });
+    };
+
     const calculatePayment = (price, downPercent, rate, years) => {
         const principal = price * (1 - downPercent / 100);
         const monthlyRate = rate / 100 / 12;
@@ -443,8 +449,62 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                         {manualLinks.map(link => (
                             <div key={link.id} className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, overflow: 'hidden', border: '1px solid var(--border-light)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                                 {link.screenshotUrl && (
-                                    <div style={{ width: '100%', height: 160, overflow: 'hidden', borderBottom: '1px solid var(--border-light)' }}>
+                                    <div style={{ width: '100%', height: 160, overflow: 'hidden', borderBottom: '1px solid var(--border-light)', position: 'relative' }}>
                                         <img src={link.screenshotUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        {/* Кнопки управления скриншотом */}
+                                        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                                            {/* Заменить скриншот */}
+                                            <label style={{
+                                                width: 32, height: 32, borderRadius: 8,
+                                                background: 'rgba(255,255,255,0.92)', color: 'var(--primary)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                cursor: loadingLinkIds.includes(link.id) ? 'wait' : 'pointer',
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.15)', backdropFilter: 'blur(8px)'
+                                            }} title="Заменить скриншот">
+                                                {loadingLinkIds.includes(link.id) ? (
+                                                    <div className="spinner" style={{ width: 14, height: 14, border: '2px solid var(--border)', borderTopColor: 'var(--primary)' }}></div>
+                                                ) : (
+                                                    <ImageIcon size={15} />
+                                                )}
+                                                <input
+                                                    type="file"
+                                                    hidden
+                                                    accept="image/*"
+                                                    disabled={loadingLinkIds.includes(link.id)}
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (!file) return;
+                                                        setLoadingLinkIds(prev => [...prev, link.id]);
+                                                        try {
+                                                            const compressedFile = await compressImage(file);
+                                                            const url = await uploadToCloudinary(compressedFile);
+                                                            if (url) {
+                                                                const next = manualLinks.map(l => l.id === link.id ? { ...l, screenshotUrl: url } : l);
+                                                                setManualLinks(next);
+                                                                if (onUpdateRef.current) onUpdateRef.current({ portfolio_analog_links: next });
+                                                            }
+                                                        } catch (err) {
+                                                            console.error("Screenshot upload failed", err);
+                                                        } finally {
+                                                            setLoadingLinkIds(prev => prev.filter(id => id !== link.id));
+                                                        }
+                                                    }}
+                                                />
+                                            </label>
+                                            {/* Удалить скриншот */}
+                                            <button
+                                                onClick={() => removeScreenshot(link.id)}
+                                                style={{
+                                                    width: 32, height: 32, borderRadius: 8,
+                                                    background: 'rgba(220,38,38,0.92)', color: 'white',
+                                                    border: 'none', cursor: 'pointer',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)', backdropFilter: 'blur(8px)'
+                                                }} title="Удалить скриншот"
+                                            >
+                                                <X size={15} />
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                                 <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -456,13 +516,14 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{new Date(link.added_at).toLocaleDateString()}</div>
                                     </div>
                                     <div style={{ display: 'flex', gap: 8 }}>
+                                        {!link.screenshotUrl && (
                                         <label style={{ 
                                             width: 36, height: 36, borderRadius: 10, 
                                             background: 'var(--primary-light)', color: 'var(--primary)', 
                                             display: 'flex', alignItems: 'center', justifyContent: 'center', 
                                             cursor: loadingLinkIds.includes(link.id) ? 'wait' : 'pointer',
                                             opacity: loadingLinkIds.includes(link.id) ? 0.6 : 1
-                                        }}>
+                                        }} title="Добавить скриншот">
                                             {loadingLinkIds.includes(link.id) ? (
                                                 <div className="spinner" style={{ width: 16, height: 16, border: '2px solid var(--border)', borderTopColor: 'var(--primary)' }}></div>
                                             ) : (
@@ -470,7 +531,8 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                             )}
                                             <input 
                                                 type="file" 
-                                                hidden 
+                                                hidden
+                                                accept="image/*"
                                                 disabled={loadingLinkIds.includes(link.id)}
                                                 onChange={async (e) => {
                                                     const file = e.target.files?.[0];
@@ -492,6 +554,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                                 }} 
                                             />
                                         </label>
+                                        )}
                                         <a href={link.url} target="_blank" rel="noopener noreferrer" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                             <ExternalLink size={18} />
                                         </a>

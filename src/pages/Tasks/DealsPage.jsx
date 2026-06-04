@@ -320,10 +320,10 @@ export function DealsPage() {
                             <CheckCircle size={18} /> Закрыть
                         </button>
                     )}
-                    <button className="card-clickable" style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => editDeal(deal)}>
+                    <button className="icon-btn-edit" onClick={() => editDeal(deal)} title="Редактировать">
                         <Pencil size={18} />
                     </button>
-                    <button className="card-clickable" style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--danger-light)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if(window.confirm('Удалить?')) dispatch({type:'DELETE_DEAL', id: deal.id}); }}>
+                    <button className="icon-btn-delete" onClick={() => { if(window.confirm('Удалить?')) dispatch({type:'DELETE_DEAL', id: deal.id}); }} title="Удалить">
                         <Trash size={18} />
                     </button>
                 </div>

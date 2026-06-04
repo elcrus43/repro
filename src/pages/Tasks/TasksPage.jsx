@@ -66,10 +66,10 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                 </div>
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--bg-light)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => onEdit(task)}>
+                <button className="icon-btn-edit" onClick={() => onEdit(task)} title="Редактировать">
                     <Pencil size={14} />
                 </button>
-                <button className="card-clickable" style={{ width: 32, height: 32, borderRadius: 10, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => onDelete(task)}>
+                <button className="icon-btn-delete" onClick={() => onDelete(task)} title="Удалить">
                     <Trash size={14} />
                 </button>
             </div>

@@ -328,7 +328,7 @@ export function ListPage() {
                                                     {getEventStatusLabel(s.event_type, s.status)}
                                             </span>
                                             {s.realtor_id === user?.id && (
-                                                <button className="card-clickable" onClick={() => navigate(`/history/new?id=${s.id}`)} style={{ border: 'none', background: 'transparent', color: 'var(--text-secondary)', padding: 0 }}>
+                                                <button className="icon-btn-edit" onClick={() => navigate(`/history/new?id=${s.id}`)} title="Редактировать">
                                                     <Pencil size={16} />
                                                 </button>
                                             )}

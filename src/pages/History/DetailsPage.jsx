@@ -57,7 +57,7 @@ export function DetailsPage() {
                     </span>
                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>История</span>
                 </div>
-                <button onClick={() => navigate(`/history/new?id=${showing.id}`)} className="card-clickable" style={{ width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--primary)' }}>
+                <button onClick={() => navigate(`/history/new?id=${showing.id}`)} className="icon-btn-edit" title="Редактировать">
                     <Pencil size={18} />
                 </button>
             </div>

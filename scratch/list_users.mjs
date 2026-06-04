@@ -1,19 +1,26 @@
-import { createClient } from '@supabase/supabase-js';
+import admin from 'firebase-admin';
+import { readFileSync } from 'fs';
 
-const SUPABASE_URL = 'https://hxivaohzugahjyuaahxc.supabase.co';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4aXZhb2h6dWdhaGp5dWFhaHhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUxNzI4MSwiZXhwIjoyMDg4MDkzMjgxfQ.MBQxRxGfzihFn-aK-7-bGSJ80qoP-jjvU_MxlIH5t8k';
+const serviceAccount = JSON.parse(
+  readFileSync('./scripts/firebase-service-account.json', 'utf8')
+);
 
-const supabase = createClient(SUPABASE_URL, SERVICE_KEY);
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
-async function run() {
-  console.log('Listing users from auth.users...');
-  const { data: { users }, error } = await supabase.auth.admin.listUsers();
-  if (error) console.error(error);
-  else {
-    users.forEach(u => {
-      console.log(`- ID: ${u.id} | Email: ${u.email} | Created: ${u.created_at}`);
-    });
+const auth = admin.auth();
+const db = admin.firestore();
+
+async function listUsers() {
+  console.log('--- Firebase Auth Users ---');
+  const userList = await auth.listUsers();
+  for (const u of userList.users) {
+    const docSnap = await db.collection('profiles').doc(u.uid).get();
+    const profile = docSnap.exists ? docSnap.data() : null;
+    console.log(`Email: ${u.email} | UID: ${u.uid} | Name: ${u.displayName}`);
+    console.log(`  Firestore Profile:`, profile);
   }
 }
 
-run().catch(console.error);
+listUsers().catch(console.error);

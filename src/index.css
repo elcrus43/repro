@@ -358,6 +358,71 @@ a:focus:not(:focus-visible) {
   color: var(--primary);
 }
 
+/* ===== Lucide icon action buttons ===== */
+/* Edit button — subtle neutral */
+.icon-btn-edit {
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--text-secondary);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-btn-edit:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-light);
+  transform: scale(1.08);
+}
+
+.icon-btn-edit:active {
+  transform: scale(0.94);
+}
+
+/* Delete button — danger accent */
+.icon-btn-delete {
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgba(239, 68, 68, 0.25);
+  background: rgba(239, 68, 68, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--danger);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-btn-delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--danger);
+  transform: scale(1.08);
+}
+
+.icon-btn-delete:active {
+  transform: scale(0.94);
+}
+
+.dark .icon-btn-edit {
+  border-color: rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.04);
+}
+
+.dark .icon-btn-delete {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+
 /* ===== Bottom Navigation ===== */
 .bottom-nav {
   position: fixed;

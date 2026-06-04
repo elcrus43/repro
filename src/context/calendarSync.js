@@ -10,6 +10,8 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import {
   addEventToCalendar,
   updateEventInCalendar,
@@ -27,11 +29,22 @@ const EVENT_TYPE_LABELS = {
   call: 'Звонок',
 };
 
+const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
+
+async function updateGoogleEventId(table, id, eventId) {
+  if (isFirebase) {
+    const docRef = doc(db, table, id);
+    await updateDoc(docRef, { google_event_id: eventId });
+  } else {
+    await supabase.from(table).update({ google_event_id: eventId }).eq('id', id);
+  }
+}
+
 /**
- * Синхронизирует задачу или показ с Google Calendar.
+ * Синхронизирует задачу, показ или сделку с Google Calendar.
  *
- * @param {string}   actionType  — тип действия ('ADD_TASK', 'UPDATE_SHOWING', и т.д.)
- * @param {object}   item        — задача или показ (после enhance)
+ * @param {string}   actionType  — тип действия ('ADD_TASK', 'UPDATE_SHOWING', 'ADD_DEAL' и т.д.)
+ * @param {object}   item        — задача, показ или сделка (после enhance)
  * @param {function} dispatch    — диспатч для обновления calendarStatus и google_event_id
  */
 export async function syncWithCalendar(actionType, item, dispatch) {
@@ -44,33 +57,46 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   }
 
   // Если токен не активен — пропускаем синхронизацию без ошибки.
-  // requestAccessToken() без активной сессии попытается открыть popup Google,
-  // что заблокировано браузером (нет user gesture) и ведёт к 30с timeout.
   if (!isCalendarConnected()) {
     console.info('[Google Calendar Sync] Skipped — no active token (connect Google Calendar in Profile)');
     return;
   }
 
   const isShowing = actionType.includes('SHOWING');
-  const table = isShowing ? 'showings' : 'tasks';
-  const updateKey = isShowing ? 'showing' : 'task';
-  const updateType = isShowing ? 'UPDATE_SHOWING' : 'UPDATE_TASK';
+  const isDeal = actionType.includes('DEAL');
+  const table = isShowing ? 'showings' : isDeal ? 'deals' : 'tasks';
+  const updateKey = isShowing ? 'showing' : isDeal ? 'deal' : 'task';
+  const updateType = isShowing ? 'UPDATE_SHOWING' : isDeal ? 'UPDATE_DEAL' : 'UPDATE_TASK';
 
-  const date = item.due_date || item.showing_date;
+  const date = item.due_date || item.showing_date || item.deal_date;
   // Заголовок: "Тип события: Адрес объекта" или "Тип события: дата" если адреса нет
   const eventTypeLabel = EVENT_TYPE_LABELS[item.event_type] || 'Событие';
   const defaultTitle = isShowing
     ? item._propertyAddress
       ? `${eventTypeLabel}: ${item._propertyAddress}`
       : `${eventTypeLabel}${item.showing_date ? ': ' + new Date(item.showing_date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}`
+    : isDeal
+    ? `Сделка: ${item.title || ''}`
     : `Задача: ${item.title || (item.due_date ? new Date(item.due_date).toLocaleDateString('ru-RU') : '')}`;
-  const title = item.title || defaultTitle;
+  const title = isDeal ? `Сделка: ${item.title || ''}` : (item.title || defaultTitle);
+  
   // Описание события — дата + адрес + заметки
   const dateStr = date ? new Date(date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
   const descParts = [];
   if (dateStr) descParts.push(`📅 ${dateStr}`);
   if (item._propertyAddress) descParts.push(`🏠 ${item._propertyAddress}`);
-  if (item.description) descParts.push(`📝 ${item.description}`);
+  if (isDeal) {
+    if (item.price) descParts.push(`💰 Цена: ${Number(item.price).toLocaleString('ru-RU')} ₽`);
+    if (item.commission) descParts.push(`💵 Комиссия: ${Number(item.commission).toLocaleString('ru-RU')} ₽`);
+    if (item.lawyer) descParts.push(`👤 Юрист: ${item.lawyer}`);
+    if (item.notes) descParts.push(`📝 Заметки: ${item.notes}`);
+    if (item.expenses && item.expenses.length > 0) {
+      const expList = item.expenses.map(e => `  - ${e.title}: ${Number(e.amount).toLocaleString('ru-RU')} ₽ (${e.payer === 'seller' ? 'продавец' : 'покупатель'})`).join('\n');
+      descParts.push(`📉 Расходы:\n${expList}`);
+    }
+  } else {
+    if (item.description) descParts.push(`📝 ${item.description}`);
+  }
   const description = descParts.join('\n');
 
   // Нет даты и нет существующего события — ничего не делаем
@@ -88,7 +114,7 @@ export async function syncWithCalendar(actionType, item, dispatch) {
       // Дата убрана — удаляем событие из Calendar
       console.info('[Google Calendar Sync] Deleting event:', item.google_event_id);
       await deleteEventFromCalendar(item.google_event_id);
-      await supabase.from(table).update({ google_event_id: null }).eq('id', item.id);
+      await updateGoogleEventId(table, item.id, null);
       dispatch({ type: updateType, [updateKey]: { ...item, google_event_id: null } });
 
     } else if (item.google_event_id) {
@@ -102,7 +128,7 @@ export async function syncWithCalendar(actionType, item, dispatch) {
       const calEvent = await addEventToCalendar({ title, description, startDateTime: date });
       console.info('[Google Calendar Sync] Event created:', calEvent);
       if (calEvent?.id) {
-        await supabase.from(table).update({ google_event_id: calEvent.id }).eq('id', item.id);
+        await updateGoogleEventId(table, item.id, calEvent.id);
         dispatch({ type: updateType, [updateKey]: { ...item, google_event_id: calEvent.id } });
         console.info('[Google Calendar Sync] Event ID saved to database:', calEvent.id);
       }
@@ -113,16 +139,16 @@ export async function syncWithCalendar(actionType, item, dispatch) {
 
   } catch (err) {
     console.error('[Google Calendar Sync Error]', err);
-    // Не блокируем создание задачи — ошибка только в статусе
+    // Не блокируем создание задачи/сделки — ошибка только в статусе
     dispatch({ type: 'SET_CALENDAR_STATUS', status: 'error', errorMessage: err.message || 'Неизвестная ошибка' });
     setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null, errorMessage: null }), 5000);
   }
 }
 
 /**
- * Удаляет событие Google Calendar при удалении задачи или показа.
+ * Удаляет событие Google Calendar при удалении задачи, показа или сделки.
  *
- * @param {object|undefined} item     — задача или показ из текущего state
+ * @param {object|undefined} item     — задача, показ или сделка из текущего state
  * @param {function}         dispatch — диспатч для статуса
  */
 export async function deleteCalendarEvent(item, dispatch) {

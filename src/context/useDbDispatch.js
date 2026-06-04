@@ -72,6 +72,12 @@ export function useDbDispatch(state, dispatch, onError) {
         break;
       }
 
+      case 'PATCH_PROPERTY': {
+        // Lightweight field patch — no matching recalc, no full object needed
+        enhancedAction.patch = { ...action.patch, updated_at: now };
+        break;
+      }
+
       case 'ADD_REQUEST':
       case 'UPDATE_REQUEST': {
         const req = {
@@ -220,6 +226,14 @@ export function useDbDispatch(state, dispatch, onError) {
       }
       stateRef.current = { ...stateRef.current, properties: nextProps };
     }
+    if (enhancedAction.type === 'PATCH_PROPERTY') {
+      stateRef.current = {
+        ...stateRef.current,
+        properties: stateRef.current.properties.map(p =>
+          p.id === enhancedAction.patch.id ? { ...p, ...enhancedAction.patch } : p
+        ),
+      };
+    }
 
     /* ── Supabase sync ────────────────────────────────────────────────── */
     // onRollback вызывается при критической ошибке БД, чтобы откатить
@@ -251,10 +265,17 @@ export function useDbDispatch(state, dispatch, onError) {
         const prop = stateRef.current.properties?.find(p => p.id === sh.property_id);
         const propAddress = prop?.address || prop?.title || null;
         syncWithCalendar(action.type, { ...sh, _propertyAddress: propAddress }, dispatch);
-      } else if (action.type === 'DELETE_TASK' || action.type === 'DELETE_SHOWING') {
+      } else if (action.type === 'ADD_DEAL' || action.type === 'UPDATE_DEAL') {
+        const dl = enhancedAction.deal;
+        const prop = stateRef.current.properties?.find(p => p.id === dl.property_id);
+        const propAddress = prop?.address || prop?.title || null;
+        syncWithCalendar(action.type, { ...dl, _propertyAddress: propAddress }, dispatch);
+      } else if (action.type === 'DELETE_TASK' || action.type === 'DELETE_SHOWING' || action.type === 'DELETE_DEAL') {
         const items = action.type === 'DELETE_TASK'
           ? stateRef.current.tasks
-          : stateRef.current.showings;
+          : action.type === 'DELETE_SHOWING'
+          ? stateRef.current.showings
+          : stateRef.current.deals;
         const item = items.find(i => i.id === action.id);
         deleteCalendarEvent(item, dispatch);
       }

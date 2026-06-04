@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check } from 'lucide-react';
+import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -15,7 +15,7 @@ export function ListPage() {
     const user = state.currentUser;
     const { exportToCSV } = useExport();
     const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState('all');
+    const [filter, setFilter] = useState('active');
     const [scope, setScope] = useState('all');
     const [viewMode, setViewMode] = useState('list');
     const [priceMin, setPriceMin] = useState('');
@@ -33,14 +33,16 @@ export function ListPage() {
         exportToCSV(filteredProperties, 'properties_export', headers);
     };
 
+    // Closed statuses = deal completed
+    const CLOSED_STATUSES = ['deal'];
+    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit'];
+
     const filteredProperties = useMemo(() => {
         return state.properties
             .filter(p => scope === 'all' || p.realtor_id === user?.id)
             .filter(p => {
-                const dealType = p.deal_type || 'sale';
-                if (filter === 'sale') return dealType === 'sale';
-                if (filter === 'rent') return dealType === 'rent';
-                if (filter === 'active') return p.status === 'active';
+                if (filter === 'active') return ACTIVE_STATUSES.includes(p.status);
+                if (filter === 'closed') return CLOSED_STATUSES.includes(p.status);
                 return true;
             })
             .filter(p => {
@@ -190,19 +192,23 @@ export function ListPage() {
                         >Мои объекты</button>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                    <div style={{ display: 'flex', gap: 8, background: 'var(--bg-light)', padding: 4, borderRadius: 16 }}>
                         {[
-                            ['all', 'Все'], ['sale', 'Продажа'], ['rent', 'Аренда'], ['active', 'Активные']
+                            ['active', 'Активные'], ['closed', 'Закрытые']
                         ].map(([val, label]) => (
                             <button 
                                 key={val} 
                                 onClick={() => setFilter(val)} 
                                 style={{ 
-                                    whiteSpace: 'nowrap', padding: '8px 16px', border: 'none',
-                                    background: 'transparent',
-                                    color: filter === val ? 'var(--primary)' : 'var(--text-secondary)',
-                                    fontSize: 12, fontWeight: filter === val ? 700 : 400, textTransform: 'uppercase', letterSpacing: '0.05em',
-                                    fontFamily: "'Oswald', sans-serif"
+                                    flex: 1,
+                                    whiteSpace: 'nowrap', padding: '10px 16px', border: 'none',
+                                    borderRadius: 12,
+                                    background: filter === val ? 'var(--surface)' : 'transparent',
+                                    boxShadow: filter === val ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                                    color: filter === val ? 'var(--text)' : 'var(--text-secondary)',
+                                    fontSize: 14, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em',
+                                    fontFamily: "'Oswald', sans-serif",
+                                    cursor: 'pointer'
                                 }}
                             >
                                 {label}
@@ -315,6 +321,31 @@ export function ListPage() {
                                     </div>
                                 </div>
 
+                                {/* PHONE ICON — top right */}
+                                {(() => {
+                                    const agent = state.profiles.find(p => p.id === prop.realtor_id) || (prop.realtor_id === user?.id ? user : null);
+                                    const phone = agent?.phone;
+                                    if (!phone) return null;
+                                    return (
+                                        <a
+                                            href={`tel:${phone}`}
+                                            onClick={e => e.stopPropagation()}
+                                            style={{
+                                                position: 'absolute', top: 8, right: 8, zIndex: 10,
+                                                width: 30, height: 30, borderRadius: 10,
+                                                background: 'rgba(255,255,255,0.92)',
+                                                backdropFilter: 'blur(8px)',
+                                                border: '1px solid rgba(0,0,0,0.07)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: 'var(--primary)', textDecoration: 'none',
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                            }}
+                                        >
+                                            <Phone size={14} strokeWidth={2} />
+                                        </a>
+                                    );
+                                })()}
+
                                 {/* CONTENT WRAPPER */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
                                     <div className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
@@ -337,27 +368,51 @@ export function ListPage() {
                                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                         <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{PROPERTY_TYPES[prop.property_type]}</span>
                                     </div>
-                                    <div style={{ 
-                                        fontSize: 12, color: 'var(--text-secondary)', marginTop: 8, 
-                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 200, opacity: 0.8, minWidth: 0 }}>
-                                            <MapPin size={12} style={{ marginTop: 1, flexShrink: 0, color: 'var(--primary)' }} />
-                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {prop.address || prop.city}
-                                            </span>
-                                        </div>
+                                    {/* Бейджи: Цель + Статус */}
+                                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        {(() => {
+                                            const dt = prop.deal_type || 'sale';
+                                            const goalMap = {
+                                                sale: { label: 'Продажа', color: '#2563eb', bg: 'rgba(37,99,235,0.08)',   border: 'rgba(37,99,235,0.22)' },
+                                                rent: { label: 'Аренда',  color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.22)' },
+                                                buy:  { label: 'Покупка', color: '#0891b2', bg: 'rgba(8,145,178,0.08)',   border: 'rgba(8,145,178,0.22)' },
+                                                hire: { label: 'Найм',    color: '#be185d', bg: 'rgba(190,24,93,0.08)',   border: 'rgba(190,24,93,0.22)' },
+                                            };
+                                            const g = goalMap[dt] || { label: dt, color: '#6b7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.22)' };
+                                            return (
+                                                <span style={{
+                                                    fontSize: 10, fontWeight: 500,
+                                                    color: g.color, background: g.bg,
+                                                    padding: '3px 8px', borderRadius: 20,
+                                                    border: `1px solid ${g.border}`,
+                                                    textTransform: 'uppercase', letterSpacing: '0.04em',
+                                                    flexShrink: 0
+                                                }}>
+                                                    {g.label}
+                                                </span>
+                                            );
+                                        })()}
                                         <span style={{
-                                            flexShrink: 0, fontSize: 10, fontWeight: 400,
+                                            fontSize: 10, fontWeight: 400, flexShrink: 0,
                                             color: status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
                                             background: status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
-                                            padding: '3px 8px', borderRadius: 20, border: '1px solid currentColor',
-                                            borderColor: status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)',
+                                            padding: '3px 8px', borderRadius: 20,
+                                            border: `1px solid ${status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
                                         }}>
                                             {statusLabels[status] || status}
                                         </span>
                                     </div>
-                                    
+                                    {/* Адрес */}
+                                    <div style={{ 
+                                        fontSize: 12, color: 'var(--text-secondary)', marginTop: 8,
+                                        display: 'flex', alignItems: 'center', gap: 4,
+                                        fontWeight: 200, opacity: 0.8
+                                    }}>
+                                        <MapPin size={12} style={{ marginTop: 1, flexShrink: 0, color: 'var(--primary)' }} />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {prop.address || prop.city}
+                                        </span>
+                                    </div>
 
                                 </div>
                             </div>
