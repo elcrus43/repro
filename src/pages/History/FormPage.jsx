@@ -6,6 +6,7 @@ import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString 
 import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2, Plus } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
+import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 
 function FormCard({ title, children, description }) {
     return (
@@ -243,7 +244,11 @@ export function FormPage() {
 
                             {showNewSelection ? (
                                 <div className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="Адрес объекта подбора *" value={newSelAddress} onChange={e => setNewSelAddress(e.target.value)} />
+                                    <AddressAutocomplete
+                                        value={newSelAddress}
+                                        onChange={val => setNewSelAddress(val)}
+                                        placeholder="Адрес объекта подбора *"
+                                    />
                                     <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} type="number" placeholder="Цена (₽)" value={newSelPrice || ''} onChange={e => setNewSelPrice(Number(e.target.value))} />
                                     <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="ФИО собственника/агента" value={newSelContactName} onChange={e => setNewSelContactName(e.target.value)} />
                                     <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="Телефон" value={newSelContactPhone} onChange={e => setNewSelContactPhone(e.target.value)} />
