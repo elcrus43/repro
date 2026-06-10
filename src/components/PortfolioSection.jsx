@@ -4,7 +4,7 @@ import {
     ArrowRight, Percent, Landmark, Download, Upload, 
     Image as ImageIcon, TrendingUp, Info, X,
     Maximize2, FileSpreadsheet, Copy, Check,
-    Plus, ExternalLink, Link2, Save
+    Plus, ExternalLink, Link2, Save, FileDown
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { estimateOffline } from '../utils/estimation';
@@ -285,6 +285,187 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         const wsAnalogs = XLSX.utils.aoa_to_sheet(analogsData);
         XLSX.utils.book_append_sheet(wb, wsAnalogs, "Аналоги");
         XLSX.writeFile(wb, `Портфолио_${(property.address || property.city).replace(/\s/g, '_')}.xlsx`);
+    };
+
+    const downloadPDF = async () => {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: html2canvas } = await import('html2canvas');
+
+        const renovLabel = RENOVATION_LABELS[property.renovation] || property.renovation || '—';
+        const buildingLabel = BUILDING_TYPES[property.building_type] || property.building_type || '—';
+        const pricePerM2 = property.area_total > 0 ? Math.round(property.price / property.area_total) : null;
+
+        // Build analog rows HTML
+        const analogRows = analogs.slice(0, 6).map(a => {
+            const payment = Math.round(calculatePayment(a.price, 20, MARKET_RATE, 30));
+            return `<tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444">${a.district || '—'}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right">${formatNumber(a.price)} ₽</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;color:#666">${a.total_area} м²</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;color:#3b82f6">${formatNumber(payment)} ₽/мес</td>
+            </tr>`;
+        }).join('');
+
+        const linkRows = manualLinks.slice(0, 6).map(l => {
+            const domainColors = { cian: '#0044cc', avito: '#99cc33', domclick: '#33bb33', yandex: '#ff0000' };
+            const color = domainColors[l.domain] || '#666';
+            return `<tr>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:12px">
+                    <span style="background:${color};color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px">${l.domain.toUpperCase()}</span>
+                    <span style="color:#555;word-break:break-all">${l.url}</span>
+                </td>
+            </tr>`;
+        }).join('');
+
+        // Mortgage calculations
+        const payments = [
+            { label: 'Рыночная, 20%', rate: MARKET_RATE, down: 20 },
+            { label: 'Семейная, 6%', rate: FAMILY_RATE, down: 20 },
+            { label: 'Субсидированная, 14.75%', rate: SUBSIDIZED_RATE, down: 20 },
+        ].map(m => {
+            const p = Math.round(calculatePayment(property.price, m.down, m.rate, 30));
+            return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5">
+                <span style="font-size:13px;color:#555">${m.label}</span>
+                <span style="font-size:14px;font-weight:700;color:#3b82f6">${formatNumber(p)} ₽/мес</span>
+            </div>`;
+        }).join('');
+
+        const coverImg = property.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
+        const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const html = `
+        <div id="pdf-root" style="width:794px;font-family:'Arial',sans-serif;background:#fff;color:#1a1a1a">
+            <!-- HEADER -->
+            <div style="display:flex;align-items:stretch;height:280px;overflow:hidden">
+                <img src="${coverImg}" style="width:420px;height:280px;object-fit:cover;flex-shrink:0" crossorigin="anonymous" />
+                <div style="flex:1;background:linear-gradient(135deg,#0052ff,#3b82f6);padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between">
+                    <div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">ПОРТФОЛИО ОБЪЕКТА</div>
+                        <div style="font-size:32px;font-weight:900;color:#fff;line-height:1.1">${formatNumber(property.price)}&nbsp;₽</div>
+                        ${pricePerM2 ? `<div style="font-size:14px;color:rgba(255,255,255,0.8);margin-top:4px">${formatNumber(pricePerM2)} ₽/м²</div>` : ''}
+                    </div>
+                    <div>
+                        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">${property.address || property.city || ''}</div>
+                        <div style="font-size:12px;color:rgba(255,255,255,0.75)">${today}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SPECS -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:2px solid #f0f0f0">
+                ${[
+                    ['Комнат', property.rooms === 0 ? 'Студия' : property.rooms || '—'],
+                    ['Площадь', `${property.area_total || '—'} м²`],
+                    ['Этаж', `${property.floor || '—'}/${property.floors_total || '—'}`],
+                    ['Год', property.build_year || '—'],
+                    ['Ремонт', renovLabel],
+                    ['Материал', buildingLabel],
+                    ['Потолки', property.ceiling_height ? `${property.ceiling_height} м` : '—'],
+                    ['Санузел', ({combined:'Совм.',separate:'Разд.',two:'2+'} [property.bathroom]) || '—'],
+                ].map(([k,v]) => `
+                <div style="padding:16px 18px;border-right:1px solid #f0f0f0;border-bottom:1px solid #f0f0f0">
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">${k}</div>
+                    <div style="font-size:15px;font-weight:700;color:#1a1a1a">${v}</div>
+                </div>`).join('')}
+            </div>
+
+            <!-- BODY -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0">
+                <!-- LEFT: Аналоги -->
+                <div style="padding:24px;border-right:1px solid #f0f0f0">
+                    <div style="font-size:13px;font-weight:800;color:#0052ff;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px">Аналоги рынка</div>
+                    ${analogs.length > 0 ? `
+                    <table style="width:100%;border-collapse:collapse">
+                        <thead><tr style="background:#f8f8f8">
+                            <th style="padding:8px 12px;text-align:left;font-size:11px;color:#999;font-weight:600">Район</th>
+                            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#999;font-weight:600">Цена</th>
+                            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#999;font-weight:600">Пл.</th>
+                            <th style="padding:8px 12px;text-align:right;font-size:11px;color:#999;font-weight:600">Платёж</th>
+                        </tr></thead>
+                        <tbody>${analogRows}</tbody>
+                    </table>` : '<div style="font-size:13px;color:#aaa;padding:12px 0">Нет данных по аналогам</div>'}
+                    ${manualLinks.length > 0 ? `
+                    <div style="margin-top:20px">
+                        <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Ссылки на объявления</div>
+                        <table style="width:100%;border-collapse:collapse"><tbody>${linkRows}</tbody></table>
+                    </div>` : ''}
+                </div>
+                <!-- RIGHT: Ипотека + описание -->
+                <div style="padding:24px">
+                    <div style="font-size:13px;font-weight:800;color:#0052ff;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px">Расчёт ипотеки (30 лет, ПВ 20%)</div>
+                    ${payments}
+                    ${property.notes ? `
+                    <div style="margin-top:24px">
+                        <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Описание</div>
+                        <div style="font-size:13px;color:#555;line-height:1.6">${property.notes.substring(0, 400)}${property.notes.length > 400 ? '...' : ''}</div>
+                    </div>` : ''}
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div style="background:#f8f9fa;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e8e8e8">
+                <div style="font-size:12px;color:#aaa">Сформировано ${today}</div>
+                <div style="display:flex;align-items:center;gap:16px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                        <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#0052ff,#3b82f6);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;flex-shrink:0">
+                            ${(currentUser?.full_name || 'А').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style="font-size:12px;font-weight:700;color:#333">${currentUser?.full_name || 'Агент'}</div>
+                            ${currentUser?.phone ? `<div style="font-size:11px;color:#888">${currentUser.phone}</div>` : ''}
+                        </div>
+                    </div>
+                    <div style="font-size:10px;color:#ccc;padding-left:12px;border-left:1px solid #e0e0e0">Конфиденциально</div>
+                </div>
+            </div>
+        </div>`;
+
+        // Mount off-screen
+        const container = document.createElement('div');
+        container.style.cssText = 'position:fixed;left:-9999px;top:0;width:794px;background:#fff;z-index:-1';
+        container.innerHTML = html;
+        document.body.appendChild(container);
+
+        // Wait for images
+        await Promise.all(
+            Array.from(container.querySelectorAll('img')).map(
+                img => img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+            )
+        );
+
+        try {
+            const canvas = await html2canvas(container.firstElementChild, {
+                scale: 2,
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#ffffff',
+                width: 794,
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.92);
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pdfW = pdf.internal.pageSize.getWidth();
+            const pdfH = (canvas.height * pdfW) / canvas.width;
+
+            // If content fits on 1 page
+            const pageH = pdf.internal.pageSize.getHeight();
+            if (pdfH <= pageH) {
+                pdf.addImage(imgData, 'JPEG', 0, 0, pdfW, pdfH);
+            } else {
+                // Multi-page split
+                let yPos = 0;
+                while (yPos < pdfH) {
+                    if (yPos > 0) pdf.addPage();
+                    pdf.addImage(imgData, 'JPEG', 0, -yPos, pdfW, pdfH);
+                    yPos += pageH;
+                }
+            }
+
+            const fname = `Портфолио_${(property.address || property.city || 'объект').replace(/\s/g, '_').substring(0, 40)}.pdf`;
+            pdf.save(fname);
+        } finally {
+            document.body.removeChild(container);
+        }
     };
 
     const allFiles = [...resaleFiles, ...newBuildsFiles, ...mortgageFiles];
@@ -588,6 +769,14 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                     title="Скачать Excel"
                 >
                     <FileSpreadsheet size={24} />
+                </button>
+                <button 
+                    className="btn btn-secondary" 
+                    onClick={downloadPDF}
+                    style={{ width: 48, height: 48, borderRadius: 16, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(220,38,38,0.1)', color: '#dc2626' }}
+                    title="Скачать PDF"
+                >
+                    <FileDown size={24} />
                 </button>
             </div>
         </div>

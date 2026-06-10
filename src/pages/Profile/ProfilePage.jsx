@@ -108,9 +108,19 @@ export function ProfilePage() {
             if (session?.access_token) initCalendarAuth(session.access_token);
 
             await connectCalendar();
+
+            // Mark refresh token as present in local state immediately
+            // (actual value is stored server-side — we just need a truthy marker)
             if (session?.access_token) initCalendarAuth(session.access_token, true);
+            dispatch({
+                type: 'UPDATE_PROFILE',
+                profile: { id: user.id, google_refresh_token: 'connected' },
+            });
             setGcalConnected(true);
-            toast.success('Google Calendar успешно подключен! Теперь токен обновляется автоматически.');
+            toast.success('Google Calendar успешно подключён! Refresh-токен сохранён в БД.');
+
+            // Also reload from DB in background to get fresh server-side state
+            if (typeof reloadData === 'function') reloadData().catch(() => {});
         } catch (err) {
             console.error(err);
             toast.error('Не удалось подключить Google Calendar: ' + err.message);
@@ -122,8 +132,13 @@ export function ProfilePage() {
             const { data: { session } } = await supabase.auth.getSession();
             await disconnectCalendar();
             if (session?.access_token) initCalendarAuth(session.access_token, false);
+            // Clear refresh token flag in local state
+            dispatch({
+                type: 'UPDATE_PROFILE',
+                profile: { id: user.id, google_refresh_token: null },
+            });
             setGcalConnected(false);
-            toast.success('Google Calendar отключен');
+            toast.success('Google Calendar отключён');
         } catch (err) {
             console.error(err);
             toast.error('Ошибка при отключении Google Calendar');

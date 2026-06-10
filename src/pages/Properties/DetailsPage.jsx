@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
@@ -9,6 +9,87 @@ import {
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
     TrendingDown, Star
 } from 'lucide-react';
+
+/* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
+function InlinePriceEditor({ prop, onSave }) {
+    const [editing, setEditing] = useState(false);
+    const [value, setValue] = useState(String(prop.price || ''));
+    const inputRef = useRef();
+
+    const open = useCallback((e) => {
+        e.stopPropagation();
+        setValue(String(prop.price || ''));
+        setEditing(true);
+        setTimeout(() => inputRef.current?.select(), 30);
+    }, [prop.price]);
+
+    const commit = useCallback((e) => {
+        e?.stopPropagation?.();
+        const parsed = Number(value.replace(/\D/g, ''));
+        if (!isNaN(parsed) && parsed !== prop.price) {
+            onSave(prop.id, parsed);
+        }
+        setEditing(false);
+    }, [value, prop.id, prop.price, onSave]);
+
+    const handleKey = useCallback((e) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') commit(e);
+        if (e.key === 'Escape') setEditing(false);
+    }, [commit]);
+
+    if (editing) {
+        return (
+            <div
+                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                onClick={e => e.stopPropagation()}
+            >
+                <input
+                    ref={inputRef}
+                    type="text"
+                    inputMode="numeric"
+                    value={value.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')}
+                    onChange={e => setValue(e.target.value.replace(/\D/g, ''))}
+                    onBlur={commit}
+                    onKeyDown={handleKey}
+                    style={{
+                        fontFamily: "'Oswald', sans-serif",
+                        fontSize: 26, fontWeight: 400,
+                        color: 'var(--primary)',
+                        background: 'rgba(0,82,255,0.06)',
+                        border: '1.5px solid var(--primary)',
+                        borderRadius: 12,
+                        padding: '2px 12px',
+                        width: 180,
+                        outline: 'none',
+                        lineHeight: 1,
+                    }}
+                />
+                <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
+            </div>
+        );
+    }
+
+    return (
+        <div
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+            onClick={open}
+            title="Нажмите для изменения цены"
+        >
+            <span className="font-oswald" style={{ fontSize: 26, fontWeight: 400, color: 'var(--text)', lineHeight: 1 }}>
+                {formatNumber(prop.price)} <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
+            </span>
+            <span style={{
+                display: 'inline-flex', alignItems: 'center',
+                opacity: 0,
+                transition: 'opacity 0.15s',
+            }} className="details-price-edit-icon">
+                <Pencil size={14} style={{ color: 'var(--primary)' }} />
+            </span>
+            <style>{`.details-price-edit-icon { opacity: 0 } div:hover > .details-price-edit-icon { opacity: 0.5 }`}</style>
+        </div>
+    );
+}
 
 import { BUILDING_TYPES, PROPERTY_TYPES } from '../../data/constants';
 
@@ -144,9 +225,12 @@ export function DetailsPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <div className="font-oswald" style={{ fontSize: 26, fontWeight: 400, color: 'var(--text)', lineHeight: 1 }}>
-                                        {formatNumber(prop.price)} <span style={{ fontSize: 16, opacity: 0.6 }}>₽</span>
-                                    </div>
+                                    <InlinePriceEditor
+                                        prop={prop}
+                                        onSave={(propId, newPrice) =>
+                                            dispatch({ type: 'PATCH_PROPERTY', patch: { id: propId, price: newPrice } })
+                                        }
+                                    />
                                     {prop.area_total > 0 && (
                                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 200, marginTop: 4, opacity: 0.6 }}>
                                             {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²

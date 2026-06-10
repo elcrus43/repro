@@ -2,18 +2,22 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone } from 'lucide-react';
+import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PipelinePage } from './PipelinePage';
 import { useExport } from '../../hooks/useExport';
 
+
+
 export function ListPage() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const user = state.currentUser;
     const { exportToCSV } = useExport();
+
+
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('active');
     const [scope, setScope] = useState('all');
@@ -348,9 +352,9 @@ export function ListPage() {
 
                                 {/* CONTENT WRAPPER */}
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
+                                    <span className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
                                         {formatNumber(prop.price)} <span style={{ fontSize: 13, opacity: 0.6 }}>₽</span>
-                                    </div>
+                                    </span>
                                     <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
                                         {['apartment', 'room', 'house'].includes(prop.property_type) && (
                                             <>
