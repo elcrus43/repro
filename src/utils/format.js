@@ -84,9 +84,9 @@ export function getEventStatusLabel(eventType, status) {
             failed: 'Встреча не состоялась'
         },
         viewing: {
-            planned: 'Просмотр запланирован',
-            completed: 'Просмотр проведен',
-            failed: 'Просмотр не состоялся'
+            planned: 'Подбор запланирован',
+            completed: 'Подбор проведён',
+            failed: 'Подбор не состоялся'
         },
         call: {
             planned: 'Звонок запланирован',

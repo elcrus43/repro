@@ -22,7 +22,7 @@ export function ListPage() {
     const eventTypeLabels = {
         showing: 'Показ',
         meeting: 'Встреча',
-        viewing: 'Просмотр',
+        viewing: 'Подбор',
         deposit: 'Задаток',
         deal: 'Сделка',
         call: 'Звонок'

@@ -23,7 +23,7 @@ import {
 const EVENT_TYPE_LABELS = {
   showing: 'Показ',
   meeting: 'Встреча с собственником',
-  viewing: 'Просмотр',
+  viewing: 'Подбор',
   deposit: 'Задаток',
   deal: 'Сделка',
   call: 'Звонок',

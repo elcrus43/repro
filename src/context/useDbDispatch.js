@@ -188,6 +188,23 @@ export function useDbDispatch(state, dispatch, onError) {
         // No enhancement needed — just pass the id through
         break;
 
+      case 'ADD_SELECTION_ITEM':
+        enhancedAction.item = {
+          ...action.item,
+          id: action.item.id || nanoid(),
+          created_at: now,
+          updated_at: now,
+        };
+        break;
+
+      case 'UPDATE_SELECTION_ITEM':
+        enhancedAction.item = { ...action.item, updated_at: now };
+        break;
+
+      case 'DELETE_SELECTION_ITEM':
+        // No enhancement needed
+        break;
+
       // Чистые действия — не требуют синхронизации с БД
       case 'LOGOUT':
       case 'SET_LOADING':
@@ -233,6 +250,20 @@ export function useDbDispatch(state, dispatch, onError) {
           p.id === enhancedAction.patch.id ? { ...p, ...enhancedAction.patch } : p
         ),
       };
+    }
+    if (enhancedAction.type === 'ADD_SELECTION_ITEM') {
+      const nextSelection = [...(stateRef.current.selectionItems || []), enhancedAction.item];
+      stateRef.current = { ...stateRef.current, selectionItems: nextSelection };
+    }
+    if (enhancedAction.type === 'UPDATE_SELECTION_ITEM') {
+      const nextSelection = (stateRef.current.selectionItems || []).map(i =>
+        i.id === enhancedAction.item.id ? enhancedAction.item : i
+      );
+      stateRef.current = { ...stateRef.current, selectionItems: nextSelection };
+    }
+    if (enhancedAction.type === 'DELETE_SELECTION_ITEM') {
+      const nextSelection = (stateRef.current.selectionItems || []).filter(i => i.id !== enhancedAction.id);
+      stateRef.current = { ...stateRef.current, selectionItems: nextSelection };
     }
 
     /* ── Supabase sync ────────────────────────────────────────────────── */

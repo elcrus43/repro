@@ -24,6 +24,13 @@ export const EMPTY_STATE = {
   calendarStatus: null, // null | 'loading' | 'ok' | 'error'
   calendarErrorMessage: null,
   priceHistory: [],
+  selectionItems: (() => {
+    try {
+      return JSON.parse(localStorage.getItem('rm_selection_items') || '[]');
+    } catch {
+      return [];
+    }
+  })(),
 };
 
 export function reducer(state, action) {
@@ -60,7 +67,12 @@ export function reducer(state, action) {
       return { ...EMPTY_STATE, loading: false };
 
     case 'SET_ALL':
-      return { ...state, ...action.data, loading: false };
+      return { 
+        ...state, 
+        ...action.data, 
+        selectionItems: action.data.selectionItems !== undefined ? action.data.selectionItems : state.selectionItems,
+        loading: false 
+      };
 
     case 'SET_CALENDAR_STATUS':
       return { ...state, calendarStatus: action.status, calendarErrorMessage: action.errorMessage || null };
@@ -223,6 +235,25 @@ export function reducer(state, action) {
 
     case 'SET_PRICE_HISTORY':
       return { ...state, priceHistory: action.data };
+
+    /* ── Подбор ─────────────────────────────────────────────────────────── */
+    case 'ADD_SELECTION_ITEM': {
+      const selectionItems = [...(state.selectionItems || []), action.item];
+      try { localStorage.setItem('rm_selection_items', JSON.stringify(selectionItems)); } catch (e) {}
+      return { ...state, selectionItems };
+    }
+
+    case 'UPDATE_SELECTION_ITEM': {
+      const selectionItems = (state.selectionItems || []).map(i => i.id === action.item.id ? action.item : i);
+      try { localStorage.setItem('rm_selection_items', JSON.stringify(selectionItems)); } catch (e) {}
+      return { ...state, selectionItems };
+    }
+
+    case 'DELETE_SELECTION_ITEM': {
+      const selectionItems = (state.selectionItems || []).filter(i => i.id !== action.id);
+      try { localStorage.setItem('rm_selection_items', JSON.stringify(selectionItems)); } catch (e) {}
+      return { ...state, selectionItems };
+    }
 
     default:
       return state;

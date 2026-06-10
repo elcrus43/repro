@@ -4,7 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
-import { Building2, Users, Sparkles, FileCheck, UserCircle, History, Bell } from 'lucide-react';
+import { Building2, Users, Sparkles, FileCheck, UserCircle, History, Bell, ClipboardList } from 'lucide-react';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -38,6 +38,8 @@ const EstimationPage = lazy(() => import('./pages/Properties/EstimationPage'));
 const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
 const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
 const RemindersPage = lazy(() => import('./pages/Tasks/RemindersPage'));
+const SelectionPage = lazy(() => import('./pages/Selection/index.js'));
+const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m => ({ default: m.SelectionFormPage })));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 
 /* ─── BottomNav ────────────────────────────────────────────────────────────── */
@@ -63,6 +65,7 @@ function BottomNav() {
 
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
+    { path: '/selection', icon: <ClipboardList size={22} />, label: 'Подбор' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
     { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
     { path: '/history', icon: <History size={22} />, label: 'История' },
@@ -289,6 +292,11 @@ function AppRoutes() {
           <Route path="/properties/:id" element={<RequireAuth><PropertyCardPage /></RequireAuth>} />
           <Route path="/properties/:id/edit" element={<RequireAuth><PropertyFormPage /></RequireAuth>} />
           <Route path="/properties/:id/estimate" element={<RequireAuth><EstimationPage /></RequireAuth>} />
+
+          {/* Selection */}
+          <Route path="/selection" element={<RequireAuth><SelectionPage /></RequireAuth>} />
+          <Route path="/selection/new" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
+          <Route path="/selection/:id/edit" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
 
           {/* Requests */}
           <Route path="/requests" element={<RequireAuth><RequestsPage /></RequireAuth>} />

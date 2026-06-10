@@ -187,7 +187,7 @@ export function FormPage() {
                             <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="showing">Показ</option>
                                 <option value="meeting">Встреча с собственником</option>
-                                <option value="viewing">Просмотр</option>
+                                <option value="viewing">Подбор</option>
                                 <option value="deposit">Задаток</option>
                                 <option value="deal">Сделка</option>
                             </select>

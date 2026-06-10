@@ -1,4 +1,4 @@
-document.getElementById('importBtn').addEventListener('click', async () => {
+async function runImport(targetRoute) {
     const statusEl = document.getElementById('status');
     statusEl.innerHTML = 'Подготовка...';
 
@@ -24,9 +24,11 @@ document.getElementById('importBtn').addEventListener('click', async () => {
 
         statusEl.innerHTML = 'Открываем CRM...';
         
-        // Encode data into base64 to pass securely via URL hash
+        // Encode data into base64 to pass securely via URL query param
         const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
-        const urlWithData = 'https://realtor-match.vercel.app/properties/new#import=' + encodedData;
+        
+        // Use HashRouter compatible path format: `#/route?import=[data]`
+        const urlWithData = `https://realtor-match.vercel.app/#/${targetRoute}?import=${encodedData}`;
         
         // Open CRM in a new tab
         await chrome.tabs.create({ url: urlWithData });
@@ -36,4 +38,7 @@ document.getElementById('importBtn').addEventListener('click', async () => {
     } catch (e) {
         statusEl.innerHTML = '<span style="color:#DC2626">Ошибка: ' + e.message + '</span>';
     }
-});
+}
+
+document.getElementById('importPropBtn').addEventListener('click', () => runImport('properties/new'));
+document.getElementById('importSelectBtn').addEventListener('click', () => runImport('selection/new'));

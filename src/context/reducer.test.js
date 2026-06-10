@@ -436,6 +436,36 @@ describe('reducer — user management', () => {
   })
 })
 
+// ─── Selection Items ────────────────────────────────────────────────────────
+describe('reducer — selection items', () => {
+  it('ADD_SELECTION_ITEM appends selection item', () => {
+    const state = makeState({ selectionItems: [{ id: 's1' }] })
+    const next = reducer(state, { type: 'ADD_SELECTION_ITEM', item: { id: 's2' } })
+    expect(next.selectionItems).toHaveLength(2)
+    expect(next.selectionItems[1].id).toBe('s2')
+  })
+
+  it('UPDATE_SELECTION_ITEM updates by id', () => {
+    const state = makeState({
+      selectionItems: [{ id: 's1', address: 'Old Address' }],
+    })
+    const next = reducer(state, {
+      type: 'UPDATE_SELECTION_ITEM',
+      item: { id: 's1', address: 'New Address' },
+    })
+    expect(next.selectionItems[0].address).toBe('New Address')
+  })
+
+  it('DELETE_SELECTION_ITEM removes by id', () => {
+    const state = makeState({
+      selectionItems: [{ id: 's1' }, { id: 's2' }],
+    })
+    const next = reducer(state, { type: 'DELETE_SELECTION_ITEM', id: 's1' })
+    expect(next.selectionItems).toHaveLength(1)
+    expect(next.selectionItems[0].id).toBe('s2')
+  })
+})
+
 // ─── Edge Cases ─────────────────────────────────────────────────────────────
 
 describe('reducer — edge cases', () => {
