@@ -61,6 +61,54 @@ export function sanitizeObj(obj) {
 }
 
 /**
+ * Преобразует показ (showing) из формата БД в формат клиента.
+ * Для событий типа 'viewing' (подбор) восстанавливает property_id из google_event_id.
+ */
+export function mapShowingFromDb(s) {
+  if (!s) return s;
+  if (s.event_type === 'viewing' && s.google_event_id?.startsWith('selection_prop_id:')) {
+    const parts = s.google_event_id.split('::cal_id:');
+    const propId = parts[0].replace('selection_prop_id:', '');
+    const calId = parts[1] || null;
+    return {
+      ...s,
+      property_id: propId,
+      google_event_id: calId
+    };
+  }
+  return s;
+}
+
+/**
+ * Преобразует показ (showing) из формата клиента в формат БД.
+ * Для событий типа 'viewing' (подбор) переносит property_id в google_event_id с префиксом,
+ * чтобы обойти foreign key constraint в БД.
+ */
+export function mapShowingToDb(s) {
+  if (!s) return s;
+  const dbShowing = { ...s };
+  if (dbShowing.event_type === 'viewing' && dbShowing.property_id) {
+    const propId = dbShowing.property_id;
+    dbShowing.property_id = null;
+    
+    let calId = dbShowing.google_event_id;
+    if (dbShowing.google_event_id?.startsWith('selection_prop_id:')) {
+      const parts = dbShowing.google_event_id.split('::cal_id:');
+      calId = parts[1] || null;
+    }
+    
+    if (calId) {
+      dbShowing.google_event_id = `selection_prop_id:${propId}::cal_id:${calId}`;
+    } else {
+      dbShowing.google_event_id = `selection_prop_id:${propId}`;
+    }
+  } else if (dbShowing.property_id === '') {
+    dbShowing.property_id = null;
+  }
+  return dbShowing;
+}
+
+/**
  * Retry-обёртка для сетевых сбоев.
  * Не повторяет запрос при ошибках доступа (RLS) или схемы.
  */
@@ -134,12 +182,13 @@ export async function loadUserData(userId, role) {
     }
   }
 
-  // Загружаем все 9 таблиц полностью параллельно (оптимально для HTTP/2)
+  // Загружаем все 10 таблиц полностью параллельно (оптимально для HTTP/2)
   // properties и requests — загружаем ВСЕ (для матчинга между риэлторами)
-  // clients, showings, tasks, deals — только свои
+  // clients, showings, tasks, deals, selection_items — только свои
   const [
     clientsRes, propertiesRes, requestsRes, matchesRes,
-    showingsRes, tasksRes, priceRes, dealsRes, profilesRes
+    showingsRes, tasksRes, priceRes, dealsRes, profilesRes,
+    selectionItemsRes
   ] = await Promise.all([
     isAdmin
       ? safeQuery((signal) => supabase.from('clients').select('*').abortSignal(signal), 'clients')
@@ -162,6 +211,9 @@ export async function loadUserData(userId, role) {
       ? safeQuery((signal) => supabase.from('deals').select('*').abortSignal(signal), 'deals')
       : safeQuery((signal) => supabase.from('deals').select('*').eq('realtor_id', userId).abortSignal(signal), 'deals'),
     safeQuery((signal) => supabase.from('profiles').select('*').abortSignal(signal), 'profiles'),
+    isAdmin
+      ? safeQuery((signal) => supabase.from('selection_items').select('*').abortSignal(signal), 'selection_items')
+      : safeQuery((signal) => supabase.from('selection_items').select('*').eq('realtor_id', userId).abortSignal(signal), 'selection_items'),
   ]);
 
   const profiles = profilesRes?.data ?? [];
@@ -172,7 +224,8 @@ export async function loadUserData(userId, role) {
   const errors = [
     clientsRes.error, propertiesRes.error, requestsRes.error,
     matchesRes.error, showingsRes.error, tasksRes.error,
-    priceRes?.error, dealsRes?.error, profilesRes?.error
+    priceRes?.error, dealsRes?.error, profilesRes?.error,
+    selectionItemsRes?.error
   ].filter(Boolean).map(e => e.message);
 
   if (errors.length > 0) {
@@ -181,17 +234,21 @@ export async function loadUserData(userId, role) {
 
   const allFailed = [clientsRes, propertiesRes, requestsRes, matchesRes].every(r => r.error != null);
 
+  const rawShowings = showingsRes.data ?? [];
+  const processedShowings = rawShowings.map(mapShowingFromDb);
+
   return {
     clients:     clientsRes.data ?? [],
     properties:  propertiesRes.data ?? [],
     requests:    requestsRes.data ?? [],
     matches:     matchesRes.data ?? [],
-    showings:    showingsRes.data ?? [],
+    showings:    processedShowings,
     tasks:       tasksRes.data ?? [],
     profiles:    profiles ?? [],
     pendingUsers,
     pricelist:   priceRes?.data ?? [],
     deals:       dealsRes?.data ?? [],
+    selectionItems: selectionItemsRes?.data ?? [],
     error: errors.length > 0 ? errors.join('; ') : null,
     allFailed,
   };
@@ -335,6 +392,30 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       case 'DELETE_CLIENT':
         result = await withRetry(() => supabase.from('clients').delete().eq('id', action.id));
+        break;
+
+      /* ── Подбор ─────────────────────────────────────────────────────────── */
+      case 'ADD_SELECTION_ITEM': {
+        const itemData = { ...action.item };
+        Object.keys(itemData).forEach(key => {
+          if (itemData[key] === undefined) delete itemData[key];
+        });
+        result = await withRetry(() => supabase.from('selection_items').insert(itemData));
+        break;
+      }
+
+      case 'UPDATE_SELECTION_ITEM': {
+        const { id: iId, ...iData } = action.item;
+        const itemData = { ...iData };
+        Object.keys(itemData).forEach(key => {
+          if (itemData[key] === undefined) delete itemData[key];
+        });
+        result = await withRetry(() => supabase.from('selection_items').update(itemData).eq('id', iId));
+        break;
+      }
+
+      case 'DELETE_SELECTION_ITEM':
+        result = await withRetry(() => supabase.from('selection_items').delete().eq('id', action.id));
         break;
 
       /* ── Объекты ─────────────────────────────────────────────────────── */
@@ -517,10 +598,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             rawShowing[col] = action.showing[col];
           }
         });
-        const showingData = sanitizeObj(rawShowing);
-        
-        // Ensure property_id null not empty string
-        if (showingData.property_id === '') showingData.property_id = null;
+        const showingData = mapShowingToDb(sanitizeObj(rawShowing));
         const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
         if (action.task) queries.push(withRetry(() => supabase.from('tasks').upsert(sanitizeObj(action.task))));
         if (action.matches && action.showing.match_id) {
@@ -563,9 +641,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             rawShowing[col] = action.showing[col];
           }
         });
-        const showingData = sanitizeObj(rawShowing);
-        
-        if (showingData.property_id === '') showingData.property_id = null;
+        const showingData = mapShowingToDb(sanitizeObj(rawShowing));
         const queries = [withRetry(() => supabase.from('showings').upsert(showingData))];
         if (action.matches && action.showing.match_id) {
           const match = action.matches.find(m => m.id === action.showing.match_id);

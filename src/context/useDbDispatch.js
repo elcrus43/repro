@@ -192,13 +192,18 @@ export function useDbDispatch(state, dispatch, onError) {
         enhancedAction.item = {
           ...action.item,
           id: action.item.id || nanoid(),
+          realtor_id: action.item.realtor_id || stateRef.current.currentUser?.id,
           created_at: now,
           updated_at: now,
         };
         break;
 
       case 'UPDATE_SELECTION_ITEM':
-        enhancedAction.item = { ...action.item, updated_at: now };
+        enhancedAction.item = {
+          ...action.item,
+          realtor_id: action.item.realtor_id || stateRef.current.currentUser?.id,
+          updated_at: now
+        };
         break;
 
       case 'DELETE_SELECTION_ITEM':
@@ -365,8 +370,8 @@ function _buildShowingTask(sh, now) {
     id: nanoid(),
     realtor_id: sh.realtor_id,
     client_id: sh.client_id || null,
-    property_id: sh.property_id || null,
-    title: `Показ — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+    property_id: sh.event_type === 'viewing' ? null : (sh.property_id || null),
+    title: `${sh.event_type === 'viewing' ? 'Подбор' : 'Показ'} — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
     description: '',
     due_date: sh.showing_date,
     priority: 'high',

@@ -38,7 +38,6 @@ const EstimationPage = lazy(() => import('./pages/Properties/EstimationPage'));
 const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
 const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
 const RemindersPage = lazy(() => import('./pages/Tasks/RemindersPage'));
-const SelectionPage = lazy(() => import('./pages/Selection/index.js'));
 const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m => ({ default: m.SelectionFormPage })));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 
@@ -65,7 +64,6 @@ function BottomNav() {
 
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
-    { path: '/selection', icon: <ClipboardList size={22} />, label: 'Подбор' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
     { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
     { path: '/history', icon: <History size={22} />, label: 'История' },
@@ -74,7 +72,12 @@ function BottomNav() {
     { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
 
-  const isActive = (path) => pathname.startsWith(path);
+  const isActive = (path) => {
+    if (path === '/properties') {
+      return pathname.startsWith('/properties') || pathname.startsWith('/selection');
+    }
+    return pathname.startsWith(path);
+  };
 
   return (
     <nav className="bottom-nav" style={{ 
@@ -294,7 +297,7 @@ function AppRoutes() {
           <Route path="/properties/:id/estimate" element={<RequireAuth><EstimationPage /></RequireAuth>} />
 
           {/* Selection */}
-          <Route path="/selection" element={<RequireAuth><SelectionPage /></RequireAuth>} />
+          <Route path="/selection" element={<Navigate to="/properties?filter=selection" replace />} />
           <Route path="/selection/new" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
           <Route path="/selection/:id/edit" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
 

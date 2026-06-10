@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatNumber } from '../../utils/format';
-import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone } from 'lucide-react';
+import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
+import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2 } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -19,7 +19,12 @@ export function ListPage() {
 
 
     const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState('active');
+    const [searchParams, setSearchParams] = useSearchParams();
+    const filter = searchParams.get('filter') || 'active';
+    const setFilter = (val) => {
+        setSearchParams({ filter: val });
+        setSearch('');
+    };
     const [scope, setScope] = useState('all');
     const [viewMode, setViewMode] = useState('list');
     const [priceMin, setPriceMin] = useState('');
@@ -78,6 +83,43 @@ export function ListPage() {
         });
     };
 
+    const selectionItemsByClient = useMemo(() => {
+        if (filter !== 'selection') return [];
+        const items = state.selectionItems || [];
+        const filtered = items.filter(item => {
+            if (!search) return true;
+            const client = state.clients.find(c => c.id === item.client_id);
+            return (item.address || '').toLowerCase().includes(search.toLowerCase()) ||
+                (client?.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
+                (item.contact_name || '').toLowerCase().includes(search.toLowerCase());
+        });
+
+        // Group by client_id
+        const groups = {};
+        filtered.forEach(item => {
+            const cId = item.client_id || 'unassigned';
+            if (!groups[cId]) {
+                const client = state.clients.find(c => c.id === cId);
+                groups[cId] = {
+                    clientName: client?.full_name || 'Без клиента',
+                    items: []
+                };
+            }
+            groups[cId].items.push(item);
+        });
+
+        return Object.entries(groups).map(([clientId, group]) => ({
+            clientId,
+            ...group
+        }));
+    }, [state.selectionItems, state.clients, search, filter]);
+
+    const handleDeleteSelection = (id) => {
+        if (window.confirm('Вы действительно хотите удалить этот объект из подбора?')) {
+            dispatch({ type: 'DELETE_SELECTION_ITEM', id });
+        }
+    };
+
     const statusLabels = {
         meeting: 'Встреча',
         agreement: 'АД',
@@ -112,34 +154,38 @@ export function ListPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 10 }}>
                         <GlobalSearch />
-                        <button
-                            className="card-clickable font-oswald"
-                            onClick={handleExport}
-                            style={{
-                                padding: '0 12px', height: 44, borderRadius: 14, border: 'none',
-                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em'
-                            }}
-                        >
-                            Экспорт CSV
-                        </button>
-                        <button
-                            className="card-clickable"
-                            onClick={() => setViewMode(m => m === 'list' ? 'pipeline' : 'list')}
-                            style={{
-                                width: 44, height: 44, borderRadius: 14, border: 'none',
-                                background: 'var(--bg-light)',
-                                color: viewMode === 'pipeline' ? 'var(--primary)' : 'var(--text-secondary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}
-                            title={viewMode === 'list' ? 'Воронка продаж' : 'Список'}
-                        >
-                            {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
-                        </button>
+                        {filter !== 'selection' && (
+                            <>
+                                <button
+                                    className="card-clickable font-oswald"
+                                    onClick={handleExport}
+                                    style={{
+                                        padding: '0 12px', height: 44, borderRadius: 14, border: 'none',
+                                        background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em'
+                                    }}
+                                >
+                                    Экспорт CSV
+                                </button>
+                                <button
+                                    className="card-clickable"
+                                    onClick={() => setViewMode(m => m === 'list' ? 'pipeline' : 'list')}
+                                    style={{
+                                        width: 44, height: 44, borderRadius: 14, border: 'none',
+                                        background: 'var(--bg-light)',
+                                        color: viewMode === 'pipeline' ? 'var(--primary)' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                    title={viewMode === 'list' ? 'Воронка продаж' : 'Список'}
+                                >
+                                    {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                                </button>
+                            </>
+                        )}
                         <button 
                             className="card-clickable" 
-                            onClick={() => navigate('/properties/new')} 
+                            onClick={() => navigate(filter === 'selection' ? '/selection/new' : '/properties/new')} 
                             style={{ 
                                 width: 44, height: 44, borderRadius: 14, border: 'none',
                                 background: 'var(--primary)', color: 'white',
@@ -164,41 +210,43 @@ export function ListPage() {
                         <Search size={18} style={{ color: 'var(--text-secondary)', opacity: 0.4 }} />
                         <input 
                             className="form-input" 
-                            placeholder="Адрес, город или клиент..." 
+                            placeholder={filter === 'selection' ? 'Поиск по адресу, клиенту, контакту...' : 'Адрес, город или клиент...'}
                             value={search} 
                             onChange={e => setSearch(e.target.value)} 
                             style={{ border: 'none', background: 'transparent', padding: '10px 0', fontSize: 14, fontWeight: 600 }} 
                         />
                     </div>
 
-                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
-                        <button 
-                            className="card-clickable font-oswald" 
-                            style={{ 
-                                flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
-                                background: scope === 'all' ? 'var(--surface)' : 'transparent', 
-                                boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
-                                color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)', 
-                                textTransform: 'uppercase', letterSpacing: '0.05em' 
-                            }} 
-                            onClick={() => setScope('all')}
-                        >Все объекты</button>
-                        <button 
-                            className="card-clickable font-oswald" 
-                            style={{ 
-                                flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
-                                background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
-                                boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
-                                color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)', 
-                                textTransform: 'uppercase', letterSpacing: '0.05em' 
-                            }} 
-                            onClick={() => setScope('mine')}
-                        >Мои объекты</button>
-                    </div>
+                    {filter !== 'selection' && (
+                        <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
+                            <button 
+                                className="card-clickable font-oswald" 
+                                style={{ 
+                                    flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
+                                    background: scope === 'all' ? 'var(--surface)' : 'transparent', 
+                                    boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                                    color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)', 
+                                    textTransform: 'uppercase', letterSpacing: '0.05em' 
+                                }} 
+                                onClick={() => setScope('all')}
+                            >Все объекты</button>
+                            <button 
+                                className="card-clickable font-oswald" 
+                                style={{ 
+                                    flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
+                                    background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
+                                    boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                                    color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)', 
+                                    textTransform: 'uppercase', letterSpacing: '0.05em' 
+                                }} 
+                                onClick={() => setScope('mine')}
+                            >Мои объекты</button>
+                        </div>
+                    )}
 
                     <div style={{ display: 'flex', gap: 8, background: 'var(--bg-light)', padding: 4, borderRadius: 16 }}>
                         {[
-                            ['active', 'Активные'], ['closed', 'Закрытые']
+                            ['active', 'Активные'], ['closed', 'Закрытые'], ['selection', 'Подбор']
                         ].map(([val, label]) => (
                             <button 
                                 key={val} 
@@ -221,40 +269,42 @@ export function ListPage() {
                     </div>
 
                     {/* Price Range Filter */}
-                    <div style={{
-                        background: 'var(--bg-light)', padding: '8px 16px', borderRadius: 16,
-                        display: 'flex', alignItems: 'center', gap: 8
-                    }}>
-                        <SlidersHorizontal size={14} style={{ opacity: 0.4, flexShrink: 0, color: 'var(--text-secondary)' }} />
-                        <input
-                            type="number"
-                            value={priceMin}
-                            onChange={e => setPriceMin(e.target.value)}
-                            placeholder="от"
-                            style={{
-                                border: 'none', background: 'transparent', fontSize: 13,
-                                flex: 1, minWidth: 0, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
-                            }}
-                        />
-                        <span style={{ color: 'var(--text-secondary)', fontSize: 13, opacity: 0.5 }}>—</span>
-                        <input
-                            type="number"
-                            value={priceMax}
-                            onChange={e => setPriceMax(e.target.value)}
-                            placeholder="до"
-                            style={{
-                                border: 'none', background: 'transparent', fontSize: 13,
-                                flex: 1, minWidth: 0, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
-                            }}
-                        />
-                    </div>
+                    {filter !== 'selection' && (
+                        <div style={{
+                            background: 'var(--bg-light)', padding: '8px 16px', borderRadius: 16,
+                            display: 'flex', alignItems: 'center', gap: 8
+                        }}>
+                            <SlidersHorizontal size={14} style={{ opacity: 0.4, flexShrink: 0, color: 'var(--text-secondary)' }} />
+                            <input
+                                type="number"
+                                value={priceMin}
+                                onChange={e => setPriceMin(e.target.value)}
+                                placeholder="от"
+                                style={{
+                                    border: 'none', background: 'transparent', fontSize: 13,
+                                    flex: 1, minWidth: 0, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
+                                }}
+                            />
+                            <span style={{ color: 'var(--text-secondary)', fontSize: 13, opacity: 0.5 }}>—</span>
+                            <input
+                                type="number"
+                                value={priceMax}
+                                onChange={e => setPriceMax(e.target.value)}
+                                placeholder="до"
+                                style={{
+                                    border: 'none', background: 'transparent', fontSize: 13,
+                                    flex: 1, minWidth: 0, outline: 'none', color: 'var(--text)', fontFamily: 'inherit'
+                                }}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* PIPELINE VIEW */}
-                {viewMode === 'pipeline' && <PipelinePage />}
+                {viewMode === 'pipeline' && filter !== 'selection' && <PipelinePage />}
 
                 {/* LIST VIEW */}
-                {viewMode === 'list' && properties.length === 0 && (
+                {viewMode === 'list' && filter !== 'selection' && properties.length === 0 && (
                     <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 30, background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                             <Building2 size={40} style={{ opacity: 0.2 }} />
@@ -265,7 +315,76 @@ export function ListPage() {
                     </div>
                 )}
 
-                {viewMode === 'list' && <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* SELECTION VIEW */}
+                {filter === 'selection' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+                        {selectionItemsByClient.length === 0 ? (
+                            <div className="empty-state" style={{ padding: '60px 0', textAlign: 'center' }}>
+                                <div style={{ width: 80, height: 80, background: 'var(--bg-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--text-muted)' }}>
+                                    <Search size={32} />
+                                </div>
+                                <div className="font-oswald" style={{ fontSize: 20, fontWeight: 300, marginBottom: 8 }}>Нет подобранных объектов</div>
+                                <div style={{ color: 'var(--text-muted)', marginBottom: 24 }}>Создайте новый подбор или импортируйте через расширение</div>
+                                <button className="card-clickable" onClick={() => navigate('/selection/new')} style={{ padding: '12px 24px', borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 13, margin: '0 auto' }}>Создать подбор</button>
+                            </div>
+                        ) : (
+                            selectionItemsByClient.map(group => (
+                                <div key={group.clientId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <User size={16} /> {group.clientName}
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        {group.items.map(item => (
+                                            <div key={item.id} className="card" style={{ 
+                                                padding: 20, borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)'
+                                            }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                                                        <MapPin size={18} color="var(--primary)" style={{ marginTop: 2, flexShrink: 0 }} />
+                                                        <div>
+                                                            <div style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{item.address}</div>
+                                                            {item.notes && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, whiteSpace: 'pre-wrap' }}>{item.notes}</div>}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: 18, fontWeight: 300, color: 'var(--primary)', fontFamily: "'Oswald', sans-serif" }}>
+                                                        {item.price ? formatNumber(item.price) + ' ₽' : '—'}
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.03)' }}>
+                                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                                        {item.contact_name && (
+                                                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                                Контакт: <span style={{ color: 'var(--text)', fontWeight: 450 }}>{item.contact_name}</span>
+                                                            </div>
+                                                        )}
+                                                        {item.contact_phone && (
+                                                            <a href={`tel:+${stripPhone(item.contact_phone)}`} style={{ 
+                                                                display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--primary)', textDecoration: 'none' 
+                                                            }}>
+                                                                <Phone size={12} /> {formatPhone(item.contact_phone)}
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: 8 }}>
+                                                        <button className="icon-btn-edit" onClick={() => navigate(`/selection/${item.id}/edit`)} title="Редактировать">
+                                                            <Pencil size={15} />
+                                                        </button>
+                                                        <button className="icon-btn-delete" onClick={() => handleDeleteSelection(item.id)} title="Удалить" style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8 }}>
+                                                            <Trash2 size={15} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                )}
+
+                {viewMode === 'list' && filter !== 'selection' && <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {properties.map(prop => {
                         const status = prop.status || 'active';
                         const isSelected = selectedIds.includes(prop.id);
@@ -425,7 +544,7 @@ export function ListPage() {
                 </div>}
 
                 {/* PAGINATION — only in list mode */}
-                {viewMode === 'list' && totalPages > 1 && (
+                {viewMode === 'list' && filter !== 'selection' && totalPages > 1 && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 32 }}>
                         <button
                             className="card-clickable"

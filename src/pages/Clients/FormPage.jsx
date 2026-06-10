@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { FormCard } from '../../components/FormCard';
@@ -15,6 +15,7 @@ export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const { id } = useParams();
+    const [searchParams] = useSearchParams();
     const existing = id ? state.clients.find(c => c.id === id) : null;
     
     const formatPhones = (phones) => (phones || []).map(p => formatPhone(p, true));
@@ -57,8 +58,7 @@ export function FormPage() {
             navigate(`/clients/${id}`);
         } else {
             dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
-            const params = new URLSearchParams(window.location.search);
-            const returnTo = params.get('returnTo');
+            const returnTo = searchParams.get('returnTo');
             if (returnTo) navigate(returnTo);
             else navigate('/clients');
         }

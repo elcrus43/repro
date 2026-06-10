@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString } from '../../utils/format';
@@ -30,10 +30,10 @@ export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const { toast } = useToastContext();
-    const params = new URLSearchParams(window.location.search);
-    const prePropId = params.get('propertyId') || params.get('property_id');
-    const preClientId = params.get('clientId') || params.get('client_id');
-    const editId = params.get('id');
+    const [searchParams] = useSearchParams();
+    const prePropId = searchParams.get('propertyId') || searchParams.get('property_id');
+    const preClientId = searchParams.get('clientId') || searchParams.get('client_id');
+    const editId = searchParams.get('id');
 
     const existingShowing = editId ? state.showings.find(s => s.id === editId) : null;
 

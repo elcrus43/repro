@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, getEventStatusLabel } from '../../utils/format';
-import { Trash, Pencil, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle2, AlertCircle, Plus, ChevronLeft, ChevronRight, Building2 } from 'lucide-react';
+import { Trash, Pencil, Calendar as CalendarIcon, Clock, MapPin, Users, CheckCircle2, AlertCircle, Plus, ChevronLeft, ChevronRight, Building2, History } from 'lucide-react';
 
 export function ListPage() {
     const { state, dispatch } = useApp();

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPrice, getLevelLabel } from '../../utils/matching';
@@ -14,9 +14,9 @@ export function MatchesPage() {
     const navigate = useNavigate();
     const user = state.currentUser;
     const [filter, setFilter] = useState('all');
-    const params = new URLSearchParams(window.location.search);
-    const propFilter = params.get('property');
-    const reqFilter = params.get('request');
+    const [searchParams] = useSearchParams();
+    const propFilter = searchParams.get('property');
+    const reqFilter = searchParams.get('request');
 
     const matches = state.matches
         .filter(m => {

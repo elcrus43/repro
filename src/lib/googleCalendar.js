@@ -16,6 +16,23 @@ const EDGE_FN_URL  = `${SUPABASE_URL}/functions/v1/google-calendar-token`;
 // Redirect URI must match what's registered in Google Cloud Console
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-calendar-token/callback`;
 
+async function fetchWithTimeout(url, options = {}) {
+    const { timeout = 10000 } = options; // 10s default timeout
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+        const res = await fetch(url, { ...options, signal: controller.signal });
+        clearTimeout(timer);
+        return res;
+    } catch (err) {
+        clearTimeout(timer);
+        if (err.name === 'AbortError') {
+            throw new Error('Превышено время ожидания ответа сервера (10с)');
+        }
+        throw err;
+    }
+}
+
 // localStorage keys
 const STORAGE_ACCESS_TOKEN = 'gcal_access_token';
 const STORAGE_EXPIRY       = 'gcal_token_expiry';
@@ -113,7 +130,7 @@ async function refreshViaEdgeFunction() {
                 return false;
             }
 
-            const res = await fetch(`${EDGE_FN_URL}/refresh`, {
+            const res = await fetchWithTimeout(`${EDGE_FN_URL}/refresh`, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${supabaseAuthToken}`,
@@ -191,7 +208,7 @@ export async function connectCalendar() {
 
                         try {
                             // Exchange code for tokens via Edge Function (server-side)
-                            const res = await fetch(`${EDGE_FN_URL}/exchange`, {
+                            const res = await fetchWithTimeout(`${EDGE_FN_URL}/exchange`, {
                                 method: 'POST',
                                 headers: {
                                     Authorization: `Bearer ${supabaseAuthToken}`,
@@ -249,7 +266,7 @@ export async function disconnectCalendar() {
 
     if (!supabaseAuthToken) return;
     try {
-        await fetch(`${EDGE_FN_URL}/revoke`, {
+        await fetchWithTimeout(`${EDGE_FN_URL}/revoke`, {
             method: 'DELETE',
             headers: { Authorization: `Bearer ${supabaseAuthToken}` },
         });
@@ -290,7 +307,7 @@ export async function addEventToCalendar({ title, description = '', startDateTim
 
     console.info('[Google Calendar] Creating event:', { title, start: event.start.dateTime });
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
         'https://www.googleapis.com/calendar/v3/calendars/primary/events',
         {
             method: 'POST',
@@ -310,7 +327,7 @@ export async function updateEventInCalendar(eventId, { title, description = '', 
     const token = await getAccessToken();
     const event = buildEvent(title, description, startDateTime, durationMinutes);
 
-    const res = await fetch(
+    const res = await fetchWithTimeout(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
         {
             method: 'PATCH',
@@ -325,7 +342,7 @@ export async function updateEventInCalendar(eventId, { title, description = '', 
 export async function deleteEventFromCalendar(eventId) {
     if (!eventId) return;
     const token = await getAccessToken();
-    const res = await fetch(
+    const res = await fetchWithTimeout(
         `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
         {
             method: 'DELETE',

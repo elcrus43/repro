@@ -90,7 +90,7 @@ export function FormPage() {
                             clients={state.clients}
                             placeholder="Выберите покупателей..."
                         />
-                        {!id && <button type="button" className="btn btn-link btn-sm" onClick={() => navigate('/clients/new?returnTo=' + encodeURIComponent(window.location.pathname + window.location.search))}>+ Создать клиента</button>}
+                        {!id && <button type="button" className="btn btn-link btn-sm" onClick={() => navigate('/clients/new?returnTo=' + encodeURIComponent(window.location.hash.slice(1)))}>+ Создать клиента</button>}
                     </div>
 
                     {/* Property Types */}

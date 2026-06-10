@@ -31,12 +31,22 @@ const EVENT_TYPE_LABELS = {
 
 const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
 
-async function updateGoogleEventId(table, id, eventId) {
+async function updateGoogleEventId(table, item, eventId) {
+  const id = item.id;
+  let dbEventId = eventId;
+  
+  if (table === 'showings' && item.event_type === 'viewing') {
+    const propId = item.property_id;
+    if (propId) {
+      dbEventId = eventId ? `selection_prop_id:${propId}::cal_id:${eventId}` : `selection_prop_id:${propId}`;
+    }
+  }
+
   if (isFirebase) {
     const docRef = doc(db, table, id);
-    await updateDoc(docRef, { google_event_id: eventId });
+    await updateDoc(docRef, { google_event_id: dbEventId });
   } else {
-    await supabase.from(table).update({ google_event_id: eventId }).eq('id', id);
+    await supabase.from(table).update({ google_event_id: dbEventId }).eq('id', id);
   }
 }
 
@@ -72,7 +82,9 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   // Заголовок: "Тип события: Адрес объекта" или "Тип события: дата" если адреса нет
   const eventTypeLabel = EVENT_TYPE_LABELS[item.event_type] || 'Событие';
   const defaultTitle = isShowing
-    ? item._propertyAddress
+    ? item.event_type === 'viewing'
+      ? 'Тип события: Объект подбора'
+      : item._propertyAddress
       ? `${eventTypeLabel}: ${item._propertyAddress}`
       : `${eventTypeLabel}${item.showing_date ? ': ' + new Date(item.showing_date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}`
     : isDeal
@@ -114,7 +126,7 @@ export async function syncWithCalendar(actionType, item, dispatch) {
       // Дата убрана — удаляем событие из Calendar
       console.info('[Google Calendar Sync] Deleting event:', item.google_event_id);
       await deleteEventFromCalendar(item.google_event_id);
-      await updateGoogleEventId(table, item.id, null);
+      await updateGoogleEventId(table, item, null);
       dispatch({ type: updateType, [updateKey]: { ...item, google_event_id: null } });
 
     } else if (item.google_event_id) {
@@ -128,7 +140,7 @@ export async function syncWithCalendar(actionType, item, dispatch) {
       const calEvent = await addEventToCalendar({ title, description, startDateTime: date });
       console.info('[Google Calendar Sync] Event created:', calEvent);
       if (calEvent?.id) {
-        await updateGoogleEventId(table, item.id, calEvent.id);
+        await updateGoogleEventId(table, item, calEvent.id);
         dispatch({ type: updateType, [updateKey]: { ...item, google_event_id: calEvent.id } });
         console.info('[Google Calendar Sync] Event ID saved to database:', calEvent.id);
       }

@@ -71,7 +71,8 @@ export async function loadUserDataFirebase(userId, role) {
 
     const [
       clients, properties, requests, matches,
-      showings, tasks, pricelist, deals, profiles
+      showings, tasks, pricelist, deals, profiles,
+      selectionItems
     ] = await Promise.all([
       isAdmin ? getAll('clients') : getAll('clients', [where('realtor_id', '==', userId)]),
       getAll('properties'),   // все объекты видны всем (для матчинга)
@@ -82,6 +83,7 @@ export async function loadUserDataFirebase(userId, role) {
       getAll('pricelist'),
       isAdmin ? getAll('deals') : getAll('deals', realtorFilter),
       getAll('profiles'),
+      isAdmin ? getAll('selection_items') : getAll('selection_items', realtorFilter),
     ]);
 
     const pendingUsers = isAdmin
@@ -93,6 +95,7 @@ export async function loadUserDataFirebase(userId, role) {
     return {
       clients, properties, requests, matches,
       showings, tasks, pricelist, deals, profiles,
+      selectionItems,
       pendingUsers,
       error: null,
       allFailed: false,
@@ -102,6 +105,7 @@ export async function loadUserDataFirebase(userId, role) {
     return {
       clients: [], properties: [], requests: [], matches: [],
       showings: [], tasks: [], pricelist: [], deals: [], profiles: [],
+      selectionItems: [],
       pendingUsers: [],
       error: err.message,
       allFailed: true,
@@ -141,6 +145,21 @@ export async function syncActionFirebase(action, { onError } = {}) {
 
       case 'DELETE_CLIENT':
         await remove('clients', action.id);
+        break;
+
+      /* ── Подбор ── */
+      case 'ADD_SELECTION_ITEM':
+        await insert('selection_items', action.item);
+        break;
+
+      case 'UPDATE_SELECTION_ITEM': {
+        const { id, ...data } = action.item;
+        await upsert('selection_items', id, data);
+        break;
+      }
+
+      case 'DELETE_SELECTION_ITEM':
+        await remove('selection_items', action.id);
         break;
 
       /* ── Объекты ── */

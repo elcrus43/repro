@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { sanitizeObj } from '../context/supabaseSync'
+import { sanitizeObj, mapShowingFromDb, mapShowingToDb } from '../context/supabaseSync'
 
 describe('sanitizeObj', () => {
   it('converts empty string to null', () => {
@@ -94,5 +94,64 @@ describe('sanitizeObj', () => {
     const original = { ...input }
     sanitizeObj(input)
     expect(input).toEqual(original)
+  })
+})
+
+describe('mapShowingFromDb', () => {
+  it('does nothing for non-viewing event types', () => {
+    const showing = { event_type: 'showing', property_id: 'prop-123', google_event_id: 'g-123' }
+    expect(mapShowingFromDb(showing)).toEqual(showing)
+  })
+
+  it('restores property_id and clears calendar ID if prefixed', () => {
+    const showing = { event_type: 'viewing', property_id: null, google_event_id: 'selection_prop_id:prop-123' }
+    expect(mapShowingFromDb(showing)).toEqual({
+      event_type: 'viewing',
+      property_id: 'prop-123',
+      google_event_id: null
+    })
+  })
+
+  it('restores property_id and keeps calendar ID if both present', () => {
+    const showing = { event_type: 'viewing', property_id: null, google_event_id: 'selection_prop_id:prop-123::cal_id:cal-999' }
+    expect(mapShowingFromDb(showing)).toEqual({
+      event_type: 'viewing',
+      property_id: 'prop-123',
+      google_event_id: 'cal-999'
+    })
+  })
+})
+
+describe('mapShowingToDb', () => {
+  it('does nothing for non-viewing event types', () => {
+    const showing = { event_type: 'showing', property_id: 'prop-123', google_event_id: 'g-123' }
+    expect(mapShowingToDb(showing)).toEqual(showing)
+  })
+
+  it('prefixes google_event_id with selection_prop_id and nullifies property_id', () => {
+    const showing = { event_type: 'viewing', property_id: 'prop-123', google_event_id: null }
+    expect(mapShowingToDb(showing)).toEqual({
+      event_type: 'viewing',
+      property_id: null,
+      google_event_id: 'selection_prop_id:prop-123'
+    })
+  })
+
+  it('preserves calendar ID in prefixed google_event_id', () => {
+    const showing = { event_type: 'viewing', property_id: 'prop-123', google_event_id: 'cal-999' }
+    expect(mapShowingToDb(showing)).toEqual({
+      event_type: 'viewing',
+      property_id: null,
+      google_event_id: 'selection_prop_id:prop-123::cal_id:cal-999'
+    })
+  })
+  
+  it('converts empty string property_id to null', () => {
+    const showing = { event_type: 'showing', property_id: '', google_event_id: 'cal-123' }
+    expect(mapShowingToDb(showing)).toEqual({
+      event_type: 'showing',
+      property_id: null,
+      google_event_id: 'cal-123'
+    })
   })
 })
