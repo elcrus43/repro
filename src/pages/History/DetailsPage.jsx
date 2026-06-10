@@ -26,7 +26,9 @@ export function DetailsPage() {
         );
     }
 
-    const prop = state.properties.find(p => p.id === showing.property_id);
+    const prop = showing.event_type === 'viewing'
+        ? state.selectionItems?.find(p => p.id === showing.property_id)
+        : state.properties.find(p => p.id === showing.property_id);
     const clients = state.clients.filter(c => (showing.client_ids || [showing.client_id]).includes(c.id));
     const clientNames = clients.map(c => c.full_name).join(', ');
     

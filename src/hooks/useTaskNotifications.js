@@ -84,7 +84,9 @@ export function useTaskNotifications() {
 
                     if (isSoon && !notifiedRef.current.has(key)) {
                         notifiedRef.current.add(key);
-                        const prop = (state.properties || []).find(p => p.id === s.property_id);
+                        const prop = s.event_type === 'viewing'
+                            ? (state.selectionItems || []).find(p => p.id === s.property_id)
+                            : (state.properties || []).find(p => p.id === s.property_id);
                         const timeStr = new Date(s.showing_date).toLocaleTimeString('ru-RU', {
                             hour: '2-digit', minute: '2-digit'
                         });
@@ -108,5 +110,5 @@ export function useTaskNotifications() {
         const interval = setInterval(check, 60_000);
         return () => clearInterval(interval);
 
-    }, [user, state.tasks, state.showings, state.properties]);
+    }, [user, state.tasks, state.showings, state.properties, state.selectionItems]);
 }

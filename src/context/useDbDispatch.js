@@ -293,7 +293,9 @@ export function useDbDispatch(state, dispatch, onError) {
       } else if (action.type === 'ADD_SHOWING' || action.type === 'UPDATE_SHOWING') {
         // Обогащаем showing адресом объекта для заголовка события в Calendar
         const sh = enhancedAction.showing;
-        const prop = stateRef.current.properties?.find(p => p.id === sh.property_id);
+        const prop = sh.event_type === 'viewing'
+          ? stateRef.current.selectionItems?.find(p => p.id === sh.property_id)
+          : stateRef.current.properties?.find(p => p.id === sh.property_id);
         const propAddress = prop?.address || prop?.title || null;
         syncWithCalendar(action.type, { ...sh, _propertyAddress: propAddress }, dispatch);
       } else if (action.type === 'ADD_DEAL' || action.type === 'UPDATE_DEAL') {

@@ -163,7 +163,9 @@ export function ListPage() {
                             Требуют подтверждения ({pendingFeedbackShowings.length})
                         </div>
                         {pendingFeedbackShowings.map(s => {
-                            const prop = state.properties.find(p => p.id === s.property_id);
+                            const prop = s.event_type === 'viewing'
+                                ? state.selectionItems?.find(p => p.id === s.property_id)
+                                : state.properties.find(p => p.id === s.property_id);
                             const clients = state.clients.filter(c => (s.client_ids || [s.client_id]).includes(c.id));
                             const clientNames = clients.map(c => c.full_name).join(', ') || 'клиентом';
                             const timeStr = new Date(s.showing_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -304,7 +306,9 @@ export function ListPage() {
                         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-secondary)', opacity: 0.5, fontSize: 13, fontWeight: 300 }}>Нет событий на этот день</div>
                     ) : (
                         showingsOnDate.map(s => {
-                            const prop = state.properties.find(p => p.id === s.property_id);
+                            const prop = s.event_type === 'viewing'
+                                ? state.selectionItems?.find(p => p.id === s.property_id)
+                                : state.properties.find(p => p.id === s.property_id);
                             const clients = state.clients.filter(c => (s.client_ids || [s.client_id]).includes(c.id));
                             const clientNames = clients.map(c => c.full_name).join(', ');
                             const time = new Date(s.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -439,7 +443,9 @@ export function ListPage() {
                         {myShowings
                             .sort((a, b) => new Date(b.showing_date).getTime() - new Date(a.showing_date).getTime())
                             .map(s => {
-                                const prop = state.properties.find(p => p.id === s.property_id);
+                                const prop = s.event_type === 'viewing'
+                                    ? state.selectionItems?.find(p => p.id === s.property_id)
+                                    : state.properties.find(p => p.id === s.property_id);
                                 const clients = state.clients.filter(c => (s.client_ids || [s.client_id]).includes(c.id));
                                 const clientNames = clients.map(c => c.full_name).join(', ');
                                 const d = new Date(s.showing_date);

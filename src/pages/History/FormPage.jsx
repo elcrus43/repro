@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString } from '../../utils/format';
-import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2 } from 'lucide-react';
+import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2, Plus } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 
@@ -56,8 +56,50 @@ export function FormPage() {
     const [newClientName, setNewClientName] = useState('');
     const [newClientPhone, setNewClientPhone] = useState('');
 
+    const [showNewSelection, setShowNewSelection] = useState(false);
+    const [newSelAddress, setNewSelAddress] = useState('');
+    const [newSelPrice, setNewSelPrice] = useState(0);
+    const [newSelContactName, setNewSelContactName] = useState('');
+    const [newSelContactPhone, setNewSelContactPhone] = useState('');
+
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id);
     const allProperties = state.properties.filter(p => p.realtor_id === state.currentUser?.id);
+    const allSelectionItems = (state.selectionItems || []).filter(item => {
+        if (form.client_ids && form.client_ids.length > 0) {
+            return form.client_ids.includes(item.client_id);
+        }
+        return true;
+    });
+
+    function handleCreateSelection() {
+        if (!form.client_ids?.length) {
+            toast.error('Сначала выберите клиента для события');
+            return;
+        }
+        if (!newSelAddress.trim()) {
+            toast.error('Введите адрес объекта');
+            return;
+        }
+        const newId = nanoid();
+        const item = {
+            id: newId,
+            client_id: form.client_ids[0],
+            address: newSelAddress.trim(),
+            price: Number(newSelPrice),
+            contact_name: newSelContactName.trim(),
+            contact_phone: newSelContactPhone.trim(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        dispatch({ type: 'ADD_SELECTION_ITEM', item });
+        setForm(f => ({ ...f, property_id: newId }));
+        setShowNewSelection(false);
+        setNewSelAddress('');
+        setNewSelPrice(0);
+        setNewSelContactName('');
+        setNewSelContactPhone('');
+        toast.success('Подбор создан и выбран');
+    }
 
     function handleCreateClient() {
         if (!newClientName.trim()) { toast.error('Введите имя клиента'); return; }
@@ -173,24 +215,56 @@ export function FormPage() {
                 <form onSubmit={handleSubmit}>
                     <FormCard title="Детали события" icon={<Home size={20} />} description="Выберите объект и тип встречи">
                         <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Объект недвижимости *</label>
-                            <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
-                                <option value="">— Выбрать объект —</option>
-                                {allProperties.map(p => (
-                                    <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Тип события</label>
-                            <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
+                            <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value, property_id: '' })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="showing">Показ</option>
                                 <option value="meeting">Встреча с собственником</option>
                                 <option value="viewing">Подбор</option>
                                 <option value="deposit">Задаток</option>
                                 <option value="deal">Сделка</option>
                             </select>
+                        </div>
+
+                        <div className="form-group">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>
+                                    {form.event_type === 'viewing' ? 'Объект из подбора *' : 'Объект недвижимости *'}
+                                </label>
+                                {form.event_type === 'viewing' && (
+                                    <button type="button" className="card-clickable" onClick={() => setShowNewSelection(v => !v)}
+                                        style={{ 
+                                            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800,
+                                            color: showNewSelection ? '#dc2626' : 'var(--primary)', border: 'none', background: 'transparent', padding: 0
+                                        }}>
+                                        {showNewSelection ? <><X size={14} /> ОТМЕНА</> : <><Plus size={14} /> НОВЫЙ ПОДБОР</>}
+                                    </button>
+                                )}
+                            </div>
+
+                            {showNewSelection ? (
+                                <div className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="Адрес объекта подбора *" value={newSelAddress} onChange={e => setNewSelAddress(e.target.value)} />
+                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} type="number" placeholder="Цена (₽)" value={newSelPrice || ''} onChange={e => setNewSelPrice(Number(e.target.value))} />
+                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="ФИО собственника/агента" value={newSelContactName} onChange={e => setNewSelContactName(e.target.value)} />
+                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="Телефон" value={newSelContactPhone} onChange={e => setNewSelContactPhone(e.target.value)} />
+                                    <button type="button" className="card-clickable" style={{ height: 44, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12 }} onClick={handleCreateSelection}>
+                                        СОЗДАТЬ И ВЫБРАТЬ
+                                    </button>
+                                </div>
+                            ) : (
+                                <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required={form.event_type !== 'viewing'} disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
+                                    <option value="">— Выбрать объект —</option>
+                                    {form.event_type === 'viewing' ? (
+                                        allSelectionItems.map(p => (
+                                            <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                        ))
+                                    ) : (
+                                        allProperties.map(p => (
+                                            <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                        ))
+                                    )}
+                                </select>
+                            )}
                         </div>
                     </FormCard>
 
