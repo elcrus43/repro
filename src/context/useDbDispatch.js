@@ -286,7 +286,7 @@ export function useDbDispatch(state, dispatch, onError) {
       });
     };
 
-    await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
+    const success = await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
 
     /* ── Google Calendar sync ─────────────────────────────────────────── */
     // Sync only if Google Calendar is configured AND the user has an active token.
@@ -321,6 +321,7 @@ export function useDbDispatch(state, dispatch, onError) {
       console.info('[Google Calendar Sync] Skipped — user not connected (token expired or not set)');
     }
 
+    return success;
   }, [dispatch, onError]);
 
   return dbDispatch;

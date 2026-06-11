@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_URL : (process?.env?.VITE_SUPABASE_URL || '');
+const supabaseKey = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_ANON_KEY : (process?.env?.VITE_SUPABASE_ANON_KEY || '');
 
 // Create a standalone Supabase client to avoid circular dependencies
 const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
@@ -21,7 +21,7 @@ export async function logError(error, context = {}) {
         const user = JSON.parse(userStr);
         realtorId = user?.id || null;
       }
-    } catch (e) {}
+    } catch {}
 
     await supabase.from('app_errors').insert({
       realtor_id: realtorId,

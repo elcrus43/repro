@@ -53,6 +53,7 @@ export function FormPage() {
 
     const [form, setForm] = useState(initialForm);
     const [matchingClient, setMatchingClient] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (existing && !form.id) {
@@ -123,85 +124,100 @@ export function FormPage() {
 
     const setF = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         if (!form.address) {
             toast.error('Укажите адрес объекта');
             return;
         }
 
-        // Auto-save contact as client in database if filled
-        const cleanContactPhone = stripPhone(form.contact_phone);
-        if (form.contact_name?.trim() && cleanContactPhone) {
-            const found = state.clients.find(c => {
-                const cleanTarget = stripPhone(c.phone);
-                const cleanPhones = (c.phones || []).map(p => stripPhone(p));
-                return cleanTarget === cleanContactPhone || cleanPhones.includes(cleanContactPhone);
-            });
+        setIsSaving(true);
+        try {
+            // Auto-save contact as client in database if filled
+            const cleanContactPhone = stripPhone(form.contact_phone);
+            if (form.contact_name?.trim() && cleanContactPhone) {
+                const found = state.clients.find(c => {
+                    const cleanTarget = stripPhone(c.phone);
+                    const cleanPhones = (c.phones || []).map(p => stripPhone(p));
+                    return cleanTarget === cleanContactPhone || cleanPhones.includes(cleanContactPhone);
+                });
 
-            const selectedType = form.contact_client_type || 'seller';
+                const selectedType = form.contact_client_type || 'seller';
 
-            if (!found) {
-                // Create new client
-                const newContactClient = {
+                if (!found) {
+                    // Create new client
+                    const newContactClient = {
+                        id: nanoid(),
+                        full_name: form.contact_name.trim(),
+                        phone: cleanContactPhone,
+                        client_types: [selectedType],
+                        status: 'active',
+                        notes: `Создан автоматически из подбора объекта по адресу: ${form.address}`,
+                        realtor_id: state.currentUser?.id,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                    await dispatch({ type: 'ADD_CLIENT', client: newContactClient });
+                } else {
+                    // Update client types if not already present
+                    if (!found.client_types?.includes(selectedType)) {
+                        await dispatch({
+                            type: 'UPDATE_CLIENT',
+                            client: {
+                                ...found,
+                                client_types: [...(found.client_types || []), selectedType],
+                                updated_at: new Date().toISOString()
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Destructure to prevent contact_client_type from being stored in selection_items database
+            const { contact_client_type, ...cleanForm } = form;
+
+            let success = false;
+            if (id) {
+                success = await dispatch({ type: 'UPDATE_SELECTION_ITEM', item: {
+                    ...cleanForm,
+                    updated_at: new Date().toISOString()
+                } });
+            } else {
+                const newItem = {
+                    ...cleanForm,
                     id: nanoid(),
-                    full_name: form.contact_name.trim(),
-                    phone: cleanContactPhone,
-                    client_types: [selectedType],
-                    status: 'active',
-                    notes: `Создан автоматически из подбора объекта по адресу: ${form.address}`,
                     realtor_id: state.currentUser?.id,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 };
-                dispatch({ type: 'ADD_CLIENT', client: newContactClient });
-            } else {
-                // Update client types if not already present
-                if (!found.client_types?.includes(selectedType)) {
-                    dispatch({
-                        type: 'UPDATE_CLIENT',
-                        client: {
-                            ...found,
-                            client_types: [...(found.client_types || []), selectedType],
-                            updated_at: new Date().toISOString()
-                        }
-                    });
+                success = await dispatch({ type: 'ADD_SELECTION_ITEM', item: newItem });
+            }
+
+            if (success !== false) {
+                if (id) {
+                    toast.success('Подбор обновлен');
+                } else {
+                    toast.success('Объект добавлен в подбор');
+                }
+
+                // Safer navigation to prevent being stuck on a blank history tab
+                const returnTo = searchParams.get('returnTo');
+                if (returnTo) {
+                    navigate(returnTo);
+                } else {
+                    const hasHistory = window.history.state && window.history.state.idx > 0;
+                    if (hasHistory) {
+                        navigate(-1);
+                    } else {
+                        navigate('/properties?filter=selection');
+                    }
                 }
             }
-        }
-
-        // Destructure to prevent contact_client_type from being stored in selection_items database
-        const { contact_client_type, ...cleanForm } = form;
-
-        if (id) {
-            dispatch({ type: 'UPDATE_SELECTION_ITEM', item: {
-                ...cleanForm,
-                updated_at: new Date().toISOString()
-            } });
-            toast.success('Подбор обновлен');
-        } else {
-            const newItem = {
-                ...cleanForm,
-                id: nanoid(),
-                realtor_id: state.currentUser?.id,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            };
-            dispatch({ type: 'ADD_SELECTION_ITEM', item: newItem });
-            toast.success('Объект добавлен в подбор');
-        }
-
-        // Safer navigation to prevent being stuck on a blank history tab
-        const returnTo = searchParams.get('returnTo');
-        if (returnTo) {
-            navigate(returnTo);
-        } else {
-            const hasHistory = window.history.state && window.history.state.idx > 0;
-            if (hasHistory) {
-                navigate(-1);
-            } else {
-                navigate('/properties?filter=selection');
-            }
+        } catch (err) {
+            console.error('Error during selection save:', err);
+            toast.error('Ошибка сохранения подбора');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -450,13 +466,16 @@ export function FormPage() {
                 <button
                     type="submit"
                     className="btn btn-primary"
+                    disabled={isSaving}
                     style={{ 
                         height: 52, borderRadius: 16, fontSize: 15, fontWeight: 300, letterSpacing: '0.05em',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: '0 8px 24px rgba(0, 82, 255, 0.25)', marginTop: 8
+                        boxShadow: '0 8px 24px rgba(0, 82, 255, 0.25)', marginTop: 8,
+                        opacity: isSaving ? 0.7 : 1,
+                        cursor: isSaving ? 'not-allowed' : 'pointer'
                     }}
                 >
-                    <Check size={18} strokeWidth={3} /> {id ? 'Сохранить изменения' : 'Добавить в подбор'}
+                    <Check size={18} strokeWidth={3} /> {isSaving ? 'Сохранение...' : (id ? 'Сохранить изменения' : 'Добавить в подбор')}
                 </button>
             </form>
         </div>

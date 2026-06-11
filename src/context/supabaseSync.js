@@ -322,7 +322,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
     if (ADMIN_ONLY_ACTIONS.includes(action.type)) {
       if (!currentUser || currentUser.role !== 'admin') {
         handleError(`Доступ запрещён: действие ${action.type} требует прав администратора`);
-        return; // Не выполняем действие
+        return false; // Не выполняем действие
       }
     }
 
@@ -644,17 +644,19 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             console.error('[Supabase ADD_SHOWING retry error]', retryResult.error);
             handleError(`Ошибка сохранения события: ${retryResult.error.message}`);
             if (typeof onRollback === 'function') onRollback(action);
+            return false;
           }
         } else if (results[0]?.error) {
           console.error('[Supabase ADD_SHOWING error]', results[0].error);
           handleError(`Ошибка сохранения события: ${results[0].error.message}`);
           if (typeof onRollback === 'function') onRollback(action);
+          return false;
         }
         
         results.slice(1).forEach((res, i) => {
           if (res?.error) console.error(`[Supabase ADD_SHOWING sub-query ${i+1} error]`, res.error);
         });
-        return;
+        return true;
       }
 
       case 'UPDATE_SHOWING': {
@@ -685,13 +687,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             console.error('[Supabase UPDATE_SHOWING retry error]', retryResult.error);
             handleError(`Ошибка обновления события: ${retryResult.error.message}`);
             if (typeof onRollback === 'function') onRollback(action);
+            return false;
           }
         } else if (results[0]?.error) {
           console.error('[Supabase UPDATE_SHOWING error]', results[0].error);
           handleError(`Ошибка обновления события: ${results[0].error.message}`);
           if (typeof onRollback === 'function') onRollback(action);
+          return false;
         }
-        return;
+        return true;
       }
 
       case 'DELETE_SHOWING':
@@ -838,6 +842,24 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         });
       }).catch(e => console.error('Failed to load logger:', e));
 
+      // Проверка на истечение сессии/ошибку токена
+      const isAuthError = 
+        result.error.code === 'PGRST301' || 
+        result.error.code === '401' || 
+        result.error.message?.toLowerCase().includes('jwt') || 
+        result.error.message?.toLowerCase().includes('token') || 
+        result.error.message?.toLowerCase().includes('invalid claim');
+
+      if (isAuthError) {
+        handleError('Сессия авторизации истекла. Пожалуйста, войдите в систему заново.');
+        // Автоматический выход из системы для сброса состояния
+        supabase.auth.signOut().catch(err => console.error('Failed to sign out:', err));
+        if (typeof onRollback === 'function') {
+          onRollback(action);
+        }
+        return false;
+      }
+
       // Check for missing column error
       const missingColumnMatch = result.error.message.match(/Could not find the '(\w+)' column/);
 
@@ -862,11 +884,16 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       } else {
         // Прочие ошибки
         handleError(`Ошибка сохранения: ${result.error.message}`);
-        if (typeof onRollback === 'function') {
-          onRollback(action);
-        }
       }
+
+      // Всегда вызываем rollback при ошибках сохранения в БД
+      if (typeof onRollback === 'function') {
+        onRollback(action);
+      }
+      return false;
     }
+
+    return true;
 
   } catch (err) {
     console.error('[Supabase Sync Critical Error]', err);
@@ -877,6 +904,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
     if (typeof onRollback === 'function') {
       onRollback(rawAction);
     }
+    return false;
   }
 }
 
