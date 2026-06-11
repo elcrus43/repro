@@ -304,7 +304,13 @@ export function clearCachedData(userId) {
  * @param {function} onRollback   — (action: object) => void   — откат optimistic update
  */
 export async function syncAction(rawAction, { onError, onRollback, currentUser } = {}) {
-  const handleError = onError ?? ((msg) => console.error('[Supabase]', msg));
+  const handleError = (msg) => {
+    if (onError) onError(msg);
+    else console.error('[Supabase]', msg);
+    import('../utils/logger').then(({ logError }) => {
+      logError(msg, { actionType: rawAction?.type, action: rawAction });
+    }).catch(e => console.error('Failed to load logger:', e));
+  };
 
   try {
     const action = sanitizeObj(rawAction);
@@ -822,6 +828,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
     /* ── Обработка финальной ошибки ──────────────────────────────────── */
     if (result?.error) {
       console.error('[Supabase Sync Error]', action.type, result.error);
+      import('../utils/logger').then(({ logError }) => {
+        logError(new Error(`Supabase Sync Error: ${result.error.message}`), { 
+          actionType: action.type, 
+          code: result.error.code, 
+          hint: result.error.hint,
+          details: result.error.details,
+          action 
+        });
+      }).catch(e => console.error('Failed to load logger:', e));
 
       // Check for missing column error
       const missingColumnMatch = result.error.message.match(/Could not find the '(\w+)' column/);
@@ -854,7 +869,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
     }
 
   } catch (err) {
-    console.error('[Supabase Critical Error]', rawAction.type, err);
+    console.error('[Supabase Sync Critical Error]', err);
+    import('../utils/logger').then(({ logError }) => {
+      logError(err, { actionType: rawAction?.type, action: rawAction, isCritical: true });
+    }).catch(e => console.error('Failed to load logger:', e));
     handleError('Критическая ошибка соединения с базой данных. Проверьте подключение к интернету.');
     if (typeof onRollback === 'function') {
       onRollback(rawAction);

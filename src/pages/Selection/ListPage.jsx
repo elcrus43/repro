@@ -107,26 +107,45 @@ export function ListPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                 {group.items.map(item => (
                                     <div key={item.id} className="card" style={{ 
-                                        display: 'flex', gap: 16, padding: '16px 52px 16px 16px', alignItems: 'center', 
+                                        display: 'flex', gap: 16, padding: '16px 60px 16px 16px', alignItems: 'center', 
                                         border: '1.5px solid rgba(59,130,246,0.12)', 
                                         boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
                                         background: 'var(--surface)', borderRadius: 24,
                                         position: 'relative'
                                     }}>
-                                        {/* DELETE BUTTON (Absolutely Positioned) */}
-                                        <button 
-                                            className="icon-btn-delete" 
-                                            onClick={() => handleDelete(item.id)} 
-                                            title="Удалить"
-                                            style={{
-                                                position: 'absolute',
-                                                top: '16px',
-                                                right: '16px',
-                                                zIndex: 10
-                                            }}
-                                        >
-                                            <Trash2 size={13} />
-                                        </button>
+                                        {/* ACTION BUTTONS (Absolutely Positioned Column on the right) */}
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: '12px',
+                                            right: '12px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '8px',
+                                            zIndex: 10
+                                        }}>
+                                            <button 
+                                                className="icon-btn-delete" 
+                                                onClick={() => handleDelete(item.id)} 
+                                                title="Удалить"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                            <button 
+                                                className="icon-btn-edit" 
+                                                onClick={() => navigate(`/selection/${item.id}/edit`)} 
+                                                title="Редактировать"
+                                            >
+                                                <Pencil size={13} />
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                className="icon-btn-calendar" 
+                                                onClick={() => navigate(`/history/new?event_type=viewing&property_id=${item.id}&client_ids=${(item.client_ids || []).join(',')}`)} 
+                                                title="Создать событие в календарь"
+                                            >
+                                                <Calendar size={13} />
+                                            </button>
+                                        </div>
 
                                         {/* CONTENT WRAPPER */}
                                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -214,19 +233,6 @@ export function ListPage() {
                                                             <Phone size={10} /> {formatPhone(item.contact_phone)}
                                                         </a>
                                                     )}
-                                                </div>
-                                                <div style={{ display: 'flex', gap: 6 }}>
-                                                    <button 
-                                                        type="button"
-                                                        className="icon-btn-calendar" 
-                                                        onClick={() => navigate(`/history/new?event_type=viewing&property_id=${item.id}&client_ids=${(item.client_ids || []).join(',')}`)} 
-                                                        title="Создать событие в календарь"
-                                                    >
-                                                        <Calendar size={13} />
-                                                    </button>
-                                                    <button className="icon-btn-edit" onClick={() => navigate(`/selection/${item.id}/edit`)} title="Редактировать">
-                                                        <Pencil size={13} />
-                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

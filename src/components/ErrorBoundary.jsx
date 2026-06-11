@@ -26,8 +26,14 @@ export class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     this.setState({ errorInfo });
-    // Здесь можно отправить ошибку в Sentry / LogRocket / etc.
     console.error('[ErrorBoundary] Caught error:', error, errorInfo);
+    // Log error to Supabase via logger
+    import('../utils/logger').then(({ logError }) => {
+      logError(error, {
+        type: 'ErrorBoundary',
+        componentStack: errorInfo?.componentStack
+      });
+    }).catch(err => console.error('Failed to log error from ErrorBoundary:', err));
   }
 
   handleReset = () => {
