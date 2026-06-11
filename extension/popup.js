@@ -28,7 +28,7 @@ async function runImport(targetRoute) {
         const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(data))));
         
         // Use HashRouter compatible path format: `#/route?import=[data]`
-        const urlWithData = `https://realtor-match.vercel.app/#/${targetRoute}?import=${encodedData}`;
+        const urlWithData = `https://realtor-match.vercel.app/#/${targetRoute}?import=${encodeURIComponent(encodedData)}`;
         
         // Open CRM in a new tab
         await chrome.tabs.create({ url: urlWithData });

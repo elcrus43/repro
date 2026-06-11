@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
-import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2 } from 'lucide-react';
+import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -88,24 +88,30 @@ export function ListPage() {
         const items = state.selectionItems || [];
         const filtered = items.filter(item => {
             if (!search) return true;
-            const client = state.clients.find(c => c.id === item.client_id);
+            const itemClientIds = item.client_ids && item.client_ids.length > 0 ? item.client_ids : (item.client_id ? [item.client_id] : []);
+            const matchingClients = state.clients.filter(c => itemClientIds.includes(c.id));
+            const clientMatch = matchingClients.some(c => (c.full_name || '').toLowerCase().includes(search.toLowerCase()));
             return (item.address || '').toLowerCase().includes(search.toLowerCase()) ||
-                (client?.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
+                clientMatch ||
                 (item.contact_name || '').toLowerCase().includes(search.toLowerCase());
         });
 
         // Group by client_id
         const groups = {};
         filtered.forEach(item => {
-            const cId = item.client_id || 'unassigned';
-            if (!groups[cId]) {
-                const client = state.clients.find(c => c.id === cId);
-                groups[cId] = {
-                    clientName: client?.full_name || 'Без клиента',
-                    items: []
-                };
-            }
-            groups[cId].items.push(item);
+            const itemClientIds = item.client_ids && item.client_ids.length > 0 ? item.client_ids : (item.client_id ? [item.client_id] : ['unassigned']);
+            itemClientIds.forEach(cId => {
+                if (!groups[cId]) {
+                    const client = state.clients.find(c => c.id === cId);
+                    groups[cId] = {
+                        clientName: client?.full_name || 'Без клиента',
+                        items: []
+                    };
+                }
+                if (!groups[cId].items.some(x => x.id === item.id)) {
+                    groups[cId].items.push(item);
+                }
+            });
         });
 
         return Object.entries(groups).map(([clientId, group]) => ({
@@ -336,43 +342,127 @@ export function ListPage() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                         {group.items.map(item => (
                                             <div key={item.id} className="card" style={{ 
-                                                padding: 20, borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)'
+                                                display: 'flex', gap: 16, padding: '16px 52px 16px 16px', alignItems: 'center', 
+                                                border: '1.5px solid rgba(59,130,246,0.12)', 
+                                                boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
+                                                background: 'var(--surface)', borderRadius: 24,
+                                                position: 'relative'
                                             }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                                                    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-                                                        <MapPin size={18} color="var(--primary)" style={{ marginTop: 2, flexShrink: 0 }} />
-                                                        <div>
-                                                            <div style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{item.address}</div>
-                                                            {item.notes && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4, whiteSpace: 'pre-wrap' }}>{item.notes}</div>}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ fontSize: 18, fontWeight: 300, color: 'var(--primary)', fontFamily: "'Oswald', sans-serif" }}>
-                                                        {item.price ? formatNumber(item.price) + ' ₽' : '—'}
-                                                    </div>
-                                                </div>
+                                                {/* DELETE BUTTON (Absolutely Positioned) */}
+                                                <button 
+                                                    className="icon-btn-delete" 
+                                                    onClick={() => handleDeleteSelection(item.id)} 
+                                                    title="Удалить"
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '16px',
+                                                        right: '16px',
+                                                        zIndex: 10
+                                                    }}
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
 
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(0,0,0,0.03)' }}>
-                                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                                                        {item.contact_name && (
-                                                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                                                Контакт: <span style={{ color: 'var(--text)', fontWeight: 450 }}>{item.contact_name}</span>
-                                                            </div>
-                                                        )}
-                                                        {item.contact_phone && (
-                                                            <a href={`tel:+${stripPhone(item.contact_phone)}`} style={{ 
-                                                                display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--primary)', textDecoration: 'none' 
-                                                            }}>
-                                                                <Phone size={12} /> {formatPhone(item.contact_phone)}
+                                                {/* CONTENT WRAPPER */}
+                                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                    {/* Price and Price per sqm */}
+                                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
+                                                            {item.price ? formatNumber(item.price) + ' ₽' : '—'}
+                                                        </span>
+                                                        {item.price && item.area_total ? (
+                                                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                                                {formatNumber(Math.round(item.price / item.area_total))} ₽/м²
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+
+                                                    {/* Address with MapPin */}
+                                                    <div style={{ 
+                                                        fontSize: 13, color: 'var(--text)',
+                                                        display: 'flex', alignItems: 'center', gap: 6,
+                                                        fontWeight: 450
+                                                    }}>
+                                                        <MapPin size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                                                            {item.city ? (item.address ? `${item.city}, ${item.address}` : item.city) : (item.address || '—')}
+                                                        </span>
+                                                        {item.link && (
+                                                            <a 
+                                                                href={item.link} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                onClick={e => e.stopPropagation()}
+                                                                style={{ 
+                                                                    display: 'inline-flex', alignItems: 'center', gap: 4, 
+                                                                    fontSize: 11, color: 'var(--primary)', textDecoration: 'none',
+                                                                    background: 'var(--primary-light)', padding: '2px 8px', borderRadius: 10,
+                                                                    fontWeight: 500, flexShrink: 0
+                                                                }}
+                                                            >
+                                                                Ссылка
                                                             </a>
                                                         )}
                                                     </div>
-                                                    <div style={{ display: 'flex', gap: 8 }}>
-                                                        <button className="icon-btn-edit" onClick={() => navigate(`/selection/${item.id}/edit`)} title="Редактировать">
-                                                            <Pencil size={15} />
-                                                        </button>
-                                                        <button className="icon-btn-delete" onClick={() => handleDeleteSelection(item.id)} title="Удалить" style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, borderRadius: 8 }}>
-                                                            <Trash2 size={15} />
-                                                        </button>
+
+                                                    {/* Tech details line */}
+                                                    {(() => {
+                                                        const parts = [];
+                                                        if (item.rooms !== undefined && item.rooms !== null) {
+                                                            parts.push(item.rooms === 0 ? 'Студия' : `${item.rooms}к`);
+                                                        }
+                                                        if (item.area_total) {
+                                                            parts.push(`${item.area_total} м²`);
+                                                        }
+                                                        if (item.floor || item.floors_total) {
+                                                            if (item.floor && item.floors_total) {
+                                                                parts.push(`${item.floor}/${item.floors_total} эт.`);
+                                                            } else if (item.floor) {
+                                                                parts.push(`${item.floor} эт.`);
+                                                            } else {
+                                                                parts.push(`/${item.floors_total} эт.`);
+                                                            }
+                                                        }
+                                                        if (item.property_type) {
+                                                            parts.push(PROPERTY_TYPES[item.property_type] || item.property_type);
+                                                        }
+                                                        if (parts.length === 0) return null;
+                                                        return (
+                                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.85 }}>
+                                                                {parts.join(' · ')}
+                                                            </div>
+                                                        );
+                                                    })()}
+
+                                                    {/* Contact Info / Bottom row */}
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 6, borderTop: '1px solid rgba(0,0,0,0.03)' }}>
+                                                        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                                            {item.contact_name && (
+                                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                                    Контакт: <span style={{ color: 'var(--text)', fontWeight: 450 }}>{item.contact_name}</span>
+                                                                </div>
+                                                            )}
+                                                            {item.contact_phone && (
+                                                                <a href={`tel:+${stripPhone(item.contact_phone)}`} style={{ 
+                                                                    display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--primary)', textDecoration: 'none' 
+                                                                }}>
+                                                                    <Phone size={10} /> {formatPhone(item.contact_phone)}
+                                                                </a>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: 6 }}>
+                                                            <button 
+                                                                type="button"
+                                                                className="icon-btn-calendar" 
+                                                                onClick={() => navigate(`/history/new?event_type=viewing&property_id=${item.id}&client_ids=${(item.client_ids || []).join(',')}`)} 
+                                                                title="Создать событие в календарь"
+                                                            >
+                                                                <Calendar size={13} />
+                                                            </button>
+                                                            <button className="icon-btn-edit" onClick={() => navigate(`/selection/${item.id}/edit`)} title="Редактировать">
+                                                                <Pencil size={13} />
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -470,11 +560,9 @@ export function ListPage() {
                                 })()}
 
                                 {/* CONTENT WRAPPER */}
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <span className="font-oswald" style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
-                                        {formatNumber(prop.price)} <span style={{ fontSize: 13, opacity: 0.6 }}>₽</span>
-                                    </span>
-                                    <div style={{ fontSize: 14, fontWeight: 400, color: 'var(--text)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {/* Tech details line */}
+                                    <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                         {['apartment', 'room', 'house'].includes(prop.property_type) && (
                                             <>
                                                 <span>
@@ -488,11 +576,48 @@ export function ListPage() {
                                             </>
                                         )}
                                         <span>{prop.area_total} м²</span>
+                                        {prop.floor || prop.floors_total ? (
+                                            <>
+                                                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                <span>
+                                                    {prop.floor && prop.floors_total 
+                                                        ? `${prop.floor}/${prop.floors_total} эт.` 
+                                                        : prop.floor 
+                                                            ? `${prop.floor} эт.` 
+                                                            : `/${prop.floors_total} эт.`}
+                                                </span>
+                                            </>
+                                        ) : null}
                                         <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                         <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{PROPERTY_TYPES[prop.property_type]}</span>
                                     </div>
+
+                                    {/* Адрес */}
+                                    <div style={{ 
+                                        fontSize: 13, color: 'var(--text)',
+                                        display: 'flex', alignItems: 'center', gap: 4,
+                                        fontWeight: 450
+                                    }}>
+                                        <MapPin size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {prop.city ? (prop.address ? `${prop.city}, ${prop.address}` : prop.city) : (prop.address || '—')}
+                                        </span>
+                                    </div>
+
+                                    {/* Цена */}
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
+                                            {formatNumber(prop.price)} <span style={{ fontSize: 12, opacity: 0.6 }}>₽</span>
+                                        </span>
+                                        {prop.price && prop.area_total ? (
+                                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                                {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
+                                            </span>
+                                        ) : null}
+                                    </div>
+
                                     {/* Бейджи: Цель + Статус */}
-                                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                         {(() => {
                                             const dt = prop.deal_type || 'sale';
                                             const goalMap = {
@@ -523,17 +648,6 @@ export function ListPage() {
                                             border: `1px solid ${status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
                                         }}>
                                             {statusLabels[status] || status}
-                                        </span>
-                                    </div>
-                                    {/* Адрес */}
-                                    <div style={{ 
-                                        fontSize: 12, color: 'var(--text-secondary)', marginTop: 8,
-                                        display: 'flex', alignItems: 'center', gap: 4,
-                                        fontWeight: 200, opacity: 0.8
-                                    }}>
-                                        <MapPin size={12} style={{ marginTop: 1, flexShrink: 0, color: 'var(--primary)' }} />
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {prop.address || prop.city}
                                         </span>
                                     </div>
 

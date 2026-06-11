@@ -1,24 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString } from '../../utils/format';
-import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2, Plus } from 'lucide-react';
+import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString, stripPhone } from '../../utils/format';
+import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2, Plus, Ruler, Image, Building2 } from 'lucide-react';
+import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
+import { compressImage, readClipboardAndCompress } from '../../utils/image';
 
 function FormCard({ title, children, description }) {
+    const hasHeader = title || description;
     return (
         <div className="card fade-in" style={{ 
             padding: '20px', marginBottom: 16, border: 'none', 
             boxShadow: '0 4px 16px rgba(0,0,0,0.03)', borderRadius: 20,
             background: 'var(--surface)'
         }}>
-            <div style={{ marginBottom: 16 }}>
-                <div className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
-                {description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{description}</div>}
-            </div>
+            {hasHeader && (
+                <div style={{ marginBottom: 16 }}>
+                    {title && <div className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>}
+                    {description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{description}</div>}
+                </div>
+            )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {children}
             </div>
@@ -33,6 +38,9 @@ export function FormPage() {
     const [searchParams] = useSearchParams();
     const prePropId = searchParams.get('propertyId') || searchParams.get('property_id');
     const preClientId = searchParams.get('clientId') || searchParams.get('client_id');
+    const preClientIds = searchParams.get('client_ids')
+        ? searchParams.get('client_ids').split(',')
+        : (preClientId ? [preClientId] : []);
     const editId = searchParams.get('id');
 
     const existingShowing = editId ? state.showings.find(s => s.id === editId) : null;
@@ -43,13 +51,13 @@ export function FormPage() {
         showing_date: existingShowing.showing_date ? toLocalISOString(existingShowing.showing_date) : '',
     } : {
         property_id: prePropId || '',
-        client_id: preClientId || '',
-        client_ids: preClientId ? [preClientId] : [],
+        client_id: preClientIds[0] || '',
+        client_ids: preClientIds,
         showing_date: '',
         status: 'planned',
         client_feedback: '',
         feedback_comment: '',
-        event_type: 'showing',
+        event_type: searchParams.get('event_type') || 'showing',
         realtor_id: state.currentUser?.id
     });
 
@@ -62,12 +70,42 @@ export function FormPage() {
     const [newSelPrice, setNewSelPrice] = useState(0);
     const [newSelContactName, setNewSelContactName] = useState('');
     const [newSelContactPhone, setNewSelContactPhone] = useState('');
+    const [newSelContactType, setNewSelContactType] = useState('seller');
+    const [newSelMatchingClient, setNewSelMatchingClient] = useState(null);
+    const [newSelRooms, setNewSelRooms] = useState(1);
+    const [newSelAreaTotal, setNewSelAreaTotal] = useState('');
+    const [newSelFloor, setNewSelFloor] = useState('');
+    const [newSelFloorsTotal, setNewSelFloorsTotal] = useState('');
+    const [newSelPropertyType, setNewSelPropertyType] = useState('apartment');
+    const [newSelCity, setNewSelCity] = useState('');
+    const [newSelImage, setNewSelImage] = useState('');
+    const [newSelLink, setNewSelLink] = useState('');
+
+    useEffect(() => {
+        const clean = stripPhone(newSelContactPhone);
+        if (clean && clean.length >= 10) {
+            const found = state.clients.find(c => {
+                const cleanTarget = stripPhone(c.phone);
+                const cleanPhones = (c.phones || []).map(p => stripPhone(p));
+                return cleanTarget === clean || cleanPhones.includes(clean);
+            });
+            setNewSelMatchingClient(found || null);
+            if (found) {
+                if (!newSelContactName) {
+                    setNewSelContactName(found.full_name);
+                    setNewSelContactType(found.client_types?.[0] || 'seller');
+                }
+            }
+        } else {
+            setNewSelMatchingClient(null);
+        }
+    }, [newSelContactPhone, state.clients]);
 
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id);
     const allProperties = state.properties.filter(p => p.realtor_id === state.currentUser?.id);
     const allSelectionItems = (state.selectionItems || []).filter(item => {
         if (form.client_ids && form.client_ids.length > 0) {
-            return form.client_ids.includes(item.client_id);
+            return form.client_ids.includes(item.client_id) || (item.client_ids || []).some(id => form.client_ids.includes(id));
         }
         return true;
     });
@@ -81,14 +119,61 @@ export function FormPage() {
             toast.error('Введите адрес объекта');
             return;
         }
+
+        const cleanPhone = stripPhone(newSelContactPhone);
+        if (newSelContactName.trim() && cleanPhone) {
+            const found = state.clients.find(c => {
+                const cleanTarget = stripPhone(c.phone);
+                const cleanPhones = (c.phones || []).map(p => stripPhone(p));
+                return cleanTarget === cleanPhone || cleanPhones.includes(cleanPhone);
+            });
+
+            const selectedType = newSelContactType || 'seller';
+
+            if (!found) {
+                const newContactClient = {
+                    id: nanoid(),
+                    full_name: newSelContactName.trim(),
+                    phone: cleanPhone,
+                    client_types: [selectedType],
+                    status: 'active',
+                    notes: `Создан автоматически при встрече по объекту: ${newSelAddress.trim()}`,
+                    realtor_id: state.currentUser?.id,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                dispatch({ type: 'ADD_CLIENT', client: newContactClient });
+            } else {
+                if (!found.client_types?.includes(selectedType)) {
+                    dispatch({
+                        type: 'UPDATE_CLIENT',
+                        client: {
+                            ...found,
+                            client_types: [...(found.client_types || []), selectedType],
+                            updated_at: new Date().toISOString()
+                        }
+                    });
+                }
+            }
+        }
+
         const newId = nanoid();
         const item = {
             id: newId,
             client_id: form.client_ids[0],
+            client_ids: form.client_ids || [],
             address: newSelAddress.trim(),
             price: Number(newSelPrice),
             contact_name: newSelContactName.trim(),
             contact_phone: newSelContactPhone.trim(),
+            rooms: newSelRooms,
+            area_total: newSelAreaTotal ? Number(newSelAreaTotal) : null,
+            floor: newSelFloor ? Number(newSelFloor) : null,
+            floors_total: newSelFloorsTotal ? Number(newSelFloorsTotal) : null,
+            property_type: newSelPropertyType,
+            city: newSelCity.trim() || null,
+            images: newSelImage.trim() ? [newSelImage.trim()] : [],
+            link: newSelLink.trim() || null,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
@@ -99,6 +184,15 @@ export function FormPage() {
         setNewSelPrice(0);
         setNewSelContactName('');
         setNewSelContactPhone('');
+        setNewSelContactType('seller');
+        setNewSelRooms(1);
+        setNewSelAreaTotal('');
+        setNewSelFloor('');
+        setNewSelFloorsTotal('');
+        setNewSelPropertyType('apartment');
+        setNewSelCity('');
+        setNewSelImage('');
+        setNewSelLink('');
         toast.success('Подбор создан и выбран');
     }
 
@@ -214,7 +308,7 @@ export function FormPage() {
                 )}
 
                 <form onSubmit={handleSubmit}>
-                    <FormCard title="Детали события" icon={<Home size={20} />} description="Выберите объект и тип встречи">
+                    <FormCard>
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Тип события</label>
                             <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value, property_id: '' })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
@@ -249,9 +343,225 @@ export function FormPage() {
                                         onChange={val => setNewSelAddress(val)}
                                         placeholder="Адрес объекта подбора *"
                                     />
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} type="number" placeholder="Цена (₽)" value={newSelPrice || ''} onChange={e => setNewSelPrice(Number(e.target.value))} />
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="ФИО собственника/агента" value={newSelContactName} onChange={e => setNewSelContactName(e.target.value)} />
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="Телефон" value={newSelContactPhone} onChange={e => setNewSelContactPhone(e.target.value)} />
+                                    
+                                    <div style={{ position: 'relative' }}>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            style={{ paddingLeft: 30, fontSize: 14, height: 44, borderRadius: 12, background: 'var(--surface)' }}
+                                            value={newSelPrice !== undefined && newSelPrice !== null && newSelPrice !== '' ? newSelPrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                                            onChange={e => setNewSelPrice(Number(e.target.value.replace(/\D/g, '')))}
+                                            placeholder="Цена (₽)"
+                                        />
+                                        <span style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)', fontSize: 14 }}>₽</span>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Тип недвижимости</label>
+                                            <select 
+                                                className="form-select" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelPropertyType} 
+                                                onChange={e => setNewSelPropertyType(e.target.value)}
+                                            >
+                                                {Object.entries(PROPERTY_TYPES).map(([val, label]) => (
+                                                    <option key={val} value={val}>{label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Комнат</label>
+                                            <select 
+                                                className="form-select" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelRooms} 
+                                                onChange={e => setNewSelRooms(Number(e.target.value))}
+                                            >
+                                                <option value={0}>Студия</option>
+                                                <option value={1}>1-комн.</option>
+                                                <option value={2}>2-комн.</option>
+                                                <option value={3}>3-комн.</option>
+                                                <option value={4}>4-комн.</option>
+                                                <option value={5}>5+ комн.</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Площадь м²</label>
+                                            <input 
+                                                type="number" 
+                                                className="form-input" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelAreaTotal} 
+                                                onChange={e => setNewSelAreaTotal(e.target.value ? Number(e.target.value) : '')} 
+                                                placeholder="м²"
+                                            />
+                                        </div>
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Этаж</label>
+                                            <input 
+                                                type="number" 
+                                                className="form-input" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelFloor} 
+                                                onChange={e => setNewSelFloor(e.target.value ? Number(e.target.value) : '')} 
+                                                placeholder="Этаж"
+                                            />
+                                        </div>
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Всего эт.</label>
+                                            <input 
+                                                type="number" 
+                                                className="form-input" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelFloorsTotal} 
+                                                onChange={e => setNewSelFloorsTotal(e.target.value ? Number(e.target.value) : '')} 
+                                                placeholder="Всего"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Город</label>
+                                            <input 
+                                                type="text" 
+                                                className="form-input" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelCity} 
+                                                onChange={e => setNewSelCity(e.target.value)} 
+                                                placeholder="г. Киров"
+                                            />
+                                        </div>
+                                        <div className="form-group" style={{ margin: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>Ссылка на фото</span>
+                                                <span 
+                                                    onClick={async () => {
+                                                        const result = await readClipboardAndCompress();
+                                                        if (result.image) {
+                                                            setNewSelImage(result.image);
+                                                            toast.success('Фото вставлено!');
+                                                        } else if (result.text) {
+                                                            setNewSelImage(result.text);
+                                                            toast.success('Ссылка вставлена!');
+                                                        }
+                                                    }}
+                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                                >
+                                                    Вставить
+                                                </span>
+                                            </label>
+                                            <input 
+                                                type="text" 
+                                                className="form-input" 
+                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                                value={newSelImage} 
+                                                onChange={async (e) => {
+                                                    const val = e.target.value;
+                                                    if (val.startsWith('data:image/')) {
+                                                        const compressed = await compressImage(val);
+                                                        setNewSelImage(compressed);
+                                                    } else {
+                                                        setNewSelImage(val);
+                                                    }
+                                                }} 
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 10, fontWeight: 300, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>Ссылка на объявление</span>
+                                            <span 
+                                                onClick={async () => {
+                                                    try {
+                                                        const text = await navigator.clipboard.readText();
+                                                        if (text) {
+                                                            setNewSelLink(text);
+                                                            toast.success('Ссылка вставлена!');
+                                                        }
+                                                    } catch (e) {
+                                                        toast.error('Доступ к буферу отклонен');
+                                                    }
+                                                }}
+                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
+                                            >
+                                                Вставить
+                                            </span>
+                                        </label>
+                                        <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
+                                            value={newSelLink} 
+                                            onChange={e => setNewSelLink(e.target.value)} 
+                                            placeholder="https://avito.ru/..."
+                                        />
+                                    </div>
+
+                                    {newSelMatchingClient && (
+                                        <div style={{ 
+                                            fontSize: 11, 
+                                            color: 'var(--success)', 
+                                            background: 'var(--success-light)', 
+                                            padding: '6px 12px', 
+                                            borderRadius: 8, 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 6,
+                                            fontWeight: 500
+                                        }}>
+                                            <span>✓ Найден в базе: <strong>{newSelMatchingClient.full_name}</strong> ({
+                                                newSelMatchingClient.client_types?.map(t => {
+                                                    const labels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
+                                                    return labels[t] || t;
+                                                }).join(', ')
+                                            })</span>
+                                        </div>
+                                    )}
+
+                                    <input
+                                        className="form-input"
+                                        style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
+                                        placeholder="ФИО собственника/агента"
+                                        value={newSelContactName}
+                                        onChange={e => setNewSelContactName(e.target.value)}
+                                    />
+
+                                    <input
+                                        className="form-input"
+                                        style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
+                                        placeholder="Телефон"
+                                        value={newSelContactPhone}
+                                        onChange={e => setNewSelContactPhone(formatPhone(e.target.value, true))}
+                                    />
+
+                                    <div className="form-group" style={{ margin: 0 }}>
+                                        <label className="form-label" style={{ fontWeight: 300, fontSize: 11, marginBottom: 4, display: 'block' }}>Тип контакта для сохранения</label>
+                                        <div className="chip-group" style={{ gap: 6 }}>
+                                            {[
+                                                { id: 'seller', label: 'Продавец' },
+                                                { id: 'buyer', label: 'Покупатель' },
+                                                { id: 'developer', label: 'Застройщик' },
+                                                { id: 'agent', label: 'Агент' }
+                                            ].map(t => (
+                                                <button key={t.id} type="button"
+                                                    className={`chip ${newSelContactType === t.id ? 'active' : ''}`}
+                                                    onClick={() => setNewSelContactType(t.id)}
+                                                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 11 }}
+                                                >
+                                                    {t.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     <button type="button" className="card-clickable" style={{ height: 44, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12 }} onClick={handleCreateSelection}>
                                         СОЗДАТЬ И ВЫБРАТЬ
                                     </button>
@@ -312,7 +622,7 @@ export function FormPage() {
                         </div>
                     </FormCard>
 
-                    <FormCard title="Время и статус" icon={<Clock size={20} />} description="Когда состоится встреча">
+                    <FormCard>
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Дата и время *</label>
                             <input className="form-input" type="datetime-local" value={form.showing_date} onChange={e => setForm({ ...form, showing_date: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }} />
@@ -328,7 +638,7 @@ export function FormPage() {
                         </div>
                     </FormCard>
 
-                    <FormCard title="Итоги" icon={<MessageSquare size={20} />} description="Зафиксируйте результат встречи">
+                    <FormCard>
                         <div className="form-group">
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Отзыв клиента</label>
                             <select className="form-select" value={form.client_feedback || ''} onChange={e => setForm({ ...form, client_feedback: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>

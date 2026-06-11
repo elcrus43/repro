@@ -8,6 +8,7 @@ import { parseHouseFromAddress, describeParsedFields, getMingkhSearchUrl } from 
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { nanoid } from '../../utils/nanoid';
+import { decodeImportData } from '../../utils/importDecoder';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
@@ -228,20 +229,20 @@ export function FormPage() {
         const importData = searchParams.get('import');
         if (importData) {
             try {
-                const decodedJson = atob(importData);
-                const data = JSON.parse(decodeURIComponent(escape(decodedJson)));
-                
-                setForm(f => ({
-                    ...f,
-                    address: data.address || data.title || '',
-                    price: data.price ? Number(data.price) : 0,
-                    area_total: data.area_total ? Number(data.area_total) : 0,
-                    rooms: data.rooms !== undefined ? data.rooms : 1,
-                    floor: data.floor ? Number(data.floor) : 1,
-                    floors_total: data.floors_total ? Number(data.floors_total) : 9,
-                    notes: `${data.description || ''}\n\nИсточник: ${data.source_url || ''}`.trim(),
-                }));
-                toast.success('Данные успешно импортированы! Проверьте и сохраните.');
+                const data = decodeImportData(importData);
+                if (data) {
+                    setForm(f => ({
+                        ...f,
+                        address: data.address || data.title || '',
+                        price: data.price ? Number(data.price) : 0,
+                        area_total: data.area_total ? Number(data.area_total) : 0,
+                        rooms: data.rooms !== undefined ? data.rooms : 1,
+                        floor: data.floor ? Number(data.floor) : 1,
+                        floors_total: data.floors_total ? Number(data.floors_total) : 9,
+                        notes: `${data.description || ''}\n\nИсточник: ${data.source_url || ''}`.trim(),
+                    }));
+                    toast.success('Данные успешно импортированы! Проверьте и сохраните.');
+                }
             } catch (err) {
                 console.error('Failed to parse import data:', err);
                 toast.error('Не удалось разобрать данные импорта');

@@ -113,7 +113,9 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     let isInitial = true;
-    const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
+    const backend = import.meta.env.VITE_BACKEND;
+    const isFirebase = backend === 'firebase';
+    const isLocalStorage = backend === 'localstorage';
 
     async function loadProfileAndData(sessionUser) {
       try {
@@ -121,7 +123,17 @@ export function AppProvider({ children }) {
         let profile = null;
         let profileErr = null;
 
-        if (isFirebase) {
+        if (isLocalStorage) {
+          profile = {
+            id: sessionUser.id,
+            full_name: 'Локальный пользователь',
+            email: 'local@example.com',
+            phone: '',
+            agency_name: '',
+            role: 'admin',
+            status: 'approved',
+          };
+        } else if (isFirebase) {
           try {
             const docRef = doc(db, 'profiles', sessionUser.id);
             const docSnap = await getDoc(docRef);
@@ -158,7 +170,7 @@ export function AppProvider({ children }) {
           return;
         }
 
-        if (!profile) {
+        if (!profile && !isLocalStorage) {
           const isAdmin = sessionUser.email === ADMIN_EMAIL;
           const newProfile = {
             id: sessionUser.id,

@@ -68,6 +68,8 @@ export function FormPage() {
     const clientTypes = [
         { id: 'buyer', label: 'Покупатель' },
         { id: 'seller', label: 'Продавец' },
+        { id: 'developer', label: 'Застройщик' },
+        { id: 'agent', label: 'Агент' },
         { id: 'landlord', label: 'Арендодатель' },
         { id: 'tenant', label: 'Арендатор' },
     ];

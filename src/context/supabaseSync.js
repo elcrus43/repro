@@ -248,7 +248,11 @@ export async function loadUserData(userId, role) {
     pendingUsers,
     pricelist:   priceRes?.data ?? [],
     deals:       dealsRes?.data ?? [],
-    selectionItems: selectionItemsRes?.data ?? [],
+    selectionItems: (selectionItemsRes?.data ?? []).map(item => ({
+      ...item,
+      client_ids: item.client_ids || (item.client_id ? [item.client_id] : []),
+      client_id: (item.client_ids && item.client_ids.length > 0) ? item.client_ids[0] : (item.client_id || null)
+    })),
     error: errors.length > 0 ? errors.join('; ') : null,
     allFailed,
   };
@@ -401,6 +405,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (itemData[key] === undefined) delete itemData[key];
         });
         result = await withRetry(() => supabase.from('selection_items').insert(itemData));
+        // Retry without new columns if migration not applied yet
+        if (_isSelectionColumnError(result?.error)) {
+          console.warn('[Supabase] selection_items missing new columns, retrying without them');
+          const stripped = _stripSelectionNewFields(itemData, result.error);
+          result = await withRetry(() => supabase.from('selection_items').insert(stripped));
+          if (!result?.error) {
+            handleError('Фото и ссылка не сохранены: требуется миграция БД (051_ensure_selection_columns.sql). Остальные данные сохранены.');
+          }
+        }
         break;
       }
 
@@ -411,6 +424,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (itemData[key] === undefined) delete itemData[key];
         });
         result = await withRetry(() => supabase.from('selection_items').update(itemData).eq('id', iId));
+        // Retry without new columns if migration not applied yet
+        if (_isSelectionColumnError(result?.error)) {
+          console.warn('[Supabase] selection_items missing new columns, retrying without them');
+          const stripped = _stripSelectionNewFields(itemData, result.error);
+          result = await withRetry(() => supabase.from('selection_items').update(stripped).eq('id', iId));
+          if (!result?.error) {
+            handleError('Фото и ссылка не сохранены: требуется миграция БД (051_ensure_selection_columns.sql). Остальные данные сохранены.');
+          }
+        }
         break;
       }
 
@@ -945,3 +967,24 @@ function _stripNewDealFields(data, error) {
     }
     return stripped;
 }
+
+// New selection_items columns added in migrations 049/050/051
+const NEW_SELECTION_FIELDS = ['rooms', 'area_total', 'floor', 'floors_total', 'property_type', 'city', 'images', 'link', 'client_ids'];
+
+function _isSelectionColumnError(error) {
+    if (!error) return false;
+    if (error.code !== '42703' && error.code !== 'PGRST204') return false;
+    return NEW_SELECTION_FIELDS.some(f => error.message?.includes(f));
+}
+
+function _stripSelectionNewFields(data, error) {
+    const stripped = { ...data };
+    if (error && error.message) {
+        NEW_SELECTION_FIELDS.forEach(f => { if (error.message.includes(f)) delete stripped[f]; });
+    } else {
+        // Strip all new fields if we can't determine which one caused the error
+        NEW_SELECTION_FIELDS.forEach(f => delete stripped[f]);
+    }
+    return stripped;
+}
+

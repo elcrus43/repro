@@ -26,7 +26,12 @@ export const EMPTY_STATE = {
   priceHistory: [],
   selectionItems: (() => {
     try {
-      return JSON.parse(localStorage.getItem('rm_selection_items') || '[]');
+      const items = JSON.parse(localStorage.getItem('rm_selection_items') || '[]');
+      return items.map(item => ({
+        ...item,
+        client_ids: item.client_ids || (item.client_id ? [item.client_id] : []),
+        client_id: (item.client_ids && item.client_ids.length > 0) ? item.client_ids[0] : (item.client_id || null)
+      }));
     } catch {
       return [];
     }
@@ -238,13 +243,23 @@ export function reducer(state, action) {
 
     /* ── Подбор ─────────────────────────────────────────────────────────── */
     case 'ADD_SELECTION_ITEM': {
-      const selectionItems = [...(state.selectionItems || []), action.item];
+      const normalizedItem = {
+        ...action.item,
+        client_ids: action.item.client_ids || (action.item.client_id ? [action.item.client_id] : []),
+        client_id: (action.item.client_ids && action.item.client_ids.length > 0) ? action.item.client_ids[0] : (action.item.client_id || null)
+      };
+      const selectionItems = [...(state.selectionItems || []), normalizedItem];
       try { localStorage.setItem('rm_selection_items', JSON.stringify(selectionItems)); } catch (e) {}
       return { ...state, selectionItems };
     }
 
     case 'UPDATE_SELECTION_ITEM': {
-      const selectionItems = (state.selectionItems || []).map(i => i.id === action.item.id ? action.item : i);
+      const normalizedItem = {
+        ...action.item,
+        client_ids: action.item.client_ids || (action.item.client_id ? [action.item.client_id] : []),
+        client_id: (action.item.client_ids && action.item.client_ids.length > 0) ? action.item.client_ids[0] : (action.item.client_id || null)
+      };
+      const selectionItems = (state.selectionItems || []).map(i => i.id === action.item.id ? normalizedItem : i);
       try { localStorage.setItem('rm_selection_items', JSON.stringify(selectionItems)); } catch (e) {}
       return { ...state, selectionItems };
     }

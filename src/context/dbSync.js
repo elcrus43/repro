@@ -7,8 +7,14 @@
 
 import { loadUserData as loadUserDataSupabase, syncAction as syncActionSupabase } from './supabaseSync';
 import { loadUserDataFirebase, syncActionFirebase } from './firebaseSync';
+import { loadUserData as loadUserDataLocal, syncAction as syncActionLocal } from './localStorageSync';
 
-const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
+const backend = import.meta.env.VITE_BACKEND;
 
-export const loadUserData = isFirebase ? loadUserDataFirebase : loadUserDataSupabase;
-export const syncAction = isFirebase ? syncActionFirebase : syncActionSupabase;
+export const loadUserData = backend === 'localstorage' 
+    ? loadUserDataLocal 
+    : (backend === 'firebase' ? loadUserDataFirebase : loadUserDataSupabase);
+
+export const syncAction = backend === 'localstorage' 
+    ? syncActionLocal 
+    : (backend === 'firebase' ? syncActionFirebase : syncActionSupabase);

@@ -12,7 +12,9 @@
 import { supabase } from './supabase';
 import { firebaseRestAuth } from './firebaseRestAuth';
 
-const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
+const backend = import.meta.env.VITE_BACKEND;
+const isFirebase = backend === 'firebase';
+const isLocalStorage = backend === 'localstorage';
 
 /** Маппинг пользователя firebaseRestAuth в формат Supabase-совместимого user */
 function mapFbUser(user) {
@@ -30,6 +32,19 @@ function mapFbUser(user) {
 
 export const authService = {
   async signInWithPassword({ email, password }) {
+    if (isLocalStorage) {
+      localStorage.setItem('repro_local_session', 'true');
+      return { 
+        data: { 
+          user: { 
+            id: 'local-user-id', 
+            email: email || 'local@example.com', 
+            user_metadata: { full_name: 'Локальный пользователь', name: 'Локальный пользователь', phone: '' } 
+          } 
+        }, 
+        error: null 
+      };
+    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.signInWithPassword({ email, password });
       if (error) return { data: { user: null }, error };
@@ -39,6 +54,19 @@ export const authService = {
   },
 
   async signUp({ email, password }) {
+    if (isLocalStorage) {
+      localStorage.setItem('repro_local_session', 'true');
+      return { 
+        data: { 
+          user: { 
+            id: 'local-user-id', 
+            email: email || 'local@example.com', 
+            user_metadata: { full_name: 'Локальный пользователь', name: 'Локальный пользователь', phone: '' } 
+          } 
+        }, 
+        error: null 
+      };
+    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.signUp({ email, password });
       if (error) return { data: { user: null }, error };
@@ -48,6 +76,9 @@ export const authService = {
   },
 
   async resetPasswordForEmail(email, _options = {}) {
+    if (isLocalStorage) {
+      return { error: null };
+    }
     if (isFirebase) {
       return firebaseRestAuth.resetPasswordForEmail(email);
     }
@@ -55,6 +86,9 @@ export const authService = {
   },
 
   async updateUser({ password }) {
+    if (isLocalStorage) {
+      return { error: null };
+    }
     if (isFirebase) {
       const { error } = await firebaseRestAuth.updatePassword(password);
       return { error };
@@ -63,6 +97,10 @@ export const authService = {
   },
 
   async signOut() {
+    if (isLocalStorage) {
+      localStorage.setItem('repro_local_session', 'false');
+      return { error: null };
+    }
     if (isFirebase) {
       return firebaseRestAuth.signOut();
     }
@@ -70,6 +108,27 @@ export const authService = {
   },
 
   async getSession() {
+    if (isLocalStorage) {
+      const active = localStorage.getItem('repro_local_session') !== 'false';
+      if (!active) return { data: { session: null }, error: null };
+      return {
+        data: {
+          session: {
+            user: {
+              id: 'local-user-id',
+              email: 'local@example.com',
+              user_metadata: {
+                full_name: 'Локальный пользователь',
+                name: 'Локальный пользователь',
+                phone: '',
+              }
+            },
+            access_token: 'local-token',
+          }
+        },
+        error: null,
+      };
+    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.getSession();
       if (error || !data.session) return { data: { session: null }, error };
@@ -87,6 +146,34 @@ export const authService = {
   },
 
   onAuthStateChange(callback) {
+    if (isLocalStorage) {
+      const active = localStorage.getItem('repro_local_session') !== 'false';
+      setTimeout(() => {
+        if (active) {
+          callback('SIGNED_IN', {
+            user: {
+              id: 'local-user-id',
+              email: 'local@example.com',
+              user_metadata: {
+                full_name: 'Локальный пользователь',
+                name: 'Локальный пользователь',
+                phone: '',
+              }
+            },
+            access_token: 'local-token',
+          });
+        } else {
+          callback('SIGNED_OUT', null);
+        }
+      }, 50);
+      return {
+        data: {
+          subscription: {
+            unsubscribe() {}
+          }
+        }
+      };
+    }
     if (isFirebase) {
       return firebaseRestAuth.onAuthStateChange((event, session) => {
         const mappedSession = session

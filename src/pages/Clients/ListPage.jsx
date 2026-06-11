@@ -25,6 +25,7 @@ export function ListPage() {
                 if (filter === 'buyer') return c.client_types?.includes('buyer');
                 if (filter === 'seller') return c.client_types?.includes('seller');
                 if (filter === 'developer') return c.client_types?.includes('developer');
+                if (filter === 'agent') return c.client_types?.includes('agent');
                 if (filter === 'landlord') return c.client_types?.includes('landlord');
                 if (filter === 'tenant') return c.client_types?.includes('tenant');
                 if (filter === 'active') return c.status === 'active';
@@ -42,7 +43,7 @@ export function ListPage() {
     // Reset to page 1 when filtered data changes
     useEffect(() => { resetPage(); }, [filteredClients, resetPage]);
 
-    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', landlord: 'Арендодатель', tenant: 'Арендатор' };
+    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
     const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
     const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
 
@@ -129,7 +130,7 @@ export function ListPage() {
 
                     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
                         {[
-                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['active', 'Активные']
+                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['agent', 'Агенты'], ['active', 'Активные']
                         ].map(([val, label]) => (
                             <button 
                                 key={val} 

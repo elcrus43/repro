@@ -412,6 +412,32 @@ a:focus:not(:focus-visible) {
   transform: scale(0.94);
 }
 
+/* Calendar button — primary accent */
+.icon-btn-calendar {
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgba(59, 130, 246, 0.25);
+  background: rgba(59, 130, 246, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  color: var(--primary);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-btn-calendar:hover {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--primary);
+  transform: scale(1.08);
+}
+
+.icon-btn-calendar:active {
+  transform: scale(0.94);
+}
+
 .dark .icon-btn-edit {
   border-color: rgba(255,255,255,0.12);
   background: rgba(255,255,255,0.04);
@@ -420,6 +446,11 @@ a:focus:not(:focus-visible) {
 .dark .icon-btn-delete {
   background: rgba(239, 68, 68, 0.1);
   border-color: rgba(239, 68, 68, 0.3);
+}
+
+.dark .icon-btn-calendar {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 
