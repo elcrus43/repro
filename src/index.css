@@ -361,14 +361,14 @@ a:focus:not(:focus-visible) {
 /* ===== Lucide icon action buttons ===== */
 /* Edit button — subtle neutral */
 .icon-btn-edit {
-  width: 34px;
-  height: 34px;
+  width: 29px;
+  height: 29px;
   border: 1.5px solid var(--border);
   background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--text-secondary);
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -388,14 +388,14 @@ a:focus:not(:focus-visible) {
 
 /* Delete button — danger accent */
 .icon-btn-delete {
-  width: 34px;
-  height: 34px;
+  width: 29px;
+  height: 29px;
   border: 1.5px solid rgba(239, 68, 68, 0.25);
   background: rgba(239, 68, 68, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--danger);
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
@@ -414,14 +414,14 @@ a:focus:not(:focus-visible) {
 
 /* Calendar button — primary accent */
 .icon-btn-calendar {
-  width: 34px;
-  height: 34px;
+  width: 29px;
+  height: 29px;
   border: 1.5px solid rgba(59, 130, 246, 0.25);
   background: rgba(59, 130, 246, 0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--primary);
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;

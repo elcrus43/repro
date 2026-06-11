@@ -356,6 +356,7 @@ export function ListPage() {
                                                     display: 'flex',
                                                     flexDirection: 'column',
                                                     gap: '8px',
+                                                    alignItems: 'center',
                                                     zIndex: 10
                                                 }}>
                                                     <button 
