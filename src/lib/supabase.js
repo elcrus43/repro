@@ -10,18 +10,11 @@
 import { createClient } from '@supabase/supabase-js';
 
 const getSupabaseUrl = () => {
-  const envApiUrl = import.meta.env.VITE_API_URL;
-  if (envApiUrl) {
-    return `${envApiUrl}/supabase-proxy`;
-  }
-  if (typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname;
-    const isLocalIp = /^(?:192\.168|10|172\.(?:1[6-9]|2[0-9]|3[0-1]))\./.test(hostname) || /^[0-9.]+$/.test(hostname);
-    const isLocalDomain = hostname.endsWith('.local');
-    if ((isLocalIp || isLocalDomain) && hostname !== 'localhost' && hostname !== '127.0.0.1') {
-      return `http://${hostname}:8000/supabase-proxy`;
-    }
-  }
+  // Явный VITE_SUPABASE_URL имеет приоритет (локальная разработка с прокси)
+  const envSupabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (envSupabaseUrl) return envSupabaseUrl;
+
+  // Прямой URL Supabase — используется везде: продакшн, Vercel, мобильные браузеры
   return 'https://hxivaohzugahjyuaahxc.supabase.co';
 };
 
