@@ -11,7 +11,7 @@
 const CLIENT_ID   = import.meta.env.VITE_GOOGLE_CLIENT_ID || '991093392145-f09fodb4e2gf8smrh0tgpco9t4rqserf.apps.googleusercontent.com';
 const SCOPES      = 'https://www.googleapis.com/auth/calendar.events';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const EDGE_FN_URL  = `${SUPABASE_URL}/functions/v1/google-calendar-token`;
+const EDGE_FN_URL  = '/api/google-calendar-token';
 
 // Redirect URI must match what's registered in Google Cloud Console
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-calendar-token/callback`;
@@ -130,12 +130,13 @@ async function refreshViaEdgeFunction() {
                 return false;
             }
 
-            const res = await fetchWithTimeout(`${EDGE_FN_URL}/refresh`, {
+            const res = await fetchWithTimeout(EDGE_FN_URL, {
                 method: 'POST',
                 headers: {
                     Authorization: `Bearer ${supabaseAuthToken}`,
                     'Content-Type': 'application/json',
                 },
+                body: JSON.stringify({ action: 'refresh' }),
             });
 
             if (!res.ok) {
@@ -193,53 +194,59 @@ export function isCalendarConnected() {
  */
 export async function connectCalendar() {
     return new Promise((resolve, reject) => {
-        loadGsiScript().then(() => {
-            try {
-                const codeClient = window.google.accounts.oauth2.initCodeClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    ux_mode: 'popup',
-                    prompt: 'consent',
-                    // access_type=offline tells Google to return a refresh_token
-                    callback: async (response) => {
-                        if (response.error) {
-                            return reject(new Error(response.error_description || response.error));
+        // Ensure SDK is loaded (preloaded in index.html)
+        if (!window.google?.accounts?.oauth2) {
+            return reject(new Error('Google Identity Services SDK не загружен. Пожалуйста, обновите страницу или попробуйте позже.'));
+        }
+
+        try {
+            const codeClient = window.google.accounts.oauth2.initCodeClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                ux_mode: 'popup',
+                prompt: 'consent',
+                access_type: 'offline',
+                // access_type=offline tells Google to return a refresh_token
+                callback: async (response) => {
+                    if (response.error) {
+                        return reject(new Error(response.error_description || response.error));
+                    }
+
+                    try {
+                        // Exchange code for tokens via Edge Function (server-side)
+                        const res = await fetchWithTimeout(EDGE_FN_URL, {
+                            method: 'POST',
+                            headers: {
+                                Authorization: `Bearer ${supabaseAuthToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                action: 'exchange',
+                                code: response.code,
+                                redirect_uri: 'postmessage',
+                            }),
+                        });
+
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.error || 'Ошибка обмена токена');
                         }
 
-                        try {
-                            // Exchange code for tokens via Edge Function (server-side)
-                            const res = await fetchWithTimeout(`${EDGE_FN_URL}/exchange`, {
-                                method: 'POST',
-                                headers: {
-                                    Authorization: `Bearer ${supabaseAuthToken}`,
-                                    'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                    code: response.code,
-                                    redirect_uri: window.location.origin,
-                                }),
-                            });
+                        const { access_token, expires_in } = await res.json();
+                        saveToken(access_token, expires_in);
+                        hasRefreshToken = true;
+                        resolve();
+                    } catch (e) {
+                        reject(e);
+                    }
+                },
+            });
 
-                            if (!res.ok) {
-                                const err = await res.json().catch(() => ({}));
-                                throw new Error(err.error || 'Ошибка обмена токена');
-                            }
-
-                            const { access_token, expires_in } = await res.json();
-                            saveToken(access_token, expires_in);
-                            resolve();
-                        } catch (e) {
-                            reject(e);
-                        }
-                    },
-                });
-
-                // prompt=consent + access_type=offline → Google returns refresh_token
-                codeClient.requestCode();
-            } catch (e) {
-                reject(e);
-            }
-        }).catch(reject);
+            // prompt=consent + access_type=offline → Google returns refresh_token
+            codeClient.requestCode();
+        } catch (e) {
+            reject(e);
+        }
     });
 }
 
@@ -266,9 +273,13 @@ export async function disconnectCalendar() {
 
     if (!supabaseAuthToken) return;
     try {
-        await fetchWithTimeout(`${EDGE_FN_URL}/revoke`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${supabaseAuthToken}` },
+        await fetchWithTimeout(EDGE_FN_URL, {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${supabaseAuthToken}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ action: 'revoke' }),
         });
     } catch { /* non-critical */ }
 }

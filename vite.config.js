@@ -45,6 +45,18 @@ export default defineConfig(({ mode }) => {
             const apiKey = env.VITE_FIREBASE_API_KEY || '';
             return `/v1/token?key=${apiKey}`;
           }
+        },
+        '/api/neon-auth': {
+          target: 'https://realtor-match.vercel.app',
+          changeOrigin: true
+        },
+        '/api/neon-query': {
+          target: 'https://realtor-match.vercel.app',
+          changeOrigin: true
+        },
+        '/api/google-calendar-token': {
+          target: 'https://realtor-match.vercel.app',
+          changeOrigin: true
         }
       }
     },

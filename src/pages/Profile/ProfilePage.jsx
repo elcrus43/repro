@@ -101,35 +101,84 @@ export function ProfilePage() {
         setIsEditing(false);
     };
 
-    const handleConnectCalendar = async () => {
+    const handleConnectCalendar = () => {
+        if (!window.google?.accounts?.oauth2) {
+            toast.error('Google SDK не загружен. Пожалуйста, обновите страницу и попробуйте снова.');
+            return;
+        }
+
         try {
-            // Ensure we have fresh Supabase session for Edge Function auth
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.access_token) initCalendarAuth(session.access_token);
+            const client_id = import.meta.env.VITE_GOOGLE_CLIENT_ID || '991093392145-f09fodb4e2gf8smrh0tgpco9t4rqserf.apps.googleusercontent.com';
+            const edgeUrl = '/api/google-calendar-token';
 
-            await connectCalendar();
+            const codeClient = window.google.accounts.oauth2.initCodeClient({
+                client_id: client_id,
+                scope: 'https://www.googleapis.com/auth/calendar.events',
+                ux_mode: 'popup',
+                prompt: 'consent',
+                access_type: 'offline',
+                callback: async (response) => {
+                    if (response.error) {
+                        toast.error('Ошибка Google: ' + (response.error_description || response.error));
+                        return;
+                    }
 
-            // Mark refresh token as present in local state immediately
-            // (actual value is stored server-side — we just need a truthy marker)
-            if (session?.access_token) initCalendarAuth(session.access_token, true);
-            dispatch({
-                type: 'UPDATE_PROFILE',
-                profile: { id: user.id, google_refresh_token: 'connected' },
+                    try {
+                        const { data: { session } } = await authService.getSession();
+                        const supabaseToken = session?.access_token;
+                        if (!supabaseToken) {
+                            throw new Error('Сессия пользователя не найдена. Попробуйте войти заново.');
+                        }
+
+                        // Exchange code via Vercel Serverless Function
+                        const res = await fetch(edgeUrl, {
+                            method: 'POST',
+                            headers: {
+                                Authorization: `Bearer ${supabaseToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                action: 'exchange',
+                                code: response.code,
+                                redirect_uri: 'postmessage',
+                            }),
+                        });
+
+                        if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(err.error || 'Ошибка сервера при обмене токена');
+                        }
+
+                        const { access_token, expires_in } = await res.json();
+                        
+                        // Cache the access token locally for 1 hour
+                        localStorage.setItem('gcal_access_token', access_token);
+                        localStorage.setItem('gcal_token_expiry', String(Date.now() + (expires_in - 60) * 1000));
+
+                        dispatch({
+                            type: 'UPDATE_PROFILE',
+                            profile: { id: user.id, google_refresh_token: 'connected' },
+                        });
+                        setGcalConnected(true);
+                        toast.success('Google Calendar успешно подключён!');
+
+                        if (typeof reloadData === 'function') reloadData().catch(() => {});
+                    } catch (e) {
+                        toast.error('Не удалось сохранить подключение: ' + e.message);
+                    }
+                },
             });
-            setGcalConnected(true);
-            toast.success('Google Calendar успешно подключён! Refresh-токен сохранён в БД.');
 
-            // Also reload from DB in background to get fresh server-side state
-            if (typeof reloadData === 'function') reloadData().catch(() => {});
-        } catch (err) {
-            console.error(err);
-            toast.error('Не удалось подключить Google Calendar: ' + err.message);
+            // Trigger Google popup synchronously (vital to bypass popup blocker)
+            codeClient.requestCode();
+        } catch (e) {
+            toast.error('Ошибка инициализации Google Auth: ' + e.message);
         }
     };
 
     const handleDisconnectCalendar = async () => {
         try {
-            const { data: { session } } = await supabase.auth.getSession();
+            const { data: { session } } = await authService.getSession();
             await disconnectCalendar();
             if (session?.access_token) initCalendarAuth(session.access_token, false);
             // Clear refresh token flag in local state
