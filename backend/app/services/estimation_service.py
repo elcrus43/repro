@@ -23,6 +23,8 @@ class EstimationInput:
     building_type: Optional[str] = None
     deal_type: str = "SALE"
     year_built: Optional[int] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 @dataclass
 class EstimationResult:
@@ -77,37 +79,103 @@ class EstimationService:
         return result
     
     async def _find_local_analogs(self, params: EstimationInput, relaxed: bool = False) -> List[AnalogListing]:
-        """Search local cache for similar properties"""
-        query = self.db.query(AnalogListing).filter(
+        """Search local cache for similar properties using progressive parameters relaxation"""
+        from sqlalchemy import or_
+        
+        # We define search steps. Each step progressively relaxes parameters.
+        steps = [
+            # 1. Geo-location (within 1.5 km)
+            {"location": "geo", "building": "strict", "area_delta": 5.0, "is_pct": False, "desc": "geo (1.5km) + strict building + area ±5"},
+            {"location": "geo", "building": "relaxed", "area_delta": 5.0, "is_pct": False, "desc": "geo (1.5km) + relaxed building + area ±5"},
+            {"location": "geo", "building": "ignored", "area_delta": 5.0, "is_pct": False, "desc": "geo (1.5km) + ignored building + area ±5"},
+            
+            # 2. District
+            {"location": "district", "building": "strict", "area_delta": 5.0, "is_pct": False, "desc": "district + strict building + area ±5"},
+            {"location": "district", "building": "relaxed", "area_delta": 5.0, "is_pct": False, "desc": "district + relaxed building + area ±5"},
+            {"location": "district", "building": "ignored", "area_delta": 5.0, "is_pct": False, "desc": "district + ignored building + area ±5"},
+            
+            # 3. City-wide
+            {"location": "city", "building": "strict", "area_delta": 5.0, "is_pct": False, "desc": "city + strict building + area ±5"},
+            {"location": "city", "building": "relaxed", "area_delta": 5.0, "is_pct": False, "desc": "city + relaxed building + area ±5"},
+            {"location": "city", "building": "ignored", "area_delta": 5.0, "is_pct": False, "desc": "city + ignored building + area ±5"},
+            
+            # 4. Wider area range
+            {"location": "city", "building": "ignored", "area_delta": 10.0, "is_pct": False, "desc": "city + ignored building + area ±10"},
+            {"location": "city", "building": "ignored", "area_delta": 0.25, "is_pct": True, "desc": "city + ignored building + area ±25%"},
+        ]
+        
+        for step in steps:
+            # Skip geo steps if coordinates are missing
+            if step["location"] == "geo" and (params.latitude is None or params.longitude is None):
+                continue
+            # Skip district steps if district is missing
+            if step["location"] == "district" and not params.district:
+                continue
+            # Skip strict/relaxed building checks if no building type was specified
+            if not params.building_type and step["building"] in ("strict", "relaxed"):
+                continue
+                
+            query = self.db.query(AnalogListing).filter(
+                AnalogListing.city == params.city,
+                AnalogListing.deal_type == params.deal_type,
+                AnalogListing.is_active == True,
+                AnalogListing.last_seen_at > datetime.now() - timedelta(days=90)
+            )
+            
+            # Rooms matching
+            if params.rooms is not None:
+                query = query.filter(AnalogListing.rooms == params.rooms)
+                
+            # Area matching
+            if step["is_pct"]:
+                area_min = params.total_area * (1.0 - step["area_delta"])
+                area_max = params.total_area * (1.0 + step["area_delta"])
+            else:
+                area_min = params.total_area - step["area_delta"]
+                area_max = params.total_area + step["area_delta"]
+            query = query.filter(AnalogListing.total_area.between(area_min, area_max))
+            
+            # Building type matching
+            if params.building_type and step["building"] != "ignored":
+                if step["building"] == "strict":
+                    query = query.filter(AnalogListing.building_type == params.building_type)
+                elif step["building"] == "relaxed":
+                    query = query.filter(or_(
+                        AnalogListing.building_type == params.building_type,
+                        AnalogListing.building_type == None
+                    ))
+            
+            # Location matching
+            if step["location"] == "geo":
+                lat, lon = params.latitude, params.longitude
+                # 1.5 km bounding box delta
+                lat_delta = 1.5 / 111.0
+                lon_delta = 1.5 / (111.0 * 0.57)
+                query = query.filter(
+                    AnalogListing.latitude.between(lat - lat_delta, lat + lat_delta),
+                    AnalogListing.longitude.between(lon - lon_delta, lon + lon_delta)
+                )
+            elif step["location"] == "district":
+                query = query.filter(AnalogListing.district.ilike(f"%{params.district}%"))
+                
+            results = query.order_by(AnalogListing.last_seen_at.desc()).limit(self.MAX_ANALOGS).all()
+            if len(results) >= self.MIN_ANALOGS:
+                logger.info(f"Found {len(results)} local analogs using fallback step: {step['desc']}")
+                return results
+                
+        # If all steps fail, do a final desperate query ignoring rooms if necessary or just return whatever city-wide matches we have
+        desperate_query = self.db.query(AnalogListing).filter(
             AnalogListing.city == params.city,
-            AnalogListing.district == params.district,
             AnalogListing.deal_type == params.deal_type,
             AnalogListing.is_active == True,
             AnalogListing.last_seen_at > datetime.now() - timedelta(days=90)
         )
-        
-        if relaxed:
-            area_min = params.total_area * 0.7
-            area_max = params.total_area * 1.3
-            floor_min = max(1, params.floor - 5)
-            floor_max = params.floor + 5
-            rooms_range = [params.rooms - 1, params.rooms, params.rooms + 1]
-        else:
-            area_min = params.total_area * 0.85
-            area_max = params.total_area * 1.15
-            floor_min = max(1, params.floor - 2)
-            floor_max = params.floor + 2
-            rooms_range = [params.rooms]
-            if params.building_type:
-                query = query.filter(AnalogListing.building_type == params.building_type)
-
-        query = query.filter(
-            AnalogListing.rooms.in_(rooms_range),
-            AnalogListing.total_area.between(area_min, area_max),
-            AnalogListing.floor.between(floor_min, floor_max)
-        )
-        
-        return query.order_by(AnalogListing.last_seen_at.desc()).limit(self.MAX_ANALOGS).all()
+        if params.rooms is not None:
+            desperate_query = desperate_query.filter(AnalogListing.rooms == params.rooms)
+            
+        results = desperate_query.order_by(AnalogListing.last_seen_at.desc()).limit(self.MAX_ANALOGS).all()
+        logger.info(f"Fallback to all active listings in city for rooms {params.rooms}. Found {len(results)} analogs.")
+        return results
 
     def _remove_outliers(self, analogs: List[AnalogListing]) -> List[AnalogListing]:
         """IQR based outlier removal"""

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -15,6 +15,7 @@ export function DetailsPage() {
     const { id } = useParams();
     const { toast } = useToastContext();
     const client = state.clients.find(c => c.id === id);
+    const [isEditingTypes, setIsEditingTypes] = useState(false);
 
     if (!client) return (
         <div className="page">
@@ -61,7 +62,18 @@ export function DetailsPage() {
 
     const totalCommission = myDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
 
-    const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
+    const statusLabels = {
+        new: 'Не отработан',
+        active: 'В работе',
+        request: 'Запрос',
+        agreement: 'АД',
+        search: 'Поиск',
+        deposit: 'Задаток',
+        deal: 'Сделка',
+        paused: 'Пауза',
+        refused: 'Отказ',
+        completed: 'Завершен'
+    };
     const typeLabels   = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
 
     const matchStatusLabel = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ', showing_done: 'Показ проведён' };
@@ -70,6 +82,38 @@ export function DetailsPage() {
     const dealStatusColor  = { active: 'var(--primary)', closed: '#10b981', cancelled: 'var(--danger)' };
 
     /* ─── Обработчики ───────────────────────────────── */
+    function handleStatusChange(newStatus) {
+        if (newStatus === client.status) return;
+        const updatedClient = { ...client, status: newStatus };
+        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+        toast.success(`Статус изменен на "${statusLabels[newStatus] || newStatus}"`);
+    }
+
+    function handleToggleType(typeId) {
+        const currentTypes = client.client_types || [];
+        let newTypes;
+        if (currentTypes.includes(typeId)) {
+            if (currentTypes.length <= 1) {
+                toast.error('Должен быть выбран как минимум один тип клиента');
+                return;
+            }
+            newTypes = currentTypes.filter(t => t !== typeId);
+        } else {
+            newTypes = [...currentTypes, typeId];
+        }
+
+        const updatedClient = { ...client, client_types: newTypes };
+
+        const buyerStatuses = ['request', 'agreement', 'search', 'deposit', 'deal'];
+        if (!newTypes.includes('buyer') && buyerStatuses.includes(client.status)) {
+            updatedClient.status = 'active';
+            toast.warning('Статус изменен на "В работе", так как клиент больше не является Покупателем');
+        }
+
+        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+        toast.success('Типы клиента обновлены');
+    }
+
     function handleCall() {
         const callNote = {
             id: crypto.randomUUID(),
@@ -149,17 +193,132 @@ export function DetailsPage() {
                 {/* ── Профиль ── */}
                 <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)', textAlign: 'center' }}>
                     <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-                        {client.client_types?.map(t => (
-                            <span key={t} style={{ padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 300, background: 'var(--primary-light)', color: 'var(--primary)' }}>
-                                {typeLabels[t]}
-                            </span>
-                        ))}
-                        <span style={{
-                            padding: '6px 12px', borderRadius: 10, fontSize: 11, fontWeight: 300,
-                            background: client.status === 'active' ? '#ecfdf5' : '#fef3c7',
-                            color: client.status === 'active' ? '#10b981' : '#f59e0b'
-                        }}>{statusLabels[client.status]}</span>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+                        {!isEditingTypes ? (
+                            <>
+                                {client.client_types?.map(t => (
+                                    <button
+                                        key={t}
+                                        onClick={() => setIsEditingTypes(true)}
+                                        className="card-clickable"
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: 10,
+                                            fontSize: 11,
+                                            fontWeight: 300,
+                                            background: 'var(--primary-light)',
+                                            color: 'var(--primary)',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s'
+                                        }}
+                                        title="Нажмите, чтобы изменить типы"
+                                    >
+                                        {typeLabels[t]}
+                                    </button>
+                                ))}
+                            </>
+                        ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '12px', borderRadius: 16, width: '100%', marginTop: 8 }}>
+                                <div style={{ width: '100%', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Выберите типы клиента:</div>
+                                {Object.entries(typeLabels).map(([typeId, label]) => {
+                                    const isActive = client.client_types?.includes(typeId);
+                                    return (
+                                        <button
+                                            key={typeId}
+                                            onClick={() => handleToggleType(typeId)}
+                                            className="card-clickable"
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: 10,
+                                                fontSize: 11,
+                                                fontWeight: isActive ? 400 : 300,
+                                                background: isActive ? 'var(--primary)' : 'var(--surface)',
+                                                color: isActive ? '#fff' : 'var(--text)',
+                                                border: isActive ? 'none' : '1px solid var(--border-light)',
+                                                transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                                <button
+                                    onClick={() => setIsEditingTypes(false)}
+                                    className="card-clickable"
+                                    style={{
+                                        padding: '6px 16px',
+                                        borderRadius: 10,
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        background: 'var(--success)',
+                                        color: '#fff',
+                                        border: 'none',
+                                        marginTop: 8,
+                                        width: '100%'
+                                    }}
+                                >
+                                    Готово
+                                </button>
+                            </div>
+                        )}
+                        {(() => {
+                            const getStatusStyle = (status) => {
+                                switch(status) {
+                                    case 'new': return { color: 'var(--danger)', background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.2)' };
+                                    case 'active': return { color: 'var(--success)', background: 'var(--success-light)', border: '1px solid rgba(16,185,129,0.2)' };
+                                    case 'request': return { color: '#2563eb', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' };
+                                    case 'agreement': return { color: '#d97706', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)' };
+                                    case 'search': return { color: '#7c3aed', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)' };
+                                    case 'deposit': return { color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' };
+                                    case 'deal': return { color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' };
+                                    case 'paused': return { color: 'var(--warning)', background: 'var(--warning-light)', border: '1px solid rgba(245,158,11,0.2)' };
+                                    case 'refused': return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
+                                    case 'completed': return { color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' };
+                                    default: return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
+                                }
+                            };
+                            const statusStyle = getStatusStyle(client.status);
+                            return (
+                                <div style={{ position: 'relative', display: 'inline-block' }}>
+                                    <select
+                                        value={client.status}
+                                        onChange={(e) => handleStatusChange(e.target.value)}
+                                        style={{
+                                            padding: '6px 20px 6px 12px',
+                                            borderRadius: 10,
+                                            fontSize: 11,
+                                            fontWeight: 400,
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            outline: 'none',
+                                            appearance: 'none',
+                                            WebkitAppearance: 'none',
+                                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3E%3Cpath fill='${encodeURIComponent(statusStyle.color || 'var(--text-secondary)')}' d='M8 10.5L3 5h10z'/%3E%3C/svg%3E")`,
+                                            backgroundRepeat: 'no-repeat',
+                                            backgroundPosition: 'right 6px center',
+                                            ...statusStyle
+                                        }}
+                                    >
+                                        <option value="new" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Не отработан</option>
+                                        <option value="active" style={{ background: 'var(--surface)', color: 'var(--text)' }}>В работе</option>
+                                        {client.client_types?.includes('buyer') && (
+                                            <>
+                                                <option value="request" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Запрос</option>
+                                                <option value="agreement" style={{ background: 'var(--surface)', color: 'var(--text)' }}>АД</option>
+                                                <option value="search" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Поиск</option>
+                                                <option value="deposit" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Задаток</option>
+                                                <option value="deal" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Сделка</option>
+                                            </>
+                                        )}
+                                        <option value="paused" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Пауза</option>
+                                        <option value="refused" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Отказ</option>
+                                        <option value="completed" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Завершен</option>
+                                        <option value="deal_closed" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Сделка закрыта</option>
+                                    </select>
+                                </div>
+                            );
+                        })()}
                     </div>
 
 
@@ -182,6 +341,30 @@ export function DetailsPage() {
                             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
                         </a>
                     </div>
+                    {client.client_types?.includes('buyer') && (
+                        <div style={{ marginTop: 16 }}>
+                            <button
+                                onClick={() => navigate(`/requests/new?client=${id}`)}
+                                className="card-clickable"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                    padding: '8px 16px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: '#d97706',
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    transition: 'opacity 0.2s'
+                                }}
+                            >
+                                <Plus size={15} /> Создать запрос
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* ── Компактная статистика ── */}

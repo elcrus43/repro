@@ -1,20 +1,27 @@
 /**
  * auth.js — Unified Authentication Layer
  *
- * Переключается между Supabase Auth и Firebase Auth в зависимости от VITE_BACKEND.
+ * Переключается между Supabase Auth, Firebase Auth и Neon Auth
+ * в зависимости от VITE_BACKEND.
+ *
  * При VITE_BACKEND=firebase использует firebaseRestAuth — клиент на базе REST API
  * через Vercel-прокси (/api/firebase-auth), что позволяет работать в России,
  * где Firebase/Google заблокированы.
+ *
+ * При VITE_BACKEND=neon использует neonAuthService — клиент на базе /api/neon-auth,
+ * который хранит пользователей в таблице profiles с bcrypt-хэшем пароля.
  *
  * Экспортирует единый интерфейс, совместимый с кодом приложения.
  */
 
 import { supabase } from './supabase';
 import { firebaseRestAuth } from './firebaseRestAuth';
+import { neonAuthService } from './neonAuth';
 
 const backend = import.meta.env.VITE_BACKEND;
-const isFirebase = backend === 'firebase';
+const isFirebase    = backend === 'firebase';
 const isLocalStorage = backend === 'localstorage';
+const isNeon        = backend === 'neon';
 
 /** Маппинг пользователя firebaseRestAuth в формат Supabase-совместимого user */
 function mapFbUser(user) {
@@ -45,6 +52,9 @@ export const authService = {
         error: null 
       };
     }
+    if (isNeon) {
+      return neonAuthService.signInWithPassword({ email, password });
+    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.signInWithPassword({ email, password });
       if (error) return { data: { user: null }, error };
@@ -53,7 +63,7 @@ export const authService = {
     return supabase.auth.signInWithPassword({ email, password });
   },
 
-  async signUp({ email, password }) {
+  async signUp({ email, password, fullName }) {
     if (isLocalStorage) {
       localStorage.setItem('repro_local_session', 'true');
       return { 
@@ -67,6 +77,9 @@ export const authService = {
         error: null 
       };
     }
+    if (isNeon) {
+      return neonAuthService.signUp({ email, password, fullName });
+    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.signUp({ email, password });
       if (error) return { data: { user: null }, error };
@@ -79,6 +92,9 @@ export const authService = {
     if (isLocalStorage) {
       return { error: null };
     }
+    if (isNeon) {
+      return neonAuthService.resetPasswordForEmail(email, _options);
+    }
     if (isFirebase) {
       return firebaseRestAuth.resetPasswordForEmail(email);
     }
@@ -88,6 +104,9 @@ export const authService = {
   async updateUser({ password }) {
     if (isLocalStorage) {
       return { error: null };
+    }
+    if (isNeon) {
+      return neonAuthService.updateUser({ password });
     }
     if (isFirebase) {
       const { error } = await firebaseRestAuth.updatePassword(password);
@@ -100,6 +119,9 @@ export const authService = {
     if (isLocalStorage) {
       localStorage.setItem('repro_local_session', 'false');
       return { error: null };
+    }
+    if (isNeon) {
+      return neonAuthService.signOut();
     }
     if (isFirebase) {
       return firebaseRestAuth.signOut();
@@ -128,6 +150,9 @@ export const authService = {
         },
         error: null,
       };
+    }
+    if (isNeon) {
+      return neonAuthService.getSession();
     }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.getSession();
@@ -173,6 +198,9 @@ export const authService = {
           }
         }
       };
+    }
+    if (isNeon) {
+      return neonAuthService.onAuthStateChange(callback);
     }
     if (isFirebase) {
       return firebaseRestAuth.onAuthStateChange((event, session) => {

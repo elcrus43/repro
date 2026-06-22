@@ -9,8 +9,8 @@ from bs4 import BeautifulSoup
 
 logger = logging.getLogger(__name__)
 
-class CianSearchParser:
-    BASE_URL = "https://www.cian.ru/cat.php"
+class M2Parser:
+    BASE_URL = "https://m2.ru"
     
     def __init__(self):
         self.proxy_url = os.getenv("PROXY_URL") or os.getenv("PROXY")
@@ -29,36 +29,43 @@ class CianSearchParser:
             logger.error(f"Error parsing proxy URL '{proxy_url}': {e}")
             return None
 
-    def _get_region_id(self, city: Optional[str]) -> int:
+    def _get_city_slug(self, city: Optional[str]) -> str:
         if not city:
-            return 1
+            return "moskva"
         city = city.lower().strip()
         mapping = {
-            "москва": 1,
-            "санкт-петербург": 2,
-            "спб": 2,
-            "казань": 2900,
-            "екатеринбург": 4749,
-            "новосибирск": 4897,
-            "нижний новгород": 4885,
-            "краснодар": 4820,
-            "сочи": 4966,
-            "киров": 4658
+            "москва": "moskva",
+            "санкт-петербург": "sankt-peterburg",
+            "спб": "sankt-peterburg",
+            "казань": "kazan",
+            "екатеринбург": "ekaterinburg",
+            "новосибирск": "novosibirsk",
+            "нижний новгород": "nizhniy-novgorod",
+            "краснодар": "krasnodar",
+            "сочи": "sochi",
+            "киров": "kirov"
         }
-        return mapping.get(city, 1)
+        if city in mapping:
+            return mapping[city]
+        
+        char_map = {
+            'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
+            'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+            'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'kh', 'ц': 'ts',
+            'ч': 'ch', 'ш': 'sh', 'щ': 'shch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu',
+            'я': 'ya', ' ': '-'
+        }
+        return ''.join(char_map.get(c, c) for c in city)
 
     async def search(self, params: dict) -> List[dict]:
-        """Search listings on CIAN by parameters"""
-        search_params = self._build_search_params(params)
-        query_string = urlencode(search_params)
-        search_url = f"{self.BASE_URL}?{query_string}"
-        
-        logger.info(f"Searching CIAN: {search_url}")
+        """Search listings on M2.ru by parameters"""
+        search_url = self._build_search_url(params)
+        logger.info(f"Searching M2: {search_url}")
         
         proxy_config = self._parse_proxy(self.proxy_url) if self.proxy_url else None
         
         async with async_playwright() as p:
-            logger.info("CianSearchParser: Launching Chromium...")
+            logger.info("M2Parser: Launching Chromium...")
             browser = None
             try:
                 launch_args = ["--disable-blink-features=AutomationControlled"]
@@ -72,7 +79,7 @@ class CianSearchParser:
                     timeout=60000,
                     **launch_kwargs
                 )
-                logger.info("CianSearchParser: Chromium launched successfully.")
+                logger.info("M2Parser: Chromium launched successfully.")
                 
                 context = await browser.new_context(
                     viewport={"width": 1920, "height": 1080},
@@ -84,35 +91,34 @@ class CianSearchParser:
                 
                 page = await context.new_page()
                 
-                logger.info(f"CianSearchParser: Navigating to {search_url}...")
+                logger.info(f"M2Parser: Navigating to {search_url}...")
                 await page.goto(search_url, wait_until="domcontentloaded", timeout=60000)
-                logger.info("CianSearchParser: Page loaded. Simulating scroll...")
+                logger.info("M2Parser: Page loaded. Simulating scroll...")
                 
-                # Simulating scroll
+                # Scroll
                 await page.evaluate("window.scrollTo(0, document.body.scrollHeight / 3)")
                 await asyncio.sleep(1.5)
                 
                 # Wait for any item to appear using a combined selector
-                selectors = ["[data-name='CardComponent']", "article[data-testid='offer-card']", "[data-name='OfferCard']"]
+                selectors = ["[class*='OfferCard']", "[class*='offer-card']", "[data-testid*='offer']", "[class*='card']", "div[class*='Snippet']"]
                 combined_selector = ", ".join(selectors)
                 try:
                     await page.wait_for_selector(combined_selector, timeout=12000)
-                    logger.info("CianSearchParser: Found CIAN cards using combined selector.")
+                    logger.info("M2Parser: Found items using combined selector.")
                 except Exception as e:
-                    logger.warning(f"CianSearchParser: Combined selector wait failed: {e}. Proceeding with raw HTML.")
+                    logger.warning(f"M2Parser: Combined selector wait failed: {e}. Proceeding with raw HTML.")
                     
                 content = await page.content()
-                logger.info(f"CianSearchParser: Content retrieved ({len(content)} bytes). Parsing with BeautifulSoup...")
+                logger.info(f"M2Parser: Content retrieved ({len(content)} bytes). Parsing with BeautifulSoup...")
                 soup = BeautifulSoup(content, 'html.parser')
                 
-                items = soup.select("[data-name='CardComponent']")
-                if not items:
-                    items = soup.select("article[data-testid='offer-card']")
-                if not items:
-                    items = soup.select("[data-name='OfferCard']")
-                    
-                logger.info(f"CianSearchParser: BS4 found {len(items)} items matching selectors.")
-                
+                items = []
+                for s in selectors:
+                    items = soup.select(s)
+                    if items:
+                        logger.info(f"M2Parser: BS4 found {len(items)} items using selector '{s}'.")
+                        break
+                        
                 results = []
                 for item in items[:20]:
                     parsed = self._parse_item(item)
@@ -121,69 +127,86 @@ class CianSearchParser:
                 
                 return results
             except Exception as e:
-                logger.error(f"CIAN parsing error: {e}")
+                logger.error(f"M2 parsing error: {e}")
                 return []
             finally:
                 if browser:
                     await browser.close()
 
-    def _build_search_params(self, params: dict) -> dict:
-        cian_params = {
-            "engine_version": 2,
-            "deal_type": "sale" if params.get("deal_type") == "SALE" else "rent",
-            "offer_type": "flat",
-            "region": self._get_region_id(params.get("city")),
-        }
+    def _build_search_url(self, params: dict) -> str:
+        city_slug = self._get_city_slug(params.get("city"))
+        deal = "kupit-kvartiru" if params.get("deal_type") == "SALE" else "snyat-kvartiru"
+        url = f"{self.BASE_URL}/{city_slug}/nedvizhimost/{deal}/"
+        
+        query_params = {}
         
         rooms = params.get("rooms")
         if rooms is not None:
             if rooms == 0:
-                cian_params["room9"] = 1 # Студия
+                query_params["rooms"] = "studio"
             else:
-                cian_params[f"room{rooms}"] = 1
+                query_params["rooms"] = rooms
             
-        if params.get("area_min"): cian_params["minarea"] = int(params["area_min"])
-        if params.get("area_max"): cian_params["maxarea"] = int(params["area_max"])
+        if params.get("area_min"): query_params["areaFrom"] = int(params["area_min"])
+        if params.get("area_max"): query_params["areaTo"] = int(params["area_max"])
         
-        return cian_params
+        return f"{url}?{urlencode(query_params)}"
 
     def _parse_item(self, item) -> Optional[dict]:
         try:
             link_tag = (
-                item.select_one("a[href*='/sale/flat/']") 
-                or item.select_one("a[href*='/rent/flat/']") 
+                item.select_one("a[href*='/card/']") 
+                or item.select_one("a[href*='/flat/']")
                 or item.select_one("a")
             )
-            price_tag = item.select_one("[data-mark='MainPrice']") or item.find(text=lambda x: "₽" in x)
-            title_tag = item.select_one("[data-name='TitleComponent']") or item.select_one("span")
+            price_tag = (
+                item.select_one("[class*='price']") 
+                or item.select_one("[class*='Price']") 
+                or item.find(text=lambda x: "₽" in x)
+            )
             
             if not link_tag or not price_tag:
                 return None
                 
-            url = link_tag['href']
-            if not url.startswith("http"):
-                url = "https://www.cian.ru" + url
-                
+            href = link_tag['href']
+            url = self.BASE_URL + href if href.startswith("/") else href
+            
             price_text = price_tag.get_text() if hasattr(price_tag, 'get_text') else str(price_tag)
             price = int(''.join(filter(str.isdigit, price_text)))
             
-            title = title_tag.get_text() if title_tag else ""
+            # Extract ID
+            # Example URL: https://m2.ru/card/1234567/ or similar
+            id_match = re.search(r"card/(\d+)", url)
+            if id_match:
+                source_id = id_match.group(1)
+            else:
+                source_id = url.split('/')[-2] or url.split('/')[-1]
+                
+            title_tag = (
+                item.select_one("[class*='title']") 
+                or item.select_one("[class*='Title']") 
+                or item.select_one("[class*='header']")
+            )
+            title = title_tag.get_text(strip=True) if title_tag else "Квартира M2"
             
             area = None
             floor = None
             total_floors = None
             rooms = None
             
+            # Extract rooms, area, floor from title: "2-комнатная квартира, 54 м², 7/12 этаж"
             area_match = re.search(r"([\d.,]+)\s*м²", title)
             if area_match:
                 area = float(area_match.group(1).replace(",", "."))
                 
             floor_match = re.search(r"(\d+)/(\d+)\s*этаж", title)
+            if not floor_match:
+                floor_match = re.search(r"(\d+)\s*этаж\s*из\s*(\d+)", title)
             if floor_match:
                 floor = int(floor_match.group(1))
                 total_floors = int(floor_match.group(2))
                 
-            rooms_match = re.search(r"(\d+)-комн", title)
+            rooms_match = re.search(r"(\d+)-комнатная", title)
             if rooms_match:
                 rooms = int(rooms_match.group(1))
             elif "студия" in title.lower() or "studio" in title.lower():
@@ -203,18 +226,9 @@ class CianSearchParser:
             elif "блоч" in t_lower:
                 building_type = "block"
 
-            # Extract source ID from url
-            # Example: https://www.cian.ru/sale/flat/312345678/ -> 312345678
-            source_id = None
-            source_id_match = re.search(r"flat/(\d+)", url)
-            if source_id_match:
-                source_id = source_id_match.group(1)
-            else:
-                source_id = url.split('/')[-2] or url.split('/')[-1]
-
             return {
-                "source": "CIAN",
-                "source_id": source_id,
+                "source": "M2",
+                "source_id": str(source_id),
                 "source_url": url,
                 "title": title,
                 "price": price,
@@ -225,5 +239,5 @@ class CianSearchParser:
                 "building_type": building_type
             }
         except Exception as e:
-            logger.warning(f"Error parsing CIAN item: {e}")
+            logger.warning(f"Error parsing M2 item: {e}")
             return None

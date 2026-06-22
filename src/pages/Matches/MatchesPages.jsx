@@ -103,23 +103,23 @@ function MatchCard({ match: m, onClick }) {
 
     return (
         <div className="card card-clickable" onClick={onClick} style={{ 
-            padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative', overflow: 'hidden'
+            padding: '16px 20px', borderRadius: 24, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'var(--surface)', position: 'relative', overflow: 'hidden'
         }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ 
-                        width: 44, height: 44, borderRadius: 12, background: m.match_level === 'perfect' ? 'var(--success-light)' : 'var(--warning-light)',
+                        width: 36, height: 36, borderRadius: 10, background: m.match_level === 'perfect' ? 'var(--success-light)' : 'var(--warning-light)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.match_level === 'perfect' ? 'var(--success)' : 'var(--warning)',
-                        fontWeight: 300, fontFamily: "'Oswald', sans-serif", fontSize: 16
+                        fontWeight: 500, fontFamily: "'Oswald', sans-serif", fontSize: 14
                     }}>
                         {m.score}%
                     </div>
-                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 14, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 13, letterSpacing: '0.02em', color: 'var(--text)' }}>
                         {lvl.label}
                     </div>
                 </div>
                 <div style={{ 
-                    padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 300,
+                    padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 300,
                     background: `${statusColors[m.status] || '#64748b'}15`,
                     color: statusColors[m.status] || '#64748b'
                 }}>
@@ -128,34 +128,25 @@ function MatchCard({ match: m, onClick }) {
             </div>
 
             {/* Progress Bar */}
-            <div style={{ background: 'var(--bg-light)', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 20 }}>
+            <div style={{ background: 'var(--bg-light)', borderRadius: 2, height: 3, overflow: 'hidden', marginBottom: 12 }}>
                 <div style={{ 
                     width: `${m.score}%`, height: '100%', background: m.match_level === 'perfect' ? 'var(--success)' : m.match_level === 'good' ? 'var(--warning)' : 'var(--orange)',
                     transition: 'width 0.8s ease-out'
                 }} />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {/* Property Snippet */}
-                <div style={{ padding: '12px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 2 }}>Объект</div>
-                        <div style={{ fontWeight: 300, fontSize: 14 }}>{prop ? `${formatPrice(prop.price)} · ${prop.address || prop.city}` : 'Объект удалён'}</div>
-                    </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', fontSize: 13, fontWeight: 300, lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--text-muted)', width: 60, flexShrink: 0 }}>Объект:</span>
+                    <span style={{ color: 'var(--text)' }}>
+                        {prop ? `${formatPrice(prop.price)} · ${prop.address || prop.city}` : 'Объект удалён'}
+                    </span>
                 </div>
-
-                <div style={{ display: 'flex', justifyContent: 'center', margin: '-6px 0' }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 1 }}>
-                        <TrendingUp size={16} />
-                    </div>
-                </div>
-
-                {/* Buyer Snippet */}
-                <div style={{ padding: '12px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 2 }}>Клиент</div>
-                        <div style={{ fontWeight: 300, fontSize: 14 }}>{buyer?.full_name || 'Контакт скрыт'} · до {formatPrice(req?.budget_max)}</div>
-                    </div>
+                <div style={{ display: 'flex', fontSize: 13, fontWeight: 300, lineHeight: 1.4 }}>
+                    <span style={{ color: 'var(--text-muted)', width: 60, flexShrink: 0 }}>Клиент:</span>
+                    <span style={{ color: 'var(--text)' }}>
+                        {buyer?.full_name || 'Контакт скрыт'} · до {formatPrice(req?.budget_max)}
+                    </span>
                 </div>
             </div>
         </div>

@@ -26,7 +26,16 @@ const TYPE_COLORS = {
 
 function formatDateDisplay(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
+  let d;
+  if (dateStr.includes('T')) {
+    d = new Date(dateStr);
+  } else {
+    d = new Date(dateStr + 'T00:00:00');
+  }
+  if (isNaN(d.getTime())) {
+    d = new Date(dateStr);
+  }
+  if (isNaN(d.getTime())) return 'Invalid Date';
   return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 }
 

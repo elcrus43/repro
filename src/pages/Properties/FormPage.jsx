@@ -13,7 +13,7 @@ import {
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
     Upload, Calculator, Ruler, ArrowUpCircle, Briefcase,
-    Calendar, Users, Zap
+    Calendar, Users, Zap, User
 } from 'lucide-react';
 
 // Cloudinary конфигурация
@@ -140,7 +140,7 @@ function FormCard({ title, icon, children, description }) {
 
 export function FormPage() {
     const { id } = useParams();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const { toast } = useToastContext();
@@ -207,7 +207,9 @@ export function FormPage() {
         urgency: 'medium',
         notes: '',
         images: [],
-        floorplan_images: []
+        floorplan_images: [],
+        contact_name: '',
+        contact_phone: ''
     };
 
     const [form, setForm] = useState(initialForm);
@@ -225,11 +227,12 @@ export function FormPage() {
         }
     }, [existing, form.id]);
 
+    const importParam = searchParams.get('import');
+
     React.useEffect(() => {
-        const importData = searchParams.get('import');
-        if (importData) {
+        if (importParam) {
             try {
-                const data = decodeImportData(importData);
+                const data = decodeImportData(importParam);
                 if (data) {
                     setForm(f => ({
                         ...f,
@@ -247,8 +250,12 @@ export function FormPage() {
                 console.error('Failed to parse import data:', err);
                 toast.error('Не удалось разобрать данные импорта');
             }
+            // Clear the import param from the URL to prevent double imports
+            const newParams = new URLSearchParams(window.location.search);
+            newParams.delete('import');
+            setSearchParams(newParams, { replace: true });
         }
-    }, [searchParams, toast]);
+    }, [importParam, toast, setSearchParams]);
 
     const fileInputRef = useRef();
     const floorplanInputRef = useRef();
@@ -538,6 +545,34 @@ export function FormPage() {
                         >
                             + Создать нового клиента
                         </button>
+                    </div>
+                </FormCard>
+
+                {/* Контактное лицо */}
+                <FormCard title="Контактное лицо" icon={<User size={22} />} description="Агент или продавец объекта (не пользователь приложения)">
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Имя контакта</label>
+                            <input
+                                type="text"
+                                className="form-input"
+                                style={{ borderRadius: 14 }}
+                                placeholder="Иван Иванов"
+                                value={form.contact_name || ''}
+                                onChange={e => setF('contact_name', e.target.value)}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Телефон контакта</label>
+                            <input
+                                type="tel"
+                                className="form-input"
+                                style={{ borderRadius: 14 }}
+                                placeholder="+7 (900) 000-00-00"
+                                value={form.contact_phone || ''}
+                                onChange={e => setF('contact_phone', e.target.value)}
+                            />
+                        </div>
                     </div>
                 </FormCard>
 

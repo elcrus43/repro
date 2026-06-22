@@ -20,6 +20,7 @@ import { authService } from '../lib/auth';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
 import { initCalendarAuth } from '../lib/googleCalendar';
+import { neonDb } from '../lib/neon';
 
 /* ─── Context ──────────────────────────────────────────────────────────────── */
 
@@ -116,6 +117,7 @@ export function AppProvider({ children }) {
     const backend = import.meta.env.VITE_BACKEND;
     const isFirebase = backend === 'firebase';
     const isLocalStorage = backend === 'localstorage';
+    const isNeon = backend === 'neon';
 
     async function loadProfileAndData(sessionUser) {
       try {
@@ -143,6 +145,13 @@ export function AppProvider({ children }) {
           } catch (e) {
             profileErr = e;
           }
+        } else if (isNeon) {
+          const res = await neonDb.select('profiles', { id: sessionUser.id });
+          if (res.error) {
+            profileErr = res.error;
+          } else {
+            profile = res.data?.[0] || null;
+          }
         } else {
           const res = await supabase
             .from('profiles')
@@ -153,7 +162,7 @@ export function AppProvider({ children }) {
           profileErr = res.error;
         }
 
-        if (profileErr && (isFirebase || profileErr.code !== 'PGRST116')) {
+        if (profileErr && (isFirebase || isNeon || profileErr.code !== 'PGRST116')) {
           console.error('[Profile load error]', profileErr);
           const fallback = {
             id: sessionUser.id,
@@ -191,6 +200,10 @@ export function AppProvider({ children }) {
             } catch (e) {
               createErr = e;
             }
+          } else if (isNeon) {
+            const res = await neonDb.insert('profiles', newProfile);
+            createdProfile = res.data?.[0];
+            createErr = res.error;
           } else {
             const res = await supabase
               .from('profiles')

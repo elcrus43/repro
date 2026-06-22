@@ -453,6 +453,38 @@ a:focus:not(:focus-visible) {
   border-color: rgba(59, 130, 246, 0.3);
 }
 
+/* Import button — success accent */
+.icon-btn-import {
+  width: 29px;
+  height: 29px;
+  border: 1.5px solid rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--success);
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-btn-import:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: var(--success);
+  transform: scale(1.08);
+}
+
+.icon-btn-import:active {
+  transform: scale(0.94);
+}
+
+.dark .icon-btn-import {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.3);
+}
+
+
 
 /* ===== Bottom Navigation ===== */
 .bottom-nav {

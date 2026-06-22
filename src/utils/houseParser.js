@@ -4,7 +4,9 @@
  * Возвращает структурированный объект, совместимый с полями формы объекта.
  */
 
-const ZHIPU_API_KEY = import.meta.env.VITE_ZHIPU_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+const ZHIPU_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env)
+    ? (import.meta.env.VITE_ZHIPU_API_KEY || import.meta.env.VITE_GEMINI_API_KEY)
+    : (process.env.VITE_ZHIPU_API_KEY || process.env.VITE_GEMINI_API_KEY);
 
 // ─── Маппинг городов на slug для dom.mingkh.ru ───────────────────────────────
 const CITY_SLUGS = {
@@ -128,6 +130,43 @@ export function getMingkhSearchUrl(address, city) {
     return `https://dom.mingkh.ru/search?q=${q}`;
 }
 
+/**
+ * Строит точный поисковый адрес для ИИ.
+ * По умолчанию подставляет "Кировская область", если в адресе или городе не указан другой регион или крупный город.
+ */
+function getExactSearchAddress(address, city) {
+    const addrStr = address || '';
+    const cityStr = city || '';
+    const fullInput = `${cityStr}, ${addrStr}`.trim();
+    
+    const hasRegionKeywords = /обл|край|респ|автоном|москва|спб|санкт-петербург|петербург/i.test(fullInput);
+    
+    const otherCities = [
+        'Казань', 'Нижний Новгород', 'Самара', 'Уфа', 'Екатеринбург', 'Новосибирск', 
+        'Пермь', 'Воронеж', 'Красноярск', 'Саратов', 'Краснодар', 'Тюмень', 
+        'Ижевск', 'Барнаул', 'Ульяновск', 'Владивосток', 'Ярославль', 'Иркутск', 
+        'Хабаровск', 'Томск', 'Оренбург', 'Кемерово', 'Рязань', 'Астрахань', 
+        'Набережные Челны', 'Липецк', 'Тула'
+    ];
+    const mentionsOtherCity = otherCities.some(c => new RegExp(c, 'i').test(fullInput));
+    
+    const parts = [];
+    
+    if (!hasRegionKeywords && !mentionsOtherCity) {
+        parts.push('Кировская область');
+    }
+    
+    if (cityStr) {
+        parts.push(cityStr);
+    }
+    
+    if (addrStr) {
+        parts.push(addrStr);
+    }
+    
+    return parts.join(', ').replace(/, \s*,/g, ',').trim();
+}
+
 // ─── Нормализация типа дома ───────────────────────────────────────────────────
 const BUILDING_TYPE_MAP = {
     'панел':    'panel',
@@ -166,9 +205,7 @@ function safeFloat(v) {
  * на страницу dom.mingkh.ru для конкретного города и улицы.
  */
 export async function parseHouseFromAddress(address, city) {
-    if (!ZHIPU_API_KEY) {
-        throw new Error('Добавьте VITE_ZHIPU_API_KEY или VITE_GEMINI_API_KEY в файл .env и ПЕРЕЗАПУСТИТЕ проект (npm run dev)');
-    }
+
     if (!address && !city) {
         throw new Error('Укажите адрес для поиска');
     }
@@ -185,12 +222,12 @@ export async function parseHouseFromAddress(address, city) {
 
     // Извлекаем только улицу и номер дома из полного адреса
     const houseNum = (address || '').match(/[\d]+[а-яёА-ЯЁa-zA-Z]*(\/\d+)?/)?.[0] || '';
-    const location = [address, city].filter(Boolean).join(', ');
+    const location = getExactSearchAddress(address, city);
 
     // Формируем очень конкретный промт с прямыми ссылками на dom.mingkh.ru
     const urlHints = [
-        mingkhUrl    ? `- Страница улицы: ${mingkhUrl}` : null,
-        mingkhCityUrl ? `- Страница города: ${mingkhCityUrl}` : null,
+        mingkhUrl    ? `- Страница улицы на dom.mingkh.ru: ${mingkhUrl}` : null,
+        mingkhCityUrl ? `- Страница города на dom.mingkh.ru: ${mingkhCityUrl}` : null,
     ].filter(Boolean).join('\n');
 
     const prompt = `Тебе нужно найти технические характеристики жилого дома по адресу: "${location}", Россия.
@@ -216,95 +253,32 @@ ${urlHints ? `\nПрямые ссылки для поиска:\n${urlHints}\n\n�
 
 Верни ТОЛЬКО JSON, без markdown, без пояснений.`;
 
-    const url = 'https://open.bigmodel.cn/api/paas/v4/chat/completions';
+    const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
+    const proxyUrl = isCapacitor ? `https://realtor-match.vercel.app/api/ai-proxy` : `/api/ai-proxy`;
 
-    const modelCandidates = ['glm-4.7-flash', 'glm-4-flash', 'glm-4.5-air', 'glm-5-turbo'];
-    let lastError = null;
-    let responseObj = null;
-
-    for (const modelName of modelCandidates) {
-        try {
-            console.log(`[houseParser] Trying model ${modelName}...`);
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${ZHIPU_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: modelName,
-                    messages: [{ role: 'user', content: prompt }],
-                    tools: [{
-                        type: 'web_search',
-                        web_search: {
-                            enable: true,
-                            search_result: true
-                        }
-                    }],
-                    temperature: 0.05,
-                    max_tokens: 2000,
-                }),
-            });
-
-            const resText = await response.clone().text();
-
-            if (response.ok) {
-                responseObj = response;
-                break;
-            }
-
-            if (resText.includes('1211') || resText.includes('1305')) {
-                console.warn(`[houseParser] Model ${modelName} failed (1211/1305). Trying next...`);
-                continue;
-            }
-
-            let msg = `Ошибка API: ${response.status}`;
-            try {
-                const parsed = JSON.parse(resText);
-                msg = parsed?.error?.message || msg;
-            } catch {}
-            throw new Error(msg);
-        } catch (err) {
-            lastError = err;
-            if (!err.message.includes('1211') && !err.message.includes('1305')) {
-                throw err;
-            }
-        }
-    }
-
-    if (!responseObj) {
-        throw lastError || new Error('Не удалось выполнить запрос: все модели недоступны.');
-    }
-
-    const data = await responseObj.json();
-    const rawText = data?.choices?.[0]?.message?.content?.trim() || '';
-
-    if (!rawText) {
-        console.warn('[houseParser] Empty response from Zhipu. Full response:', JSON.stringify(data, null, 2));
-        throw new Error('Zhipu AI вернул пустой ответ. Попробуйте ещё раз.');
-    }
-
-    // Strip markdown code fences if present
-    const stripped = rawText
-        .replace(/^```(?:json)?\s*/i, '')
-        .replace(/\s*```\s*$/, '')
-        .trim();
-
-    const firstBrace = stripped.indexOf('{');
-    const lastBrace  = stripped.lastIndexOf('}');
-    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
-        console.warn('[houseParser] No JSON object found. Raw text:', rawText.slice(0, 600));
-        throw new Error('Не удалось распознать ответ. Попробуйте уточнить адрес.');
-    }
-
-    let parsed;
     try {
-        parsed = JSON.parse(stripped.slice(firstBrace, lastBrace + 1));
-    } catch {
-        throw new Error('Ошибка разбора данных. Попробуйте ещё раз.');
-    }
+        const response = await fetch(proxyUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'parseHouse',
+                prompt
+            })
+        });
 
-    return normalizeHouseData(parsed);
+        if (!response.ok) {
+            const errText = await response.text();
+            throw new Error(`Ошибка AI прокси: ${response.status} - ${errText}`);
+        }
+
+        const parsed = await response.json();
+        return normalizeHouseData(parsed);
+    } catch (err) {
+        console.error('[houseParser] Proxy error:', err.message);
+        throw err;
+    }
 }
 
 /** Нормализует сырой ответ Gemini в поля формы. */

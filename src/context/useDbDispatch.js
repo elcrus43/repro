@@ -366,17 +366,27 @@ function _buildRequestMatches(req, state, now) {
   });
 }
 
+const EVENT_TYPE_TITLES = {
+  viewing: 'Подбор',
+  showing: 'Показ',
+  meeting: 'Встреча',
+  deposit: 'Задаток',
+  deal: 'Сделка',
+  call: 'Звонок'
+};
+
 function _buildShowingTask(sh, now) {
+  const label = EVENT_TYPE_TITLES[sh.event_type] || 'Показ';
   return {
     id: nanoid(),
     realtor_id: sh.realtor_id,
     client_id: sh.client_id || null,
     property_id: sh.event_type === 'viewing' ? null : (sh.property_id || null),
-    title: `${sh.event_type === 'viewing' ? 'Подбор' : 'Показ'} — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+    title: `${label} — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
     description: '',
     due_date: sh.showing_date,
     priority: 'high',
-    status: 'pending',
+    status: sh.status === 'completed' ? 'done' : 'pending',
     created_at: now,
   };
 }

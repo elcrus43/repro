@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
-import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, Columns3, LayoutList } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { useExport } from '../../hooks/useExport';
+import { PipelinePage } from './PipelinePage';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -16,6 +17,14 @@ export function ListPage() {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
+    const [viewMode, setViewMode] = useState('list');
+
+    // Auto-revert to list mode if filter is changed away from buyer
+    useEffect(() => {
+        if (filter !== 'buyer') {
+            setViewMode('list');
+        }
+    }, [filter]);
 
     // Memoized filtered clients
     const filteredClients = useMemo(() => {
@@ -28,7 +37,10 @@ export function ListPage() {
                 if (filter === 'agent') return c.client_types?.includes('agent');
                 if (filter === 'landlord') return c.client_types?.includes('landlord');
                 if (filter === 'tenant') return c.client_types?.includes('tenant');
-                if (filter === 'active') return c.status === 'active';
+                if (filter === 'active') {
+                    const inactiveStatuses = ['refused', 'completed', 'deal_closed'];
+                    return !inactiveStatuses.includes(c.status);
+                }
                 return true;
             })
             .filter(c => {
@@ -44,8 +56,30 @@ export function ListPage() {
     useEffect(() => { resetPage(); }, [filteredClients, resetPage]);
 
     const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
-    const statusColors = { active: 'success', paused: 'warning', deal_closed: 'primary', refused: 'muted' };
-    const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
+    const statusColors = {
+        new: 'danger',
+        active: 'success',
+        request: 'info',
+        agreement: 'warning',
+        search: 'secondary',
+        deposit: 'success',
+        deal: 'primary',
+        paused: 'warning',
+        refused: 'muted',
+        completed: 'success'
+    };
+    const statusLabels = {
+        new: 'Не отработан',
+        active: 'В работе',
+        request: 'Запрос',
+        agreement: 'АД',
+        search: 'Поиск',
+        deposit: 'Задаток',
+        deal: 'Сделка',
+        paused: 'Пауза',
+        refused: 'Отказ',
+        completed: 'Завершен'
+    };
 
     const handleExport = () => {
         const headers = [
@@ -92,6 +126,21 @@ export function ListPage() {
                         >
                             Экспорт CSV
                         </button>
+                        {filter === 'buyer' && (
+                            <button
+                                className="card-clickable"
+                                onClick={() => setViewMode(m => m === 'list' ? 'pipeline' : 'list')}
+                                style={{
+                                    width: 44, height: 44, borderRadius: 14, border: 'none',
+                                    background: 'var(--bg-light)',
+                                    color: viewMode === 'pipeline' ? 'var(--primary)' : 'var(--text-secondary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}
+                                title={viewMode === 'list' ? 'Воронка продаж' : 'Список'}
+                            >
+                                {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                            </button>
+                        )}
                         <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
                             width: 44, height: 44, borderRadius: 14, border: 'none', 
                             background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -150,7 +199,9 @@ export function ListPage() {
                     </div>
                 </div>
 
-                {clients.length === 0 && (
+                {viewMode === 'pipeline' && <PipelinePage />}
+
+                {viewMode === 'list' && clients.length === 0 && (
                     <div className="empty-state" style={{ background: 'var(--surface)', borderRadius: 28, padding: '60px 40px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }}>
                         <div className="empty-title font-oswald" style={{ fontSize: 20, fontWeight: 300 }}>Нет клиентов</div>
                         <div className="empty-desc" style={{ fontWeight: 200 }}>Самое время добавить новый контакт в базу</div>
@@ -159,7 +210,7 @@ export function ListPage() {
                         }} onClick={() => navigate('/clients/new')}>Добавить клиента</button>
                     </div>
                 )}
-                {clients.map(client => {
+                {viewMode === 'list' && clients.map(client => {
                     const matches = state.matches.filter(m => {
                         const prop = state.properties.find(p => p.id === m.property_id);
                         const req = state.requests.find(r => r.id === m.request_id);
@@ -169,6 +220,23 @@ export function ListPage() {
                     const initial = client.full_name?.charAt(0).toUpperCase() || '?';
                     const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
                     const avatarBg = colors[initial.charCodeAt(0) % colors.length];
+
+                    const getStatusStyle = (status) => {
+                        switch(status) {
+                            case 'new': return { color: 'var(--danger)', background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.2)' };
+                            case 'active': return { color: 'var(--success)', background: 'var(--success-light)', border: '1px solid rgba(16,185,129,0.2)' };
+                            case 'request': return { color: '#2563eb', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' };
+                            case 'agreement': return { color: '#d97706', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)' };
+                            case 'search': return { color: '#7c3aed', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)' };
+                            case 'deposit': return { color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' };
+                            case 'deal': return { color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' };
+                            case 'paused': return { color: 'var(--warning)', background: 'var(--warning-light)', border: '1px solid rgba(245,158,11,0.2)' };
+                            case 'refused': return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
+                            case 'completed': return { color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' };
+                            default: return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
+                        }
+                    };
+                    const statusStyle = getStatusStyle(client.status);
 
                     return (
                         <div key={client.id} className="card card-clickable" style={{ 
@@ -182,8 +250,7 @@ export function ListPage() {
                                         <div style={{ fontWeight: 400, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
                                         <div style={{ 
                                             padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 300, letterSpacing: '0.05em',
-                                            background: client.status === 'active' ? 'var(--success-light)' : 'var(--warning-light)',
-                                            color: client.status === 'active' ? 'var(--success)' : 'var(--warning)'
+                                            ...statusStyle
                                         }}>
                                             {statusLabels[client.status] || client.status}
                                         </div>
@@ -212,7 +279,7 @@ export function ListPage() {
                 })}
 
                 {/* Pagination Controls */}
-                {totalPages > 1 && (
+                {viewMode === 'list' && totalPages > 1 && (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 20, paddingBottom: 20 }}>
                         <button
                             className="card-clickable"

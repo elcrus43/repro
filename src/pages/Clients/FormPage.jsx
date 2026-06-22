@@ -7,7 +7,7 @@ import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown
 
 const defaultClient = {
     full_name: '', phone: '', email: '',
-    client_types: ['buyer'], additional_contacts: [], source: '', status: 'active', notes: '',
+    client_types: ['buyer'], additional_contacts: [], source: '', status: 'new', notes: '',
     passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '' }
 };
 
@@ -64,7 +64,7 @@ export function FormPage() {
         }
     }
 
-    const sources = ['Авито', 'лидген', 'с показа', 'рекомендация', 'соцсети', 'ТОП-100', 'ХЗ', 'попутная наработка', 'другое'];
+    const sources = ['Авито', 'лидген', 'с показа', 'рекомендация', 'соцсети', 'ТОП-100', 'ХЗ', 'попутная наработка', 'Лид Руководителя', 'Вх. звонок в Офис', 'другое'];
     const clientTypes = [
         { id: 'buyer', label: 'Покупатель' },
         { id: 'seller', label: 'Продавец' },
@@ -182,10 +182,21 @@ export function FormPage() {
                             <div style={{ position: 'relative' }}>
                                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Activity size={18} /></span>
                                 <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.status} onChange={e => setF('status', e.target.value)}>
-                                    <option value="active">Активен</option>
+                                    <option value="new">Не отработан</option>
+                                    <option value="active">В работе</option>
+                                    {form.client_types?.includes('buyer') && (
+                                        <>
+                                            <option value="request">Запрос</option>
+                                            <option value="agreement">АД</option>
+                                            <option value="search">Поиск</option>
+                                            <option value="deposit">Задаток</option>
+                                            <option value="deal">Сделка</option>
+                                        </>
+                                    )}
                                     <option value="paused">Пауза</option>
-                                    <option value="deal_closed">Сделка закрыта</option>
                                     <option value="refused">Отказ</option>
+                                    <option value="completed">Завершен</option>
+                                    <option value="deal_closed">Сделка закрыта</option>
                                 </select>
                             </div>
                         </div>

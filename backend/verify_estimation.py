@@ -1,9 +1,14 @@
 import asyncio
 import sys
 import os
+from dotenv import load_dotenv
 
 # Add the directory containing 'app' to sys.path
-sys.path.append(os.getcwd())
+backend_dir = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(backend_dir)
+
+# Load .env file
+load_dotenv(os.path.join(backend_dir, '.env'))
 
 from app.services.estimation_service import EstimationService, EstimationInput
 from app.core.database import SessionLocal, Base

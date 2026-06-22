@@ -13,6 +13,12 @@ from app.api.estimation import router as estimation_router
 from app.api.messaging import router as messaging_router
 from app.api.ai import router as ai_router
 from app.api.public_property import router as public_router
+from app.api.cma import router as cma_router
+
+# Ensure all database models are registered and tables are created
+from app.core.database import engine, Base
+import app.models.models
+Base.metadata.create_all(bind=engine)
 
 # ─── CORS Configuration ───────────────────────────────────────────
 ALLOWED_ORIGINS = os.getenv(
@@ -41,6 +47,7 @@ app.add_middleware(
 app.include_router(estimation_router, prefix="/api/v1")
 app.include_router(messaging_router, prefix="/api/v1")
 app.include_router(ai_router, prefix="/api/v1")
+app.include_router(cma_router, prefix="/api/v1")
 app.include_router(public_router) # Public routes without /api/v1 prefix for shorter URLs
 
 @app.api_route("/supabase-proxy/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
@@ -76,4 +83,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8080)

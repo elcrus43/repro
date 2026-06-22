@@ -57,6 +57,10 @@ export default defineConfig(({ mode }) => {
         '/api/google-calendar-token': {
           target: 'https://realtor-match.vercel.app',
           changeOrigin: true
+        },
+        '/api/ai-proxy': {
+          target: 'https://realtor-match.vercel.app',
+          changeOrigin: true
         }
       }
     },

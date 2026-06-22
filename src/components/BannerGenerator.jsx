@@ -60,6 +60,23 @@ export function BannerGenerator({ property, currentUser, onClose }) {
     });
     const [gridLayout, setGridLayout] = React.useState('grid');
 
+    const [availableLayouts, setAvailableLayouts] = React.useState(() => {
+        return property.floorplan_images || [];
+    });
+    const [layoutImage, setLayoutImage] = React.useState(() => {
+        return (property.floorplan_images && property.floorplan_images.length > 0)
+            ? property.floorplan_images[0]
+            : null;
+    });
+
+    const handleLayoutUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        const urls = files.map(file => URL.createObjectURL(file));
+        setAvailableLayouts(prev => [...prev, ...urls]);
+        setLayoutImage(urls[0]);
+    };
+
     const fmts = React.useMemo(() => ({ 
         story: { w: 1080, h: 1920 }, 
         post: { w: 1080, h: 1080 } 
@@ -76,7 +93,9 @@ export function BannerGenerator({ property, currentUser, onClose }) {
 
         // Load all selected images
         const loadedImgs = [];
-        await Promise.all(selectedImages.map(idx => {
+        let loadedLayoutImg = null;
+
+        const promises = selectedImages.map(idx => {
             return new Promise(r => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
@@ -84,7 +103,22 @@ export function BannerGenerator({ property, currentUser, onClose }) {
                 img.onload = () => { loadedImgs.push({ img, idx }); r(); };
                 img.onerror = () => r();
             });
-        }));
+        });
+
+        if (layoutImage) {
+            promises.push(new Promise(r => {
+                const img = new Image();
+                if (!layoutImage.startsWith('data:') && !layoutImage.startsWith('blob:')) {
+                    img.crossOrigin = 'anonymous';
+                }
+                img.src = layoutImage;
+                img.onload = () => { loadedLayoutImg = img; r(); };
+                img.onerror = () => r();
+            }));
+        }
+
+        await Promise.all(promises);
+
         // Sort to preserve selection order
         loadedImgs.sort((a, b) => selectedImages.indexOf(a.idx) - selectedImages.indexOf(b.idx));
         const imgs = loadedImgs.map(item => item.img);
@@ -340,6 +374,39 @@ export function BannerGenerator({ property, currentUser, onClose }) {
         ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
         ctx.fillText(phone, px0 + ctaWidth, phy);
 
+        /* ── LAYOUT IMAGE ───────────────────────────────────────────── */
+        if (loadedLayoutImg) {
+            const boxSize = IS ? 380 : 280;
+            const boxX = w - px0 - boxSize;
+            const boxY = textStartY - boxSize - (IS ? 40 : 20);
+
+            // Draw the image inside with fit-contain
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(boxX, boxY, boxSize, boxSize);
+            ctx.clip();
+
+            const imgW = loadedLayoutImg.width;
+            const imgH = loadedLayoutImg.height;
+            const imgRatio = imgW / imgH;
+            
+            let dw, dh, dx, dy;
+            if (imgRatio > 1) {
+                dw = boxSize;
+                dh = boxSize / imgRatio;
+                dx = boxX;
+                dy = boxY + (boxSize - dh) / 2;
+            } else {
+                dh = boxSize;
+                dw = boxSize * imgRatio;
+                dx = boxX + (boxSize - dw) / 2;
+                dy = boxY;
+            }
+            
+            ctx.drawImage(loadedLayoutImg, dx, dy, dw, dh);
+            ctx.restore();
+        }
+
         /* ── STICKERS ───────────────────────────────────────────────── */
         if (stickers.length) {
             const sp = IS ? 70 : 50, sh = IS ? 66 : 48, sf = IS ? 30 : 22;
@@ -369,7 +436,7 @@ export function BannerGenerator({ property, currentUser, onClose }) {
         }
 
         setLoading(false);
-    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages]);
+    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages, accentColor, layoutImage]);
 
     React.useEffect(() => {
         draw();
@@ -457,6 +524,85 @@ export function BannerGenerator({ property, currentUser, onClose }) {
                             </div>
                         </Section>
                     )}
+
+                    {/* Layout selection */}
+                    <Section label="ПЛАНИРОВКА НА БАННЕРЕ">
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                            {/* Option to have no layout */}
+                            <button 
+                                onClick={() => setLayoutImage(null)}
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 8,
+                                    border: `2px solid ${layoutImage === null ? activeColor : 'var(--border)'}`,
+                                    background: 'var(--bg)',
+                                    color: 'var(--text-muted)',
+                                    cursor: 'pointer',
+                                    fontSize: 10,
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxSizing: 'border-box'
+                                }}
+                            >
+                                БЕЗ
+                            </button>
+
+                            {/* Available layouts */}
+                            {availableLayouts.map((url, idx) => {
+                                const isSel = layoutImage === url;
+                                return (
+                                    <div 
+                                        key={idx}
+                                        onClick={() => setLayoutImage(url)}
+                                        style={{ 
+                                            width: 44, 
+                                            height: 44, 
+                                            borderRadius: 8, 
+                                            overflow: 'hidden', 
+                                            cursor: 'pointer', 
+                                            border: `2px solid ${isSel ? activeColor : 'transparent'}`,
+                                            boxSizing: 'border-box',
+                                            position: 'relative',
+                                            opacity: isSel ? 1 : 0.5,
+                                            transition: 'all 0.15s'
+                                        }}
+                                    >
+                                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
+                                );
+                            })}
+
+                            {/* Upload button */}
+                            <label
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 8,
+                                    border: '2px dashed var(--border)',
+                                    background: 'var(--bg)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    color: 'var(--text-muted)',
+                                    boxSizing: 'border-box',
+                                    fontSize: 18,
+                                    fontWeight: 'bold'
+                                }}
+                            >
+                                +
+                                <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    style={{ display: 'none' }} 
+                                    onChange={handleLayoutUpload} 
+                                />
+                            </label>
+                        </div>
+                    </Section>
 
                     {/* Collage grid layouts selector */}
                     {selectedImages.length >= 2 && (

@@ -343,18 +343,23 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       case 'ADD_CLIENT': {
         // Normalize client data
         const clientData = {
-          ...action.client,
-          // Extract phone from phones array if present
+          realtor_id: action.client.realtor_id,
+          full_name: action.client.full_name || '',
           phone: action.client.phone || (action.client.phones && action.client.phones[0]) || '',
           phone_2: (action.client.phones && action.client.phones.length > 1) ? action.client.phones[1] : (action.client.phone_2 || ''),
+          email: action.client.email || null,
+          messenger: action.client.messenger || null,
           client_types: action.client.client_types || ['buyer'],
           additional_contacts: action.client.additional_contacts || [],
-          passport_details: action.client.passport_details || null,
           source: action.client.source || null,
+          status: action.client.status || 'active',
           notes: action.client.notes || null,
+          passport_details: action.client.passport_details || null,
         };
-        // Remove phones array (not in schema) and undefined fields
-        delete clientData.phones;
+        if (action.client.id) clientData.id = action.client.id;
+        if (action.client.created_at) clientData.created_at = action.client.created_at;
+        if (action.client.updated_at) clientData.updated_at = action.client.updated_at;
+        
         Object.keys(clientData).forEach(key => {
           if (clientData[key] === undefined) delete clientData[key];
         });
@@ -371,21 +376,25 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       }
 
       case 'UPDATE_CLIENT': {
-        const { id: cId, ...cData } = action.client;
+        const { id: cId } = action.client;
         // Normalize client data
         const normalizedData = {
-          ...cData,
-          // Extract phone from phones array if present
-          phone: cData.phone || (cData.phones && cData.phones[0]) || '',
-          phone_2: (cData.phones && cData.phones.length > 1) ? cData.phones[1] : (cData.phone_2 || ''),
-          client_types: cData.client_types || ['buyer'],
-          additional_contacts: cData.additional_contacts || [],
-          passport_details: cData.passport_details || null,
-          source: cData.source || null,
-          notes: cData.notes || null,
+          realtor_id: action.client.realtor_id,
+          full_name: action.client.full_name,
+          phone: action.client.phone || (action.client.phones && action.client.phones[0]) || '',
+          phone_2: (action.client.phones && action.client.phones.length > 1) ? action.client.phones[1] : (action.client.phone_2 || ''),
+          email: action.client.email || null,
+          messenger: action.client.messenger || null,
+          client_types: action.client.client_types || ['buyer'],
+          additional_contacts: action.client.additional_contacts || [],
+          source: action.client.source || null,
+          status: action.client.status || 'active',
+          notes: action.client.notes || null,
+          passport_details: action.client.passport_details || null,
         };
-        // Remove phones array (not in schema) and undefined fields
-        delete normalizedData.phones;
+        if (action.client.created_at) normalizedData.created_at = action.client.created_at;
+        if (action.client.updated_at) normalizedData.updated_at = action.client.updated_at;
+        
         Object.keys(normalizedData).forEach(key => {
           if (normalizedData[key] === undefined) delete normalizedData[key];
         });

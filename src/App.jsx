@@ -145,6 +145,8 @@ function LoadingScreen() {
     return () => clearTimeout(timer);
   }, []);
 
+  if (!showRetry) return null;
+
   return (
     <div className="loading-screen" style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',

@@ -97,7 +97,7 @@ export default function UpdatePasswordPage() {
                 </div>
             </div>
             <div className="auth-card" style={{ boxShadow: 'var(--shadow-premium)', borderRadius: 'var(--radius-lg)' }}>
-                <h2 style={{ fontFamily: 'Playfair Display, serif', fontWeight: 900, fontSize: 24, marginBottom: 24 }}>Новый пароль</h2>
+                <h2 style={{ fontWeight: 900, fontSize: 24, marginBottom: 24 }}>Новый пароль</h2>
 
                 {!sessionReady && !error ? (
                     <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Проверяем сессию...</p>

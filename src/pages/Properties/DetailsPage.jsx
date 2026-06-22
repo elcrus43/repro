@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star
+    TrendingDown, Star, Store, GraduationCap, Bus, User
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -99,6 +99,8 @@ import { BUILDING_TYPES, PROPERTY_TYPES } from '../../data/constants';
 
 import { PortfolioSection } from '../../components/PortfolioSection';
 import { BannerGenerator } from '../../components/BannerGenerator';
+import { AdGenerator } from '../../components/AdGenerator';
+import { CmaReport } from '../../components/CmaReport';
 
 
 /* ─── DetailsPage ────────────────────────────────────────────────────────────── */
@@ -108,7 +110,10 @@ export function DetailsPage() {
     const { state, dispatch } = useApp();
     const [showBannerGen, setShowBannerGen] = useState(false);
     const [showPortfolio, setShowPortfolio] = useState(false);
-    const [showGallery, setShowGallery] = useState(true);
+    const [showAdGen, setShowAdGen] = useState(false);
+    const [showCma, setShowCma] = useState(false);
+    const [showGallery, setShowGallery] = useState(false);
+    const [mapFilter, setMapFilter] = useState('address');
     const [coverSet, setCoverSet] = useState(false);
 
     function handleSetCover(index) {
@@ -340,6 +345,34 @@ export function DetailsPage() {
                         >
                             <Briefcase size={16} /> Портфолио
                         </button>
+                        <button
+                            className="card-clickable"
+                            style={{ 
+                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                padding: '0 16px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                fontFamily: "'Oswald', sans-serif"
+                            }}
+                            onClick={() => setShowAdGen(true)}
+                        >
+                            <Sparkles size={16} style={{ color: 'var(--primary)' }} /> Объявление
+                        </button>
+                        <button
+                            className="card-clickable"
+                            style={{ 
+                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                padding: '0 16px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                fontFamily: "'Oswald', sans-serif"
+                            }}
+                            onClick={() => setShowCma(true)}
+                        >
+                            <TrendingDown size={16} style={{ color: '#10b981' }} /> СМА
+                        </button>
                     </div>
                 </div>
 
@@ -460,6 +493,36 @@ export function DetailsPage() {
                     </div>
                 )}
 
+                {/* Контактное лицо */}
+                {(prop.contact_name || prop.contact_phone) && (
+                    <div className="card">
+                        <div className="section-title">Контактное лицо</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                            <div style={{
+                                width: 40, height: 40, borderRadius: '50%',
+                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                <User size={18} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                {prop.contact_name && (
+                                    <div style={{ fontWeight: 400 }}>{prop.contact_name}</div>
+                                )}
+                                {prop.contact_phone && (
+                                    <a
+                                        href={`tel:+${prop.contact_phone.replace(/\D/g, '')}`}
+                                        style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}
+                                    >
+                                        {prop.contact_phone}
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── О ДОМЕ / ЗДАНИИ — Premium Section ── */}
                 {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && (
                     <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
@@ -499,10 +562,10 @@ export function DetailsPage() {
                                     </span>
                                 </div>
                             )}
-                            {prop.ceiling_height && (
+                            {prop.management_company && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Потолки</span>
-                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.ceiling_height} м</span>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Управляющая компания</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.management_company}</span>
                                 </div>
                             )}
                         </div>
@@ -569,6 +632,12 @@ export function DetailsPage() {
                                 </span>
                             </div>
                         )}
+                        {prop.ceiling_height && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Потолки</span>
+                                <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.ceiling_height} м</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -581,11 +650,57 @@ export function DetailsPage() {
                             </div>
                             <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>Расположение</div>
                         </div>
+
+                        {/* Map Category Filters */}
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
+                            {[
+                                { id: 'address', label: 'Адрес', icon: <MapPin size={14} /> },
+                                { id: 'shops', label: 'Магазины', icon: <Store size={14} /> },
+                                { id: 'schools', label: 'Школы', icon: <GraduationCap size={14} /> },
+                                { id: 'transport', label: 'Транспорт', icon: <Bus size={14} /> }
+                            ].map(btn => (
+                                <button
+                                    key={btn.id}
+                                    onClick={() => setMapFilter(btn.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        padding: '8px 16px',
+                                        borderRadius: '16px',
+                                        border: '1px solid ' + (mapFilter === btn.id ? 'var(--primary)' : 'var(--border-light)'),
+                                        background: mapFilter === btn.id ? 'var(--primary)' : 'var(--surface)',
+                                        color: mapFilter === btn.id ? '#fff' : 'var(--text)',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap',
+                                        transition: 'all 0.2s ease',
+                                        boxShadow: mapFilter === btn.id ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
+                                    }}
+                                >
+                                    {btn.icon}
+                                    {btn.label}
+                                </button>
+                            ))}
+                        </div>
+
                         <div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', border: '1px solid var(--border-light)' }}>
                             <iframe 
-                                src={(prop.latitude && prop.longitude)
-                                    ? `https://yandex.ru/map-widget/v1/?ll=${prop.longitude},${prop.latitude}&z=16&pt=${prop.longitude},${prop.latitude},pm2rdm`
-                                    : `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent((prop.city || '') + ', ' + (prop.address || '').split(/,\s*(?:кв|кв\.|квартира|оф|оф\.|офис|пом|пом\.|помещение|каб|каб\.|кабинет)\s*\d+/i)[0].trim())}&z=16`} 
+                                src={(() => {
+                                    const cleanAddress = (prop.city || '') + ', ' + (prop.address || '').split(/,\s*(?:кв|кв\.|квартира|оф|оф\.|офис|пом|пом\.|помещение|каб|каб\.|кабинет)\s*\d+/i)[0].trim();
+                                    if (mapFilter === 'address') {
+                                        return (prop.latitude && prop.longitude)
+                                            ? `https://yandex.ru/map-widget/v1/?ll=${prop.longitude},${prop.latitude}&z=16&pt=${prop.longitude},${prop.latitude},pm2rdm`
+                                            : `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent(cleanAddress)}&z=16`;
+                                    } else if (mapFilter === 'shops') {
+                                        return `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent('Магазины рядом с ' + cleanAddress)}&z=15`;
+                                    } else if (mapFilter === 'schools') {
+                                        return `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent('Школы и детские сады рядом с ' + cleanAddress)}&z=15`;
+                                    } else if (mapFilter === 'transport') {
+                                        return `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent('Остановки транспорта рядом с ' + cleanAddress)}&z=15`;
+                                    }
+                                })()} 
                                 width="100%" 
                                 height="260" 
                                 style={{ display: 'block', border: 'none' }}
@@ -714,6 +829,25 @@ export function DetailsPage() {
                         property={prop}
                         currentUser={state.currentUser}
                         onClose={() => setShowBannerGen(false)} 
+                    />
+                )}
+                {showAdGen && (
+                    <AdGenerator 
+                        property={prop}
+                        currentUser={state.currentUser}
+                        onClose={() => setShowAdGen(false)} 
+                    />
+                )}
+                {showCma && (
+                    <CmaReport 
+                        property={prop}
+                        onClose={() => setShowCma(false)} 
+                        onApplyPrice={(newPrice) => {
+                            dispatch({ 
+                                type: 'PATCH_PROPERTY', 
+                                patch: { id: prop.id, price: newPrice } 
+                            });
+                        }}
                     />
                 )}
                 </div>

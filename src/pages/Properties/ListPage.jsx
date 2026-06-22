@@ -2,12 +2,13 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
-import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar } from 'lucide-react';
+import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PipelinePage } from './PipelinePage';
 import { useExport } from '../../hooks/useExport';
+import { useToastContext } from '../../components/Toast';
 
 
 
@@ -16,6 +17,45 @@ export function ListPage() {
     const navigate = useNavigate();
     const user = state.currentUser;
     const { exportToCSV } = useExport();
+    const { toast } = useToastContext();
+
+    const handleImportToProperties = async (item) => {
+        if (!window.confirm('Импортировать этот объект подбора в активные объекты?')) return;
+        
+        try {
+            const notes = [item.notes, item.link ? `Ссылка: ${item.link}` : null]
+                .filter(Boolean).join('\n');
+
+            const newProperty = {
+                realtor_id: user?.id,
+                client_id: item.client_id || null,
+                client_ids: item.client_ids && item.client_ids.length > 0 ? item.client_ids : (item.client_id ? [item.client_id] : []),
+                status: 'meeting',
+                address: item.address || '',
+                price: item.price || 0,
+                rooms: item.rooms !== undefined && item.rooms !== null ? Number(item.rooms) : null,
+                area_total: item.area_total !== undefined && item.area_total !== null ? Number(item.area_total) : null,
+                floor: item.floor !== undefined && item.floor !== null ? Number(item.floor) : null,
+                floors_total: item.floors_total !== undefined && item.floors_total !== null ? Number(item.floors_total) : null,
+                property_type: item.property_type || null,
+                city: item.city || '',
+                images: item.images || [],
+                notes: notes,
+                description: `Импортировано из подбора. ${item.notes || ''}`,
+                contact_name: item.contact_name || null,
+                contact_phone: item.contact_phone || null,
+            };
+
+            await dispatch({ type: 'ADD_PROPERTY', property: newProperty });
+            await dispatch({ type: 'DELETE_SELECTION_ITEM', id: item.id });
+            
+            toast.success('Объект успешно импортирован в активные!');
+        } catch (err) {
+            console.error('[Import Error]', err);
+            toast.error('Не удалось импортировать объект: ' + err.message);
+        }
+    };
+
 
 
     const [search, setSearch] = useState('');
@@ -356,16 +396,26 @@ export function ListPage() {
                                                     display: 'flex',
                                                     flexDirection: 'column',
                                                     gap: '8px',
-                                                    alignItems: 'center',
+                                                    alignItems: 'flex-end',
                                                     zIndex: 10
                                                 }}>
-                                                    <button 
-                                                        className="icon-btn-delete" 
-                                                        onClick={() => handleDeleteSelection(item.id)} 
-                                                        title="Удалить"
-                                                    >
-                                                        <Trash2 size={13} />
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                        <button 
+                                                            type="button"
+                                                            className="icon-btn-import" 
+                                                            onClick={() => handleImportToProperties(item)} 
+                                                            title="Импортировать в мои объекты"
+                                                        >
+                                                            <Download size={13} />
+                                                        </button>
+                                                        <button 
+                                                            className="icon-btn-delete" 
+                                                            onClick={() => handleDeleteSelection(item.id)} 
+                                                            title="Удалить"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
                                                     <button 
                                                         className="icon-btn-edit" 
                                                         onClick={() => navigate(`/selection/${item.id}/edit`)} 
