@@ -45,10 +45,15 @@ export function CmaReport({ property, onClose, onApplyPrice }) {
                     building_type: property.building_type || null
                 };
 
-                const res = await fetch(`${API_BASE}/api/v1/cma/run`, {
+                const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
+                const proxyUrl = isCapacitor ? `https://realtor-match.vercel.app/api/ai-proxy` : `/api/ai-proxy`;
+                const res = await fetch(proxyUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({
+                        action: 'runCma',
+                        property: body
+                    })
                 });
 
                 if (!res.ok) {
