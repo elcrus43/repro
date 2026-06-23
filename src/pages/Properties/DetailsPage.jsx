@@ -316,11 +316,18 @@ export function DetailsPage() {
                         );
                     })()}
 
-                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(2, 1fr)',
+                        gap: '8px 12px',
+                        justifyContent: 'start',
+                        width: '100%',
+                        maxWidth: 360
+                    }}>
                         <button
-                            className="card-clickable"
+                            className="card-clickable bordered-action-button"
                             style={{ 
-                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
                                 background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 padding: '0 16px',
@@ -332,9 +339,9 @@ export function DetailsPage() {
                             <ImageIcon size={18} /> Баннер
                         </button>
                         <button
-                            className="card-clickable"
+                            className="card-clickable bordered-action-button"
                             style={{ 
-                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
                                 background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 padding: '0 16px',
@@ -346,9 +353,9 @@ export function DetailsPage() {
                             <Briefcase size={16} /> Портфолио
                         </button>
                         <button
-                            className="card-clickable"
+                            className="card-clickable bordered-action-button"
                             style={{ 
-                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
                                 background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 padding: '0 16px',
@@ -360,9 +367,9 @@ export function DetailsPage() {
                             <Sparkles size={16} style={{ color: 'var(--primary)' }} /> Объявление
                         </button>
                         <button
-                            className="card-clickable"
+                            className="card-clickable bordered-action-button"
                             style={{ 
-                                height: 48, borderRadius: 14, border: '1px solid var(--border-light)',
+                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
                                 background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                 padding: '0 16px',
@@ -535,27 +542,27 @@ export function DetailsPage() {
                             </div>
                         </div>
                         
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
                             {prop.build_year && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Год постройки</span>
                                     <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.build_year}</span>
                                 </div>
                             )}
                             {prop.building_type && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Тип здания</span>
                                     <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{BUILDING_TYPES[prop.building_type] || prop.building_type}</span>
                                 </div>
                             )}
                             {prop.floors_total && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этажность</span>
                                     <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floors_total}</span>
                                 </div>
                             )}
                             {prop.elevator_type && prop.elevator_type !== 'none' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Лифт</span>
                                     <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
                                         {{ passenger: 'Пассажирский', cargo: 'Грузовой', both: 'Пасс. + Груз.' }[prop.elevator_type] || prop.elevator_type}
@@ -563,7 +570,7 @@ export function DetailsPage() {
                                 </div>
                             )}
                             {prop.management_company && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Управляющая компания</span>
                                     <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.management_company}</span>
                                 </div>
@@ -593,31 +600,31 @@ export function DetailsPage() {
                         </div>
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 16px' }}>
                         {['apartment', 'room', 'commercial'].includes(prop.property_type) && prop.floor && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Этаж</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</span>
                             </div>
                         )}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                             <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Общая площадь</span>
                             <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_total} м²</span>
                         </div>
                         {['apartment', 'room', 'house'].includes(prop.property_type) && prop.area_living > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Жилая</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_living} м²</span>
                             </div>
                         )}
                         {['apartment', 'room', 'house'].includes(prop.property_type) && prop.area_kitchen > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Кухня</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.area_kitchen} м²</span>
                             </div>
                         )}
                         {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && prop.renovation && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Ремонт</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
                                     {{ none: 'Без ремонта', cosmetic: 'Косметический', euro: 'Евро', designer: 'Дизайнерский' }[prop.renovation] || prop.renovation}
@@ -625,7 +632,7 @@ export function DetailsPage() {
                             </div>
                         )}
                         {['apartment', 'room', 'house'].includes(prop.property_type) && prop.bathroom && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Санузел</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>
                                     {{ combined: 'Совмещённый', separate: 'Раздельный', two: 'Два и более' }[prop.bathroom] || prop.bathroom}
@@ -633,7 +640,7 @@ export function DetailsPage() {
                             </div>
                         )}
                         {prop.ceiling_height && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Потолки</span>
                                 <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.ceiling_height} м</span>
                             </div>

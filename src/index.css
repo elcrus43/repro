@@ -1883,4 +1883,15 @@ button.btn-icon:focus {
 ::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 10px;
+}
+
+/* Enforce black borders on action buttons */
+button.card-clickable.bordered-action-button {
+  border: 1.5px solid #000000 !important;
+}
+button.card-clickable.bordered-action-button:hover {
+  border: 1.5px solid #000000 !important;
+}
+button.card-clickable.bordered-action-button:focus {
+  border: 1.5px solid #000000 !important;
 }
