@@ -220,38 +220,43 @@ export function ListPage() {
 
                     return (
                         <div key={client.id} className="card card-clickable" style={{ 
-                            padding: '16px', border: 'none', background: 'var(--surface)', borderRadius: 24, 
-                            boxShadow: '0 8px 32px rgba(0,0,0,0.03)', position: 'relative', overflow: 'hidden',
-                            borderLeft: `4px solid ${avatarBg}`
+                            padding: '12px 16px', border: 'none', background: 'var(--surface)', borderRadius: 20, 
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)', position: 'relative', overflow: 'hidden',
+                            borderLeft: `4px solid ${avatarBg}`,
+                            display: 'flex', flexDirection: 'column', gap: 6
                         }} onClick={() => navigate(`/clients/${client.id}`)}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                        <div style={{ fontWeight: 400, fontSize: 16, color: 'var(--text)', marginBottom: 2 }}>{client.full_name}</div>
-                                        <div style={{ 
-                                            padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 300, letterSpacing: '0.05em',
-                                            ...statusStyle
-                                        }}>
-                                            {statusLabels[client.status] || client.status}
-                                        </div>
-                                    </div>
-                                    <div style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 300, marginBottom: 4 }}>
-                                        {formatPhone(client.phone)}
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <div style={{ display: 'flex', gap: 4 }}>
-                                            {client.client_types?.map(t => (
-                                                <span key={t} style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400, background: 'var(--bg-light)', padding: '2px 8px', borderRadius: 6 }}>
-                                                    {typeLabels[t]}
-                                                </span>
-                                            ))}
-                                        </div>
-                                        {matches.length > 0 && (
-                                            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 400 }}>
-                                                {matches.length} совпадений
+                            {/* Строка 1: ФИО и статус */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
+                                    {client.full_name}
+                                </div>
+                                <div style={{ 
+                                    padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 500, letterSpacing: '0.02em',
+                                    whiteSpace: 'nowrap',
+                                    ...statusStyle
+                                }}>
+                                    {statusLabels[client.status] || client.status}
+                                </div>
+                            </div>
+
+                            {/* Строка 2: Телефон, типы и совпадения */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                                    {formatPhone(client.phone)}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: 4 }}>
+                                        {client.client_types?.map(t => (
+                                            <span key={t} style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, background: 'var(--bg-light)', padding: '1px 6px', borderRadius: 4 }}>
+                                                {typeLabels[t]}
                                             </span>
-                                        )}
+                                        ))}
                                     </div>
+                                    {matches.length > 0 && (
+                                        <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 600, background: 'var(--primary-light)', padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
+                                            {matches.length} совп.
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>
