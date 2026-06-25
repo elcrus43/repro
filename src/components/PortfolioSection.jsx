@@ -622,66 +622,6 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                     </div>
                 </div>
 
-                <div style={{ marginBottom: 32 }}>
-                    <div 
-                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                        onDragLeave={() => setIsDragging(false)}
-                        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handlePortfolioFileUpload({ target: { files: e.dataTransfer.files } }, 'resale'); }}
-                        style={{ 
-                            padding: 32, borderRadius: 24, 
-                            border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--border-light)'}`,
-                            background: isDragging ? 'var(--primary-light)' : 'var(--bg)',
-                            textAlign: 'center', transition: 'all 0.2s'
-                        }}
-                    >
-                        <label style={{ cursor: 'pointer', display: 'block' }}>
-                            <div style={{ width: 56, height: 56, borderRadius: 18, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-                                <Upload size={28} />
-                            </div>
-                            <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6, color: 'var(--text-primary)' }}>Добавить планировки или файлы</div>
-                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Ctrl+V или выберите файлы (IMG/PDF)</div>
-                            <input type="file" hidden multiple onChange={(e) => handlePortfolioFileUpload(e, 'resale')} />
-                        </label>
-                    </div>
-
-                    {allFiles.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
-                            {allFiles.map(file => (
-                                <div key={file.id} className="fade-in" style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.12)', background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
-                                    {file.loading ? (
-                                        <div style={{ padding: 60, display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>
-                                    ) : (
-                                        <>
-                                            {file.type && file.type.includes('pdf') ? (
-                                                <iframe src={`${file.url}#view=FitH`} style={{ width: '100%', height: '450px', border: 'none', display: 'block' }} title={file.name} />
-                                            ) : (
-                                                <img src={file.url} alt={file.name} style={{ width: '100%', display: 'block' }} />
-                                            )}
-                                            <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 10 }}>
-                                                <button 
-                                                    onClick={() => copyToClipboard(file.url, file.id)}
-                                                    style={{ width: 36, height: 36, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.95)', color: 'var(--text-muted)', cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                                >
-                                                    {copiedId === file.id ? <Check size={18} color="var(--success)" /> : <Copy size={18} />}
-                                                </button>
-                                                <button 
-                                                    onClick={() => {
-                                                        const section = resaleFiles.find(f => f.id === file.id) ? 'resale' : (newBuildsFiles.find(f => f.id === file.id) ? 'new_builds' : 'mortgage');
-                                                        deletePortfolioFile(file.id, section);
-                                                    }}
-                                                    style={{ width: 36, height: 36, borderRadius: 12, border: 'none', background: 'rgba(220,38,38,0.95)', color: 'white', cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                                >
-                                                    <X size={20} />
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
                 {/* ИПОТЕЧНЫЙ КАЛЬКУЛЯТОР */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)', marginBottom: 32 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
@@ -1163,6 +1103,66 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                 </div>
                         </div>
                     </div>
+                </div>
+
+                <div style={{ marginBottom: 32 }}>
+                    <div 
+                        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handlePortfolioFileUpload({ target: { files: e.dataTransfer.files } }, 'resale'); }}
+                        style={{ 
+                            padding: 32, borderRadius: 24, 
+                            border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--border-light)'}`,
+                            background: isDragging ? 'var(--primary-light)' : 'var(--bg)',
+                            textAlign: 'center', transition: 'all 0.2s'
+                        }}
+                    >
+                        <label style={{ cursor: 'pointer', display: 'block' }}>
+                            <div style={{ width: 56, height: 56, borderRadius: 18, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+                                <Upload size={28} />
+                            </div>
+                            <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6, color: 'var(--text-primary)' }}>Добавить планировки или файлы</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Ctrl+V или выберите файлы (IMG/PDF)</div>
+                            <input type="file" hidden multiple onChange={(e) => handlePortfolioFileUpload(e, 'resale')} />
+                        </label>
+                    </div>
+
+                    {allFiles.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
+                            {allFiles.map(file => (
+                                <div key={file.id} className="fade-in" style={{ position: 'relative', borderRadius: 20, overflow: 'hidden', boxShadow: '0 12px 40px rgba(0,0,0,0.12)', background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+                                    {file.loading ? (
+                                        <div style={{ padding: 60, display: 'flex', justifyContent: 'center' }}><div className="spinner"></div></div>
+                                    ) : (
+                                        <>
+                                            {file.type && file.type.includes('pdf') ? (
+                                                <iframe src={`${file.url}#view=FitH`} style={{ width: '100%', height: '450px', border: 'none', display: 'block' }} title={file.name} />
+                                            ) : (
+                                                <img src={file.url} alt={file.name} style={{ width: '100%', display: 'block' }} />
+                                            )}
+                                            <div style={{ position: 'absolute', top: 16, right: 16, display: 'flex', gap: 10 }}>
+                                                <button 
+                                                    onClick={() => copyToClipboard(file.url, file.id)}
+                                                    style={{ width: 36, height: 36, borderRadius: 12, border: 'none', background: 'rgba(255,255,255,0.95)', color: 'var(--text-muted)', cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                >
+                                                    {copiedId === file.id ? <Check size={18} color="var(--success)" /> : <Copy size={18} />}
+                                                </button>
+                                                <button 
+                                                    onClick={() => {
+                                                        const section = resaleFiles.find(f => f.id === file.id) ? 'resale' : (newBuildsFiles.find(f => f.id === file.id) ? 'new_builds' : 'mortgage');
+                                                        deletePortfolioFile(file.id, section);
+                                                    }}
+                                                    style={{ width: 36, height: 36, borderRadius: 12, border: 'none', background: 'rgba(220,38,38,0.95)', color: 'white', cursor: 'pointer', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                                                >
+                                                    <X size={20} />
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ marginTop: 12, marginBottom: 40 }}>
