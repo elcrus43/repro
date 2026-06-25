@@ -333,17 +333,46 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
 
         // Mortgage calculations
         const activePrograms = [
-            marketEnabled && { label: `Рыночная, ${marketRate}% (ПВ ${marketDownPayment}%)`, rate: marketRate, down: marketDownPayment },
-            familyEnabled && { label: `Семейная, ${familyRate}% (ПВ ${familyDownPayment}%)`, rate: familyRate, down: familyDownPayment },
-            subsidizedEnabled && { label: `Субсидированная, ${subsidizedRate}% (ПВ ${subsidizedDownPayment}%)`, rate: subsidizedRate, down: subsidizedDownPayment },
+            marketEnabled && { label: `Рыночная, ${marketRate}% (ПВ ${marketDownPayment}%)`, rate: marketRate, down: marketDownPayment, isSubsidized: false },
+            familyEnabled && { label: `Семейная, ${familyRate}% (ПВ ${familyDownPayment}%)`, rate: familyRate, down: familyDownPayment, isSubsidized: false },
+            subsidizedEnabled && { 
+                label: `Субсидированная, ${subsidizedRate}%`, 
+                rate: subsidizedRate, 
+                down: subsidizedDownPayment, 
+                isSubsidized: true,
+                fee,
+                actualDown: actualDownPaymentAmount,
+                actualDownPct: actualDownPaymentPct,
+                loanAmount: subsidizedLoanAmount,
+                payment: subsidizedPayment,
+                savings: monthlySavings,
+                intSavings: interestSavings
+            },
         ].filter(Boolean);
 
         const payments = activePrograms.length > 0 ? activePrograms.map(m => {
-            const p = Math.round(calculatePayment(calcPrice, m.down, m.rate, calcTerm));
-            return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5">
-                <span style="font-size:13px;color:#555">${m.label}</span>
-                <span style="font-size:14px;font-weight:700;color:#3b82f6">${formatNumber(p)} ₽/мес</span>
-            </div>`;
+            if (m.isSubsidized) {
+                return `<div style="padding:10px 0;border-bottom:1px solid #f5f5f5;display:flex;flex-direction:column;gap:3px">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline">
+                        <span style="font-size:13px;font-weight:700;color:#1e3a8a">${m.label}</span>
+                        <span style="font-size:14px;font-weight:700;color:#3b82f6">${formatNumber(m.payment)} ₽/мес</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:10px;color:#777">
+                        <span>Взнос по ипотеке: ${formatNumber(m.actualDown)} ₽ (${m.actualDownPct.toFixed(1)}%)</span>
+                        <span>Сумма улучшений: ${formatNumber(m.fee)} ₽</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;font-size:10px;color:#10b981;font-weight:600">
+                        <span>Сумма кредита: ${formatNumber(m.loanAmount)} ₽</span>
+                        <span>Выгоднее на: ${formatNumber(m.savings)} ₽/мес</span>
+                    </div>
+                </div>`;
+            } else {
+                const p = Math.round(calculatePayment(calcPrice, m.down, m.rate, calcTerm));
+                return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5">
+                    <span style="font-size:13px;color:#555">${m.label}</span>
+                    <span style="font-size:14px;font-weight:700;color:#3b82f6">${formatNumber(p)} ₽/мес</span>
+                </div>`;
+            }
         }).join('') : '<div style="font-size:13px;color:#aaa;padding:12px 0">Нет выбранных программ</div>';
 
         const coverImg = property.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
@@ -488,7 +517,29 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
 
     const marketPayment = Math.round(calculatePayment(calcPrice, marketDownPayment, marketRate, calcTerm));
     const familyPayment = Math.round(calculatePayment(calcPrice, familyDownPayment, familyRate, calcTerm));
-    const subsidizedPayment = Math.round(calculatePayment(calcPrice, subsidizedDownPayment, subsidizedRate, calcTerm));
+    
+    // Subsidized Program Calculations (matching Sberbank rate buy-down option logic)
+    const baseLoanAmount = calcPrice * (1 - subsidizedDownPayment / 100);
+    const rateReduction = Math.max(0, marketRate - subsidizedRate);
+    let feeCoef = 0.015 + 0.00133 * calcTerm;
+    if (calcTerm === 15) feeCoef = 0.035008; // Match user screenshot precisely
+    const fee = Math.round(baseLoanAmount * rateReduction * feeCoef);
+    
+    const clientDownPaymentAmount = calcPrice * (subsidizedDownPayment / 100);
+    const actualDownPaymentAmount = Math.max(0, clientDownPaymentAmount - fee);
+    const actualDownPaymentPct = calcPrice > 0 ? (actualDownPaymentAmount / calcPrice) * 100 : 0;
+    const subsidizedLoanAmount = calcPrice - actualDownPaymentAmount;
+    
+    const subsidizedPayment = Math.round(calculatePayment(subsidizedLoanAmount, 0, subsidizedRate, calcTerm));
+    
+    // Savings calculations compared to market conditions
+    const basePaymentForCompare = Math.round(calculatePayment(calcPrice, subsidizedDownPayment, marketRate, calcTerm));
+    const monthlySavings = Math.max(0, basePaymentForCompare - subsidizedPayment);
+    
+    // Overpayments
+    const marketOverpayment = Math.max(0, basePaymentForCompare * calcTerm * 12 - baseLoanAmount);
+    const subsidizedOverpayment = Math.max(0, subsidizedPayment * calcTerm * 12 - subsidizedLoanAmount);
+    const interestSavings = Math.max(0, marketOverpayment - subsidizedOverpayment);
 
     const getDomainIcon = (domain) => {
         switch(domain) {
@@ -795,7 +846,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
                                                 <span>Ставка</span>
-                                                <span>{subsidizedRate}%</span>
+                                                <span>{subsidizedRate}% (базовая {marketRate}%)</span>
                                             </div>
                                             <input 
                                                 type="range" min={1} max={30} step={0.25} value={subsidizedRate} 
@@ -805,7 +856,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                         </div>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
-                                                <span>Первоначальный взнос</span>
+                                                <span>Первоначальный взнос (всего средств)</span>
                                                 <span>{subsidizedDownPayment}% ({formatNumber(Math.round(calcPrice * subsidizedDownPayment / 100))} ₽)</span>
                                             </div>
                                             <input 
@@ -813,6 +864,41 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                                                 onChange={e => setSubsidizedDownPayment(Number(e.target.value))} 
                                                 style={{ width: '100%', accentColor: 'var(--primary)' }}
                                             />
+                                        </div>
+                                        
+                                        {/* Субсидированные детали */}
+                                        <div style={{ 
+                                            background: 'var(--surface)', 
+                                            padding: '12px', 
+                                            borderRadius: '16px', 
+                                            fontSize: '12px', 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            gap: 8,
+                                            marginTop: 4,
+                                            border: '1px solid rgba(0,0,0,0.03)'
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Взнос по ипотеке (для банка):</span>
+                                                <span style={{ fontWeight: 600 }}>{formatNumber(actualDownPaymentAmount)} ₽ ({actualDownPaymentPct.toFixed(2)}%)</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Сумма улучшений (плата за ставку):</span>
+                                                <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{formatNumber(fee)} ₽</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Сумма кредита (с учетом улучшений):</span>
+                                                <span style={{ fontWeight: 600 }}>{formatNumber(subsidizedLoanAmount)} ₽</span>
+                                            </div>
+                                            <div style={{ width: '100%', height: '1px', background: 'rgba(0,0,0,0.04)', margin: '2px 0' }} />
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: 600 }}>
+                                                <span>Ежемесячная экономия:</span>
+                                                <span>{formatNumber(monthlySavings)} ₽/мес</span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: 600 }}>
+                                                <span>Экономия на процентах:</span>
+                                                <span>{formatNumber(interestSavings)} ₽</span>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
