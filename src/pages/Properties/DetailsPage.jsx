@@ -168,15 +168,62 @@ function MortgageCalculator({ propertyPrice }) {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
-                                <span>Первоначальный взнос ({downPaymentPct}%)</span>
-                                <span style={{ fontWeight: 600 }}>{formatNumber(downPayment)} ₽</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Первоначальный взнос</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <input 
+                                        type="text"
+                                        value={formatNumber(downPayment)}
+                                        onChange={e => {
+                                            const val = Number(e.target.value.replace(/\D/g, ''));
+                                            if (price > 0) {
+                                                setDownPaymentPct(Math.min(100, Math.max(0, (val / price) * 100)));
+                                            }
+                                        }}
+                                        style={{ 
+                                            width: 90, 
+                                            padding: '2px 4px', 
+                                            borderRadius: 6, 
+                                            border: '1px solid var(--border)', 
+                                            textAlign: 'right', 
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            background: 'var(--surface)',
+                                            color: 'var(--text)'
+                                        }}
+                                    />
+                                    <span>₽</span>
+                                    <input 
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        step={0.01}
+                                        value={Number(downPaymentPct.toFixed(2))}
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            if (val >= 0 && val <= 100) setDownPaymentPct(val);
+                                        }}
+                                        style={{ 
+                                            width: 50, 
+                                            padding: '2px 4px', 
+                                            borderRadius: 6, 
+                                            border: '1px solid var(--border)', 
+                                            textAlign: 'right', 
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            background: 'var(--surface)',
+                                            color: 'var(--text)',
+                                            marginLeft: 4
+                                        }}
+                                    />
+                                    <span>%</span>
+                                </div>
                             </div>
                             <input 
                                 type="range" 
                                 min={5} 
                                 max={90} 
-                                step={5}
+                                step={1}
                                 value={downPaymentPct} 
                                 onChange={e => setDownPaymentPct(Number(e.target.value))}
                                 style={{ width: '100%', accentColor: 'var(--primary)' }}
@@ -200,9 +247,33 @@ function MortgageCalculator({ propertyPrice }) {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: 'var(--text-secondary)' }}>
                                 <span>Процентная ставка</span>
-                                <span style={{ fontWeight: 600 }}>{interestRate}%</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <input 
+                                        type="number" 
+                                        min={1} 
+                                        max={30} 
+                                        step={0.01} 
+                                        value={interestRate} 
+                                        onChange={e => {
+                                            const val = Number(e.target.value);
+                                            if (val >= 0 && val <= 100) setInterestRate(val);
+                                        }} 
+                                        style={{ 
+                                            width: 60, 
+                                            padding: '2px 4px', 
+                                            borderRadius: 6, 
+                                            border: '1px solid var(--border)', 
+                                            textAlign: 'right', 
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            background: 'var(--surface)',
+                                            color: 'var(--text)'
+                                        }}
+                                    />
+                                    <span>%</span>
+                                </div>
                             </div>
                             <input 
                                 type="range" 

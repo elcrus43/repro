@@ -1935,4 +1935,48 @@ button.card-clickable.bordered-action-button:hover {
 }
 button.card-clickable.bordered-action-button:focus {
   border: 1.5px solid #000000 !important;
+}
+
+/* Custom Thin Range Sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+}
+input[type="range"]:focus {
+  outline: none;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px; /* Thin scale/track */
+  cursor: pointer;
+  background: var(--border);
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  -webkit-appearance: none;
+  margin-top: -6px; /* center thumb on 4px track */
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+input[type="range"]::-moz-range-track {
+  width: 100%;
+  height: 4px; /* Thin scale/track */
+  cursor: pointer;
+  background: var(--border);
+  border-radius: 2px;
+}
+input[type="range"]::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  cursor: pointer;
+  border: 2px solid var(--surface);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
