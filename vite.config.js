@@ -47,19 +47,19 @@ export default defineConfig(({ mode }) => {
           }
         },
         '/api/neon-auth': {
-          target: 'https://realtor-match.vercel.app',
+          target: 'http://localhost:3001',
           changeOrigin: true
         },
         '/api/neon-query': {
-          target: 'https://realtor-match.vercel.app',
+          target: 'http://localhost:3001',
           changeOrigin: true
         },
         '/api/google-calendar-token': {
-          target: 'https://realtor-match.vercel.app',
+          target: 'http://localhost:3001',
           changeOrigin: true
         },
         '/api/ai-proxy': {
-          target: 'https://realtor-match.vercel.app',
+          target: 'http://localhost:3001',
           changeOrigin: true
         }
       }

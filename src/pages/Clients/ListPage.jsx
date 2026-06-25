@@ -115,36 +115,21 @@ export function ListPage() {
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
                         <button
-                            className="card-clickable font-oswald"
-                            onClick={handleExport}
+                            className="card-clickable"
+                            onClick={() => setViewMode(prev => prev === 'list' ? 'pipeline' : 'list')}
                             style={{
-                                padding: '0 12px', height: 44, borderRadius: 14, border: 'none',
-                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                width: 44, height: 44, borderRadius: 14, border: 'none',
+                                background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em'
+                                cursor: 'pointer'
                             }}
                         >
-                            Экспорт CSV
+                            {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
                         </button>
-                        {filter === 'buyer' && (
-                            <button
-                                className="card-clickable"
-                                onClick={() => setViewMode(m => m === 'list' ? 'pipeline' : 'list')}
-                                style={{
-                                    width: 44, height: 44, borderRadius: 14, border: 'none',
-                                    background: 'var(--bg-light)',
-                                    color: viewMode === 'pipeline' ? 'var(--primary)' : 'var(--text-secondary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}
-                                title={viewMode === 'list' ? 'Воронка продаж' : 'Список'}
-                            >
-                                {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
-                            </button>
-                        )}
                         <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
                             width: 44, height: 44, borderRadius: 14, border: 'none', 
-                            background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)'
+                            background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer'
                         }}>
                             <Plus size={24} />
                         </button>
@@ -155,11 +140,6 @@ export function ListPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
                 {/* Modern Search & Filters */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div className="search-bar" style={{ background: 'var(--surface)', border: '1px solid rgba(0,0,0,0.04)', height: 50, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
-                        <span className="search-icon"><Search size={18} /></span>
-                        <input className="form-input" placeholder="Поиск по имени или телефону" value={search} onChange={e => setSearch(e.target.value)} style={{ background: 'transparent', border: 'none', fontWeight: 200 }} />
-                    </div>
-                    
                     <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
                         <button style={{ 
                             flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,

@@ -421,39 +421,65 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Сделки ───────────────────────────────────────────── */
       case 'ADD_DEAL': {
-        const dealData = {
-          ...action.deal,
-          deal_date:      action.deal.deal_date || null,
-          deposit_date:   action.deal.deposit_date || null,
-          deposit_amount: action.deal.deposit_amount || 0,
-          seller_ids:     action.deal.seller_ids || [],
-          buyer_ids:      action.deal.buyer_ids || [],
-          notes:          action.deal.notes || null,
-          mortgage_bank:  action.deal.mortgage_bank || null,
-          mortgage_amount: action.deal.mortgage_amount || 0,
-          mortgage_expiry: action.deal.mortgage_expiry || null,
-          lawyer:         action.deal.lawyer || null,
-        };
+        const VALID_DEAL_COLUMNS = [
+          'id', 'realtor_id', 'title', 'seller_id', 'buyer_id', 'property_id',
+          'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
+          'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
+          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'expenses', 'notes',
+          'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id'
+        ];
+        const dealData = {};
+        VALID_DEAL_COLUMNS.forEach(col => {
+          if (action.deal[col] !== undefined) dealData[col] = action.deal[col];
+        });
+        dealData.deal_date =      dealData.deal_date || null;
+        dealData.deposit_date =   dealData.deposit_date || null;
+        dealData.deposit_amount = dealData.deposit_amount || 0;
+        dealData.seller_ids =     dealData.seller_ids || [];
+        dealData.buyer_ids =      dealData.buyer_ids || [];
+        dealData.notes =          dealData.notes || null;
+        dealData.mortgage =       dealData.mortgage || false;
+        dealData.mortgage_bank =  dealData.mortgage_bank || null;
+        dealData.mortgage_amount = dealData.mortgage_amount || 0;
+        dealData.mortgage_expiry = dealData.mortgage_expiry || null;
+        dealData.lawyer =         dealData.lawyer || null;
+        dealData.google_event_id = dealData.google_event_id || null;
+        dealData.seller_agent_id = action.deal.seller_agent_id || null;
+        dealData.buyer_agent_id =  action.deal.buyer_agent_id || null;
+
         Object.keys(dealData).forEach(key => { if (dealData[key] === undefined) delete dealData[key]; });
         result = await neonDb.insert('deals', dealData);
         break;
       }
 
       case 'UPDATE_DEAL': {
-        const { id: dId, ...dData } = action.deal;
-        const updateData = {
-          ...dData,
-          deal_date:      dData.deal_date || null,
-          deposit_date:   dData.deposit_date || null,
-          deposit_amount: dData.deposit_amount ?? 0,
-          seller_ids:     dData.seller_ids || [],
-          buyer_ids:      dData.buyer_ids || [],
-          notes:          dData.notes || null,
-          mortgage_bank:  dData.mortgage_bank || null,
-          mortgage_amount: dData.mortgage_amount || 0,
-          mortgage_expiry: dData.mortgage_expiry || null,
-          lawyer:         dData.lawyer || null,
-        };
+        const { id: dId } = action.deal;
+        const VALID_DEAL_COLUMNS = [
+          'realtor_id', 'title', 'seller_id', 'buyer_id', 'property_id',
+          'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
+          'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
+          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'expenses', 'notes',
+          'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id'
+        ];
+        const updateData = {};
+        VALID_DEAL_COLUMNS.forEach(col => {
+          if (action.deal[col] !== undefined) updateData[col] = action.deal[col];
+        });
+        updateData.deal_date =      updateData.deal_date || null;
+        updateData.deposit_date =   updateData.deposit_date || null;
+        updateData.deposit_amount = updateData.deposit_amount ?? 0;
+        updateData.seller_ids =     updateData.seller_ids || [];
+        updateData.buyer_ids =      updateData.buyer_ids || [];
+        updateData.notes =          updateData.notes || null;
+        updateData.mortgage =       updateData.mortgage || false;
+        updateData.mortgage_bank =  updateData.mortgage_bank || null;
+        updateData.mortgage_amount = updateData.mortgage_amount || 0;
+        updateData.mortgage_expiry = updateData.mortgage_expiry || null;
+        updateData.lawyer =         updateData.lawyer || null;
+        updateData.google_event_id = updateData.google_event_id || null;
+        updateData.seller_agent_id = action.deal.seller_agent_id || null;
+        updateData.buyer_agent_id =  action.deal.buyer_agent_id || null;
+
         Object.keys(updateData).forEach(key => { if (updateData[key] === undefined) delete updateData[key]; });
         result = await neonDb.update('deals', dId, updateData);
         break;

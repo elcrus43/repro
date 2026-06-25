@@ -139,6 +139,8 @@ CREATE TABLE IF NOT EXISTS properties (
   longitude                NUMERIC,
   contact_name             TEXT,
   contact_phone            TEXT,
+  agent_id                 UUID REFERENCES clients(id),
+  client_shares            JSONB,
   created_at               TIMESTAMPTZ DEFAULT NOW(),
   updated_at               TIMESTAMPTZ DEFAULT NOW()
 );
@@ -264,6 +266,8 @@ CREATE TABLE IF NOT EXISTS deals (
   -- Несколько продавцов/покупателей (мигр. 037)
   seller_ids      UUID[] DEFAULT '{}',
   buyer_ids       UUID[] DEFAULT '{}',
+  seller_agent_id UUID REFERENCES clients(id),
+  buyer_agent_id  UUID REFERENCES clients(id),
 
   -- Финансы
   price           NUMERIC DEFAULT 0,
@@ -275,6 +279,7 @@ CREATE TABLE IF NOT EXISTS deals (
   deposit_amount  NUMERIC DEFAULT 0,
 
   -- Ипотека
+  mortgage        BOOLEAN DEFAULT false,
   mortgage_bank   TEXT,
   mortgage_amount NUMERIC DEFAULT 0,
   mortgage_expiry TIMESTAMPTZ,
@@ -290,6 +295,7 @@ CREATE TABLE IF NOT EXISTS deals (
 
   -- Статус и мета
   status          TEXT DEFAULT 'active' CHECK (status IN ('active', 'closed', 'cancelled')),
+  google_event_id TEXT,
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );

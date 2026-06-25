@@ -2,8 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
-import { Trash, MapPin, ChevronLeft, ChevronRight, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download } from 'lucide-react';
-import { usePagination } from '../../hooks/usePagination';
+import { Trash, MapPin, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PipelinePage } from './PipelinePage';
@@ -70,6 +69,7 @@ export function ListPage() {
     const [priceMin, setPriceMin] = useState('');
     const [priceMax, setPriceMax] = useState('');
     const [selectedIds, setSelectedIds] = useState([]);
+    const [collapsedStatuses, setCollapsedStatuses] = useState({});
 
     const handleExport = () => {
         const headers = [
@@ -84,7 +84,7 @@ export function ListPage() {
 
     // Closed statuses = deal completed
     const CLOSED_STATUSES = ['deal'];
-    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit'];
+    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit', 'deal'];
 
     const filteredProperties = useMemo(() => {
         return state.properties
@@ -103,12 +103,53 @@ export function ListPage() {
                     (p.city || '').toLowerCase().includes(search.toLowerCase()) ||
                     clientName.toLowerCase().includes(search.toLowerCase());
             })
-            .filter(p => (!priceMin || p.price >= Number(priceMin)) && (!priceMax || p.price <= Number(priceMax)));
+            .filter(p => (!priceMin || p.price >= Number(priceMin)) && (!priceMax || p.price <= Number(priceMax)))
+            .sort((a, b) => {
+                const statusOrder = { deal: 1, deposit: 2, advertising: 3, agreement: 4, meeting: 5 };
+                const orderA = statusOrder[a.status] || 99;
+                const orderB = statusOrder[b.status] || 99;
+                if (orderA !== orderB) return orderA - orderB;
+                return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+            });
     }, [state.properties, scope, user?.id, filter, search, state.clients, priceMin, priceMax]);
 
-    const { paginatedItems: properties, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage, resetPage } = usePagination(filteredProperties, 20);
+    const groupedProperties = useMemo(() => {
+        const groups = {
+            meeting: [],
+            agreement: [],
+            advertising: [],
+            deposit: [],
+            deal: []
+        };
+        filteredProperties.forEach(p => {
+            const status = p.status || 'meeting';
+            if (!groups[status]) {
+                groups[status] = [];
+            }
+            groups[status].push(p);
+        });
+        return groups;
+    }, [filteredProperties]);
 
-    useEffect(() => { resetPage(); }, [filteredProperties, resetPage]);
+    const statusOrder = useMemo(() => {
+        if (filter === 'closed') return ['deal'];
+        return ['deal', 'deposit', 'advertising', 'agreement', 'meeting'];
+    }, [filter]);
+
+    const toggleStatus = (status) => {
+        setCollapsedStatuses(prev => ({
+            ...prev,
+            [status]: !prev[status]
+        }));
+    };
+
+    const statusSolidColors = {
+        meeting: '#3b82f6',
+        agreement: '#f59e0b',
+        advertising: '#8b5cf6',
+        deposit: '#10b981',
+        deal: '#22c55e'
+    };
 
     const handleToggleSelect = (id) => {
         setSelectedIds(prev => {
@@ -201,45 +242,30 @@ export function ListPage() {
                     <div style={{ display: 'flex', gap: 10 }}>
                         <GlobalSearch />
                         {filter !== 'selection' && (
-                            <>
-                                <button
-                                    className="card-clickable font-oswald"
-                                    onClick={handleExport}
-                                    style={{
-                                        padding: '0 12px', height: 44, borderRadius: 14, border: 'none',
-                                        background: 'var(--bg-light)', color: 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 12, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.05em'
-                                    }}
-                                >
-                                    Экспорт CSV
-                                </button>
-                                <button
-                                    className="card-clickable"
-                                    onClick={() => setViewMode(m => m === 'list' ? 'pipeline' : 'list')}
-                                    style={{
-                                        width: 44, height: 44, borderRadius: 14, border: 'none',
-                                        background: 'var(--bg-light)',
-                                        color: viewMode === 'pipeline' ? 'var(--primary)' : 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                    }}
-                                    title={viewMode === 'list' ? 'Воронка продаж' : 'Список'}
-                                >
-                                    {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
-                                </button>
-                            </>
+                            <button
+                                className="card-clickable"
+                                onClick={() => setViewMode(prev => prev === 'list' ? 'pipeline' : 'list')}
+                                style={{
+                                    width: 44, height: 44, borderRadius: 14, border: 'none',
+                                    background: 'var(--surface)', color: 'var(--text)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                            </button>
                         )}
                         <button 
                             className="card-clickable" 
                             onClick={() => navigate(filter === 'selection' ? '/selection/new' : '/properties/new')} 
                             style={{ 
                                 width: 44, height: 44, borderRadius: 14, border: 'none',
-                                background: 'var(--primary)', color: 'white',
+                                background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)'
+                                cursor: 'pointer'
                             }}
                         >
-                            <Plus size={24} strokeWidth={3} />
+                            <Plus size={24} />
                         </button>
                     </div>
                 </div>
@@ -248,20 +274,6 @@ export function ListPage() {
             <div className="page-content" style={{ padding: '20px 20px 140px', gap: 16 }}>
                 {/* SEARCH & FILTERS */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ 
-                        background: 'var(--surface)', borderRadius: 20, padding: '6px 16px', 
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.02)', border: '1px solid rgba(0,0,0,0.04)' 
-                    }}>
-                        <Search size={18} style={{ color: 'var(--text-secondary)', opacity: 0.4 }} />
-                        <input 
-                            className="form-input" 
-                            placeholder={filter === 'selection' ? 'Поиск по адресу, клиенту, контакту...' : 'Адрес, город или клиент...'}
-                            value={search} 
-                            onChange={e => setSearch(e.target.value)} 
-                            style={{ border: 'none', background: 'transparent', padding: '10px 0', fontSize: 14, fontWeight: 600 }} 
-                        />
-                    </div>
 
                     {filter !== 'selection' && (
                         <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
@@ -350,7 +362,7 @@ export function ListPage() {
                 {viewMode === 'pipeline' && filter !== 'selection' && <PipelinePage />}
 
                 {/* LIST VIEW */}
-                {viewMode === 'list' && filter !== 'selection' && properties.length === 0 && (
+                {viewMode === 'list' && filter !== 'selection' && filteredProperties.length === 0 && (
                     <div className="empty-state" style={{ padding: '60px 20px', textAlign: 'center' }}>
                         <div style={{ width: 80, height: 80, borderRadius: 30, background: 'rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
                             <Building2 size={40} style={{ opacity: 0.2 }} />
@@ -531,221 +543,271 @@ export function ListPage() {
                     </div>
                 )}
 
-                {viewMode === 'list' && filter !== 'selection' && <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    {properties.map(prop => {
-                        const status = prop.status || 'active';
-                        const isSelected = selectedIds.includes(prop.id);
+                {viewMode === 'list' && filter !== 'selection' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        {statusOrder.map(status => {
+                            const items = groupedProperties[status] || [];
+                            const isCollapsed = !!collapsedStatuses[status];
 
-                        return (
-                            <div 
-                                key={prop.id} 
-                                className="card fade-in card-clickable"
-                                onClick={() => navigate(`/properties/${prop.id}`)}
-                                style={{ 
-                                    display: 'flex', gap: 16, padding: '16px', alignItems: 'center', 
-                                    border: isSelected ? '2px solid var(--primary)' : '1.5px solid rgba(59,130,246,0.18)', 
-                                    boxShadow: '0 4px 16px rgba(59,130,246,0.06)',
-                                    background: 'rgba(239,246,255,0.55)', borderRadius: 24,
-                                    position: 'relative'
-                                }}
-                            >
-                                {/* IMAGE WRAPPER */}
-                                <div style={{ 
-                                    width: 100, height: 100, minWidth: 100, borderRadius: 20, 
-                                    overflow: 'hidden', background: 'var(--bg-light)', position: 'relative',
-                                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                                }}>
-                                    {prop.images?.[0] ? (
-                                        <img src={prop.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    ) : (
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>
-                                            <Building2 size={24} />
-                                            <div style={{ fontSize: 8, fontWeight: 600, marginTop: 4 }}>Нет фото</div>
-                                        </div>
-                                    )}
-                                    {/* Selection Checkbox only — status badge moved to content */}
-                                    {/* Selection Checkbox */}
+                            return (
+                                <div key={status} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    {/* Group Header */}
                                     <div 
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleToggleSelect(prop.id);
-                                        }}
-                                        style={{ 
-                                            position: 'absolute', 
-                                            bottom: 8, 
-                                            right: 8, 
-                                            zIndex: 10,
-                                            width: 22, 
-                                            height: 22, 
-                                            borderRadius: 6,
-                                            background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.8)',
-                                            border: '2px solid ' + (isSelected ? 'var(--primary)' : '#9ca3af'),
+                                        onClick={() => toggleStatus(status)}
+                                        className="card-clickable"
+                                        style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: '12px 16px',
+                                            borderRadius: '16px',
+                                            background: 'var(--bg-light)',
                                             cursor: 'pointer',
-                                            boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                                            userSelect: 'none',
+                                            transition: 'all 0.2s ease',
+                                            border: 'none',
+                                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
                                         }}
                                     >
-                                        {isSelected && <Check size={14} color="white" strokeWidth={3} />}
-                                    </div>
-                                </div>
-
-                                {/* PHONE ICON — top right */}
-                                {(() => {
-                                    const agent = state.profiles.find(p => p.id === prop.realtor_id) || (prop.realtor_id === user?.id ? user : null);
-                                    const phone = agent?.phone;
-                                    if (!phone) return null;
-                                    return (
-                                        <a
-                                            href={`tel:${phone}`}
-                                            onClick={e => e.stopPropagation()}
-                                            style={{
-                                                position: 'absolute', top: 8, right: 8, zIndex: 10,
-                                                width: 30, height: 30, borderRadius: 10,
-                                                background: 'rgba(255,255,255,0.92)',
-                                                backdropFilter: 'blur(8px)',
-                                                border: '1px solid rgba(0,0,0,0.07)',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                color: 'var(--primary)', textDecoration: 'none',
-                                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                            }}
-                                        >
-                                            <Phone size={14} strokeWidth={2} />
-                                        </a>
-                                    );
-                                })()}
-
-                                {/* CONTENT WRAPPER */}
-                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    {/* Tech details line */}
-                                    <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                        {['apartment', 'room', 'house'].includes(prop.property_type) && (
-                                            <>
-                                                <span>
-                                                    {prop.property_type === 'room' 
-                                                        ? 'Комната' 
-                                                        : prop.property_type === 'house'
-                                                            ? (prop.rooms > 0 ? `${prop.rooms}к` : 'Дом')
-                                                            : (prop.rooms > 0 ? `${prop.rooms}к` : 'Студия')}
-                                                </span>
-                                                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
-                                            </>
-                                        )}
-                                        <span>{prop.area_total} м²</span>
-                                        {prop.floor || prop.floors_total ? (
-                                            <>
-                                                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
-                                                <span>
-                                                    {prop.floor && prop.floors_total 
-                                                        ? `${prop.floor}/${prop.floors_total} эт.` 
-                                                        : prop.floor 
-                                                            ? `${prop.floor} эт.` 
-                                                            : `/${prop.floors_total} эт.`}
-                                                </span>
-                                            </>
-                                        ) : null}
-                                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
-                                        <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{PROPERTY_TYPES[prop.property_type]}</span>
-                                    </div>
-
-                                    {/* Адрес */}
-                                    <div style={{ 
-                                        fontSize: 13, color: 'var(--text)',
-                                        display: 'flex', alignItems: 'center', gap: 4,
-                                        fontWeight: 450
-                                    }}>
-                                        <MapPin size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {prop.city ? (prop.address ? `${prop.city}, ${prop.address}` : prop.city) : (prop.address || '—')}
-                                        </span>
-                                    </div>
-
-                                    {/* Цена */}
-                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
-                                            {formatNumber(prop.price)} <span style={{ fontSize: 12, opacity: 0.6 }}>₽</span>
-                                        </span>
-                                        {prop.price && prop.area_total ? (
-                                            <span style={{ fontSize: 11, color: 'var(--text-secondary)', opacity: 0.7 }}>
-                                                {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{
+                                                width: 10,
+                                                height: 10,
+                                                borderRadius: '50%',
+                                                background: statusColors[status] || 'var(--primary)',
+                                                boxShadow: `0 0 6px ${statusSolidColors[status] || 'var(--primary)'}80`
+                                            }} />
+                                            <span className="font-oswald" style={{
+                                                fontSize: 13,
+                                                fontWeight: 600,
+                                                color: 'var(--text)',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.05em'
+                                            }}>
+                                                {statusLabels[status] || status}
                                             </span>
-                                        ) : null}
+                                            <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 700,
+                                                color: statusSolidColors[status] || 'var(--primary)',
+                                                background: `${statusSolidColors[status] || 'var(--primary)'}18`,
+                                                borderRadius: 8,
+                                                padding: '2px 8px',
+                                                marginLeft: 4
+                                            }}>
+                                                {items.length}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 12 }}>
+                                            <span style={{ fontWeight: 300 }}>{isCollapsed ? 'Развернуть' : 'Свернуть'}</span>
+                                            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                                        </div>
                                     </div>
 
-                                    {/* Бейджи: Цель + Статус */}
-                                    <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                        {(() => {
-                                            const dt = prop.deal_type || 'sale';
-                                            const goalMap = {
-                                                sale: { label: 'Продажа', color: '#2563eb', bg: 'rgba(37,99,235,0.08)',   border: 'rgba(37,99,235,0.22)' },
-                                                rent: { label: 'Аренда',  color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.22)' },
-                                                buy:  { label: 'Покупка', color: '#0891b2', bg: 'rgba(8,145,178,0.08)',   border: 'rgba(8,145,178,0.22)' },
-                                                hire: { label: 'Найм',    color: '#be185d', bg: 'rgba(190,24,93,0.08)',   border: 'rgba(190,24,93,0.22)' },
-                                            };
-                                            const g = goalMap[dt] || { label: dt, color: '#6b7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.22)' };
-                                            return (
-                                                <span style={{
-                                                    fontSize: 10, fontWeight: 500,
-                                                    color: g.color, background: g.bg,
-                                                    padding: '3px 8px', borderRadius: 20,
-                                                    border: `1px solid ${g.border}`,
-                                                    textTransform: 'uppercase', letterSpacing: '0.04em',
-                                                    flexShrink: 0
+                                    {/* Group Content */}
+                                    {!isCollapsed && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                            {items.length === 0 ? (
+                                                <div style={{
+                                                    padding: '24px 20px',
+                                                    borderRadius: 24,
+                                                    border: `1.5px dashed ${(statusSolidColors && statusSolidColors[status]) || 'rgba(0,0,0,0.1)'}33`,
+                                                    textAlign: 'center',
+                                                    color: 'var(--text-secondary)',
+                                                    fontSize: 13,
+                                                    opacity: 0.6,
+                                                    background: 'rgba(0, 0, 0, 0.01)'
                                                 }}>
-                                                    {g.label}
-                                                </span>
-                                            );
-                                        })()}
-                                        <span style={{
-                                            fontSize: 10, fontWeight: 400, flexShrink: 0,
-                                            color: status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
-                                            background: status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
-                                            padding: '3px 8px', borderRadius: 20,
-                                            border: `1px solid ${status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
-                                        }}>
-                                            {statusLabels[status] || status}
-                                        </span>
-                                    </div>
+                                                    Нет объектов
+                                                </div>
+                                            ) : (
+                                                items.map(prop => {
+                                                    const isSelected = selectedIds.includes(prop.id);
+                                                    return (
+                                                        <div 
+                                                            key={prop.id} 
+                                                            className="card fade-in card-clickable"
+                                                            onClick={() => navigate(`/properties/${prop.id}`)}
+                                                            style={{ 
+                                                                display: 'flex', gap: 16, padding: '16px', alignItems: 'center', 
+                                                                border: isSelected ? '2px solid var(--primary)' : '1.5px solid rgba(59,130,246,0.18)', 
+                                                                boxShadow: '0 4px 16px rgba(59,130,246,0.06)',
+                                                                background: 'rgba(239,246,255,0.55)', borderRadius: 24,
+                                                                position: 'relative'
+                                                            }}
+                                                        >
+                                                            {/* IMAGE WRAPPER */}
+                                                            <div style={{ 
+                                                                width: 100, height: 100, minWidth: 100, borderRadius: 20, 
+                                                                overflow: 'hidden', background: 'var(--bg-light)', position: 'relative',
+                                                                boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
+                                                            }}>
+                                                                {prop.images?.[0] ? (
+                                                                    <img src={prop.images[0]} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                ) : (
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', opacity: 0.2 }}>
+                                                                        <Building2 size={24} />
+                                                                        <div style={{ fontSize: 8, fontWeight: 600, marginTop: 4 }}>Нет фото</div>
+                                                                    </div>
+                                                                )}
+                                                                {/* Selection Checkbox */}
+                                                                <div 
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        handleToggleSelect(prop.id);
+                                                                    }}
+                                                                    style={{ 
+                                                                        position: 'absolute', 
+                                                                        bottom: 8, 
+                                                                        right: 8, 
+                                                                        zIndex: 10,
+                                                                        width: 22, 
+                                                                        height: 22, 
+                                                                        borderRadius: 6,
+                                                                        background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.8)',
+                                                                        border: '2px solid ' + (isSelected ? 'var(--primary)' : '#9ca3af'),
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        cursor: 'pointer',
+                                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
+                                                                    }}
+                                                                >
+                                                                    {isSelected && <Check size={14} color="white" strokeWidth={3} />}
+                                                                </div>
+                                                            </div>
 
+                                                            {/* PHONE ICON */}
+                                                            {(() => {
+                                                                const agent = state.profiles.find(p => p.id === prop.realtor_id) || (prop.realtor_id === user?.id ? user : null);
+                                                                const phone = agent?.phone;
+                                                                if (!phone) return null;
+                                                                return (
+                                                                    <a
+                                                                        href={`tel:${phone}`}
+                                                                        onClick={e => e.stopPropagation()}
+                                                                        style={{
+                                                                            position: 'absolute', top: 8, right: 8, zIndex: 10,
+                                                                            width: 30, height: 30, borderRadius: 10,
+                                                                            background: 'rgba(255,255,255,0.92)',
+                                                                            backdropFilter: 'blur(8px)',
+                                                                            border: '1px solid rgba(0,0,0,0.07)',
+                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                            color: 'var(--primary)', textDecoration: 'none',
+                                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                                        }}
+                                                                    >
+                                                                        <Phone size={14} strokeWidth={2} />
+                                                                    </a>
+                                                                );
+                                                            })()}
+
+                                                            {/* CONTENT WRAPPER */}
+                                                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                                {/* Tech details line */}
+                                                                <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                                    {['apartment', 'room', 'house'].includes(prop.property_type) && (
+                                                                        <>
+                                                                            <span>
+                                                                                {prop.property_type === 'room' 
+                                                                                    ? 'Комната' 
+                                                                                    : prop.property_type === 'house'
+                                                                                        ? (prop.rooms > 0 ? `${prop.rooms}к` : 'Дом')
+                                                                                        : (prop.rooms > 0 ? `${prop.rooms}к` : 'Студия')}
+                                                                            </span>
+                                                                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                        </>
+                                                                    )}
+                                                                    <span>{prop.area_total} м²</span>
+                                                                    {prop.floor || prop.floors_total ? (
+                                                                        <>
+                                                                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                            <span>
+                                                                                {prop.floor && prop.floors_total 
+                                                                                    ? `${prop.floor}/${prop.floors_total} эт.` 
+                                                                                    : prop.floor 
+                                                                                        ? `${prop.floor} эт.` 
+                                                                                        : `/${prop.floors_total} эт.`}
+                                                                            </span>
+                                                                        </>
+                                                                    ) : null}
+                                                                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                    <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{PROPERTY_TYPES[prop.property_type]}</span>
+                                                                </div>
+
+                                                                {/* Адрес */}
+                                                                <div style={{ 
+                                                                    fontSize: 13, color: 'var(--text)',
+                                                                    display: 'flex', alignItems: 'center', gap: 4,
+                                                                    fontWeight: 450
+                                                                }}>
+                                                                    <MapPin size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+                                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                        {prop.city ? (prop.address ? `${prop.city}, ${prop.address}` : prop.city) : (prop.address || '—')}
+                                                                    </span>
+                                                                </div>
+
+                                                                {/* Цена */}
+                                                                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                                                                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', lineHeight: 1.1 }}>
+                                                                        {formatNumber(prop.price)} <span style={{ fontSize: 12, opacity: 0.6 }}>₽</span>
+                                                                    </span>
+                                                                    {prop.price && prop.area_total ? (
+                                                                        <span style={{ fontSize: 11, color: 'var(--text-secondary)', opacity: 0.7 }}>
+                                                                            {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
+                                                                        </span>
+                                                                    ) : null}
+                                                                </div>
+
+                                                                {/* Бейджи: Цель + Статус */}
+                                                                <div style={{ marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                                    {(() => {
+                                                                        const dt = prop.deal_type || 'sale';
+                                                                        const goalMap = {
+                                                                            sale: { label: 'Продажа', color: '#2563eb', bg: 'rgba(37,99,235,0.08)',   border: 'rgba(37,99,235,0.22)' },
+                                                                            rent: { label: 'Аренда',  color: '#7c3aed', bg: 'rgba(124,58,237,0.08)', border: 'rgba(124,58,237,0.22)' },
+                                                                            buy:  { label: 'Покупка', color: '#0891b2', bg: 'rgba(8,145,178,0.08)',   border: 'rgba(8,145,178,0.22)' },
+                                                                            hire: { label: 'Найм',    color: '#be185d', bg: 'rgba(190,24,93,0.08)',   border: 'rgba(190,24,93,0.22)' },
+                                                                        };
+                                                                        const g = goalMap[dt] || { label: dt, color: '#6b7280', bg: 'rgba(107,114,128,0.08)', border: 'rgba(107,114,128,0.22)' };
+                                                                        return (
+                                                                            <span style={{
+                                                                                fontSize: 10, fontWeight: 500,
+                                                                                color: g.color, background: g.bg,
+                                                                                padding: '3px 8px', borderRadius: 20,
+                                                                                border: `1px solid ${g.border}`,
+                                                                                textTransform: 'uppercase', letterSpacing: '0.04em',
+                                                                                flexShrink: 0
+                                                                            }}>
+                                                                                {g.label}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                    <span style={{
+                                                                        fontSize: 10, fontWeight: 400, flexShrink: 0,
+                                                                        color: status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
+                                                                        background: status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
+                                                                        padding: '3px 8px', borderRadius: 20,
+                                                                        border: `1px solid ${status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
+                                                                    }}>
+                                                                        {statusLabels[status] || status}
+                                                                    </span>
+                                                                </div>
+
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        );
-                    })}
-                </div>}
-
-                {/* PAGINATION — only in list mode */}
-                {viewMode === 'list' && filter !== 'selection' && totalPages > 1 && (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginTop: 32 }}>
-                        <button
-                            className="card-clickable"
-                            onClick={prevPage}
-                            disabled={!hasPrev}
-                            style={{ 
-                                padding: '10px 20px', borderRadius: 14, border: 'none', background: 'var(--surface)',
-                                opacity: hasPrev ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
-                                fontWeight: 200, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                            }}
-                        >
-                            <ChevronLeft size={16} /> НАЗАД
-                        </button>
-                        <span className="font-oswald" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>
-                            {currentPage} / {totalPages}
-                        </span>
-                        <button
-                            className="card-clickable"
-                            onClick={nextPage}
-                            disabled={!hasNext}
-                            style={{ 
-                                padding: '10px 20px', borderRadius: 14, border: 'none', background: 'var(--surface)',
-                                opacity: hasNext ? 1 : 0.4, display: 'flex', alignItems: 'center', gap: 8,
-                                fontWeight: 200, fontSize: 12, color: 'var(--text)', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                            }}
-                        >
-                            ВПЕРЁД <ChevronRight size={16} />
-                        </button>
+                            );
+                        })}
                     </div>
                 )}
+
+
             </div>
 
             {selectedIds.length >= 1 && (

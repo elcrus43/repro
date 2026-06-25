@@ -945,6 +945,8 @@ const NEW_PROPERTY_FIELDS = [
   'portfolio_mortgage_files',
   'portfolio_analog_links',
   'floorplan_images',
+  'agent_id',
+  'client_shares',
   // 'client_ids' — REMOVED: migration 035 applied, column exists
 ];
 
@@ -973,7 +975,7 @@ function _stripNewPropertyFields(data, error) {
 // NOTE: client_ids removed from these lists — migration 035 applied
 const NEW_REQUEST_FIELDS = ['mortgage'];
 const NEW_SHOWING_FIELDS = ['event_type'];
-const NEW_DEAL_FIELDS    = ['mortgage', 'expenses', 'mortgage_bank', 'mortgage_amount', 'mortgage_expiry', 'lawyer'];
+const NEW_DEAL_FIELDS    = ['mortgage', 'expenses', 'mortgage_bank', 'mortgage_amount', 'mortgage_expiry', 'lawyer', 'seller_agent_id', 'buyer_agent_id'];
 
 function _isNewRequestColumnError(error) {
     if (!error) return false;

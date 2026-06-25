@@ -126,21 +126,16 @@ export function ListPage() {
                         const matches = state.matches.filter(m => m.request_id === req.id);
                         return (
                             <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)} style={{ 
-                                padding: 24, borderRadius: 32, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative'
+                                padding: '14px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative',
+                                display: 'flex', flexDirection: 'column', gap: 6
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, color: 'var(--text)', marginBottom: 4 }}>
-                                            {client?.full_name || 'Без имени'}
-                                        </div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                            {req.property_types?.map(t => (
-                                                <span key={t} style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)' }}>{PROPERTY_TYPES[t] || t}</span>
-                                            ))}
-                                        </div>
+                                {/* Line 1 */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, color: 'var(--text)' }}>
+                                        {client?.full_name || 'Без имени'}
                                     </div>
                                     <div style={{ 
-                                        padding: '4px 10px', borderRadius: 8, fontSize: 10, fontWeight: 300, letterSpacing: '0.02em',
+                                        padding: '2px 8px', borderRadius: 6, fontSize: 9, fontWeight: 300, letterSpacing: '0.02em',
                                         background: `${statusColors[req.status] || statusColors.active}15`,
                                         color: statusColors[req.status] || statusColors.active
                                     }}>
@@ -148,26 +143,30 @@ export function ListPage() {
                                     </div>
                                 </div>
 
-                                <div style={{ fontSize: 20, fontWeight: 300, color: 'var(--primary)', marginBottom: 12, fontFamily: "'Oswald', sans-serif" }}>
-                                    до {formatNumber(req.budget_max)} ₽
-                                </div>
-
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 16, borderTop: '1px solid rgba(0,0,0,0.03)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#858518', fontSize: 12, fontWeight: 300 }}>
-                                            <Sparkles size={14} />
-                                            <span>{matches.length} совпадения</span>
-                                        </div>
+                                {/* Line 2 */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                                        <span style={{ color: 'var(--primary)', fontFamily: "'Oswald', sans-serif", fontSize: 15, fontWeight: 400, flexShrink: 0 }}>до {formatNumber(req.budget_max)} ₽</span>
+                                        <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100, flexShrink: 1 }}>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || '—'}</span>
+                                        <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
+                                        <span style={{ color: '#858518', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                                            <Sparkles size={12} />
+                                            {matches.length}
+                                        </span>
                                         {req.districts?.length > 0 && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--text-muted)', fontSize: 12 }}>
-                                                <MapPin size={12} />
-                                                <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{req.districts[0]}{req.districts.length > 1 ? ` +${req.districts.length - 1}` : ''}</span>
-                                            </div>
+                                            <>
+                                                <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
+                                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 80, flexShrink: 1 }}>
+                                                    <MapPin size={10} />
+                                                    <span>{req.districts[0]}{req.districts.length > 1 ? ` +${req.districts.length - 1}` : ''}</span>
+                                                </span>
+                                            </>
                                         )}
                                     </div>
-                                    <div style={{ display: 'flex', gap: 8 }}>
+                                    <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                                         <button className="icon-btn-edit" onClick={(e) => { e.stopPropagation(); navigate(`/requests/${req.id}/edit`); }} title="Редактировать">
-                                            <Pencil size={16} />
+                                            <Pencil size={15} />
                                         </button>
                                     </div>
                                 </div>

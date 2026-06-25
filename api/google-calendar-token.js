@@ -85,6 +85,11 @@ export default async function handler(req, res) {
     return err(res, 'JWT secret not configured', 500);
   }
 
+  if (!CLIENT_SECRET) {
+    console.error('[google-calendar-token] GOOGLE_CLIENT_SECRET not set in .env');
+    return err(res, 'В файле .env не настроен GOOGLE_CLIENT_SECRET. Пожалуйста, добавьте его в файл .env.', 500);
+  }
+
   // ─── Проверка пользователя ───────────────────────────────────
   const user = await getUser(req);
   if (!user) {

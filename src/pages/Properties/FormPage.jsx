@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS } from '../../data/constants';
@@ -144,6 +144,9 @@ export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const { toast } = useToastContext();
+    const location = useLocation();
+
+    const prefilledData = location.state?.prefillProperty;
 
     const existing = id ? state.properties.find(p => p.id === id) : null;
     const initialForm = existing ? {
@@ -155,11 +158,14 @@ export function FormPage() {
                 ids = ids.replace(/{|}/g, '').split(',').filter(Boolean);
             }
             return ids.length > 0 ? ids : (existing.client_id ? [existing.client_id] : []);
-        })()
+        })(),
+        agent_id: existing.agent_id || '',
+        client_shares: existing.client_shares || {}
     } : {
         client_id: searchParams.get('client') || '',
-        client_ids: searchParams.get('client') ? [searchParams.get('client')] : [],
         realtor_id: state.currentUser?.id,
+        agent_id: '',
+        client_shares: {},
         property_type: 'apartment',
         deal_type: 'sale',
         market_type: 'secondary',
@@ -209,7 +215,16 @@ export function FormPage() {
         images: [],
         floorplan_images: [],
         contact_name: '',
-        contact_phone: ''
+        contact_phone: '',
+        ...(prefilledData || {}),
+        client_ids: (() => {
+            if (!prefilledData) return searchParams.get('client') ? [searchParams.get('client')] : [];
+            let ids = prefilledData.client_ids || [];
+            if (typeof ids === 'string') {
+                ids = ids.replace(/{|}/g, '').split(',').filter(Boolean);
+            }
+            return ids;
+        })()
     };
 
     const [form, setForm] = useState(initialForm);
@@ -222,7 +237,9 @@ export function FormPage() {
             setForm({
                 ...existing,
                 images: existing.images || [],
-                client_ids: existing.client_ids || (existing.client_id ? [existing.client_id] : [])
+                client_ids: existing.client_ids || (existing.client_id ? [existing.client_id] : []),
+                agent_id: existing.agent_id || '',
+                client_shares: existing.client_shares || {}
             });
         }
     }, [existing, form.id]);
@@ -263,8 +280,8 @@ export function FormPage() {
     const [uploadingFloorplan, setUploadingFloorplan] = useState(false);
     const [parsing, setParsing] = useState(false);
     const [parsedFields, setParsedFields] = useState(null);
-    const [showQuickClientForm, setShowQuickClientForm] = useState(false);
-    const [quickClient, setQuickClient] = useState({ full_name: '', phone: '' });
+    const [showQuickAgentForm, setShowQuickAgentForm] = useState(false);
+    const [quickAgent, setQuickAgent] = useState({ full_name: '', phone: '' });
 
     const handleUrlImport = () => {
         if (!importUrl) {
@@ -423,23 +440,24 @@ export function FormPage() {
         setF('floorplan_images', imgs);
     };
 
-    const handleCreateQuickClient = (e) => {
+    const handleCreateQuickAgent = (e) => {
         e.preventDefault();
-        if (!quickClient.full_name) return;
+        if (!quickAgent.full_name) return;
         
-        const newClientId = nanoid();
+        const newAgentId = nanoid();
         const client = {
-            ...quickClient,
-            id: newClientId,
+            ...quickAgent,
+            id: newAgentId,
             realtor_id: state.currentUser?.id,
+            client_types: ['agent'],
             created_at: new Date().toISOString()
         };
         
         dispatch({ type: 'ADD_CLIENT', client });
-        setF('client_ids', [...(form.client_ids || []), newClientId]);
-        setQuickClient({ full_name: '', phone: '' });
-        setShowQuickClientForm(false);
-        toast.success('Клиент создан и добавлен');
+        setF('agent_id', newAgentId);
+        setQuickAgent({ full_name: '', phone: '' });
+        setShowQuickAgentForm(false);
+        toast.success('Агент создан и выбран');
     };
 
     const handleSubmit = (e) => {
@@ -530,48 +548,64 @@ export function FormPage() {
                 </FormCard>
 
                 {/* Владельцы */}
-                <FormCard title="Владельцы" icon={<Users size={22} />} description="Выберите одного или нескольких собственников">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        <MultiClientSelector 
-                            selectedIds={form.client_ids || []}
-                            onChange={ids => setF('client_ids', ids)}
-                            clients={state.clients || []}
-                        />
-                        <button 
-                            type="button" 
-                            className="btn btn-secondary" 
-                            style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14 }}
-                            onClick={() => setShowQuickClientForm(true)}
-                        >
-                            + Создать нового клиента
-                        </button>
-                    </div>
-                </FormCard>
-
-                {/* Контактное лицо */}
-                <FormCard title="Контактное лицо" icon={<User size={22} />} description="Агент или продавец объекта (не пользователь приложения)">
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Имя контакта</label>
-                            <input
-                                type="text"
-                                className="form-input"
-                                style={{ borderRadius: 14 }}
-                                placeholder="Иван Иванов"
-                                value={form.contact_name || ''}
-                                onChange={e => setF('contact_name', e.target.value)}
+                <FormCard title="Владельцы и Агент" icon={<Users size={22} />} description="Выберите собственников и привязанного агента">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 6, display: 'block' }}>Собственники</label>
+                            <MultiClientSelector 
+                                selectedIds={form.client_ids || []}
+                                onChange={ids => setF('client_ids', ids)}
+                                clients={state.clients || []}
                             />
+                            {form.client_ids && form.client_ids.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px', background: 'var(--bg-light)', borderRadius: 14 }}>
+                                    <label className="form-label" style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Доли в праве собственности:</label>
+                                    {form.client_ids.map(clientId => {
+                                        const client = state.clients.find(c => c.id === clientId);
+                                        if (!client) return null;
+                                        return (
+                                            <div key={clientId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <span style={{ fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 300 }}>{client.full_name}</span>
+                                                <input 
+                                                    type="text" 
+                                                    className="form-input" 
+                                                    style={{ width: 120, height: 34, borderRadius: 10, fontSize: 12, padding: '0 8px', border: '1px solid rgba(0,0,0,0.08)' }} 
+                                                    placeholder="Доля (напр. 1/2)" 
+                                                    value={form.client_shares?.[clientId] || ''} 
+                                                    onChange={e => {
+                                                        const newShares = { ...(form.client_shares || {}) };
+                                                        newShares[clientId] = e.target.value;
+                                                        setF('client_shares', newShares);
+                                                    }} 
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Телефон контакта</label>
-                            <input
-                                type="tel"
-                                className="form-input"
-                                style={{ borderRadius: 14 }}
-                                placeholder="+7 (900) 000-00-00"
-                                value={form.contact_phone || ''}
-                                onChange={e => setF('contact_phone', e.target.value)}
-                            />
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 2, display: 'block' }}>Агент объекта</label>
+                            <select 
+                                className="form-select" 
+                                value={form.agent_id || ''} 
+                                onChange={e => setF('agent_id', e.target.value || null)} 
+                                style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
+                            >
+                                <option value="">Без агента</option>
+                                {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
+                                    <option key={a.id} value={a.id}>{a.full_name}</option>
+                                ))}
+                            </select>
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 4 }}
+                                onClick={() => setShowQuickAgentForm(true)}
+                            >
+                                + Создать нового агента
+                            </button>
                         </div>
                     </div>
                 </FormCard>
@@ -1005,8 +1039,8 @@ export function FormPage() {
                 </div>
             </form>
 
-            {/* Quick Client Modal — Premium Open Design */}
-            {showQuickClientForm && (
+            {/* Quick Agent Modal — Premium Open Design */}
+            {showQuickAgentForm && (
                 <div style={{
                     position: 'fixed', inset: 0, zIndex: 1000,
                     background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(10px) saturate(180%)',
@@ -1014,15 +1048,15 @@ export function FormPage() {
                     padding: 24
                 }}>
                     <div className="card fade-in" style={{ width: '100%', maxWidth: 420, padding: 32, borderRadius: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Новый клиент</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Новый агент</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ФИО</label>
                                 <input 
                                     className="form-input" 
                                     autoFocus
-                                    value={quickClient.full_name} 
-                                    onChange={e => setQuickClient({ ...quickClient, full_name: e.target.value })} 
+                                    value={quickAgent.full_name} 
+                                    onChange={e => setQuickAgent({ ...quickAgent, full_name: e.target.value })} 
                                     placeholder="Иванов Иван Иванович"
                                     style={{ height: 52, borderRadius: 14 }}
                                 />
@@ -1031,15 +1065,15 @@ export function FormPage() {
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
                                 <input 
                                     className="form-input" 
-                                    value={quickClient.phone} 
-                                    onChange={e => setQuickClient({ ...quickClient, phone: e.target.value })} 
+                                    value={quickAgent.phone} 
+                                    onChange={e => setQuickAgent({ ...quickAgent, phone: e.target.value })} 
                                     placeholder="+7 (___) ___-__-__"
                                     style={{ height: 52, borderRadius: 14 }}
                                 />
                             </div>
                             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                                <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300 }} onClick={() => setShowQuickClientForm(false)}>Отмена</button>
-                                <button type="button" className="btn btn-primary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300, background: 'var(--primary)', boxShadow: '0 8px 16px rgba(0,82,255,0.15)' }} onClick={handleCreateQuickClient}>Создать</button>
+                                <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300 }} onClick={() => setShowQuickAgentForm(false)}>Отмена</button>
+                                <button type="button" className="btn btn-primary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300, background: 'var(--primary)', boxShadow: '0 8px 16px rgba(0,82,255,0.15)' }} onClick={handleCreateQuickAgent}>Создать</button>
                             </div>
                         </div>
                     </div>

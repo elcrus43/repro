@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star, Store, GraduationCap, Bus, User
+    TrendingDown, Star, Store, GraduationCap, Bus, User, Handshake, Copy
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -138,6 +138,7 @@ export function DetailsPage() {
     const clientIds = propClientIds.length > 0 ? propClientIds : (prop?.client_id ? [prop.client_id] : []);
     
     const clients = state.clients.filter(c => clientIds.includes(c.id));
+    const agent = prop?.agent_id ? state.clients.find(c => c.id === prop.agent_id) : null;
     const matches = state.matches.filter(m => m.property_id === id);
     const showings = state.showings.filter(s => s.property_id === id);
     const priceHistory = (state.priceHistory || []).filter(h => h.property_id === id).sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
@@ -180,11 +181,35 @@ export function DetailsPage() {
 
 
 
+
     function handleDelete() {
         if (window.confirm('Удалить этот объект?')) {
             dispatch({ type: 'DELETE_PROPERTY', id });
             navigate('/properties');
         }
+    }
+
+    function handleCreateDeal() {
+        let propClientIds = prop?.client_ids || [];
+        if (typeof propClientIds === 'string') {
+            propClientIds = propClientIds.replace(/{|}/g, '').split(',').filter(Boolean);
+        }
+        const sellers = propClientIds.length > 0 ? propClientIds : (prop?.client_id ? [prop.client_id] : []);
+
+        navigate('/tasks', {
+            state: {
+                prefillDeal: {
+                    title: `Сделка: ${prop.address || prop.city || 'Объект'}`,
+                    property_id: prop.id,
+                    price: prop.price ? prop.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
+                    commission: prop.commission ? prop.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
+                    seller_ids: sellers,
+                    buyer_ids: [],
+                    seller_agent_id: prop.agent_id || '',
+                    buyer_agent_id: ''
+                }
+            }
+        });
     }
 
     // Initials helper
@@ -207,6 +232,9 @@ export function DetailsPage() {
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="icon-btn-calendar" onClick={() => navigate(`/history/new?property_id=${id}`)} title="Создать новое событие">
+                        <Calendar size={18} />
+                    </button>
                     <button className="icon-btn-edit" onClick={() => navigate(`/properties/${id}/edit`)} title="Редактировать">
                         <Pencil size={18} />
                     </button>
@@ -293,19 +321,20 @@ export function DetailsPage() {
                                     return (
                                         <button
                                             key={s.id}
-                                            className="card-clickable"
                                             onClick={() => dispatch({ 
                                                 type: 'UPDATE_PROPERTY', 
                                                 property: { ...prop, status: s.id }
                                             })}
                                             style={{
-                                                padding: '2px 14px', borderRadius: 20, border: 'none', fontSize: 12,
+                                                padding: '2px 14px', borderRadius: 20,
+                                                border: '1px solid #000000',
+                                                fontSize: 12,
                                                 fontFamily: "'Oswald', sans-serif", fontWeight: isActive ? 600 : 300,
-                                                background: isActive ? s.color : isPast ? `${s.color}22` : 'var(--bg-light)',
-                                                color: isActive ? 'white' : isPast ? s.color : 'var(--text-secondary)',
-                                                boxShadow: isActive ? `0 4px 12px ${s.color}44` : 'none',
-                                                transition: 'all 0.2s',
+                                                background: isActive ? `${s.color}44` : isPast ? `${s.color}15` : 'var(--bg-light)',
+                                                color: '#000000',
+                                                boxShadow: isActive ? `0 4px 12px ${s.color}22` : 'none',
                                                 opacity: isActive ? 1 : 0.75,
+                                                cursor: 'pointer'
                                             }}
                                         >
                                             {s.label}
@@ -315,6 +344,22 @@ export function DetailsPage() {
                             </div>
                         );
                     })()}
+
+                    <button
+                        className="card-clickable"
+                        style={{ 
+                            height: 48, borderRadius: 14, border: '1.5px solid #000000',
+                            background: 'var(--primary)', color: 'white', fontWeight: 500, fontSize: 15,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            padding: '0 16px',
+                            width: '100%',
+                            maxWidth: 360,
+                            fontFamily: "'Oswald', sans-serif"
+                        }}
+                        onClick={handleCreateDeal}
+                    >
+                        <Handshake size={18} /> Создать сделку
+                    </button>
 
                     <div style={{
                         display: 'grid',
@@ -490,12 +535,41 @@ export function DetailsPage() {
                                         {initials(c.full_name)}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 400 }}>{c.full_name}</div>
+                                        <div style={{ fontWeight: 400, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>{c.full_name}</span>
+                                            {prop.client_shares?.[c.id] && (
+                                                <span style={{ fontSize: 12, background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: 6, fontWeight: 500 }}>Доля: {prop.client_shares[c.id]}</span>
+                                            )}
+                                        </div>
                                         <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
                                     </div>
                                     <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
                                 </div>
                             ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Agent */}
+                {agent && (
+                    <div className="card">
+                        <div className="section-title">Агент объекта</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                            <div onClick={() => navigate(`/clients/${agent.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                                <div style={{
+                                    width: 40, height: 40, borderRadius: '50%',
+                                    background: 'var(--primary-light)', color: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 15, fontWeight: 600, flexShrink: 0, letterSpacing: 0.5,
+                                }}>
+                                    {initials(agent.full_name)}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 400 }}>{agent.full_name}</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{agent.phone}</div>
+                                </div>
+                                <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                            </div>
                         </div>
                     </div>
                 )}

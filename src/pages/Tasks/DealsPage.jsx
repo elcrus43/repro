@@ -8,6 +8,29 @@ import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 
+function parsePgArray(arr) {
+    if (!arr) return [];
+    if (Array.isArray(arr)) return arr;
+    if (typeof arr === 'string') {
+        return arr.replace(/{|}/g, '').split(',').filter(Boolean);
+    }
+    return [];
+}
+
+function parseExpenses(exp) {
+    if (!exp) return [];
+    if (Array.isArray(exp)) return exp;
+    if (typeof exp === 'string') {
+        try {
+            const parsed = JSON.parse(exp);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+    return [];
+}
+
 export function DealsPage() {
     const { state, dispatch } = useApp();
     const { toast } = useToastContext();
@@ -19,6 +42,8 @@ export function DealsPage() {
     const [view, setView] = useState('list');
     const [filter, setFilter] = useState('active');
     const [showForm, setShowForm] = useState(false);
+    const [showQuickBuyerForm, setShowQuickBuyerForm] = useState(false);
+    const [quickBuyer, setQuickBuyer] = useState({ full_name: '', phone: '' });
     
     const now = new Date();
     const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -42,6 +67,8 @@ export function DealsPage() {
         mortgage_expiry: prefillData.mortgage_expiry || '',
         expenses: prefillData.expenses || [],
         lawyer: prefillData.lawyer || '',
+        seller_agent_id: prefillData.seller_agent_id || '',
+        buyer_agent_id: prefillData.buyer_agent_id || '',
     });
 
     const prevPropertyId = useRef(newDeal.property_id);
@@ -89,7 +116,8 @@ export function DealsPage() {
                     ...prev,
                     price: formatPriceInput(String(prop.price || '')),
                     commission: formatPriceInput(String(prop.commission || '')),
-                    seller_ids: prop.client_ids || (prop.client_id ? [prop.client_id] : [])
+                    seller_ids: prop.client_ids || (prop.client_id ? [prop.client_id] : []),
+                    seller_agent_id: prop.agent_id || ''
                 }));
             }
         }
@@ -137,6 +165,27 @@ export function DealsPage() {
         setNewDeal(prev => ({ ...prev, [field]: value }));
     }
 
+    function handleCreateQuickBuyer(e) {
+        e.preventDefault();
+        if (!quickBuyer.full_name) return;
+        
+        const newClientId = nanoid();
+        const client = {
+            ...quickBuyer,
+            id: newClientId,
+            realtor_id: user?.id,
+            created_at: new Date().toISOString()
+        };
+        
+        dispatch({ type: 'ADD_CLIENT', client });
+        
+        // Auto-select the new client as a buyer
+        handleFieldChange('buyer_ids', [...(newDeal.buyer_ids || []), newClientId]);
+        setQuickBuyer({ full_name: '', phone: '' });
+        setShowQuickBuyerForm(false);
+        toast.success('Покупатель создан и выбран');
+    }
+
     const addExpense = () => {
         const newExpense = { id: nanoid(), title: '', amount: '', payer: 'seller' };
         setNewDeal(prev => ({ ...prev, expenses: [...(prev.expenses || []), newExpense] }));
@@ -180,6 +229,8 @@ export function DealsPage() {
                 ...e,
                 amount: Number(parsePriceInput(String(e.amount))) || 0
             })),
+            seller_agent_id: newDeal.seller_agent_id || null,
+            buyer_agent_id: newDeal.buyer_agent_id || null,
         };
 
         try {
@@ -198,7 +249,7 @@ export function DealsPage() {
     }
 
     function resetForm() {
-        setNewDeal({ id: '', title: '', seller_ids: [], buyer_ids: [], property_id: '', price: '', deal_date: '', deposit_date: '', deposit_amount: '', commission: '', notes: '', mortgage: false, mortgage_bank: '', mortgage_amount: '', mortgage_expiry: '', expenses: [], lawyer: '' });
+        setNewDeal({ id: '', title: '', seller_ids: [], buyer_ids: [], property_id: '', price: '', deal_date: '', deposit_date: '', deposit_amount: '', commission: '', notes: '', mortgage: false, mortgage_bank: '', mortgage_amount: '', mortgage_expiry: '', expenses: [], lawyer: '', seller_agent_id: '', buyer_agent_id: '' });
         prevPropertyId.current = '';
     }
 
@@ -208,10 +259,13 @@ export function DealsPage() {
     }
 
     function editDeal(deal) {
+        const sellerIds = parsePgArray(deal.seller_ids);
+        const buyerIds = parsePgArray(deal.buyer_ids);
         setNewDeal({ 
             ...deal, 
-            seller_ids: deal.seller_ids || (deal.seller_id ? [deal.seller_id] : []),
-            buyer_ids: deal.buyer_ids || (deal.buyer_id ? [deal.buyer_id] : []),
+            seller_ids: sellerIds.length > 0 ? sellerIds : (deal.seller_id ? [deal.seller_id] : []),
+            buyer_ids: buyerIds.length > 0 ? buyerIds : (deal.buyer_id ? [deal.buyer_id] : []),
+            expenses: parseExpenses(deal.expenses),
             price: deal.price ? deal.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deposit_amount: deal.deposit_amount ? deal.deposit_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             commission: deal.commission ? deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
@@ -219,14 +273,21 @@ export function DealsPage() {
             deposit_date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
             mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             lawyer: deal.lawyer || '',
+            seller_agent_id: deal.seller_agent_id || '',
+            buyer_agent_id: deal.buyer_agent_id || '',
         });
         prevPropertyId.current = deal.property_id;
         setShowForm(true);
     }
 
     function DealCard({ deal }) {
-        const sellers = state.clients.filter(c => (deal.seller_ids || (deal.seller_id ? [deal.seller_id] : [])).includes(c.id));
-        const buyers = state.clients.filter(c => (deal.buyer_ids || (deal.buyer_id ? [deal.buyer_id] : [])).includes(c.id));
+        const sellerIds = parsePgArray(deal.seller_ids);
+        const buyerIds = parsePgArray(deal.buyer_ids);
+        const sellers = state.clients.filter(c => (sellerIds.length > 0 ? sellerIds : (deal.seller_id ? [deal.seller_id] : [])).includes(c.id));
+        const buyers = state.clients.filter(c => (buyerIds.length > 0 ? buyerIds : (deal.buyer_id ? [deal.buyer_id] : [])).includes(c.id));
+        const sellerAgent = deal.seller_agent_id ? state.clients.find(c => c.id === deal.seller_agent_id) : null;
+        const buyerAgent = deal.buyer_agent_id ? state.clients.find(c => c.id === deal.buyer_agent_id) : null;
+        const expenses = parseExpenses(deal.expenses);
         const property = state.properties.find(p => p.id === deal.property_id);
 
         const statusConfig = {
@@ -289,21 +350,71 @@ export function DealsPage() {
                         {sellers.length > 0 && (
                             <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
                                 <div style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 9, marginBottom: 2 }}>Продавец</div>
-                                <div style={{ fontWeight: 400 }}>{sellers.map(s => s.full_name).join(', ')}</div>
+                                <div style={{ fontWeight: 400 }}>
+                                    {sellers.map((s, i) => (
+                                        <span key={s.id}>
+                                            {i > 0 && ', '}
+                                            <span 
+                                                onClick={() => navigate(`/clients/${s.id}`)}
+                                                style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
+                                            >
+                                                {s.full_name}
+                                            </span>
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                         )}
                         {buyers.length > 0 && (
                             <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
                                 <div style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 9, marginBottom: 2 }}>Покупатель</div>
-                                <div style={{ fontWeight: 400 }}>{buyers.map(b => b.full_name).join(', ')}</div>
+                                <div style={{ fontWeight: 400 }}>
+                                    {buyers.map((b, i) => (
+                                        <span key={b.id}>
+                                            {i > 0 && ', '}
+                                            <span 
+                                                onClick={() => navigate(`/clients/${b.id}`)}
+                                                style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
+                                            >
+                                                {b.full_name}
+                                            </span>
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </div>
-                    {deal.expenses && deal.expenses.length > 0 && (
+                    {(sellerAgent || buyerAgent) && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12, marginTop: 8 }}>
+                            {sellerAgent && (
+                                <div style={{ fontWeight: 300 }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>Агент продавца: </span>
+                                    <span 
+                                        onClick={() => navigate(`/clients/${sellerAgent.id}`)}
+                                        style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
+                                    >
+                                        {sellerAgent.full_name}
+                                    </span>
+                                </div>
+                            )}
+                            {buyerAgent && (
+                                <div style={{ fontWeight: 300 }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>Агент покупателя: </span>
+                                    <span 
+                                        onClick={() => navigate(`/clients/${buyerAgent.id}`)}
+                                        style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
+                                    >
+                                        {buyerAgent.full_name}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {expenses && expenses.length > 0 && (
                         <div style={{ marginTop: 12, padding: '12px', background: 'var(--warning-light)', borderRadius: 16, border: '1px dashed rgba(245, 158, 11, 0.4)' }}>
                             <div style={{ fontSize: 9, fontWeight: 400, color: 'var(--warning)', marginBottom: 8, textTransform: 'uppercase' }}>Расходы сторон</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {deal.expenses.map(exp => (
+                                {expenses.map(exp => (
                                     <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 400 }}>
                                         <span style={{ color: 'var(--text-secondary)' }}>{exp.title} ({exp.payer === 'seller' ? 'Прод.' : 'Покуп.'})</span>
                                         <span style={{ color: 'var(--text)' }}>{Number(exp.amount).toLocaleString()} ₽</span>
@@ -391,9 +502,63 @@ export function DealsPage() {
 
                         <div className="form-group">
                             <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Стороны сделки</label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." />
-                                <MultiClientSelector selectedIds={newDeal.buyer_ids || []} onChange={ids => handleFieldChange('buyer_ids', ids)} clients={state.clients} placeholder="Выбрать покупателей..." />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Продавцы</label>
+                                    <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." />
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                    <div>
+                                        <label style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Агент продавца</label>
+                                        <select 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
+                                            value={newDeal.seller_agent_id || ''} 
+                                            onChange={e => handleFieldChange('seller_agent_id', e.target.value || null)}
+                                        >
+                                            <option value="">Без агента</option>
+                                            {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
+                                                <option key={a.id} value={a.id}>{a.full_name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Агент покупателя</label>
+                                        <select 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
+                                            value={newDeal.buyer_agent_id || ''} 
+                                            onChange={e => handleFieldChange('buyer_agent_id', e.target.value || null)}
+                                        >
+                                            <option value="">Без агента</option>
+                                            {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
+                                                <option key={a.id} value={a.id}>{a.full_name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Покупатели</label>
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                        <div style={{ flex: 1 }}>
+                                            <MultiClientSelector selectedIds={newDeal.buyer_ids || []} onChange={ids => handleFieldChange('buyer_ids', ids)} clients={state.clients} placeholder="Выбрать покупателей..." />
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setShowQuickBuyerForm(true)} 
+                                            className="card-clickable"
+                                            style={{ 
+                                                height: 44, borderRadius: 12, border: '1.5px solid #000000',
+                                                background: 'var(--surface)', color: 'var(--text)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                padding: '0 12px', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap',
+                                                fontFamily: "'Oswald', sans-serif"
+                                            }}
+                                        >
+                                            <Plus size={14} style={{ marginRight: 4 }} /> Покупатель
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -448,7 +613,7 @@ export function DealsPage() {
                                 <button type="button" onClick={addExpense} style={{ background: 'var(--primary-light)', color: 'var(--primary)', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 300 }}>+ Добавить</button>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {newDeal.expenses?.map(exp => (
+                                {parseExpenses(newDeal.expenses).map(exp => (
                                     <div key={exp.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
                                         <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
                                             <select 
@@ -529,6 +694,47 @@ export function DealsPage() {
                     )}
                 </div>
             </div>
+
+            {/* Quick Buyer Modal — Premium Open Design */}
+            {showQuickBuyerForm && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(10px) saturate(180%)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 24
+                }}>
+                    <div className="card fade-in" style={{ width: '100%', maxWidth: 420, padding: 32, borderRadius: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', background: 'var(--surface)' }}>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Новый покупатель</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ФИО</label>
+                                <input 
+                                    className="form-input" 
+                                    autoFocus
+                                    value={quickBuyer.full_name} 
+                                    onChange={e => setQuickBuyer({ ...quickBuyer, full_name: e.target.value })} 
+                                    placeholder="Иванов Иван Иванович"
+                                    style={{ height: 52, borderRadius: 14 }}
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
+                                <input 
+                                    className="form-input" 
+                                    value={quickBuyer.phone} 
+                                    onChange={e => setQuickBuyer({ ...quickBuyer, phone: e.target.value })} 
+                                    placeholder="+7 (___) ___-__-__"
+                                    style={{ height: 52, borderRadius: 14 }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                                <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300 }} onClick={() => setShowQuickBuyerForm(false)}>Отмена</button>
+                                <button type="button" className="btn btn-primary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300, background: 'var(--primary)', boxShadow: '0 8px 16px rgba(0,82,255,0.15)' }} onClick={handleCreateQuickBuyer}>Создать</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

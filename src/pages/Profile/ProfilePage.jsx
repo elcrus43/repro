@@ -15,6 +15,7 @@ import {
     addEventToCalendar,
 } from '../../lib/googleCalendar';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+import { useExport } from '../../hooks/useExport';
 
 // Lazy load XLSX for code splitting
 const loadXLSX = () => import('xlsx');
@@ -23,6 +24,7 @@ export function ProfilePage() {
     const { state, dispatch, reloadData } = useApp();
     const navigate = useNavigate();
     const { toast } = useToastContext();
+    const { exportToCSV } = useExport();
     const [deferredPrompt, setDeferredPrompt] = React.useState(null);
     const [isInstalled, setIsInstalled] = React.useState(false);
     const [isEditing, setIsEditing] = React.useState(false);
@@ -260,11 +262,44 @@ export function ProfilePage() {
         }
     };
 
+    const handleExportClientsCSV = () => {
+        const typeLabels = {
+            buyer: 'Покупатель',
+            seller: 'Продавец',
+            owner: 'Собственник',
+            realtor: 'Риэлтор',
+            refused: 'Отказ',
+            completed: 'Завершен'
+        };
+        const headers = [
+            { key: 'full_name', label: 'ФИО' },
+            { key: 'phone', label: 'Телефон' },
+            { key: 'email', label: 'Email' },
+            { 
+                label: 'Тип клиента', 
+                resolve: (c) => c.client_types?.map(t => typeLabels[t] || t).join(', ') || '' 
+            }
+        ];
+        exportToCSV(myClients, 'clients_export', headers);
+    };
+
+    const handleExportPropertiesCSV = () => {
+        const headers = [
+            { key: 'address', label: 'Адрес' },
+            { key: 'price', label: 'Цена' },
+            { key: 'total_area', label: 'Площадь' },
+            { key: 'floor', label: 'Этаж' },
+            { key: 'realtor_id', label: 'Realtor ID' }
+        ];
+        exportToCSV(myProperties, 'properties_export', headers);
+    };
+
     const menuItems = [
         { icon: <Lock size={20} />, label: 'Сменить пароль', action: () => setShowPasswordModal(true) },
         { icon: isDark ? <Sun size={20} /> : <Moon size={20} />, label: isDark ? 'Светлая тема' : 'Темная тема', action: toggleTheme },
         { icon: <FileText size={20} />, label: 'Шаблоны документов', action: () => navigate('/documents') },
-        { icon: <DownloadCloud size={20} />, label: 'Экспорт данных', action: handleExport },
+        { icon: <DownloadCloud size={20} />, label: 'Экспорт клиентов (CSV)', action: handleExportClientsCSV },
+        { icon: <DownloadCloud size={20} />, label: 'Экспорт объектов (CSV)', action: handleExportPropertiesCSV },
     ];
 
     async function handleLogout() {

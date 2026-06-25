@@ -101,7 +101,17 @@ export function CmaReport({ property, onClose, onApplyPrice }) {
                     <AlertTriangle size={48} color="var(--danger)" style={{ marginBottom: 16 }} />
                     <div style={styles.errorTitle}>Не удалось построить СМА-отчет</div>
                     <div style={styles.errorText}>{error}</div>
-                    <button style={styles.closeBtn} onClick={onClose}>Закрыть</button>
+                    <div style={{ display: 'flex', gap: 12, width: '100%', justifyContent: 'center' }}>
+                        <a 
+                            href="https://www.avito.ru/evaluation/realty" 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            style={{ ...styles.avitoBtn, flex: 1, textAlign: 'center', justifyContent: 'center' }}
+                        >
+                            Оценка Авито
+                        </a>
+                        <button style={{ ...styles.closeBtn, flex: 1 }} onClick={onClose}>Закрыть</button>
+                    </div>
                 </div>
             </div>
         );
@@ -324,7 +334,15 @@ export function CmaReport({ property, onClose, onApplyPrice }) {
                 </div>
 
                 {/* Footer */}
-                <div style={styles.footer}>
+                <div style={{ ...styles.footer, justifyContent: 'space-between', alignItems: 'center' }}>
+                    <a 
+                        href="https://www.avito.ru/evaluation/realty" 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        style={styles.avitoBtn}
+                    >
+                        🔍 Открыть Авито Оценку
+                    </a>
                     <button style={styles.closeBtn} onClick={onClose}>Закрыть</button>
                 </div>
             </div>
@@ -617,6 +635,21 @@ const styles = {
         fontSize: 14,
         color: 'var(--text)',
         boxShadow: '0 2px 6px rgba(0,0,0,0.02)'
+    },
+    avitoBtn: {
+        border: '1px solid #ff5e00',
+        background: '#ff5e00',
+        color: '#ffffff',
+        padding: '10px 20px',
+        borderRadius: 12,
+        cursor: 'pointer',
+        fontSize: 14,
+        textDecoration: 'none',
+        display: 'inline-flex',
+        alignItems: 'center',
+        fontWeight: '500',
+        transition: 'background 0.2s ease, transform 0.1s ease',
+        boxShadow: '0 2px 6px rgba(255, 94, 0, 0.15)'
     },
     loaderContainer: {
         backgroundColor: 'var(--surface)',

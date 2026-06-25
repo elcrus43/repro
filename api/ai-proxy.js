@@ -346,6 +346,8 @@ async function handleRunCma(property) {
     throw new Error('Database not configured on server');
   }
 
+  console.log('[handleRunCma] Inputs:', JSON.stringify(property));
+
   const sql = neon(NEON_DATABASE_URL);
   const analogs = await findLocalAnalogs(sql, property);
 
@@ -490,7 +492,7 @@ ${analogsText}
 
 async function findLocalAnalogs(sql, property) {
   const city = property.city || 'Москва';
-  const dealType = property.deal_type || 'SALE';
+  const dealType = (property.deal_type || 'SALE').toUpperCase();
   const rooms = property.rooms !== undefined && property.rooms !== null ? parseInt(property.rooms) : 1;
   const area = parseFloat(property.total_area || property.area_total || 40);
   const district = property.district || '';
@@ -504,7 +506,8 @@ async function findLocalAnalogs(sql, property) {
     const lon_delta = 1.5 / (111.0 * 0.57);
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE city = ${city}
+      WHERE source = 'AVITO'
+        AND city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
@@ -524,7 +527,8 @@ async function findLocalAnalogs(sql, property) {
   if (district) {
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE city = ${city}
+      WHERE source = 'AVITO'
+        AND city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
@@ -543,7 +547,8 @@ async function findLocalAnalogs(sql, property) {
   {
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE city = ${city}
+      WHERE source = 'AVITO'
+        AND city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
@@ -561,7 +566,8 @@ async function findLocalAnalogs(sql, property) {
   {
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE city = ${city}
+      WHERE source = 'AVITO'
+        AND city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
@@ -578,7 +584,8 @@ async function findLocalAnalogs(sql, property) {
   // 5. Desperate fallback
   const rows = await sql`
     SELECT * FROM analog_listings
-    WHERE city = ${city}
+    WHERE source = 'AVITO'
+      AND city = ${city}
       AND deal_type = ${dealType}
       AND is_active = true
       AND rooms = ${rooms}

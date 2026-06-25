@@ -12,6 +12,7 @@
 import { supabase } from '../lib/supabase';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
+import { neonDb } from '../lib/neon';
 import {
   addEventToCalendar,
   updateEventInCalendar,
@@ -30,6 +31,7 @@ const EVENT_TYPE_LABELS = {
 };
 
 const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
+const isNeon = import.meta.env.VITE_BACKEND === 'neon';
 
 async function updateGoogleEventId(table, item, eventId) {
   const id = item.id;
@@ -45,6 +47,8 @@ async function updateGoogleEventId(table, item, eventId) {
   if (isFirebase) {
     const docRef = doc(db, table, id);
     await updateDoc(docRef, { google_event_id: dbEventId });
+  } else if (isNeon) {
+    await neonDb.update(table, id, { google_event_id: dbEventId });
   } else {
     await supabase.from(table).update({ google_event_id: dbEventId }).eq('id', id);
   }
@@ -99,7 +103,6 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   if (item._propertyAddress) descParts.push(`🏠 ${item._propertyAddress}`);
   if (isDeal) {
     if (item.price) descParts.push(`💰 Цена: ${Number(item.price).toLocaleString('ru-RU')} ₽`);
-    if (item.commission) descParts.push(`💵 Комиссия: ${Number(item.commission).toLocaleString('ru-RU')} ₽`);
     if (item.lawyer) descParts.push(`👤 Юрист: ${item.lawyer}`);
     if (item.notes) descParts.push(`📝 Заметки: ${item.notes}`);
     if (item.expenses && item.expenses.length > 0) {

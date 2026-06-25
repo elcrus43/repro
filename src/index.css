@@ -106,19 +106,90 @@
   --modal-bg: rgba(30, 41, 59, 0.98);
 }
 
+.dark .btn {
+  border: none !important;
+  color: #ffffff !important;
+}
+
 .dark .btn-primary {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: #ffffff;
+  background: var(--primary-light) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.dark .btn-primary:hover {
+  background: rgba(59, 130, 246, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.dark .btn-outline {
+  background: var(--surface) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.dark .btn-outline:hover {
+  background: var(--primary-light) !important;
+  color: #ffffff !important;
 }
 
 .dark .btn-secondary {
-  background: var(--bg-light);
-  border-color: var(--border);
-  color: var(--text-secondary);
+  background: var(--bg-light) !important;
+  color: #ffffff !important;
+  border: none !important;
 }
 
-.dark .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+.dark .btn-secondary:hover {
+  background: var(--surface) !important;
+  color: #ffffff !important;
+}
+
+.dark .btn-success {
+  background: var(--success-light) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.dark .btn-success:hover {
+  background: rgba(16, 185, 129, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.dark .btn-danger {
+  background: var(--danger-light) !important;
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.dark .btn-danger:hover {
+  background: rgba(239, 68, 68, 0.3) !important;
+  color: #ffffff !important;
+}
+
+.dark .btn-ghost {
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.dark .btn-ghost:hover {
+  background: var(--primary-light) !important;
+}
+
+.dark button.card-clickable,
+.dark button.topbar-back,
+.dark button.btn-icon,
+.dark button.icon-btn {
+  border: none !important;
+  background: var(--surface) !important;
+  color: #ffffff !important;
+}
+
+.dark button.card-clickable:hover,
+.dark button.topbar-back:hover,
+.dark button.btn-icon:hover,
+.dark button.icon-btn:hover {
+  background: var(--primary-light) !important;
+  color: #ffffff !important;
 }
 
 /* Keep blue nav active in dark mode */
@@ -323,8 +394,8 @@ a:focus:not(:focus-visible) {
 .topbar-back {
   width: 32px;
   height: 32px;
-  border: 1px solid var(--border-light);
-  background: var(--surface);
+  border: none !important;
+  background: transparent !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -332,156 +403,110 @@ a:focus:not(:focus-visible) {
   font-size: 16px;
   color: var(--text-secondary);
   transition: all 0.15s;
+  box-shadow: none !important;
 }
 
 .topbar-back:hover {
-  background: var(--primary-light);
-  border-color: var(--border);
+  background: var(--bg-light) !important;
 }
 
 .icon-btn {
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: none;
+  width: 44px;
+  height: 44px;
+  border: none !important;
+  background: transparent !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius-pill);
-  color: var(--text-secondary);
+  border-radius: 14px;
+  color: #000000;
   transition: all 0.2s;
   cursor: pointer;
+  box-shadow: none !important;
 }
 
 .icon-btn:hover {
-  background: var(--primary-light);
-  color: var(--primary);
+  background: var(--bg-light) !important;
+  color: #000000;
 }
 
 /* ===== Lucide icon action buttons ===== */
-/* Edit button — subtle neutral */
-.icon-btn-edit {
-  width: 29px;
-  height: 29px;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: var(--text-secondary);
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.icon-btn-edit:hover {
-  border-color: var(--primary);
-  color: var(--primary);
-  background: var(--primary-light);
-  transform: scale(1.08);
-}
-
-.icon-btn-edit:active {
-  transform: scale(0.94);
-}
-
-/* Delete button — danger accent */
-.icon-btn-delete {
-  width: 29px;
-  height: 29px;
-  border: 1.5px solid rgba(239, 68, 68, 0.25);
-  background: rgba(239, 68, 68, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: var(--danger);
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.icon-btn-delete:hover {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: var(--danger);
-  transform: scale(1.08);
-}
-
-.icon-btn-delete:active {
-  transform: scale(0.94);
-}
-
-/* Calendar button — primary accent */
-.icon-btn-calendar {
-  width: 29px;
-  height: 29px;
-  border: 1.5px solid rgba(59, 130, 246, 0.25);
-  background: rgba(59, 130, 246, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: var(--primary);
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.icon-btn-calendar:hover {
-  background: rgba(59, 130, 246, 0.15);
-  border-color: var(--primary);
-  transform: scale(1.08);
-}
-
-.icon-btn-calendar:active {
-  transform: scale(0.94);
-}
-
-.dark .icon-btn-edit {
-  border-color: rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.04);
-}
-
-.dark .icon-btn-delete {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.3);
-}
-
-.dark .icon-btn-calendar {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
-}
-
-/* Import button — success accent */
+.icon-btn-edit,
+.icon-btn-copy,
+.icon-btn-delete,
+.icon-btn-calendar,
 .icon-btn-import {
   width: 29px;
   height: 29px;
-  border: 1.5px solid rgba(16, 185, 129, 0.25);
-  background: rgba(16, 185, 129, 0.06);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  color: var(--success);
+  border: none !important;
+  background: transparent !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 8px !important;
+  color: #000000 !important;
   transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   flex-shrink: 0;
+  box-shadow: none !important;
 }
 
-.icon-btn-import:hover {
-  background: rgba(16, 185, 129, 0.15);
-  border-color: var(--success);
+.icon-btn-edit:hover,
+.icon-btn-copy:hover,
+.icon-btn-calendar:hover {
+  background: var(--primary-light) !important;
+  border-color: transparent !important;
+  color: #000000 !important;
   transform: scale(1.08);
 }
 
+.icon-btn-delete:hover {
+  background: var(--danger-light) !important;
+  border-color: transparent !important;
+  color: #000000 !important;
+  transform: scale(1.08);
+}
+
+.icon-btn-import:hover {
+  background: var(--success-light) !important;
+  border-color: transparent !important;
+  color: #000000 !important;
+  transform: scale(1.08);
+}
+
+.icon-btn-edit:active,
+.icon-btn-copy:active,
+.icon-btn-delete:active,
+.icon-btn-calendar:active,
 .icon-btn-import:active {
   transform: scale(0.94);
 }
 
+.dark .icon-btn-edit,
+.dark .icon-btn-copy,
+.dark .icon-btn-delete,
+.dark .icon-btn-calendar,
 .dark .icon-btn-import {
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.3);
+  border: none !important;
+  background: transparent !important;
+  color: #ffffff !important;
+}
+
+.dark .icon-btn-edit:hover,
+.dark .icon-btn-copy:hover,
+.dark .icon-btn-calendar:hover {
+  background: var(--primary-light) !important;
+  color: #ffffff !important;
+}
+
+.dark .icon-btn-delete:hover {
+  background: var(--danger-light) !important;
+  color: #ffffff !important;
+}
+
+.dark .icon-btn-import:hover {
+  background: var(--success-light) !important;
+  color: #ffffff !important;
 }
 
 
@@ -632,70 +657,75 @@ a:focus:not(:focus-visible) {
   gap: 8px;
   padding: 0 20px;
   border-radius: var(--radius);
-  border: 1px solid var(--primary);
+  border: none !important;
+  color: #000000 !important;
   font-size: 15px;
-  font-weight: 200;
+  font-weight: 400;
   font-family: 'Oswald', sans-serif;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 44px;
   white-space: nowrap;
+  box-shadow: none !important;
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
+  background: var(--primary-light) !important;
+  color: #000000 !important;
 }
 
 .btn-primary:hover {
-  background: var(--surface);
-  color: var(--primary);
+  background: rgba(59, 130, 246, 0.25) !important;
+  color: #000000 !important;
 }
 
 .btn-outline {
-  background: var(--primary-light);
-  color: var(--primary);
-  border-color: var(--primary);
+  background: var(--surface) !important;
+  color: #000000 !important;
 }
 
 .btn-outline:hover {
-  background: var(--primary);
-  color: white;
+  background: var(--primary-light) !important;
+  color: #000000 !important;
 }
 
 .btn-secondary {
-  background: var(--surface);
-  color: var(--text-secondary);
-  border: 2px solid var(--border);
+  background: var(--bg-light) !important;
+  color: #000000 !important;
 }
 
 .btn-secondary:hover {
-  border-color: var(--primary);
-  color: var(--primary);
+  background: var(--surface) !important;
+  color: #000000 !important;
 }
 
 .btn-success {
-  background: var(--success);
-  color: white;
-  border-color: var(--success);
+  background: var(--success-light) !important;
+  color: #000000 !important;
+}
+
+.btn-success:hover {
+  background: rgba(16, 185, 129, 0.25) !important;
+  color: #000000 !important;
 }
 
 .btn-danger {
-  background: var(--danger);
-  color: white;
-  border-color: var(--danger);
+  background: var(--danger-light) !important;
+  color: #000000 !important;
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.25) !important;
+  color: #000000 !important;
 }
 
 .btn-ghost {
-  background: transparent;
-  color: var(--primary);
-  border-color: transparent;
+  background: transparent !important;
+  color: #000000 !important;
 }
 
 .btn-ghost:hover {
-  background: var(--primary-light);
-  border-color: var(--primary);
+  background: var(--primary-light) !important;
 }
 
 .btn-full {
@@ -1601,18 +1631,29 @@ a:focus:not(:focus-visible) {
   border-radius: 99px;
   font-size: 13px;
   font-weight: 600;
-  border: 1.5px solid var(--border);
-  background: var(--surface);
-  color: var(--text-secondary);
+  border: none !important;
+  background: var(--surface) !important;
+  color: #000000 !important;
   cursor: pointer;
   white-space: nowrap;
   transition: all 0.15s;
+  box-shadow: none !important;
 }
 
 .tab-filter.active {
-  background: var(--text);
-  border-color: var(--text);
-  color: white;
+  background: var(--primary-light) !important;
+  color: #000000 !important;
+}
+
+.dark .tab-filter {
+  border: none !important;
+  background: var(--surface) !important;
+  color: #ffffff !important;
+}
+
+.dark .tab-filter.active {
+  background: var(--primary-light) !important;
+  color: #ffffff !important;
 }
 
 /* Dashboard header */
@@ -1825,26 +1866,31 @@ a:focus:not(:focus-visible) {
   transform: scale(0.98);
 }
 
-/* Make square/icon buttons clean without any outlines/borders */
+/* Style square/icon buttons with thin black borders and no shadow */
 button.card-clickable,
 button.topbar-back,
-button.btn-icon {
+button.btn-icon,
+button.icon-btn {
   border: none !important;
   outline: none !important;
+  box-shadow: none !important;
+  border-radius: 14px;
 }
 
 button.card-clickable:hover,
 button.topbar-back:hover,
-button.btn-icon:hover {
+button.btn-icon:hover,
+button.icon-btn:hover {
   border: none !important;
-  outline: none !important;
+  box-shadow: none !important;
 }
 
 button.card-clickable:focus,
 button.topbar-back:focus,
-button.btn-icon:focus {
+button.btn-icon:focus,
+button.icon-btn:focus {
   border: none !important;
-  outline: none !important;
+  box-shadow: none !important;
 }
 
 .btn {
@@ -1855,11 +1901,6 @@ button.btn-icon:focus {
 
 .btn:active {
   transform: scale(0.96);
-}
-
-.btn-primary:hover {
-  box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.15);
-  transform: translateY(-1px);
 }
 
 .text-accent {
