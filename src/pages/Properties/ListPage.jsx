@@ -84,7 +84,7 @@ export function ListPage() {
 
     // Closed statuses = deal completed
     const CLOSED_STATUSES = ['deal'];
-    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit', 'deal'];
+    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit'];
 
     const filteredProperties = useMemo(() => {
         return state.properties
@@ -133,7 +133,7 @@ export function ListPage() {
 
     const statusOrder = useMemo(() => {
         if (filter === 'closed') return ['deal'];
-        return ['deal', 'deposit', 'advertising', 'agreement', 'meeting'];
+        return ['deposit', 'advertising', 'agreement', 'meeting'];
     }, [filter]);
 
     const toggleStatus = (status) => {
