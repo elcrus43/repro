@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { neonDb } from '../../lib/neon';
 import { useApp } from '../../context/AppContext';
 import { Home, MapPin, Maximize, Layers, Heart, X, Check } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
@@ -17,32 +17,33 @@ export function PublicClientPage() {
         try {
             setLoading(true);
             // 1. Fetch client by public_token
-            const { data: clientData, error: clientErr } = await supabase
-                .from('clients')
-                .select('*')
-                .eq('public_token', token)
-                .single();
+            const { data: clients, error: clientErr } = await neonDb.query(
+                'SELECT * FROM clients WHERE public_token = $1 LIMIT 1',
+                [token]
+            );
 
-            if (clientErr || !clientData) {
+            if (clientErr) throw clientErr;
+            if (!clients || clients.length === 0) {
                 throw new Error('Клиент не найден или ссылка недействительна');
             }
+            const clientData = clients[0];
             setClient(clientData);
 
             // 2. Fetch requests of this client
-            const { data: requestsData, error: reqErr } = await supabase
-                .from('requests')
-                .select('id')
-                .eq('client_id', clientData.id);
+            const { data: requestsData, error: reqErr } = await neonDb.query(
+                'SELECT id FROM requests WHERE client_id = $1',
+                [clientData.id]
+            );
 
             if (reqErr) throw reqErr;
 
             if (requestsData && requestsData.length > 0) {
                 // 3. Fetch matches for these requests
                 const reqIds = requestsData.map(r => r.id);
-                const { data: matchesData, error: matchErr } = await supabase
-                    .from('matches')
-                    .select('*, properties(*)')
-                    .in('request_id', reqIds);
+                const { data: matchesData, error: matchErr } = await neonDb.query(
+                    `SELECT m.*, json_build_object('id', pr.id, 'price', pr.price, 'address', pr.address, 'city', pr.city, 'rooms', pr.rooms, 'area_total', pr.area_total, 'floor', pr.floor, 'floors_total', pr.floors_total, 'cover_image', pr.cover_image, 'property_type', pr.property_type, 'images', pr.images) as properties FROM matches m JOIN properties pr ON m.property_id = pr.id WHERE m.request_id = ANY($1)`,
+                    [reqIds]
+                );
 
                 if (matchErr) throw matchErr;
                 // Filter matches that have a valid property
@@ -64,20 +65,19 @@ export function PublicClientPage() {
 
     const handleUpdateStatus = async (match, newStatus) => {
         try {
-            // Update in Supabase
+            const updatedAt = new Date().toISOString();
+            const { error: updateErr } = await neonDb.query(
+                'UPDATE matches SET status = $1, updated_at = $2 WHERE id = $3',
+                [newStatus, updatedAt, match.id]
+            );
+
+            if (updateErr) throw updateErr;
+
             const updatedMatch = {
                 ...match,
                 status: newStatus,
-                updated_at: new Date().toISOString()
+                updated_at: updatedAt
             };
-            // Remove the nested properties relation from match payload to avoid db errors
-            const { properties, ...matchPayload } = updatedMatch;
-
-            const { error: updateErr } = await supabase
-                .from('matches')
-                .upsert(matchPayload);
-
-            if (updateErr) throw updateErr;
 
             // Update local state
             setMatches(prev => prev.map(m => m.id === match.id ? { ...m, status: newStatus } : m));

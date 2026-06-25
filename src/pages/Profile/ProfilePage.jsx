@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { supabase } from '../../lib/supabase';
 import { authService } from '../../lib/auth';
 import { formatPhone } from '../../utils/format';
 import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon, FileText } from 'lucide-react';
@@ -127,8 +126,8 @@ export function ProfilePage() {
 
                     try {
                         const { data: { session } } = await authService.getSession();
-                        const supabaseToken = session?.access_token;
-                        if (!supabaseToken) {
+                        const sessionToken = session?.access_token;
+                        if (!sessionToken) {
                             throw new Error('Сессия пользователя не найдена. Попробуйте войти заново.');
                         }
 
@@ -136,7 +135,7 @@ export function ProfilePage() {
                         const res = await fetch(edgeUrl, {
                             method: 'POST',
                             headers: {
-                                Authorization: `Bearer ${supabaseToken}`,
+                                Authorization: `Bearer ${sessionToken}`,
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({

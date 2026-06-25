@@ -9,7 +9,6 @@
  * Экспортирует единственную функцию syncWithCalendar().
  */
 
-import { supabase } from '../lib/supabase';
 import { db } from '../lib/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { neonDb } from '../lib/neon';
@@ -30,8 +29,9 @@ const EVENT_TYPE_LABELS = {
   call: 'Звонок',
 };
 
-const isFirebase = import.meta.env.VITE_BACKEND === 'firebase';
-const isNeon = import.meta.env.VITE_BACKEND === 'neon';
+const backend = import.meta.env.VITE_BACKEND || 'neon';
+const isFirebase = backend === 'firebase';
+const isNeon = backend === 'neon';
 
 async function updateGoogleEventId(table, item, eventId) {
   const id = item.id;
@@ -47,10 +47,8 @@ async function updateGoogleEventId(table, item, eventId) {
   if (isFirebase) {
     const docRef = doc(db, table, id);
     await updateDoc(docRef, { google_event_id: dbEventId });
-  } else if (isNeon) {
-    await neonDb.update(table, id, { google_event_id: dbEventId });
   } else {
-    await supabase.from(table).update({ google_event_id: dbEventId }).eq('id', id);
+    await neonDb.update(table, id, { google_event_id: dbEventId });
   }
 }
 

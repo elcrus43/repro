@@ -44,17 +44,17 @@ async function request(sql, params = []) {
   const token  = getToken();
   const userId = getUserId();
 
-  if (!token) {
-    return { data: null, error: { message: 'Не авторизован', code: 'UNAUTHENTICATED' } };
-  }
-
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(API_URL, {
       method:  'POST',
-      headers: {
-        'Content-Type':  'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
+      headers,
       body: JSON.stringify({ query: sql, params, userId }),
     });
 

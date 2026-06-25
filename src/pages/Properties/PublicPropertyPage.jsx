@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
+import { neonDb } from '../../lib/neon';
 import { MapPin, Home, Maximize, Layers, Phone, MessageCircle } from 'lucide-react';
 import { formatNumber, stripPhone } from '../../utils/format';
 import { PROPERTY_TYPES } from '../../data/constants';
@@ -22,14 +22,16 @@ export function PublicPropertyPage() {
             const data = await res.json();
             setLinkData(data);
 
-            // 2. Get property details from Supabase
-            const { data: prop, error: propErr } = await supabase
-                .from('properties')
-                .select('*, profiles(*)')
-                .eq('id', data.property_id)
-                .single();
+            // 2. Get property details from Neon
+            const { data: props, error: propErr } = await neonDb.query(
+                `SELECT p.*, json_build_object('full_name', prof.full_name, 'phone', prof.phone, 'agency_name', prof.agency_name) as profiles FROM properties p LEFT JOIN profiles prof ON p.realtor_id = prof.id WHERE p.id = $1`,
+                [data.property_id]
+            );
 
             if (propErr) throw propErr;
+            if (!props || props.length === 0) throw new Error('Объект недвижимости не найден');
+            
+            const prop = props[0];
             setProperty(prop);
             setAgent(prop.profiles);
 

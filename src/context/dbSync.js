@@ -11,25 +11,20 @@
  *   localstorage — Локальное хранилище (оффлайн/разработка)
  */
 
-import { loadUserData as loadUserDataSupabase, syncAction as syncActionSupabase } from './supabaseSync';
 import { loadUserDataFirebase, syncActionFirebase } from './firebaseSync';
 import { loadUserData as loadUserDataLocal, syncAction as syncActionLocal } from './localStorageSync';
 import { loadUserData as loadUserDataNeon, syncAction as syncActionNeon } from './neonSync';
 
-const backend = import.meta.env.VITE_BACKEND;
+const backend = import.meta.env.VITE_BACKEND || 'neon';
 
 export const loadUserData = backend === 'localstorage'
     ? loadUserDataLocal
     : backend === 'firebase'
         ? loadUserDataFirebase
-        : backend === 'neon'
-            ? loadUserDataNeon
-            : loadUserDataSupabase;
+        : loadUserDataNeon;
 
 export const syncAction = backend === 'localstorage'
     ? syncActionLocal
     : backend === 'firebase'
         ? syncActionFirebase
-        : backend === 'neon'
-            ? syncActionNeon
-            : syncActionSupabase;
+        : syncActionNeon;

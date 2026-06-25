@@ -10,17 +10,46 @@
  */
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '../lib/supabase';
 import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { reducer, EMPTY_STATE } from './reducer';
-import { getCachedData, setCachedData, clearCachedData } from './supabaseSync';
 import { loadUserData } from './dbSync';
 import { authService } from '../lib/auth';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
 import { initCalendarAuth } from '../lib/googleCalendar';
 import { neonDb } from '../lib/neon';
+
+/* ─── Cache helpers ────────────────────────────────────────────────────────── */
+const CACHE_KEY = (userId) => `rm_cache_${userId}`;
+const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 часов
+
+function getCachedData(userId) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY(userId));
+    if (!raw) return null;
+    const { ts, data } = JSON.parse(raw);
+    if (Date.now() - ts > CACHE_TTL) {
+      localStorage.removeItem(CACHE_KEY(userId));
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedData(userId, data) {
+  try {
+    localStorage.setItem(CACHE_KEY(userId), JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
+function clearCachedData(userId) {
+  try {
+    localStorage.removeItem(CACHE_KEY(userId));
+  } catch {}
+}
 
 /* ─── Context ──────────────────────────────────────────────────────────────── */
 
@@ -114,7 +143,7 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     let isInitial = true;
-    const backend = import.meta.env.VITE_BACKEND;
+    const backend = import.meta.env.VITE_BACKEND || 'neon';
     const isFirebase = backend === 'firebase';
     const isLocalStorage = backend === 'localstorage';
     const isNeon = backend === 'neon';
@@ -145,21 +174,13 @@ export function AppProvider({ children }) {
           } catch (e) {
             profileErr = e;
           }
-        } else if (isNeon) {
+        } else {
           const res = await neonDb.select('profiles', { id: sessionUser.id });
           if (res.error) {
             profileErr = res.error;
           } else {
             profile = res.data?.[0] || null;
           }
-        } else {
-          const res = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', sessionUser.id)
-            .single();
-          profile = res.data;
-          profileErr = res.error;
         }
 
         if (profileErr && (isFirebase || isNeon || profileErr.code !== 'PGRST116')) {
@@ -200,17 +221,9 @@ export function AppProvider({ children }) {
             } catch (e) {
               createErr = e;
             }
-          } else if (isNeon) {
+          } else {
             const res = await neonDb.insert('profiles', newProfile);
             createdProfile = res.data?.[0];
-            createErr = res.error;
-          } else {
-            const res = await supabase
-              .from('profiles')
-              .insert(newProfile)
-              .select()
-              .single();
-            createdProfile = res.data;
             createErr = res.error;
           }
 

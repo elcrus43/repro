@@ -14,14 +14,12 @@
  * Экспортирует единый интерфейс, совместимый с кодом приложения.
  */
 
-import { supabase } from './supabase';
 import { firebaseRestAuth } from './firebaseRestAuth';
 import { neonAuthService } from './neonAuth';
 
-const backend = import.meta.env.VITE_BACKEND;
+const backend = import.meta.env.VITE_BACKEND || 'neon';
 const isFirebase    = backend === 'firebase';
 const isLocalStorage = backend === 'localstorage';
-const isNeon        = backend === 'neon';
 
 /** Маппинг пользователя firebaseRestAuth в формат Supabase-совместимого user */
 function mapFbUser(user) {
@@ -52,15 +50,12 @@ export const authService = {
         error: null 
       };
     }
-    if (isNeon) {
-      return neonAuthService.signInWithPassword({ email, password });
-    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.signInWithPassword({ email, password });
       if (error) return { data: { user: null }, error };
       return { data: { user: mapFbUser(data.user) }, error: null };
     }
-    return supabase.auth.signInWithPassword({ email, password });
+    return neonAuthService.signInWithPassword({ email, password });
   },
 
   async signUp({ email, password, fullName }) {
@@ -77,42 +72,33 @@ export const authService = {
         error: null 
       };
     }
-    if (isNeon) {
-      return neonAuthService.signUp({ email, password, fullName });
-    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.signUp({ email, password });
       if (error) return { data: { user: null }, error };
       return { data: { user: mapFbUser(data.user) }, error: null };
     }
-    return supabase.auth.signUp({ email, password });
+    return neonAuthService.signUp({ email, password, fullName });
   },
 
   async resetPasswordForEmail(email, _options = {}) {
     if (isLocalStorage) {
       return { error: null };
     }
-    if (isNeon) {
-      return neonAuthService.resetPasswordForEmail(email, _options);
-    }
     if (isFirebase) {
       return firebaseRestAuth.resetPasswordForEmail(email);
     }
-    return supabase.auth.resetPasswordForEmail(email, _options);
+    return neonAuthService.resetPasswordForEmail(email, _options);
   },
 
   async updateUser({ password }) {
     if (isLocalStorage) {
       return { error: null };
     }
-    if (isNeon) {
-      return neonAuthService.updateUser({ password });
-    }
     if (isFirebase) {
       const { error } = await firebaseRestAuth.updatePassword(password);
       return { error };
     }
-    return supabase.auth.updateUser({ password });
+    return neonAuthService.updateUser({ password });
   },
 
   async signOut() {
@@ -120,13 +106,10 @@ export const authService = {
       localStorage.setItem('repro_local_session', 'false');
       return { error: null };
     }
-    if (isNeon) {
-      return neonAuthService.signOut();
-    }
     if (isFirebase) {
       return firebaseRestAuth.signOut();
     }
-    return supabase.auth.signOut();
+    return neonAuthService.signOut();
   },
 
   async getSession() {
@@ -151,9 +134,6 @@ export const authService = {
         error: null,
       };
     }
-    if (isNeon) {
-      return neonAuthService.getSession();
-    }
     if (isFirebase) {
       const { data, error } = await firebaseRestAuth.getSession();
       if (error || !data.session) return { data: { session: null }, error };
@@ -167,7 +147,7 @@ export const authService = {
         error: null,
       };
     }
-    return supabase.auth.getSession();
+    return neonAuthService.getSession();
   },
 
   onAuthStateChange(callback) {
@@ -199,9 +179,6 @@ export const authService = {
         }
       };
     }
-    if (isNeon) {
-      return neonAuthService.onAuthStateChange(callback);
-    }
     if (isFirebase) {
       return firebaseRestAuth.onAuthStateChange((event, session) => {
         const mappedSession = session
@@ -210,6 +187,6 @@ export const authService = {
         callback(event, mappedSession);
       });
     }
-    return supabase.auth.onAuthStateChange(callback);
+    return neonAuthService.onAuthStateChange(callback);
   },
 };

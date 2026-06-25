@@ -23,8 +23,40 @@ const ALLOWED_TABLES = new Set([
   'app_errors', 'user_sessions'
 ]);
 
-// Запросы, доступные без аутентификации (только чтение)
-const PUBLIC_QUERIES = ['SELECT 1', 'select 1'];
+function isPublicQuery(query) {
+  if (!query || typeof query !== 'string') return false;
+  const cleanQuery = query.trim().replace(/\s+/g, ' ');
+
+  // 1. SELECT 1 (from local tests)
+  if (/^SELECT\s+1$/i.test(cleanQuery)) return true;
+
+  // 2. Public Property mini-site details
+  if (/^SELECT\s+p\.\*,\s*json_build_object\([\s\S]*?\)\s+as\s+profiles\s+FROM\s+"?properties"?\s+p\s+LEFT\s+JOIN\s+"?profiles"?\s+prof\s+ON\s+p\.\"?realtor_id\"?\s*=\s*prof\.id\s+WHERE\s+p\.id\s*=\s*\$1$/i.test(cleanQuery)) {
+    return true;
+  }
+
+  // 3. Public Client matching check by public_token
+  if (/^SELECT\s+\*\s+FROM\s+"?clients"?\s+WHERE\s+"?public_token"?\s*=\s*\$1\s+LIMIT\s+1$/i.test(cleanQuery)) {
+    return true;
+  }
+
+  // 4. Public Client requests fetching
+  if (/^SELECT\s+id\s+FROM\s+"?requests"?\s+WHERE\s+"?client_id"?\s*=\s*\$1$/i.test(cleanQuery)) {
+    return true;
+  }
+
+  // 5. Public Client matches fetching
+  if (/^SELECT\s+m\.\*,\s*json_build_object\([\s\S]*?\)\s+as\s+properties\s+FROM\s+"?matches"?\s+m\s+JOIN\s+"?properties"?\s+pr\s+ON\s+m\.\"?property_id\"?\s*=\s*pr\.id\s+WHERE\s+m\.\"?request_id\"?\s*=\s*ANY\(\$1\)$/i.test(cleanQuery)) {
+    return true;
+  }
+
+  // 6. Public Client updating match status
+  if (/^UPDATE\s+"?matches"?\s+SET\s+"?status"?\s*=\s*\$1,\s*"?updated_at"?\s*=\s*\$2\s+WHERE\s+id\s*=\s*\$3$/i.test(cleanQuery)) {
+    return true;
+  }
+
+  return false;
+}
 
 export default async function handler(req, res) {
   // ─── CORS ────────────────────────────────────────────────────
@@ -58,29 +90,33 @@ export default async function handler(req, res) {
     return res.status(400).json({ data: null, error: 'Missing or invalid query' });
   }
 
-  // ─── Проверка JWT ─────────────────────────────────────────────
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const isPublic = isPublicQuery(query);
 
-  if (!token) {
-    return res.status(401).json({ data: null, error: 'Authorization token required' });
-  }
+  if (!isPublic) {
+    // ─── Проверка JWT ─────────────────────────────────────────────
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  let jwtPayload;
-  try {
-    jwtPayload = jwt.verify(token, NEON_JWT_SECRET);
-  } catch (err) {
-    const isExpired = err.name === 'TokenExpiredError';
-    return res.status(401).json({
-      data: null,
-      error: isExpired ? 'Token expired' : 'Invalid token'
-    });
-  }
+    if (!token) {
+      return res.status(401).json({ data: null, error: 'Authorization token required' });
+    }
 
-  // ─── Безопасность: userId в JWT должен совпадать с телом ─────
-  if (userId && jwtPayload.sub !== userId) {
-    console.warn('[neon-query] userId mismatch', { jwt: jwtPayload.sub, body: userId });
-    return res.status(403).json({ data: null, error: 'Access denied: userId mismatch' });
+    let jwtPayload;
+    try {
+      jwtPayload = jwt.verify(token, NEON_JWT_SECRET);
+    } catch (err) {
+      const isExpired = err.name === 'TokenExpiredError';
+      return res.status(401).json({
+        data: null,
+        error: isExpired ? 'Token expired' : 'Invalid token'
+      });
+    }
+
+    // ─── Безопасность: userId в JWT должен совпадать с телом ─────
+    if (userId && jwtPayload.sub !== userId) {
+      console.warn('[neon-query] userId mismatch', { jwt: jwtPayload.sub, body: userId });
+      return res.status(403).json({ data: null, error: 'Access denied: userId mismatch' });
+    }
   }
 
   // ─── Базовая защита SQL ───────────────────────────────────────

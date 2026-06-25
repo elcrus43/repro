@@ -10,7 +10,92 @@
  */
 
 import { neonDb } from '../lib/neon';
-import { sanitizeObj, mapShowingFromDb, mapShowingToDb } from './supabaseSync';
+
+/* ─── Helpers ──────────────────────────────────────────────────────────────── */
+
+/**
+ * Рекурсивно заменяет пустые строки на null перед отправкой в БД.
+ */
+export function sanitizeObj(obj) {
+  if (obj === '') return null;
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(item => {
+    if (typeof item === 'string') return item === '' ? null : item;
+    return sanitizeObj(item);
+  });
+
+  const UUID_FIELDS = new Set(['id', 'client_id', 'realtor_id', 'property_id', 'request_id']);
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  const sanitized = { ...obj };
+  Object.keys(sanitized).forEach(key => {
+    const val = sanitized[key];
+
+    if (UUID_FIELDS.has(key) && key !== 'id' &&
+        typeof val === 'string' && val.length > 0 && !UUID_RE.test(val)) {
+      console.warn(`[Neon] Stripping invalid UUID for field ${key}:`, val);
+      sanitized[key] = null;
+      return;
+    }
+
+    if (val === '') {
+      sanitized[key] = null;
+    } else if (Array.isArray(val)) {
+      sanitized[key] = val.map(item => {
+        if (typeof item === 'string') return item === '' ? null : item;
+        return sanitizeObj(item);
+      });
+    } else if (typeof val === 'object' && val !== null) {
+      sanitized[key] = sanitizeObj(val);
+    }
+  });
+  return sanitized;
+}
+
+/**
+ * Преобразует показ (showing) из формата БД в формат клиента.
+ */
+export function mapShowingFromDb(s) {
+  if (!s) return s;
+  if (s.event_type === 'viewing' && s.google_event_id?.startsWith('selection_prop_id:')) {
+    const parts = s.google_event_id.split('::cal_id:');
+    const propId = parts[0].replace('selection_prop_id:', '');
+    const calId = parts[1] || null;
+    return {
+      ...s,
+      property_id: propId,
+      google_event_id: calId
+    };
+  }
+  return s;
+}
+
+/**
+ * Преобразует показ (showing) из формата клиента в формат БД.
+ */
+export function mapShowingToDb(s) {
+  if (!s) return s;
+  const dbShowing = { ...s };
+  if (dbShowing.event_type === 'viewing' && dbShowing.property_id) {
+    const propId = dbShowing.property_id;
+    dbShowing.property_id = null;
+    
+    let calId = dbShowing.google_event_id;
+    if (dbShowing.google_event_id?.startsWith('selection_prop_id:')) {
+      const parts = dbShowing.google_event_id.split('::cal_id:');
+      calId = parts[1] || null;
+    }
+    
+    if (calId) {
+      dbShowing.google_event_id = `selection_prop_id:${propId}::cal_id:${calId}`;
+    } else {
+      dbShowing.google_event_id = `selection_prop_id:${propId}`;
+    }
+  } else if (dbShowing.property_id === '') {
+    dbShowing.property_id = null;
+  }
+  return dbShowing;
+}
 
 /* ─── Loader ───────────────────────────────────────────────────────────── */
 

@@ -1,14 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_URL : (process?.env?.VITE_SUPABASE_URL || '');
-const supabaseKey = typeof import.meta.env !== 'undefined' ? import.meta.env.VITE_SUPABASE_ANON_KEY : (process?.env?.VITE_SUPABASE_ANON_KEY || '');
-
-// Create a standalone Supabase client to avoid circular dependencies
-const supabase = (supabaseUrl && supabaseKey) ? createClient(supabaseUrl, supabaseKey) : null;
+import { neonDb } from '../lib/neon';
 
 export async function logError(error, context = {}) {
   console.error('[App Logger]', error, context);
-  if (!supabase) return;
 
   try {
     const errorMsg = error instanceof Error ? error.message : String(error);
@@ -16,21 +9,21 @@ export async function logError(error, context = {}) {
     
     let realtorId = null;
     try {
-      const userStr = localStorage.getItem('rm_user') || localStorage.getItem('user');
+      const userStr = localStorage.getItem('rm_user') || localStorage.getItem('user') || localStorage.getItem('neon_session');
       if (userStr) {
-        const user = JSON.parse(userStr);
-        realtorId = user?.id || null;
+        const parsed = JSON.parse(userStr);
+        realtorId = parsed?.id || parsed?.user?.id || null;
       }
     } catch {}
 
-    await supabase.from('app_errors').insert({
+    await neonDb.insert('app_errors', {
       realtor_id: realtorId,
       error_message: errorMsg,
       error_stack: errorStack,
       context_data: context
     });
   } catch (e) {
-    console.error('Failed to save log to Supabase:', e);
+    console.error('Failed to save log to Neon:', e);
   }
 }
 

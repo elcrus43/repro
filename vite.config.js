@@ -9,7 +9,21 @@ export default defineConfig(({ mode }) => {
   
   return {
     base: './',
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: 'start-api-server',
+        configureServer(_server) {
+          import('./scripts/api-dev-server.mjs')
+            .then(({ startApiServer }) => {
+              startApiServer();
+            })
+            .catch(err => {
+              console.error('Failed to start API dev server:', err);
+            });
+        }
+      }
+    ],
     optimizeDeps: {
       include: ['react', 'react-dom', 'react-router-dom']
     },
@@ -79,7 +93,6 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks: {
             'vendor': ['react', 'react-dom', 'react-router-dom'],
-            'supabase': ['@supabase/supabase-js'],
             'docx': ['docxtemplater', 'pizzip', 'file-saver'],
             'xlsx': ['xlsx']
           }
