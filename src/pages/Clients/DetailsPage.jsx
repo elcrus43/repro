@@ -62,17 +62,33 @@ export function DetailsPage() {
 
     const totalCommission = myDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
 
+    const mapStatus = (status) => {
+        switch (status) {
+            case 'new':
+                return 'new';
+            case 'refused':
+                return 'refused';
+            case 'search':
+            case 'request':
+            case 'selection':
+                return 'selection';
+            case 'active':
+            case 'deposit':
+            case 'deal':
+            case 'agreement':
+            case 'paused':
+            case 'completed':
+            case 'deal_closed':
+            default:
+                return 'active';
+        }
+    };
+
     const statusLabels = {
         new: 'Не отработан',
+        selection: 'Подбор',
         active: 'В работе',
-        request: 'Запрос',
-        agreement: 'АД',
-        search: 'Поиск',
-        deposit: 'Задаток',
-        deal: 'Сделка',
-        paused: 'Пауза',
-        refused: 'Отказ',
-        completed: 'Завершен'
+        refused: 'Отказ'
     };
     const typeLabels   = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
 
@@ -264,17 +280,12 @@ export function DetailsPage() {
                         )}
                         {(() => {
                             const getStatusStyle = (status) => {
-                                switch(status) {
-                                    case 'new': return { color: 'var(--danger)', background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.2)' };
+                                const mapped = mapStatus(status);
+                                switch(mapped) {
+                                    case 'new': return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
+                                    case 'selection': return { color: '#2563eb', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' };
                                     case 'active': return { color: 'var(--success)', background: 'var(--success-light)', border: '1px solid rgba(16,185,129,0.2)' };
-                                    case 'request': return { color: '#2563eb', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' };
-                                    case 'agreement': return { color: '#d97706', background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)' };
-                                    case 'search': return { color: '#7c3aed', background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)' };
-                                    case 'deposit': return { color: '#059669', background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)' };
-                                    case 'deal': return { color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' };
-                                    case 'paused': return { color: 'var(--warning)', background: 'var(--warning-light)', border: '1px solid rgba(245,158,11,0.2)' };
-                                    case 'refused': return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
-                                    case 'completed': return { color: '#16a34a', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.2)' };
+                                    case 'refused': return { color: 'var(--danger)', background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.2)' };
                                     default: return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
                                 }
                             };
@@ -282,7 +293,7 @@ export function DetailsPage() {
                             return (
                                 <div style={{ position: 'relative', display: 'inline-block' }}>
                                     <select
-                                        value={client.status}
+                                        value={mapStatus(client.status)}
                                         onChange={(e) => handleStatusChange(e.target.value)}
                                         style={{
                                             padding: '6px 20px 6px 12px',
@@ -301,20 +312,9 @@ export function DetailsPage() {
                                         }}
                                     >
                                         <option value="new" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Не отработан</option>
+                                        <option value="selection" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Подбор</option>
                                         <option value="active" style={{ background: 'var(--surface)', color: 'var(--text)' }}>В работе</option>
-                                        {client.client_types?.includes('buyer') && (
-                                            <>
-                                                <option value="request" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Запрос</option>
-                                                <option value="agreement" style={{ background: 'var(--surface)', color: 'var(--text)' }}>АД</option>
-                                                <option value="search" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Поиск</option>
-                                                <option value="deposit" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Задаток</option>
-                                                <option value="deal" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Сделка</option>
-                                            </>
-                                        )}
-                                        <option value="paused" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Пауза</option>
                                         <option value="refused" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Отказ</option>
-                                        <option value="completed" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Завершен</option>
-                                        <option value="deal_closed" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Сделка закрыта</option>
                                     </select>
                                 </div>
                             );

@@ -4,17 +4,28 @@ import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
 
 const PIPELINE_COLUMNS = [
-  { id: 'request',    label: 'Запрос',    color: '#3b82f6' },
-  { id: 'agreement',  label: 'АД',        color: '#f59e0b' },
-  { id: 'search',     label: 'Поиск',     color: '#8b5cf6' },
-  { id: 'deposit',    label: 'Задаток',   color: '#10b981' },
-  { id: 'deal',       label: 'Сделка',    color: '#22c55e' },
+  { id: 'new',        label: 'Не отработан', color: '#6b7280' },
+  { id: 'selection',  label: 'Подбор',       color: '#3b82f6' },
+  { id: 'active',     label: 'В работе',     color: '#10b981' },
+  { id: 'refused',    label: 'Отказ',        color: '#ef4444' },
 ];
 
 export function PipelinePage() {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
   const isAdmin = state.currentUser?.role === 'admin';
+
+  // Helper status mapping
+  const mapStatus = (status) => {
+    switch (status) {
+      case 'new': return 'new';
+      case 'refused': return 'refused';
+      case 'search':
+      case 'request':
+      case 'selection': return 'selection';
+      default: return 'active';
+    }
+  };
 
   // Only show clients who are buyers (Покупатели)
   const buyerClients = useMemo(() => {
@@ -26,7 +37,7 @@ export function PipelinePage() {
   const columnMap = useMemo(() => {
     const map = {};
     PIPELINE_COLUMNS.forEach(col => {
-      map[col.id] = buyerClients.filter(c => c.status === col.id);
+      map[col.id] = buyerClients.filter(c => mapStatus(c.status) === col.id);
     });
     return map;
   }, [buyerClients]);
@@ -35,7 +46,7 @@ export function PipelinePage() {
     e.preventDefault();
     const clientId = e.dataTransfer.getData('clientId');
     const client = buyerClients.find(c => c.id === clientId);
-    if (client && client.status !== columnId) {
+    if (client && mapStatus(client.status) !== columnId) {
       dispatch({ type: 'UPDATE_CLIENT', client: { ...client, status: columnId } });
     }
   };

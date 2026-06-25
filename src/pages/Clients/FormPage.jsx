@@ -183,20 +183,9 @@ export function FormPage() {
                                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Activity size={18} /></span>
                                 <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.status} onChange={e => setF('status', e.target.value)}>
                                     <option value="new">Не отработан</option>
+                                    <option value="selection">Подбор</option>
                                     <option value="active">В работе</option>
-                                    {form.client_types?.includes('buyer') && (
-                                        <>
-                                            <option value="request">Запрос</option>
-                                            <option value="agreement">АД</option>
-                                            <option value="search">Поиск</option>
-                                            <option value="deposit">Задаток</option>
-                                            <option value="deal">Сделка</option>
-                                        </>
-                                    )}
-                                    <option value="paused">Пауза</option>
                                     <option value="refused">Отказ</option>
-                                    <option value="completed">Завершен</option>
-                                    <option value="deal_closed">Сделка закрыта</option>
                                 </select>
                             </div>
                         </div>
