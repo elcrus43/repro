@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star, Store, GraduationCap, Bus, User, Handshake, Copy
+    TrendingDown, Star, Store, GraduationCap, Bus, User, Handshake, Copy, SlidersHorizontal
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -93,15 +93,328 @@ function InlinePriceEditor({ prop, onSave }) {
 
 import { BUILDING_TYPES, PROPERTY_TYPES } from '../../data/constants';
 
-
-
-
-
 import { PortfolioSection } from '../../components/PortfolioSection';
 import { BannerGenerator } from '../../components/BannerGenerator';
 import { AdGenerator } from '../../components/AdGenerator';
 import { CmaReport } from '../../components/CmaReport';
 
+/* ─── MortgageCalculator ─────────────────────────────────────────────────── */
+function MortgageCalculator({ propertyPrice }) {
+    const [price, setPrice] = useState(propertyPrice || 0);
+    const [downPaymentPct, setDownPaymentPct] = useState(20); // default 20%
+    const [interestRate, setInterestRate] = useState(18); // default 18%
+    const [termYears, setTermYears] = useState(20); // default 20 years
+
+    React.useEffect(() => {
+        setPrice(propertyPrice || 0);
+    }, [propertyPrice]);
+
+    const downPayment = Math.round((price * downPaymentPct) / 100);
+    const loanAmount = Math.max(0, price - downPayment);
+    
+    const r = (interestRate / 100) / 12;
+    const n = termYears * 12;
+    
+    const monthlyPayment = React.useMemo(() => {
+        if (loanAmount <= 0) return 0;
+        if (interestRate <= 0) return Math.round(loanAmount / n);
+        return Math.round(
+            loanAmount * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
+        );
+    }, [loanAmount, r, n, interestRate]);
+
+    const totalRepayment = monthlyPayment * n;
+    const overpayment = Math.max(0, totalRepayment - loanAmount);
+    const requiredIncome = monthlyPayment * 2;
+
+    const [collapsed, setCollapsed] = useState(true);
+
+    return (
+        <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
+            <div 
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                onClick={() => setCollapsed(!collapsed)}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                        <SlidersHorizontal size={22} />
+                    </div>
+                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                        Ипотечный калькулятор
+                    </div>
+                </div>
+                <div style={{ color: 'var(--primary)' }}>
+                    {collapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                </div>
+            </div>
+
+            {!collapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 24 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Стоимость недвижимости</span>
+                                <span style={{ fontWeight: 600 }}>{formatNumber(price)} ₽</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min={Math.max(100000, Math.round(propertyPrice * 0.5))} 
+                                max={Math.round(propertyPrice * 2)} 
+                                step={100000}
+                                value={price} 
+                                onChange={e => setPrice(Number(e.target.value))}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Первоначальный взнос ({downPaymentPct}%)</span>
+                                <span style={{ fontWeight: 600 }}>{formatNumber(downPayment)} ₽</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min={5} 
+                                max={90} 
+                                step={5}
+                                value={downPaymentPct} 
+                                onChange={e => setDownPaymentPct(Number(e.target.value))}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {[10, 15, 20, 30, 50].map(pct => (
+                                    <button
+                                        key={pct}
+                                        onClick={() => setDownPaymentPct(pct)}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 8, border: 'none',
+                                            background: downPaymentPct === pct ? 'var(--primary-light)' : 'var(--bg-light)',
+                                            color: downPaymentPct === pct ? 'var(--primary)' : 'var(--text-secondary)',
+                                            fontSize: 11, cursor: 'pointer', fontWeight: 500
+                                        }}
+                                    >
+                                        {pct}%
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Процентная ставка</span>
+                                <span style={{ fontWeight: 600 }}>{interestRate}%</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min={1} 
+                                max={30} 
+                                step={0.5}
+                                value={interestRate} 
+                                onChange={e => setInterestRate(Number(e.target.value))}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {[8, 12, 16, 18, 20].map(rate => (
+                                    <button
+                                        key={rate}
+                                        onClick={() => setInterestRate(rate)}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 8, border: 'none',
+                                            background: interestRate === rate ? 'var(--primary-light)' : 'var(--bg-light)',
+                                            color: interestRate === rate ? 'var(--primary)' : 'var(--text-secondary)',
+                                            fontSize: 11, cursor: 'pointer', fontWeight: 500
+                                        }}
+                                    >
+                                        {rate}%
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Срок кредита</span>
+                                <span style={{ fontWeight: 600 }}>{termYears} лет</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min={5} 
+                                max={30} 
+                                step={5}
+                                value={termYears} 
+                                onChange={e => setTermYears(Number(e.target.value))}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {[10, 15, 20, 25, 30].map(years => (
+                                    <button
+                                        key={years}
+                                        onClick={() => setTermYears(years)}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 8, border: 'none',
+                                            background: termYears === years ? 'var(--primary-light)' : 'var(--bg-light)',
+                                            color: termYears === years ? 'var(--primary)' : 'var(--text-secondary)',
+                                            fontSize: 11, cursor: 'pointer', fontWeight: 500
+                                        }}
+                                    >
+                                        {years} л.
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style={{ 
+                        background: 'var(--bg-light)', 
+                        padding: '20px', 
+                        borderRadius: '24px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 16,
+                        border: '1px solid rgba(0,0,0,0.02)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Ежемесячный платёж</span>
+                            <span className="font-oswald" style={{ fontSize: 24, fontWeight: 600, color: 'var(--primary)' }}>
+                                {formatNumber(monthlyPayment)} ₽
+                            </span>
+                        </div>
+                        <div style={{ width: '100%', height: '1px', background: 'rgba(0,0,0,0.04)' }} />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', fontSize: 12 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Сумма кредита</span>
+                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>{formatNumber(loanAmount)} ₽</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Необходимый доход</span>
+                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>{formatNumber(requiredIncome)} ₽/мес</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Переплата по %</span>
+                                <span style={{ fontWeight: 500, color: '#ef4444' }}>{formatNumber(overpayment)} ₽</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Всего выплат</span>
+                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>{formatNumber(totalRepayment)} ₽</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+/* ─── NewBuildsSelection ─────────────────────────────────────────────────── */
+function NewBuildsSelection({ currentProp, allProperties, onNavigate }) {
+    const isNewBuild = useCallback((p) => {
+        return !!p.residential_complex || !!p.developer || (p.build_year && p.build_year >= 2020) || (p.year_built && p.year_built >= 2020);
+    }, []);
+
+    const selection = React.useMemo(() => {
+        const complex = currentProp.residential_complex?.trim();
+        if (complex) {
+            const sameComplex = allProperties.filter(p => 
+                p.id !== currentProp.id && 
+                p.residential_complex?.toLowerCase().trim() === complex.toLowerCase()
+            );
+            if (sameComplex.length > 0) return { title: `Объекты в ЖК «${complex}»`, items: sameComplex };
+        }
+
+        const city = currentProp.city?.trim();
+        const newBuilds = allProperties.filter(p => 
+            p.id !== currentProp.id && 
+            isNewBuild(p) &&
+            (!city || p.city?.toLowerCase().trim() === city.toLowerCase())
+        );
+
+        if (newBuilds.length > 0) {
+            return { title: 'Похожие новостройки', items: newBuilds.slice(0, 4) };
+        }
+
+        const generalNewBuilds = allProperties.filter(p => p.id !== currentProp.id && isNewBuild(p));
+        if (generalNewBuilds.length > 0) {
+            return { title: 'Новостройки в CRM', items: generalNewBuilds.slice(0, 4) };
+        }
+
+        return null;
+    }, [currentProp, allProperties, isNewBuild]);
+
+    const [collapsed, setCollapsed] = useState(true);
+
+    if (!selection) return null;
+
+    return (
+        <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
+            <div 
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+                onClick={() => setCollapsed(!collapsed)}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                        <Building2 size={22} />
+                    </div>
+                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                        {selection.title} ({selection.items.length})
+                    </div>
+                </div>
+                <div style={{ color: 'var(--primary)' }}>
+                    {collapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                </div>
+            </div>
+
+            {!collapsed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
+                    {selection.items.map(item => (
+                        <div 
+                            key={item.id}
+                            className="card-clickable"
+                            onClick={() => onNavigate(`/properties/${item.id}`)}
+                            style={{
+                                display: 'flex',
+                                gap: 14,
+                                padding: '12px',
+                                background: 'var(--bg-light)',
+                                borderRadius: '20px',
+                                border: '1px solid rgba(0,0,0,0.02)',
+                                cursor: 'pointer',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-light)' }}>
+                                <img 
+                                    src={item.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=100&q=80'} 
+                                    alt="" 
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                    <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                        {formatNumber(item.price)} ₽
+                                    </span>
+                                    {item.area_total && (
+                                        <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
+                                            {item.rooms === 0 ? 'Студия' : `${item.rooms}к`} · {item.area_total} м²
+                                        </span>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {item.residential_complex ? `ЖК «${item.residential_complex}»` : (item.address || item.city || '—')}
+                                </div>
+                                {item.developer && (
+                                    <div style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 400 }}>
+                                        Застройщик: {item.developer}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
 
 /* ─── DetailsPage ────────────────────────────────────────────────────────────── */
 
@@ -427,6 +740,12 @@ export function DetailsPage() {
                         </button>
                     </div>
                 </div>
+
+                {/* Mortgage Calculator */}
+                <MortgageCalculator propertyPrice={prop.price} />
+
+                {/* New Construction Collection */}
+                <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} />
 
                 {/* ГАЛЕРЕЯ ФОТО */}
                 {prop.images && prop.images.length > 0 && (

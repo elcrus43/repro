@@ -99,6 +99,22 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
     const [loadingLinkIds, setLoadingLinkIds] = useState([]);
     const pdfAnalogs = [];
 
+    // Mortgage calculator states
+    const [calcPrice, setCalcPrice] = useState(property.price || 0);
+    const [calcTerm, setCalcTerm] = useState(30);
+
+    const [marketEnabled, setMarketEnabled] = useState(true);
+    const [marketRate, setMarketRate] = useState(MARKET_RATE);
+    const [marketDownPayment, setMarketDownPayment] = useState(20);
+
+    const [familyEnabled, setFamilyEnabled] = useState(true);
+    const [familyRate, setFamilyRate] = useState(FAMILY_RATE);
+    const [familyDownPayment, setFamilyDownPayment] = useState(20);
+
+    const [subsidizedEnabled, setSubsidizedEnabled] = useState(true);
+    const [subsidizedRate, setSubsidizedRate] = useState(SUBSIDIZED_RATE);
+    const [subsidizedDownPayment, setSubsidizedDownPayment] = useState(20);
+
     const onUpdateRef = useRef(onUpdate);
 
     useEffect(() => {
@@ -274,12 +290,10 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
             ["", ""],
             ["ОПИСАНИЕ", property.notes || ""]
         ];
-        const wsProp = XLSX.utils.aoa_to_sheet(propData);
-        XLSX.utils.book_append_sheet(wb, wsProp, "Объект");
-        const analogsData = [
+                const analogsData = [
             ["ТИП", "НАЗВАНИЕ / РАЙОН", "КОМНАТ", "ПЛОЩАДЬ", "ЦЕНА", "ПЛАТЕЖ", "ИСТОЧНИК"],
-            ...analogs.map(a => ["Вторичка", a.district, property.rooms, a.total_area, a.price, calculatePayment(a.price, 20, MARKET_RATE, 30), a.label]),
-            ...pdfAnalogs.map(a => ["PDF Аналог", a.name, a.rooms, a.area, a.price, calculatePayment(a.price, 20, MARKET_RATE, 30), a.source]),
+            ...analogs.map(a => ["Вторичка", a.district, property.rooms, a.total_area, a.price, calculatePayment(a.price, marketDownPayment, marketRate, calcTerm), a.label]),
+            ...pdfAnalogs.map(a => ["PDF Аналог", a.name, a.rooms, a.area, a.price, calculatePayment(a.price, marketDownPayment, marketRate, calcTerm), a.source]),
             ...manualLinks.map(l => ["Ссылка", l.url, "", "", "", "", l.domain])
         ];
         const wsAnalogs = XLSX.utils.aoa_to_sheet(analogsData);
@@ -293,11 +307,11 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
 
         const renovLabel = RENOVATION_LABELS[property.renovation] || property.renovation || '—';
         const buildingLabel = BUILDING_TYPES[property.building_type] || property.building_type || '—';
-        const pricePerM2 = property.area_total > 0 ? Math.round(property.price / property.area_total) : null;
+        const pricePerM2 = property.area_total > 0 ? Math.round(calcPrice / property.area_total) : null;
 
         // Build analog rows HTML
         const analogRows = analogs.slice(0, 6).map(a => {
-            const payment = Math.round(calculatePayment(a.price, 20, MARKET_RATE, 30));
+            const payment = Math.round(calculatePayment(a.price, marketDownPayment, marketRate, calcTerm));
             return `<tr>
                 <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444">${a.district || '—'}</td>
                 <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right">${formatNumber(a.price)} ₽</td>
@@ -318,17 +332,19 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         }).join('');
 
         // Mortgage calculations
-        const payments = [
-            { label: 'Рыночная, 20%', rate: MARKET_RATE, down: 20 },
-            { label: 'Семейная, 6%', rate: FAMILY_RATE, down: 20 },
-            { label: 'Субсидированная, 14.75%', rate: SUBSIDIZED_RATE, down: 20 },
-        ].map(m => {
-            const p = Math.round(calculatePayment(property.price, m.down, m.rate, 30));
+        const activePrograms = [
+            marketEnabled && { label: `Рыночная, ${marketRate}% (ПВ ${marketDownPayment}%)`, rate: marketRate, down: marketDownPayment },
+            familyEnabled && { label: `Семейная, ${familyRate}% (ПВ ${familyDownPayment}%)`, rate: familyRate, down: familyDownPayment },
+            subsidizedEnabled && { label: `Субсидированная, ${subsidizedRate}% (ПВ ${subsidizedDownPayment}%)`, rate: subsidizedRate, down: subsidizedDownPayment },
+        ].filter(Boolean);
+
+        const payments = activePrograms.length > 0 ? activePrograms.map(m => {
+            const p = Math.round(calculatePayment(calcPrice, m.down, m.rate, calcTerm));
             return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5">
                 <span style="font-size:13px;color:#555">${m.label}</span>
                 <span style="font-size:14px;font-weight:700;color:#3b82f6">${formatNumber(p)} ₽/мес</span>
             </div>`;
-        }).join('');
+        }).join('') : '<div style="font-size:13px;color:#aaa;padding:12px 0">Нет выбранных программ</div>';
 
         const coverImg = property.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=800&q=80';
         const today = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -341,7 +357,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                 <div style="flex:1;background:linear-gradient(135deg,#0052ff,#3b82f6);padding:32px 28px;display:flex;flex-direction:column;justify-content:space-between">
                     <div>
                         <div style="font-size:11px;color:rgba(255,255,255,0.7);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px">ПОРТФОЛИО ОБЪЕКТА</div>
-                        <div style="font-size:32px;font-weight:900;color:#fff;line-height:1.1">${formatNumber(property.price)}&nbsp;₽</div>
+                        <div style="font-size:32px;font-weight:900;color:#fff;line-height:1.1">${formatNumber(calcPrice)}&nbsp;₽</div>
                         ${pricePerM2 ? `<div style="font-size:14px;color:rgba(255,255,255,0.8);margin-top:4px">${formatNumber(pricePerM2)} ₽/м²</div>` : ''}
                     </div>
                     <div>
@@ -392,7 +408,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                 </div>
                 <!-- RIGHT: Ипотека + описание -->
                 <div style="padding:24px">
-                    <div style="font-size:13px;font-weight:800;color:#0052ff;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px">Расчёт ипотеки (30 лет, ПВ 20%)</div>
+                    <div style="font-size:13px;font-weight:800;color:#0052ff;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:14px">Расчёт ипотеки (${calcTerm} лет)</div>
                     ${payments}
                     ${property.notes ? `
                     <div style="margin-top:24px">
@@ -469,6 +485,10 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
     };
 
     const allFiles = [...resaleFiles, ...newBuildsFiles, ...mortgageFiles];
+
+    const marketPayment = Math.round(calculatePayment(calcPrice, marketDownPayment, marketRate, calcTerm));
+    const familyPayment = Math.round(calculatePayment(calcPrice, familyDownPayment, familyRate, calcTerm));
+    const subsidizedPayment = Math.round(calculatePayment(calcPrice, subsidizedDownPayment, subsidizedRate, calcTerm));
 
     const getDomainIcon = (domain) => {
         switch(domain) {
@@ -600,6 +620,205 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                             ))}
                         </div>
                     )}
+                </div>
+
+                {/* ИПОТЕЧНЫЙ КАЛЬКУЛЯТОР */}
+                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)', marginBottom: 32 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                        <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                            <Calculator size={22} />
+                        </div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                            Расчёт ипотеки для презентации
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                        {/* Стоимость недвижимости */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Стоимость для расчёта</span>
+                                <span style={{ fontWeight: 600 }}>{formatNumber(calcPrice)} ₽</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min={Math.max(100000, Math.round((property.price || 0) * 0.3))} 
+                                max={Math.round((property.price || 0) * 2)} 
+                                step={100000}
+                                value={calcPrice} 
+                                onChange={e => setCalcPrice(Number(e.target.value))}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                        </div>
+
+                        {/* Срок кредита */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                <span>Срок кредита</span>
+                                <span style={{ fontWeight: 600 }}>{calcTerm} лет</span>
+                            </div>
+                            <input 
+                                type="range" 
+                                min={5} 
+                                max={30} 
+                                step={5}
+                                value={calcTerm} 
+                                onChange={e => setCalcTerm(Number(e.target.value))}
+                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                            />
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {[10, 15, 20, 25, 30].map(years => (
+                                    <button
+                                        key={years}
+                                        onClick={() => setCalcTerm(years)}
+                                        style={{
+                                            padding: '4px 10px', borderRadius: 8, border: 'none',
+                                            background: calcTerm === years ? 'var(--primary-light)' : 'var(--bg-light)',
+                                            color: calcTerm === years ? 'var(--primary)' : 'var(--text-secondary)',
+                                            fontSize: 11, cursor: 'pointer', fontWeight: 500
+                                        }}
+                                    >
+                                        {years} л.
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Программы */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 8 }}>
+                            {/* РЫНОЧНАЯ */}
+                            <div style={{ background: 'var(--bg-light)', padding: 16, borderRadius: 20, border: '1px solid rgba(0,0,0,0.02)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: marketEnabled ? 12 : 0 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={marketEnabled} 
+                                            onChange={e => setMarketEnabled(e.target.checked)} 
+                                            style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} 
+                                        />
+                                        <span style={{ fontSize: 14, fontWeight: 600 }}>Рыночная ставка</span>
+                                    </label>
+                                    <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: marketEnabled ? 'var(--primary)' : 'var(--text-muted)' }}>
+                                        {marketEnabled ? `${formatNumber(marketPayment)} ₽/мес` : 'Выключена'}
+                                    </span>
+                                </div>
+                                {marketEnabled && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                <span>Ставка</span>
+                                                <span>{marketRate}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min={1} max={30} step={0.5} value={marketRate} 
+                                                onChange={e => setMarketRate(Number(e.target.value))} 
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                <span>Первоначальный взнос</span>
+                                                <span>{marketDownPayment}% ({formatNumber(Math.round(calcPrice * marketDownPayment / 100))} ₽)</span>
+                                            </div>
+                                            <input 
+                                                type="range" min={0} max={90} step={5} value={marketDownPayment} 
+                                                onChange={e => setMarketDownPayment(Number(e.target.value))} 
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* СЕМЕЙНАЯ */}
+                            <div style={{ background: 'var(--bg-light)', padding: 16, borderRadius: 20, border: '1px solid rgba(0,0,0,0.02)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: familyEnabled ? 12 : 0 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={familyEnabled} 
+                                            onChange={e => setFamilyEnabled(e.target.checked)} 
+                                            style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} 
+                                        />
+                                        <span style={{ fontSize: 14, fontWeight: 600 }}>Семейная ипотека</span>
+                                    </label>
+                                    <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: familyEnabled ? 'var(--primary)' : 'var(--text-muted)' }}>
+                                        {familyEnabled ? `${formatNumber(familyPayment)} ₽/мес` : 'Выключена'}
+                                    </span>
+                                </div>
+                                {familyEnabled && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                <span>Ставка</span>
+                                                <span>{familyRate}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min={1} max={30} step={0.5} value={familyRate} 
+                                                onChange={e => setFamilyRate(Number(e.target.value))} 
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                <span>Первоначальный взнос</span>
+                                                <span>{familyDownPayment}% ({formatNumber(Math.round(calcPrice * familyDownPayment / 100))} ₽)</span>
+                                            </div>
+                                            <input 
+                                                type="range" min={0} max={90} step={5} value={familyDownPayment} 
+                                                onChange={e => setFamilyDownPayment(Number(e.target.value))} 
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* СУБСИДИРОВАННАЯ */}
+                            <div style={{ background: 'var(--bg-light)', padding: 16, borderRadius: 20, border: '1px solid rgba(0,0,0,0.02)' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: subsidizedEnabled ? 12 : 0 }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                        <input 
+                                            type="checkbox" 
+                                            checked={subsidizedEnabled} 
+                                            onChange={e => setSubsidizedEnabled(e.target.checked)} 
+                                            style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} 
+                                        />
+                                        <span style={{ fontSize: 14, fontWeight: 600 }}>Субсидированная / Своя</span>
+                                    </label>
+                                    <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: subsidizedEnabled ? 'var(--primary)' : 'var(--text-muted)' }}>
+                                        {subsidizedEnabled ? `${formatNumber(subsidizedPayment)} ₽/мес` : 'Выключена'}
+                                    </span>
+                                </div>
+                                {subsidizedEnabled && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                <span>Ставка</span>
+                                                <span>{subsidizedRate}%</span>
+                                            </div>
+                                            <input 
+                                                type="range" min={1} max={30} step={0.25} value={subsidizedRate} 
+                                                onChange={e => setSubsidizedRate(Number(e.target.value))} 
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                <span>Первоначальный взнос</span>
+                                                <span>{subsidizedDownPayment}% ({formatNumber(Math.round(calcPrice * subsidizedDownPayment / 100))} ₽)</span>
+                                            </div>
+                                            <input 
+                                                type="range" min={0} max={90} step={5} value={subsidizedDownPayment} 
+                                                onChange={e => setSubsidizedDownPayment(Number(e.target.value))} 
+                                                style={{ width: '100%', accentColor: 'var(--primary)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div style={{ marginTop: 12, marginBottom: 40 }}>
