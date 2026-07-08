@@ -26,7 +26,12 @@ export function ListPage() {
         }
     }, [filter]);
 
-    const [collapsedStatuses, setCollapsedStatuses] = useState({});
+    const [collapsedStatuses, setCollapsedStatuses] = useState({
+        active: true,
+        selection: true,
+        new: true,
+        refused: true
+    });
 
     const mapStatus = (status) => {
         switch (status) {
