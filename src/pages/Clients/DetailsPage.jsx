@@ -443,101 +443,105 @@ export function DetailsPage() {
                 </div>
 
                 {/* ── Последняя активность ──────────────────────────── */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Последняя активность</div>
-                        <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)}><Plus size={18} /></button>
-                    </div>
-
-                    {activeProperties.length === 0 && myRequests.length === 0 && allMatches.length === 0 ? (
-                        <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, opacity: 0.6 }}>Активности пока нет</div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-                            {/* Объекты в продаже (все статусы кроме sold/deal_closed) */}
-                            {activeProperties.map(p => {
-                                const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый' };
-                                const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981' };
-                                return (
-                                    <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
-                                        style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                                                <Home size={16} />
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: 10, fontWeight: 300, color: propStatusColor[p.status] || 'var(--primary)' }}>
-                                                    {propStatusLabel[p.status] || 'Объект в продаже'}
-                                                </div>
-                                                <div style={{ fontSize: 14, fontWeight: 300 }}>{p.address || p.city}</div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>{p.price ? formatNumber(p.price) + ' ₽' : ''}</div>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={16} color="var(--text-muted)" />
-                                    </div>
-                                );
-                            })}
-
-                            {/* Запросы на покупку */}
-                            {myRequests.map(r => (
-                                <div key={r.id} className="card-clickable" onClick={() => navigate(`/requests/${r.id}`)}
-                                    style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                                            <FileText size={16} />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</div>
-                                            <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой тип'}</div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '—'}</div>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={16} color="var(--text-muted)" />
-                                </div>
-                            ))}
-
-                            {/* Совпадения (кроме deal / rejected) */}
-                            {allMatches.map(m => {
-                                const prop = state.properties.find(p => p.id === m.property_id);
-                                return (
-                                    <div key={m.id} className="card-clickable" onClick={() => navigate(`/matches/${m.id}`)}
-                                        style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                                                <Sparkles size={16} />
-                                            </div>
-                                            <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <div style={{ fontSize: 10, fontWeight: 300, color: matchStatusColor[m.status] || '#64748b' }}>
-                                                        Совпадение · {matchStatusLabel[m.status] || m.status}
-                                                    </div>
-                                                    <div style={{ fontSize: 10, background: `${matchStatusColor[m.status] || '#64748b'}15`, color: matchStatusColor[m.status] || '#64748b', padding: '1px 6px', borderRadius: 6 }}>
-                                                        {m.score}%
-                                                    </div>
-                                                </div>
-                                                <div style={{ fontSize: 14, fontWeight: 300 }}>{prop?.address || prop?.city || 'Объект'}</div>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={16} color="var(--text-muted)" />
-                                    </div>
-                                );
-                            })}
+                {!client.client_types?.includes('lawyer') && (
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Последняя активность</div>
+                            <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)}><Plus size={18} /></button>
                         </div>
-                    )}
-                </div>
+
+                        {activeProperties.length === 0 && myRequests.length === 0 && allMatches.length === 0 ? (
+                            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, opacity: 0.6 }}>Активности пока нет</div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                                {/* Объекты в продаже (все статусы кроме sold/deal_closed) */}
+                                {activeProperties.map(p => {
+                                    const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый' };
+                                    const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981' };
+                                    return (
+                                        <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
+                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                                    <Home size={16} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: 10, fontWeight: 300, color: propStatusColor[p.status] || 'var(--primary)' }}>
+                                                        {propStatusLabel[p.status] || 'Объект в продаже'}
+                                                    </div>
+                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>{p.address || p.city}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>{p.price ? formatNumber(p.price) + ' ₽' : ''}</div>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} color="var(--text-muted)" />
+                                        </div>
+                                    );
+                                })}
+
+                                {/* Запросы на покупку */}
+                                {myRequests.map(r => (
+                                    <div key={r.id} className="card-clickable" onClick={() => navigate(`/requests/${r.id}`)}
+                                        style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                                                <FileText size={16} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</div>
+                                                <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой тип'}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '—'}</div>
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={16} color="var(--text-muted)" />
+                                    </div>
+                                ))}
+
+                                {/* Совпадения (кроме deal / rejected) */}
+                                {allMatches.map(m => {
+                                    const prop = state.properties.find(p => p.id === m.property_id);
+                                    return (
+                                        <div key={m.id} className="card-clickable" onClick={() => navigate(`/matches/${m.id}`)}
+                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                                                    <Sparkles size={16} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <div style={{ fontSize: 10, fontWeight: 300, color: matchStatusColor[m.status] || '#64748b' }}>
+                                                            Совпадение · {matchStatusLabel[m.status] || m.status}
+                                                        </div>
+                                                        <div style={{ fontSize: 10, background: `${matchStatusColor[m.status] || '#64748b'}15`, color: matchStatusColor[m.status] || '#64748b', padding: '1px 6px', borderRadius: 6 }}>
+                                                            {m.score}%
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>{prop?.address || prop?.city || 'Объект'}</div>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} color="var(--text-muted)" />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* ── Сделки клиента ───────────────────────────────── */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                         <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Сделки</div>
-                        <button className="card-clickable" onClick={handleCreateDeal} style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '8px 14px', borderRadius: 12, border: 'none',
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                            color: '#fff', fontSize: 12, fontWeight: 300
-                        }}>
-                            <Briefcase size={14} /> Создать сделку
-                        </button>
+                        {!client.client_types?.includes('lawyer') && (
+                            <button className="card-clickable" onClick={handleCreateDeal} style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '8px 14px', borderRadius: 12, border: 'none',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                color: '#fff', fontSize: 12, fontWeight: 300
+                            }}>
+                                <Briefcase size={14} /> Создать сделку
+                            </button>
+                        )}
                     </div>
 
                     {myDeals.length === 0 ? (
