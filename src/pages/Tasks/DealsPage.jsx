@@ -124,7 +124,7 @@ export function DealsPage() {
                                 let amt = selectedItem.price;
                                 if (selectedItem.name === 'Сделка/СЭР') {
                                     const dealPrice = Number(parsePriceInput(String(newDeal.price))) || 0;
-                                    amt = Math.round(dealPrice * 0.03);
+                                    amt = Math.min(20000, Math.round(dealPrice * 0.003));
                                 }
                                 updateExpense(exp.id, 'amount', formatPriceInput(String(amt)));
                             }
