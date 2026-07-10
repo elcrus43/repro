@@ -510,7 +510,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'id', 'realtor_id', 'title', 'seller_id', 'buyer_id', 'property_id',
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
-          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'expenses', 'notes',
+          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id'
         ];
         const dealData = {};
@@ -528,6 +528,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         dealData.mortgage_amount = dealData.mortgage_amount || 0;
         dealData.mortgage_expiry = dealData.mortgage_expiry || null;
         dealData.lawyer =         dealData.lawyer || null;
+        dealData.lawyer_id =      action.deal.lawyer_id || null;
         dealData.google_event_id = dealData.google_event_id || null;
         dealData.seller_agent_id = action.deal.seller_agent_id || null;
         dealData.buyer_agent_id =  action.deal.buyer_agent_id || null;
@@ -543,7 +544,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'realtor_id', 'title', 'seller_id', 'buyer_id', 'property_id',
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
-          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'expenses', 'notes',
+          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id'
         ];
         const updateData = {};
@@ -561,6 +562,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         updateData.mortgage_amount = updateData.mortgage_amount || 0;
         updateData.mortgage_expiry = updateData.mortgage_expiry || null;
         updateData.lawyer =         updateData.lawyer || null;
+        updateData.lawyer_id =      action.deal.lawyer_id || null;
         updateData.google_event_id = updateData.google_event_id || null;
         updateData.seller_agent_id = action.deal.seller_agent_id || null;
         updateData.buyer_agent_id =  action.deal.buyer_agent_id || null;

@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
+import { DealChat } from '../../components/DealChat';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 
@@ -67,6 +68,7 @@ export function DealsPage() {
         mortgage_expiry: prefillData.mortgage_expiry || '',
         expenses: prefillData.expenses || [],
         lawyer: prefillData.lawyer || '',
+        lawyer_id: prefillData.lawyer_id || '',
         seller_agent_id: prefillData.seller_agent_id || '',
         buyer_agent_id: prefillData.buyer_agent_id || '',
     });
@@ -249,7 +251,7 @@ export function DealsPage() {
     }
 
     function resetForm() {
-        setNewDeal({ id: '', title: '', seller_ids: [], buyer_ids: [], property_id: '', price: '', deal_date: '', deposit_date: '', deposit_amount: '', commission: '', notes: '', mortgage: false, mortgage_bank: '', mortgage_amount: '', mortgage_expiry: '', expenses: [], lawyer: '', seller_agent_id: '', buyer_agent_id: '' });
+        setNewDeal({ id: '', title: '', seller_ids: [], buyer_ids: [], property_id: '', price: '', deal_date: '', deposit_date: '', deposit_amount: '', commission: '', notes: '', mortgage: false, mortgage_bank: '', mortgage_amount: '', mortgage_expiry: '', expenses: [], lawyer: '', lawyer_id: '', seller_agent_id: '', buyer_agent_id: '' });
         prevPropertyId.current = '';
     }
 
@@ -273,6 +275,7 @@ export function DealsPage() {
             deposit_date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
             mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             lawyer: deal.lawyer || '',
+            lawyer_id: deal.lawyer_id || '',
             seller_agent_id: deal.seller_agent_id || '',
             buyer_agent_id: deal.buyer_agent_id || '',
         });
@@ -287,145 +290,243 @@ export function DealsPage() {
         const buyers = state.clients.filter(c => (buyerIds.length > 0 ? buyerIds : (deal.buyer_id ? [deal.buyer_id] : [])).includes(c.id));
         const sellerAgent = deal.seller_agent_id ? state.clients.find(c => c.id === deal.seller_agent_id) : null;
         const buyerAgent = deal.buyer_agent_id ? state.clients.find(c => c.id === deal.buyer_agent_id) : null;
+        const lawyer = deal.lawyer_id ? state.clients.find(c => c.id === deal.lawyer_id) : null;
+        const lawyerName = lawyer?.full_name || deal.lawyer || null;
         const expenses = parseExpenses(deal.expenses);
+        const sellerExpenses = expenses.filter(e => e.payer === 'seller');
+        const buyerExpenses = expenses.filter(e => e.payer === 'buyer');
         const property = state.properties.find(p => p.id === deal.property_id);
 
+        // Chat state — null | 'seller' | 'buyer'
+        const [openChat, setOpenChat] = useState(null);
+
         const statusConfig = {
-            active: { label: 'Активна', color: 'var(--primary)', bg: 'var(--primary-light)' },
-            closed: { label: 'Закрыта', color: '#fff', bg: '#10b981' },
-            cancelled: { label: 'Отменена', color: '#fff', bg: 'var(--danger)' },
+            active:    { label: 'В работе', color: 'var(--primary)',    bg: 'var(--primary-light)' },
+            closed:    { label: 'Закрыта',  color: '#10b981',           bg: 'rgba(16,185,129,0.12)' },
+            cancelled: { label: 'Отменена', color: 'var(--danger)',     bg: 'var(--danger-light)' },
         };
         const cfg = statusConfig[deal.status] || statusConfig.active;
 
-        return (
-            <div className="card" style={{ padding: '16px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                    <div style={{ flex: 1 }}>
-                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 18, marginBottom: 4 }}>{deal.title}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-muted)', fontWeight: 400, marginTop: 4 }}>
-                            <Calendar size={14} /> {deal.deal_date ? `${new Date(deal.deal_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Дата не назначена'}
+        function SideCard({ side, clients, agent, expenses: sideExpenses, accentColor, label, accentBg }) {
+            if (!clients.length && !agent) return null;
+            return (
+                <div style={{
+                    flex: 1, padding: '12px 14px',
+                    background: accentBg,
+                    borderRadius: 16,
+                    border: `1px solid ${accentColor}22`,
+                    display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: 9, fontWeight: 500, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>{label}</span>
+                    </div>
+                    {clients.map(c => (
+                        <div key={c.id}
+                            onClick={() => navigate(`/clients/${c.id}`)}
+                            style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', cursor: 'pointer', lineHeight: 1.2 }}
+                        >
+                            {c.full_name}
                         </div>
-                    </div>
-                    <span style={{ 
-                        padding: '4px 8px', borderRadius: 8, fontSize: 11, fontWeight: 400,
-                        background: cfg.bg === 'var(--primary)' ? 'var(--primary-light)' : cfg.bg.startsWith('#') ? `${cfg.bg}15` : cfg.bg,
-                        color: cfg.bg === 'var(--primary)' ? 'var(--primary)' : cfg.bg.startsWith('#') ? cfg.bg : '#fff'
-                    }}>{cfg.label}</span>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                    <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 200, marginBottom: 2 }}>Цена</div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
-                    </div>
-                    <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 200, marginBottom: 2 }}>Комиссия</div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
-                    </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                    {property && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(0,82,255,0.03)', borderRadius: 14 }}>
-                            <MapPin size={18} color="var(--primary)" />
-                            <div style={{ fontSize: 13, fontWeight: 400 }}>{property.address || property.city}</div>
+                    ))}
+                    {agent && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <User size={11} color={accentColor} />
+                            <span
+                                onClick={() => navigate(`/clients/${agent.id}`)}
+                                style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}
+                            >
+                                {agent.full_name}
+                            </span>
                         </div>
                     )}
-                    {deal.deposit_amount > 0 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(245, 158, 11, 0.03)', borderRadius: 14 }}>
-                            <DollarSign size={18} color="var(--warning)" />
-                            <div style={{ fontSize: 13, fontWeight: 400 }}>
-                                Задаток: <span style={{ fontWeight: 600 }}>{Number(deal.deposit_amount).toLocaleString()} ₽</span>
-                                {deal.deposit_date && ` (до ${new Date(deal.deposit_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})`}
-                            </div>
-                        </div>
-                    )}
-                    {deal.lawyer && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: 'rgba(16,185,129,0.03)', borderRadius: 14 }}>
-                            <User size={18} color="#10b981" />
-                            <div style={{ fontSize: 13, fontWeight: 400 }}>Юрист: {deal.lawyer}</div>
-                        </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                        {sellers.length > 0 && (
-                            <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
-                                <div style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 9, marginBottom: 2 }}>Продавец</div>
-                                <div style={{ fontWeight: 400 }}>
-                                    {sellers.map((s, i) => (
-                                        <span key={s.id}>
-                                            {i > 0 && ', '}
-                                            <span 
-                                                onClick={() => navigate(`/clients/${s.id}`)}
-                                                style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
-                                            >
-                                                {s.full_name}
-                                            </span>
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                        {buyers.length > 0 && (
-                            <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12 }}>
-                                <div style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: 9, marginBottom: 2 }}>Покупатель</div>
-                                <div style={{ fontWeight: 400 }}>
-                                    {buyers.map((b, i) => (
-                                        <span key={b.id}>
-                                            {i > 0 && ', '}
-                                            <span 
-                                                onClick={() => navigate(`/clients/${b.id}`)}
-                                                style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
-                                            >
-                                                {b.full_name}
-                                            </span>
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                    {(sellerAgent || buyerAgent) && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 12, marginTop: 8 }}>
-                            {sellerAgent && (
-                                <div style={{ fontWeight: 300 }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Агент продавца: </span>
-                                    <span 
-                                        onClick={() => navigate(`/clients/${sellerAgent.id}`)}
-                                        style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
-                                    >
-                                        {sellerAgent.full_name}
-                                    </span>
-                                </div>
-                            )}
-                            {buyerAgent && (
-                                <div style={{ fontWeight: 300 }}>
-                                    <span style={{ color: 'var(--text-muted)' }}>Агент покупателя: </span>
-                                    <span 
-                                        onClick={() => navigate(`/clients/${buyerAgent.id}`)}
-                                        style={{ color: '#000000', cursor: 'pointer', textDecoration: 'none', fontWeight: 600 }}
-                                    >
-                                        {buyerAgent.full_name}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    {expenses && expenses.length > 0 && (
-                        <div style={{ marginTop: 12, padding: '12px', background: 'var(--warning-light)', borderRadius: 16, border: '1px dashed rgba(245, 158, 11, 0.4)' }}>
-                            <div style={{ fontSize: 9, fontWeight: 400, color: 'var(--warning)', marginBottom: 8, textTransform: 'uppercase' }}>Расходы сторон</div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                {expenses.map(exp => (
-                                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 400 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>{exp.title} ({exp.payer === 'seller' ? 'Прод.' : 'Покуп.'})</span>
-                                        <span style={{ color: 'var(--text)' }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                    {sideExpenses.length > 0 && (
+                        <div style={{ borderTop: `1px dashed ${accentColor}33`, paddingTop: 8, marginTop: 2 }}>
+                            <div style={{ fontSize: 9, color: accentColor, fontWeight: 500, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Расходы</div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                {sideExpenses.map(exp => (
+                                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-muted)', fontWeight: 300, flex: 1, marginRight: 6 }}>{exp.title}</span>
+                                        <span style={{ color: 'var(--text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{Number(exp.amount).toLocaleString()} ₽</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
                 </div>
+            );
+        }
 
-                <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 16 }}>
+        return (
+            <div className="card" style={{ padding: '18px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.04)', background: 'var(--surface)', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+                {/* ── Header: Title + Status ── */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 2, lineHeight: 1.2 }}>{deal.title}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', fontWeight: 300 }}>
+                            <Calendar size={12} />
+                            {deal.deal_date
+                                ? `${new Date(deal.deal_date).toLocaleDateString('ru-RU')} ${new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                                : 'Дата не назначена'}
+                        </div>
+                    </div>
+                    <span style={{
+                        padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, flexShrink: 0, marginLeft: 10,
+                        background: cfg.bg, color: cfg.color,
+                    }}>{cfg.label}</span>
+                </div>
+
+                {/* ── Price row ── */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Цена</div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
+                    </div>
+                    <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Комиссия</div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
+                    </div>
+                </div>
+
+                {/* ── Property ── */}
+                {property && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(0,82,255,0.04)', borderRadius: 14, border: '1px solid rgba(0,82,255,0.08)' }}>
+                        <Home size={16} color="var(--primary)" />
+                        <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)' }}>{property.address || property.city}</div>
+                    </div>
+                )}
+
+                {/* ── Seller + Buyer mini-cards ── */}
+                {(sellers.length > 0 || buyers.length > 0) && (
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <SideCard
+                            side="seller"
+                            clients={sellers}
+                            agent={sellerAgent}
+                            expenses={sellerExpenses}
+                            accentColor="#8b5cf6"
+                            accentBg="rgba(139,92,246,0.05)"
+                            label="Продавец"
+                        />
+                        <SideCard
+                            side="buyer"
+                            clients={buyers}
+                            agent={buyerAgent}
+                            expenses={buyerExpenses}
+                            accentColor="#0052ff"
+                            accentBg="rgba(0,82,255,0.04)"
+                            label="Покупатель"
+                        />
+                    </div>
+                )}
+
+                {/* ── Dates & Events card ── */}
+                {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || lawyerName || deal.mortgage) && (
+                    <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.04)', borderRadius: 16, border: '1px solid rgba(245,158,11,0.15)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                            <Calendar size={12} color="var(--warning)" />
+                            <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>Даты и события</span>
+                        </div>
+                        {deal.deposit_amount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                    <DollarSign size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--warning)" />
+                                    Задаток
+                                    {deal.deposit_date && ` · до ${new Date(deal.deposit_date).toLocaleDateString('ru-RU')}`}
+                                </span>
+                                <span style={{ fontWeight: 600, color: 'var(--text)' }}>{Number(deal.deposit_amount).toLocaleString()} ₽</span>
+                            </div>
+                        )}
+                        {deal.deal_date && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                    <CheckCircle size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#10b981" />
+                                    Регистрация
+                                </span>
+                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+                                    {new Date(deal.deal_date).toLocaleDateString('ru-RU')} {new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        )}
+                        {lawyerName && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                    <Scale size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#f59e0b" />
+                                    Юрист
+                                </span>
+                                <span
+                                    style={{ fontWeight: 500, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default' }}
+                                    onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
+                                >
+                                    {lawyerName}
+                                </span>
+                            </div>
+                        )}
+                        {deal.mortgage && deal.mortgage_bank && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                    <CreditCard size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#06b6d4" />
+                                    Ипотека · {deal.mortgage_bank}
+                                </span>
+                                <span style={{ fontWeight: 600, color: '#06b6d4' }}>{Number(deal.mortgage_amount).toLocaleString()} ₽</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Chat toggle buttons ── */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                        onClick={() => setOpenChat(openChat === 'seller' ? null : 'seller')}
+                        style={{
+                            flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'seller' ? '#8b5cf6' : 'rgba(139,92,246,0.25)'}`,
+                            background: openChat === 'seller' ? 'rgba(139,92,246,0.1)' : 'transparent',
+                            color: '#8b5cf6', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <MessageSquare size={14} />
+                        Чат продавца
+                    </button>
+                    <button
+                        onClick={() => setOpenChat(openChat === 'buyer' ? null : 'buyer')}
+                        style={{
+                            flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'buyer' ? 'var(--primary)' : 'rgba(0,82,255,0.2)'}`,
+                            background: openChat === 'buyer' ? 'var(--primary-light)' : 'transparent',
+                            color: 'var(--primary)', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                            transition: 'all 0.2s',
+                        }}
+                    >
+                        <MessageSquare size={14} />
+                        Чат покупателя
+                    </button>
+                </div>
+
+                {/* ── Inline Chat Panel ── */}
+                {openChat === 'seller' && (
+                    <DealChat
+                        dealId={deal.id}
+                        side="seller"
+                        currentUser={user}
+                        title="Чат продавца"
+                        accentColor="#8b5cf6"
+                    />
+                )}
+                {openChat === 'buyer' && (
+                    <DealChat
+                        dealId={deal.id}
+                        side="buyer"
+                        currentUser={user}
+                        title="Чат покупателя"
+                        accentColor="#0052ff"
+                    />
+                )}
+
+                {/* ── Actions ── */}
+                <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 14 }}>
                     {deal.status === 'active' && (
                         <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 500, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
                             <CheckCircle size={18} /> Закрыть
@@ -598,13 +699,20 @@ export function DealsPage() {
 
                         <div className="form-group">
                             <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Юрист по сделке</label>
-                            <input 
-                                className="form-input" 
-                                style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 16px' }}
-                                placeholder="ФИО юриста"
-                                value={newDeal.lawyer || ''} 
-                                onChange={e => handleFieldChange('lawyer', e.target.value)}
-                            />
+                            <select
+                                className="form-input"
+                                style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 12px', width: '100%', fontSize: 13 }}
+                                value={newDeal.lawyer_id || ''}
+                                onChange={e => handleFieldChange('lawyer_id', e.target.value || null)}
+                            >
+                                <option value="">Без юриста</option>
+                                {(state.clients || [])
+                                    .filter(c => c.client_types?.includes('lawyer') || c.client_types?.includes('agent'))
+                                    .map(c => (
+                                        <option key={c.id} value={c.id}>{c.full_name}</option>
+                                    ))
+                                }
+                            </select>
                         </div>
 
                         <div className="form-group">

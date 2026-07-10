@@ -20,7 +20,7 @@ const NEON_JWT_SECRET   = process.env.NEON_JWT_SECRET;
 const ALLOWED_TABLES = new Set([
   'profiles', 'clients', 'properties', 'requests', 'matches',
   'showings', 'tasks', 'pricelist', 'deals', 'selection_items',
-  'app_errors', 'user_sessions'
+  'app_errors', 'user_sessions', 'deal_messages'
 ]);
 
 function isPublicQuery(query) {
