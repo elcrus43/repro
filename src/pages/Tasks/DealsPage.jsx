@@ -159,21 +159,62 @@ export function DealsPage() {
         }
     }, []);
 
+    // Автоматическое создание агента "Я" для текущего риелтора
+    useEffect(() => {
+        if (!user) return;
+        const hasMe = state.clients.some(c => 
+            c.client_types?.includes('agent') && 
+            (c.full_name?.toLowerCase() === 'я' || c.full_name === user.full_name)
+        );
+        if (!hasMe && state.clients.length > 0) {
+            const newClientId = nanoid();
+            const client = {
+                id: newClientId,
+                realtor_id: user.id,
+                full_name: 'Я',
+                phone: user.phone || '',
+                client_types: ['agent'],
+                status: 'active',
+                created_at: new Date().toISOString()
+            };
+            dispatch({ type: 'ADD_CLIENT', client });
+            console.log('Automatically created client agent "Я"');
+        }
+    }, [user, state.clients, dispatch]);
+
+    // Авто-выбор агента покупателя для новых сделок
+    useEffect(() => {
+        if (!newDeal.id && !newDeal.buyer_agent_id) {
+            const meAgent = state.clients.find(c => 
+                c.client_types?.includes('agent') && 
+                (c.full_name?.toLowerCase() === 'я' || c.full_name === user?.full_name)
+            );
+            if (meAgent) {
+                setNewDeal(prev => ({ ...prev, buyer_agent_id: meAgent.id }));
+            }
+        }
+    }, [state.clients, user, newDeal.id, newDeal.buyer_agent_id]);
+
     useEffect(() => {
         if (newDeal.property_id && newDeal.property_id !== prevPropertyId.current) {
             const prop = state.properties.find(p => p.id === newDeal.property_id);
             if (prop) {
+                const meAgent = state.clients.find(c => 
+                    c.client_types?.includes('agent') && 
+                    (c.full_name?.toLowerCase() === 'я' || c.full_name === user?.full_name)
+                );
+                const isMyProperty = prop.realtor_id === user?.id;
                 setNewDeal(prev => ({
                     ...prev,
                     price: formatPriceInput(String(prop.price || '')),
                     commission: formatPriceInput(String(prop.commission || '')),
                     seller_ids: prop.client_ids || (prop.client_id ? [prop.client_id] : []),
-                    seller_agent_id: prop.agent_id || ''
+                    seller_agent_id: prop.agent_id || (isMyProperty && meAgent ? meAgent.id : '')
                 }));
             }
         }
         prevPropertyId.current = newDeal.property_id;
-    }, [newDeal.property_id, state.properties]);
+    }, [newDeal.property_id, state.properties, state.clients, user]);
 
     const stats = useMemo(() => {
         const activeDeals = filteredByPeriod.filter(d => d.status === 'active');
@@ -300,7 +341,32 @@ export function DealsPage() {
     }
 
     function resetForm() {
-        setNewDeal({ id: '', title: '', seller_ids: [], buyer_ids: [], property_id: '', price: '', deal_date: '', deposit_date: '', deposit_amount: '', commission: '', notes: '', mortgage: false, mortgage_bank: '', mortgage_amount: '', mortgage_expiry: '', expenses: [], lawyer: '', lawyer_id: '', seller_agent_id: '', buyer_agent_id: '' });
+        const meAgent = state.clients.find(c => 
+            c.client_types?.includes('agent') && 
+            (c.full_name?.toLowerCase() === 'я' || c.full_name === user?.full_name)
+        );
+        setNewDeal({ 
+            id: '', 
+            title: '', 
+            seller_ids: [], 
+            buyer_ids: [], 
+            property_id: '', 
+            price: '', 
+            deal_date: '', 
+            deposit_date: '', 
+            deposit_amount: '', 
+            commission: '', 
+            notes: '', 
+            mortgage: false, 
+            mortgage_bank: '', 
+            mortgage_amount: '', 
+            mortgage_expiry: '', 
+            expenses: [], 
+            lawyer: '', 
+            lawyer_id: '', 
+            seller_agent_id: '', 
+            buyer_agent_id: meAgent ? meAgent.id : '' 
+        });
         prevPropertyId.current = '';
     }
 
