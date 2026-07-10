@@ -74,6 +74,7 @@ export function DealsPage() {
     });
 
     const prevPropertyId = useRef(newDeal.property_id);
+    const creatingMeAgentRef = useRef(false);
     const deals = state.deals.filter(d => user?.role === 'admin' || d.realtor_id === user?.id);
     
     const filteredByPeriod = useMemo(() => {
@@ -161,12 +162,13 @@ export function DealsPage() {
 
     // Автоматическое создание агента "Я" для текущего риелтора
     useEffect(() => {
-        if (!user) return;
+        if (!user || creatingMeAgentRef.current) return;
         const hasMe = state.clients.some(c => 
             c.client_types?.includes('agent') && 
             (c.full_name?.toLowerCase() === 'я' || c.full_name === user.full_name)
         );
         if (!hasMe && state.clients.length > 0) {
+            creatingMeAgentRef.current = true;
             const newClientId = nanoid();
             const client = {
                 id: newClientId,
