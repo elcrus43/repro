@@ -33,6 +33,17 @@ function parseExpenses(exp) {
     return [];
 }
 
+function formatPriceInput(val) {
+    if (!val) return '';
+    const digits = val.replace(/\D/g, '');
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+function parsePriceInput(val) {
+    if (!val) return '';
+    return val.replace(/\D/g, '');
+}
+
 export function DealsPage() {
     const { state, dispatch } = useApp();
     const { toast } = useToastContext();
@@ -127,13 +138,6 @@ export function DealsPage() {
             clearInterval(iv);
         };
     }, [user]);
-
-    const formatPriceInput = (val) => {
-        const digits = val.replace(/\D/g, '');
-        return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-    };
-
-    const parsePriceInput = (val) => val.replace(/\D/g, '');
 
         const propertyOptions = state.properties.map(p => ({ 
         id: p.id, 
@@ -452,509 +456,7 @@ export function DealsPage() {
         setShowForm(true);
     }
 
-    function DealCard({ deal, lastMessages = {}, setLastMessages }) {
-        const sellerIds = parsePgArray(deal.seller_ids);
-        const buyerIds = parsePgArray(deal.buyer_ids);
-        const sellers = state.clients.filter(c => (sellerIds.length > 0 ? sellerIds : (deal.seller_id ? [deal.seller_id] : [])).includes(c.id));
-        const buyers = state.clients.filter(c => (buyerIds.length > 0 ? buyerIds : (deal.buyer_id ? [deal.buyer_id] : [])).includes(c.id));
-        const sellerAgent = deal.seller_agent_id ? state.clients.find(c => c.id === deal.seller_agent_id) : null;
-        const buyerAgent = deal.buyer_agent_id ? state.clients.find(c => c.id === deal.buyer_agent_id) : null;
-        const lawyer = deal.lawyer_id ? state.clients.find(c => c.id === deal.lawyer_id) : null;
-        const lawyerName = lawyer?.full_name || deal.lawyer || null;
-        const expenses = parseExpenses(deal.expenses);
-        const sellerExpenses = expenses.filter(e => e.payer === 'seller');
-        const buyerExpenses = expenses.filter(e => e.payer === 'buyer');
-        const property = state.properties.find(p => p.id === deal.property_id);
 
-        const hasSellerUnread = useMemo(() => {
-            const info = lastMessages[deal.id]?.seller;
-            if (!info) return false;
-            if (info.sender_id === user?.id) return false;
-            const lastRead = localStorage.getItem(`last_viewed_chat_${deal.id}_seller`);
-            if (!lastRead) return true;
-            return new Date(info.created_at) > new Date(lastRead);
-        }, [lastMessages, deal.id, user?.id]);
-
-        const hasBuyerUnread = useMemo(() => {
-            const info = lastMessages[deal.id]?.buyer;
-            if (!info) return false;
-            if (info.sender_id === user?.id) return false;
-            const lastRead = localStorage.getItem(`last_viewed_chat_${deal.id}_buyer`);
-            if (!lastRead) return true;
-            return new Date(info.created_at) > new Date(lastRead);
-        }, [lastMessages, deal.id, user?.id]);
-
-        // Chat state — null | 'seller' | 'buyer'
-        const [openChat, setOpenChat] = useState(null);
-
-        // Quick Expense states
-        const [showQuickExpense, setShowQuickExpense] = useState(false);
-        const [quickExpense, setQuickExpense] = useState({
-            title: '',
-            customTitle: '',
-            amount: '',
-            payer: 'seller'
-        });
-
-        const handleSaveQuickExpense = () => {
-            const finalTitle = quickExpense.title === 'Другое' ? quickExpense.customTitle : quickExpense.title;
-            if (!finalTitle?.trim()) {
-                toast.error('Укажите название расхода');
-                return;
-            }
-            const cleanAmount = Number(quickExpense.amount.replace(/\D/g, '')) || 0;
-            if (cleanAmount <= 0) {
-                toast.error('Укажите корректную сумму');
-                return;
-            }
-
-            const currentExpenses = parseExpenses(deal.expenses);
-            const newExp = {
-                id: nanoid(),
-                title: finalTitle,
-                amount: cleanAmount,
-                payer: quickExpense.payer
-            };
-
-            const updatedDeal = {
-                ...deal,
-                expenses: [...currentExpenses, newExp]
-            };
-
-            try {
-                dispatch({ type: 'UPDATE_DEAL', deal: updatedDeal });
-                toast.success('Расход добавлен');
-                setShowQuickExpense(false);
-                setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
-            } catch (err) {
-                toast.error('Не удалось сохранить расход');
-            }
-        };
-
-        const statusConfig = {
-            active:    { label: 'В работе', color: 'var(--primary)',    bg: 'var(--primary-light)' },
-            closed:    { label: 'Закрыта',  color: '#10b981',           bg: 'rgba(16,185,129,0.12)' },
-            cancelled: { label: 'Отменена', color: 'var(--danger)',     bg: 'var(--danger-light)' },
-        };
-        const cfg = statusConfig[deal.status] || statusConfig.active;
-
-        function SideCard({ side, clients, agent, expenses: sideExpenses, accentColor, label, accentBg }) {
-            if (!clients.length && !agent) return null;
-            return (
-                <div style={{
-                    flex: 1, padding: '12px 14px',
-                    background: accentBg,
-                    borderRadius: 16,
-                    border: `1px solid ${accentColor}22`,
-                    display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: 9, fontWeight: 500, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>{label}</span>
-                    </div>
-                    {clients.map(c => (
-                        <div key={c.id}
-                            onClick={() => navigate(`/clients/${c.id}`)}
-                            style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', cursor: 'pointer', lineHeight: 1.2 }}
-                        >
-                            {c.full_name}
-                        </div>
-                    ))}
-                    {agent && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <User size={11} color={accentColor} />
-                            <span
-                                onClick={() => navigate(`/clients/${agent.id}`)}
-                                style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}
-                            >
-                                {agent.full_name}
-                            </span>
-                        </div>
-                    )}
-                    <div style={{ borderTop: `1px dashed ${accentColor}33`, paddingTop: 8, marginTop: 2 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                            <div style={{ fontSize: 9, color: accentColor, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Расходы</div>
-                            <button 
-                                type="button"
-                                onClick={() => {
-                                    setQuickExpense(prev => ({ ...prev, payer: side }));
-                                    setShowQuickExpense(showQuickExpense && quickExpense.payer === side ? false : true);
-                                }}
-                                style={{ background: 'transparent', border: 'none', color: accentColor, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, padding: '0 4px', fontWeight: 600, fontFamily: "'Oswald', sans-serif" }}
-                            >
-                                + Добавить
-                            </button>
-                        </div>
-                        {sideExpenses.length > 0 ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {[...sideExpenses]
-                                    .sort((a, b) => {
-                                        if (a.title === 'Комиссия') return -1;
-                                        if (b.title === 'Комиссия') return 1;
-                                        return 0;
-                                    })
-                                    .map(exp => {
-                                        const isCommission = exp.title === 'Комиссия';
-                                        return (
-                                            <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                                                <span style={{ 
-                                                    color: isCommission ? '#10b981' : 'var(--text-muted)', 
-                                                    fontWeight: isCommission ? 600 : 300, 
-                                                    flex: 1, 
-                                                    marginRight: 6 
-                                                }}>{exp.title}</span>
-                                                <span style={{ 
-                                                    color: isCommission ? '#10b981' : 'var(--text)', 
-                                                    fontWeight: isCommission ? 600 : 500, 
-                                                    whiteSpace: 'nowrap' 
-                                                }}>{Number(exp.amount).toLocaleString()} ₽</span>
-                                            </div>
-                                        );
-                                    })
-                                }
-                            </div>
-                        ) : (
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, fontStyle: 'italic' }}>Нет расходов</div>
-                        )}
-                    </div>
-                </div>
-            );
-        }
-
-        return (
-            <div className="card" style={{ padding: '18px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.04)', background: 'var(--surface)', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-                {/* ── Header: Title + Status ── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 0, lineHeight: 1.2 }}>{deal.title}</div>
-                    </div>
-                    <span style={{
-                        padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, flexShrink: 0, marginLeft: 10,
-                        background: cfg.bg, color: cfg.color,
-                    }}>{cfg.label}</span>
-                </div>
-
-                {/* ── Price row ── */}
-                <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Цена объекта</div>
-                    <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
-                </div>
-
-                {/* ── Property ── */}
-                {property && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(0,82,255,0.04)', borderRadius: 14, border: '1px solid rgba(0,82,255,0.08)' }}>
-                        <Home size={16} color="var(--primary)" />
-                        <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)' }}>{property.address || property.city}</div>
-                    </div>
-                )}
-
-                {/* ── Seller + Buyer mini-cards ── */}
-                {(sellers.length > 0 || buyers.length > 0) && (
-                    <div style={{ display: 'flex', gap: 10 }}>
-                        <SideCard
-                            side="seller"
-                            clients={sellers}
-                            agent={sellerAgent}
-                            expenses={sellerExpenses}
-                            accentColor="#8b5cf6"
-                            accentBg="rgba(139,92,246,0.05)"
-                            label="Продавец"
-                        />
-                        <SideCard
-                            side="buyer"
-                            clients={buyers}
-                            agent={buyerAgent}
-                            expenses={buyerExpenses}
-                            accentColor="#0052ff"
-                            accentBg="rgba(0,82,255,0.04)"
-                            label="Покупатель"
-                        />
-                    </div>
-                )}
-
-                {/* ── Dates & Events card ── */}
-                {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || lawyerName || deal.mortgage) && (
-                    <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.04)', borderRadius: 16, border: '1px solid rgba(245,158,11,0.15)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                            <Calendar size={12} color="var(--warning)" />
-                            <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>Даты и события</span>
-                        </div>
-                        {deal.deposit_amount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                    <DollarSign size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--warning)" />
-                                    Задаток
-                                </span>
-                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>
-                                    {Number(deal.deposit_amount).toLocaleString()} ₽
-                                    {deal.deposit_date && (
-                                        <span style={{ color: 'var(--text)', fontWeight: 600, marginLeft: 6 }}>
-                                            {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    )}
-                                </span>
-                            </div>
-                        )}
-                        {deal.deal_date && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                    <CheckCircle size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#10b981" />
-                                    Регистрация
-                                </span>
-                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>
-                                    {new Date(deal.deal_date).toLocaleDateString('ru-RU')} {new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </div>
-                        )}
-                        {lawyerName && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                    <Scale size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#f59e0b" />
-                                    Юрист
-                                </span>
-                                <span
-                                    style={{ fontWeight: 500, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default' }}
-                                    onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
-                                >
-                                    {lawyerName}
-                                </span>
-                            </div>
-                        )}
-                        {deal.mortgage && deal.mortgage_bank && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                                <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                    <CreditCard size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#06b6d4" />
-                                    Ипотека · {deal.mortgage_bank}
-                                </span>
-                                <span style={{ fontWeight: 600, color: '#06b6d4' }}>{Number(deal.mortgage_amount).toLocaleString()} ₽</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Chat toggle buttons ── */}
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                        onClick={() => {
-                            const next = openChat === 'seller' ? null : 'seller';
-                            setOpenChat(next);
-                            if (next) {
-                                localStorage.setItem(`last_viewed_chat_${deal.id}_seller`, new Date().toISOString());
-                                setLastMessages(prev => {
-                                    const copy = { ...prev };
-                                    if (copy[deal.id]?.seller) {
-                                        copy[deal.id].seller = { ...copy[deal.id].seller, created_at: new Date(0).toISOString() };
-                                    }
-                                    return copy;
-                                });
-                            }
-                        }}
-                        style={{
-                            flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'seller' ? '#8b5cf6' : 'rgba(139,92,246,0.25)'}`,
-                            background: openChat === 'seller' ? 'rgba(139,92,246,0.1)' : 'transparent',
-                            color: '#8b5cf6', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
-                            transition: 'all 0.2s', position: 'relative'
-                        }}
-                    >
-                        <MessageSquare size={14} />
-                        Чат продавца
-                        {hasSellerUnread && (
-                            <span style={{
-                                position: 'absolute', top: 4, right: 6,
-                                width: 8, height: 8, borderRadius: '50%',
-                                background: '#ef4444',
-                                boxShadow: '0 0 0 2px var(--surface)'
-                            }} />
-                        )}
-                    </button>
-                    <button
-                        onClick={() => {
-                            const next = openChat === 'buyer' ? null : 'buyer';
-                            setOpenChat(next);
-                            if (next) {
-                                localStorage.setItem(`last_viewed_chat_${deal.id}_buyer`, new Date().toISOString());
-                                setLastMessages(prev => {
-                                    const copy = { ...prev };
-                                    if (copy[deal.id]?.buyer) {
-                                        copy[deal.id].buyer = { ...copy[deal.id].buyer, created_at: new Date(0).toISOString() };
-                                    }
-                                    return copy;
-                                });
-                            }
-                        }}
-                        style={{
-                            flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'buyer' ? 'var(--primary)' : 'rgba(0,82,255,0.2)'}`,
-                            background: openChat === 'buyer' ? 'var(--primary-light)' : 'transparent',
-                            color: 'var(--primary)', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
-                            transition: 'all 0.2s', position: 'relative'
-                        }}
-                    >
-                        <MessageSquare size={14} />
-                        Чат покупателя
-                        {hasBuyerUnread && (
-                            <span style={{
-                                position: 'absolute', top: 4, right: 6,
-                                width: 8, height: 8, borderRadius: '50%',
-                                background: '#ef4444',
-                                boxShadow: '0 0 0 2px var(--surface)'
-                            }} />
-                        )}
-                    </button>
-                </div>
-
-                {/* ── Inline Chat Panel ── */}
-                {openChat === 'seller' && (
-                    <DealChat
-                        dealId={deal.id}
-                        side="seller"
-                        currentUser={user}
-                        title="Чат продавца"
-                        accentColor="#8b5cf6"
-                    />
-                )}
-                {openChat === 'buyer' && (
-                    <DealChat
-                        dealId={deal.id}
-                        side="buyer"
-                        currentUser={user}
-                        title="Чат покупателя"
-                        accentColor="#0052ff"
-                    />
-                )}
-
-                {/* ── Quick Expense Panel ── */}
-                {showQuickExpense && (
-                    <div className="fade-in" style={{ 
-                        padding: 16, 
-                        background: 'var(--bg-light)', 
-                        borderRadius: 16, 
-                        display: 'flex', 
-                        flexDirection: 'column', 
-                        gap: 10,
-                        border: '1px solid var(--border-light)',
-                        marginTop: 10
-                    }}>
-                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', fontFamily: "'Oswald', sans-serif", letterSpacing: '0.04em' }}>
-                            <Plus size={14} /> Быстрый расход
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                            <div>
-                                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Кто платит</label>
-                                <select 
-                                    className="form-input" 
-                                    style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
-                                    value={quickExpense.payer}
-                                    onChange={e => setQuickExpense(prev => ({ ...prev, payer: e.target.value }))}
-                                >
-                                    <option value="seller">Продавец</option>
-                                    <option value="buyer">Покупатель</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Расход</label>
-                                <select 
-                                    className="form-input" 
-                                    style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
-                                    value={state.pricelist.some(p => p.name === quickExpense.title) ? quickExpense.title : (quickExpense.title ? 'custom' : '')}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        if (val === '') {
-                                            setQuickExpense(prev => ({ ...prev, title: '', amount: '' }));
-                                        } else if (val === 'custom') {
-                                            setQuickExpense(prev => ({ ...prev, title: 'Другое', amount: '' }));
-                                        } else {
-                                            const selectedItem = state.pricelist.find(p => p.name === val);
-                                            if (selectedItem) {
-                                                let amt = selectedItem.price;
-                                                if (selectedItem.name === 'Сделка/СЭР') {
-                                                    const dealPrice = Number(deal.price) || 0;
-                                                    amt = Math.min(20000, Math.round(dealPrice * 0.003));
-                                                }
-                                                setQuickExpense(prev => ({ ...prev, title: selectedItem.name, amount: formatPriceInput(String(amt)) }));
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <option value="">-- Выбрать --</option>
-                                    {state.pricelist.map(p => (
-                                        <option key={p.id} value={p.name}>{p.name}</option>
-                                    ))}
-                                    <option value="custom">Другое (свой вариант)</option>
-                                </select>
-                            </div>
-                        </div>
-                        {quickExpense.title === 'Другое' && (
-                            <div>
-                                <input 
-                                    className="form-input" 
-                                    style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
-                                    placeholder="Название расхода"
-                                    value={quickExpense.customTitle || ''}
-                                    onChange={e => setQuickExpense(prev => ({ ...prev, customTitle: e.target.value }))}
-                                />
-                            </div>
-                        )}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, alignItems: 'end' }}>
-                            <div>
-                                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Сумма</label>
-                                <input 
-                                    className="form-input" 
-                                    style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
-                                    placeholder="Сумма"
-                                    value={quickExpense.amount}
-                                    onChange={e => {
-                                        const digits = e.target.value.replace(/\D/g, '');
-                                        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-                                        setQuickExpense(prev => ({ ...prev, amount: formatted }));
-                                    }}
-                                />
-                            </div>
-                            <div style={{ display: 'flex', gap: 4 }}>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-primary" 
-                                    style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    onClick={handleSaveQuickExpense}
-                                >
-                                    Добавить
-                                </button>
-                                <button 
-                                    type="button" 
-                                    className="btn btn-secondary" 
-                                    style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', border: 'none', background: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                    onClick={() => {
-                                        setShowQuickExpense(false);
-                                        setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
-                                    }}
-                                >
-                                    Отмена
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Actions ── */}
-                <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 14 }}>
-                    {deal.status === 'active' && (
-                        <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 500, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
-                            <CheckCircle size={18} /> Закрыть
-                        </button>
-                    )}
-
-                    <button className="icon-btn-edit" onClick={() => editDeal(deal)} title="Редактировать">
-                        <Pencil size={18} />
-                    </button>
-                    <button className="icon-btn-delete" onClick={() => { if(window.confirm('Удалить?')) dispatch({type:'DELETE_DEAL', id: deal.id}); }} title="Удалить">
-                        <Trash size={18} />
-                    </button>
-                </div>
-            </div>
-        );
-    }
 
     return (
         <div className="page fade-in">
@@ -1211,7 +713,16 @@ export function DealsPage() {
                             <div className="font-oswald" style={{ fontSize: 16, fontWeight: 300, color: 'var(--text-muted)' }}>Сделок не найдено</div>
                         </div>
                     ) : (
-                        filteredDeals.map(d => <DealCard key={d.id} deal={d} lastMessages={lastMessages} setLastMessages={setLastMessages} />)
+                        filteredDeals.map(d => (
+                            <DealCard 
+                                key={d.id} 
+                                deal={d} 
+                                lastMessages={lastMessages} 
+                                setLastMessages={setLastMessages} 
+                                editDeal={editDeal}
+                                updateStatus={updateStatus}
+                            />
+                        ))
                     )}
                 </div>
             </div>
@@ -1256,6 +767,515 @@ export function DealsPage() {
                     </div>
                 </div>
             )}
+        </div>
+    );
+}
+
+function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateStatus }) {
+    const { state, dispatch } = useApp();
+    const { toast } = useToastContext();
+    const user = state.currentUser;
+    const navigate = useNavigate();
+
+    const sellerIds = parsePgArray(deal.seller_ids);
+    const buyerIds = parsePgArray(deal.buyer_ids);
+    const sellers = state.clients.filter(c => (sellerIds.length > 0 ? sellerIds : (deal.seller_id ? [deal.seller_id] : [])).includes(c.id));
+    const buyers = state.clients.filter(c => (buyerIds.length > 0 ? buyerIds : (deal.buyer_id ? [deal.buyer_id] : [])).includes(c.id));
+    const sellerAgent = deal.seller_agent_id ? state.clients.find(c => c.id === deal.seller_agent_id) : null;
+    const buyerAgent = deal.buyer_agent_id ? state.clients.find(c => c.id === deal.buyer_agent_id) : null;
+    const lawyer = deal.lawyer_id ? state.clients.find(c => c.id === deal.lawyer_id) : null;
+    const lawyerName = lawyer?.full_name || deal.lawyer || null;
+    const expenses = parseExpenses(deal.expenses);
+    const sellerExpenses = expenses.filter(e => e.payer === 'seller');
+    const buyerExpenses = expenses.filter(e => e.payer === 'buyer');
+    const property = state.properties.find(p => p.id === deal.property_id);
+
+    const hasSellerUnread = useMemo(() => {
+        const info = lastMessages[deal.id]?.seller;
+        if (!info) return false;
+        if (info.sender_id === user?.id) return false;
+        const lastRead = localStorage.getItem(`last_viewed_chat_${deal.id}_seller`);
+        if (!lastRead) return true;
+        return new Date(info.created_at) > new Date(lastRead);
+    }, [lastMessages, deal.id, user?.id]);
+
+    const hasBuyerUnread = useMemo(() => {
+        const info = lastMessages[deal.id]?.buyer;
+        if (!info) return false;
+        if (info.sender_id === user?.id) return false;
+        const lastRead = localStorage.getItem(`last_viewed_chat_${deal.id}_buyer`);
+        if (!lastRead) return true;
+        return new Date(info.created_at) > new Date(lastRead);
+    }, [lastMessages, deal.id, user?.id]);
+
+    // Chat state — null | 'seller' | 'buyer'
+    const [openChat, setOpenChat] = useState(null);
+
+    // Quick Expense states
+    const [showQuickExpense, setShowQuickExpense] = useState(false);
+    const [quickExpense, setQuickExpense] = useState({
+        title: '',
+        customTitle: '',
+        amount: '',
+        payer: 'seller'
+    });
+
+    const handleSaveQuickExpense = () => {
+        const finalTitle = quickExpense.title === 'Другое' ? quickExpense.customTitle : quickExpense.title;
+        if (!finalTitle?.trim()) {
+            toast.error('Укажите название расхода');
+            return;
+        }
+        const cleanAmount = Number(quickExpense.amount.replace(/\D/g, '')) || 0;
+        if (cleanAmount <= 0) {
+            toast.error('Укажите корректную сумму');
+            return;
+        }
+
+        const currentExpenses = parseExpenses(deal.expenses);
+        const newExp = {
+            id: nanoid(),
+            title: finalTitle,
+            amount: cleanAmount,
+            payer: quickExpense.payer
+        };
+
+        const updatedDeal = {
+            ...deal,
+            expenses: [...currentExpenses, newExp]
+        };
+
+        try {
+            dispatch({ type: 'UPDATE_DEAL', deal: updatedDeal });
+            toast.success('Расход добавлен');
+            setShowQuickExpense(false);
+            setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
+        } catch (err) {
+            toast.error('Не удалось сохранить расход');
+        }
+    };
+
+    const statusConfig = {
+        active:    { label: 'В работе', color: 'var(--primary)',    bg: 'var(--primary-light)' },
+        closed:    { label: 'Закрыта',  color: '#10b981',           bg: 'rgba(16,185,129,0.12)' },
+        cancelled: { label: 'Отменена', color: 'var(--danger)',     bg: 'var(--danger-light)' },
+    };
+    const cfg = statusConfig[deal.status] || statusConfig.active;
+
+    function SideCard({ side, clients, agent, expenses: sideExpenses, accentColor, label, accentBg }) {
+        if (!clients.length && !agent) return null;
+        return (
+            <div style={{
+                flex: 1, padding: '12px 14px',
+                background: accentBg,
+                borderRadius: 16,
+                border: `1px solid ${accentColor}22`,
+                display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: 9, fontWeight: 500, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>{label}</span>
+                </div>
+                {clients.map(c => (
+                    <div key={c.id}
+                        onClick={() => navigate(`/clients/${c.id}`)}
+                        style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', cursor: 'pointer', lineHeight: 1.2 }}
+                    >
+                        {c.full_name}
+                    </div>
+                ))}
+                {agent && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <User size={11} color={accentColor} />
+                        <span
+                            onClick={() => navigate(`/clients/${agent.id}`)}
+                            style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}
+                        >
+                            {agent.full_name}
+                        </span>
+                    </div>
+                )}
+                <div style={{ borderTop: `1px dashed ${accentColor}33`, paddingTop: 8, marginTop: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                        <div style={{ fontSize: 9, color: accentColor, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Расходы</div>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                setQuickExpense(prev => ({ ...prev, payer: side }));
+                                setShowQuickExpense(showQuickExpense && quickExpense.payer === side ? false : true);
+                            }}
+                            style={{ background: 'transparent', border: 'none', color: accentColor, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, padding: '0 4px', fontWeight: 600, fontFamily: "'Oswald', sans-serif" }}
+                        >
+                            + Добавить
+                        </button>
+                    </div>
+                    {sideExpenses.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {[...sideExpenses]
+                                .sort((a, b) => {
+                                    if (a.title === 'Комиссия') return -1;
+                                    if (b.title === 'Комиссия') return 1;
+                                    return 0;
+                                })
+                                .map(exp => {
+                                    const isCommission = exp.title === 'Комиссия';
+                                    return (
+                                        <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                                            <span style={{ 
+                                                color: isCommission ? '#10b981' : 'var(--text-muted)', 
+                                                fontWeight: isCommission ? 600 : 300, 
+                                                flex: 1, 
+                                                marginRight: 6 
+                                            }}>{exp.title}</span>
+                                            <span style={{ 
+                                                color: isCommission ? '#10b981' : 'var(--text)', 
+                                                fontWeight: isCommission ? 600 : 500, 
+                                                whiteSpace: 'nowrap' 
+                                            }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                                        </div>
+                                    );
+                                })
+                            }
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, fontStyle: 'italic' }}>Нет расходов</div>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="card" style={{ padding: '18px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.04)', background: 'var(--surface)', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* ── Header: Title + Status ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 0, lineHeight: 1.2 }}>{deal.title}</div>
+                </div>
+                <span style={{
+                    padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, flexShrink: 0, marginLeft: 10,
+                    background: cfg.bg, color: cfg.color,
+                }}>{cfg.label}</span>
+            </div>
+
+            {/* ── Price row ── */}
+            <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Цена объекта</div>
+                <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
+            </div>
+
+            {/* ── Property ── */}
+            {property && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(0,82,255,0.04)', borderRadius: 14, border: '1px solid rgba(0,82,255,0.08)' }}>
+                    <Home size={16} color="var(--primary)" />
+                    <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)' }}>{property.address || property.city}</div>
+                </div>
+            )}
+
+            {/* ── Seller + Buyer mini-cards ── */}
+            {(sellers.length > 0 || buyers.length > 0) && (
+                <div style={{ display: 'flex', gap: 10 }}>
+                    <SideCard
+                        side="seller"
+                        clients={sellers}
+                        agent={sellerAgent}
+                        expenses={sellerExpenses}
+                        accentColor="#8b5cf6"
+                        accentBg="rgba(139,92,246,0.05)"
+                        label="Продавец"
+                    />
+                    <SideCard
+                        side="buyer"
+                        clients={buyers}
+                        agent={buyerAgent}
+                        expenses={buyerExpenses}
+                        accentColor="#0052ff"
+                        accentBg="rgba(0,82,255,0.04)"
+                        label="Покупатель"
+                    />
+                </div>
+            )}
+
+            {/* ── Dates & Events card ── */}
+            {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || lawyerName || deal.mortgage) && (
+                <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.04)', borderRadius: 16, border: '1px solid rgba(245,158,11,0.15)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                        <Calendar size={12} color="var(--warning)" />
+                        <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>Даты и события</span>
+                    </div>
+                    {deal.deposit_amount > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                <DollarSign size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--warning)" />
+                                Задаток
+                            </span>
+                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+                                {Number(deal.deposit_amount).toLocaleString()} ₽
+                                {deal.deposit_date && (
+                                    <span style={{ color: 'var(--text)', fontWeight: 600, marginLeft: 6 }}>
+                                        {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                            </span>
+                        </div>
+                    )}
+                    {deal.deal_date && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                <CheckCircle size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#10b981" />
+                                Регистрация
+                            </span>
+                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+                                {new Date(deal.deal_date).toLocaleDateString('ru-RU')} {new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    )}
+                    {lawyerName && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                <Scale size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#f59e0b" />
+                                Юрист
+                            </span>
+                            <span
+                                style={{ fontWeight: 500, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default' }}
+                                onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
+                            >
+                                {lawyerName}
+                            </span>
+                        </div>
+                    )}
+                    {deal.mortgage && deal.mortgage_bank && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
+                                <CreditCard size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#06b6d4" />
+                                Ипотека · {deal.mortgage_bank}
+                            </span>
+                            <span style={{ fontWeight: 600, color: '#06b6d4' }}>{Number(deal.mortgage_amount).toLocaleString()} ₽</span>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* ── Chat toggle buttons ── */}
+            <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                    onClick={() => {
+                        const next = openChat === 'seller' ? null : 'seller';
+                        setOpenChat(next);
+                        if (next) {
+                            localStorage.setItem(`last_viewed_chat_${deal.id}_seller`, new Date().toISOString());
+                            setLastMessages(prev => {
+                                const copy = { ...prev };
+                                if (copy[deal.id]?.seller) {
+                                    copy[deal.id].seller = { ...copy[deal.id].seller, created_at: new Date(0).toISOString() };
+                                }
+                                return copy;
+                            });
+                        }
+                    }}
+                    style={{
+                        flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'seller' ? '#8b5cf6' : 'rgba(139,92,246,0.25)'}`,
+                        background: openChat === 'seller' ? 'rgba(139,92,246,0.1)' : 'transparent',
+                        color: '#8b5cf6', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                        transition: 'all 0.2s', position: 'relative'
+                    }}
+                >
+                    <MessageSquare size={14} />
+                    Чат продавца
+                    {hasSellerUnread && (
+                        <span style={{
+                            position: 'absolute', top: 4, right: 6,
+                            width: 8, height: 8, borderRadius: '50%',
+                            background: '#ef4444',
+                            boxShadow: '0 0 0 2px var(--surface)'
+                        }} />
+                    )}
+                </button>
+                <button
+                    onClick={() => {
+                        const next = openChat === 'buyer' ? null : 'buyer';
+                        setOpenChat(next);
+                        if (next) {
+                            localStorage.setItem(`last_viewed_chat_${deal.id}_buyer`, new Date().toISOString());
+                            setLastMessages(prev => {
+                                const copy = { ...prev };
+                                if (copy[deal.id]?.buyer) {
+                                    copy[deal.id].buyer = { ...copy[deal.id].buyer, created_at: new Date(0).toISOString() };
+                                }
+                                return copy;
+                            });
+                        }
+                    }}
+                    style={{
+                        flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'buyer' ? 'var(--primary)' : 'rgba(0,82,255,0.2)'}`,
+                        background: openChat === 'buyer' ? 'var(--primary-light)' : 'transparent',
+                        color: 'var(--primary)', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
+                        transition: 'all 0.2s', position: 'relative'
+                    }}
+                >
+                    <MessageSquare size={14} />
+                    Чат покупателя
+                    {hasBuyerUnread && (
+                        <span style={{
+                            position: 'absolute', top: 4, right: 6,
+                            width: 8, height: 8, borderRadius: '50%',
+                            background: '#ef4444',
+                            boxShadow: '0 0 0 2px var(--surface)'
+                        }} />
+                    )}
+                </button>
+            </div>
+
+            {/* ── Inline Chat Panel ── */}
+            {openChat === 'seller' && (
+                <DealChat
+                    dealId={deal.id}
+                    side="seller"
+                    currentUser={user}
+                    title="Чат продавца"
+                    accentColor="#8b5cf6"
+                />
+            )}
+            {openChat === 'buyer' && (
+                <DealChat
+                    dealId={deal.id}
+                    side="buyer"
+                    currentUser={user}
+                    title="Чат покупателя"
+                    accentColor="#0052ff"
+                />
+            )}
+
+            {/* ── Quick Expense Panel ── */}
+            {showQuickExpense && (
+                <div className="fade-in" style={{ 
+                    padding: 16, 
+                    background: 'var(--bg-light)', 
+                    borderRadius: 16, 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 10,
+                    border: '1px solid var(--border-light)',
+                    marginTop: 10
+                }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', fontFamily: "'Oswald', sans-serif", letterSpacing: '0.04em' }}>
+                        <Plus size={14} /> Быстрый расход
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <div>
+                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Кто платит</label>
+                            <select 
+                                className="form-input" 
+                                style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
+                                value={quickExpense.payer}
+                                onChange={e => setQuickExpense(prev => ({ ...prev, payer: e.target.value }))}
+                            >
+                                <option value="seller">Продавец</option>
+                                <option value="buyer">Покупатель</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Расход</label>
+                            <select 
+                                className="form-input" 
+                                style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
+                                value={state.pricelist.some(p => p.name === quickExpense.title) ? quickExpense.title : (quickExpense.title ? 'custom' : '')}
+                                onChange={e => {
+                                    const val = e.target.value;
+                                    if (val === '') {
+                                        setQuickExpense(prev => ({ ...prev, title: '', amount: '' }));
+                                    } else if (val === 'custom') {
+                                        setQuickExpense(prev => ({ ...prev, title: 'Другое', amount: '' }));
+                                    } else {
+                                        const selectedItem = state.pricelist.find(p => p.name === val);
+                                        if (selectedItem) {
+                                            let amt = selectedItem.price;
+                                            if (selectedItem.name === 'Сделка/СЭР') {
+                                                const dealPrice = Number(deal.price) || 0;
+                                                amt = Math.min(20000, Math.round(dealPrice * 0.003));
+                                            }
+                                            setQuickExpense(prev => ({ ...prev, title: selectedItem.name, amount: formatPriceInput(String(amt)) }));
+                                        }
+                                    }
+                                }}
+                            >
+                                <option value="">-- Выбрать --</option>
+                                {state.pricelist.map(p => (
+                                    <option key={p.id} value={p.name}>{p.name}</option>
+                                ))}
+                                <option value="custom">Другое (свой вариант)</option>
+                            </select>
+                        </div>
+                    </div>
+                    {quickExpense.title === 'Другое' && (
+                        <div>
+                            <input 
+                                className="form-input" 
+                                style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
+                                placeholder="Название расхода"
+                                value={quickExpense.customTitle || ''}
+                                onChange={e => setQuickExpense(prev => ({ ...prev, customTitle: e.target.value }))}
+                            />
+                        </div>
+                    )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, alignItems: 'end' }}>
+                        <div>
+                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Сумма</label>
+                            <input 
+                                className="form-input" 
+                                style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
+                                placeholder="Сумма"
+                                value={quickExpense.amount}
+                                onChange={e => {
+                                    const digits = e.target.value.replace(/\D/g, '');
+                                    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                                    setQuickExpense(prev => ({ ...prev, amount: formatted }));
+                                }}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                            <button 
+                                type="button" 
+                                className="btn btn-primary" 
+                                style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={handleSaveQuickExpense}
+                            >
+                                Добавить
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', border: 'none', background: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                onClick={() => {
+                                    setShowQuickExpense(false);
+                                    setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
+                                }}
+                            >
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Actions ── */}
+            <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 14 }}>
+                {deal.status === 'active' && (
+                    <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 500, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
+                        <CheckCircle size={18} /> Закрыть
+                    </button>
+                )}
+
+                <button className="icon-btn-edit" onClick={() => editDeal(deal)} title="Редактировать">
+                    <Pencil size={18} />
+                </button>
+                <button className="icon-btn-delete" onClick={() => { if(window.confirm('Удалить?')) dispatch({type:'DELETE_DEAL', id: deal.id}); }} title="Удалить">
+                    <Trash size={18} />
+                </button>
+            </div>
         </div>
     );
 }
