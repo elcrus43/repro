@@ -421,13 +421,7 @@ export function DetailsPage() {
                                 </div>
                             </a>
                         )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><Calendar size={20} /></div>
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)' }}>Клиент с</div>
-                                <div style={{ fontSize: 16, fontWeight: 300, color: 'var(--text)' }}>{new Date(client.created_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-                            </div>
-                        </div>
+
                     </div>
                 </div>
 
