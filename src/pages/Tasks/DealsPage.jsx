@@ -417,6 +417,50 @@ export function DealsPage() {
         // Chat state — null | 'seller' | 'buyer'
         const [openChat, setOpenChat] = useState(null);
 
+        // Quick Expense states
+        const [showQuickExpense, setShowQuickExpense] = useState(false);
+        const [quickExpense, setQuickExpense] = useState({
+            title: '',
+            customTitle: '',
+            amount: '',
+            payer: 'seller'
+        });
+
+        const handleSaveQuickExpense = () => {
+            const finalTitle = quickExpense.title === 'Другое' ? quickExpense.customTitle : quickExpense.title;
+            if (!finalTitle?.trim()) {
+                toast.error('Укажите название расхода');
+                return;
+            }
+            const cleanAmount = Number(quickExpense.amount.replace(/\D/g, '')) || 0;
+            if (cleanAmount <= 0) {
+                toast.error('Укажите корректную сумму');
+                return;
+            }
+
+            const currentExpenses = parseExpenses(deal.expenses);
+            const newExp = {
+                id: nanoid(),
+                title: finalTitle,
+                amount: cleanAmount,
+                payer: quickExpense.payer
+            };
+
+            const updatedDeal = {
+                ...deal,
+                expenses: [...currentExpenses, newExp]
+            };
+
+            try {
+                dispatch({ type: 'UPDATE_DEAL', deal: updatedDeal });
+                toast.success('Расход добавлен');
+                setShowQuickExpense(false);
+                setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
+            } catch (err) {
+                toast.error('Не удалось сохранить расход');
+            }
+        };
+
         const statusConfig = {
             active:    { label: 'В работе', color: 'var(--primary)',    bg: 'var(--primary-light)' },
             closed:    { label: 'Закрыта',  color: '#10b981',           bg: 'rgba(16,185,129,0.12)' },
@@ -642,6 +686,118 @@ export function DealsPage() {
                     />
                 )}
 
+                {/* ── Quick Expense Panel ── */}
+                {showQuickExpense && (
+                    <div className="fade-in" style={{ 
+                        padding: 16, 
+                        background: 'var(--bg-light)', 
+                        borderRadius: 16, 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: 10,
+                        border: '1px solid var(--border-light)',
+                        marginTop: 10
+                    }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', fontFamily: "'Oswald', sans-serif", letterSpacing: '0.04em' }}>
+                            <Plus size={14} /> Быстрый расход
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Кто платит</label>
+                                <select 
+                                    className="form-input" 
+                                    style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
+                                    value={quickExpense.payer}
+                                    onChange={e => setQuickExpense(prev => ({ ...prev, payer: e.target.value }))}
+                                >
+                                    <option value="seller">Продавец</option>
+                                    <option value="buyer">Покупатель</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Расход</label>
+                                <select 
+                                    className="form-input" 
+                                    style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
+                                    value={state.pricelist.some(p => p.name === quickExpense.title) ? quickExpense.title : (quickExpense.title ? 'custom' : '')}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        if (val === '') {
+                                            setQuickExpense(prev => ({ ...prev, title: '', amount: '' }));
+                                        } else if (val === 'custom') {
+                                            setQuickExpense(prev => ({ ...prev, title: 'Другое', amount: '' }));
+                                        } else {
+                                            const selectedItem = state.pricelist.find(p => p.name === val);
+                                            if (selectedItem) {
+                                                let amt = selectedItem.price;
+                                                if (selectedItem.name === 'Сделка/СЭР') {
+                                                    const dealPrice = Number(deal.price) || 0;
+                                                    amt = Math.min(20000, Math.round(dealPrice * 0.003));
+                                                }
+                                                setQuickExpense(prev => ({ ...prev, title: selectedItem.name, amount: formatPriceInput(String(amt)) }));
+                                            }
+                                        }
+                                    }}
+                                >
+                                    <option value="">-- Выбрать --</option>
+                                    {state.pricelist.map(p => (
+                                        <option key={p.id} value={p.name}>{p.name}</option>
+                                    ))}
+                                    <option value="custom">Другое (свой вариант)</option>
+                                </select>
+                            </div>
+                        </div>
+                        {quickExpense.title === 'Другое' && (
+                            <div>
+                                <input 
+                                    className="form-input" 
+                                    style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
+                                    placeholder="Название расхода"
+                                    value={quickExpense.customTitle || ''}
+                                    onChange={e => setQuickExpense(prev => ({ ...prev, customTitle: e.target.value }))}
+                                />
+                            </div>
+                        )}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, alignItems: 'end' }}>
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Сумма</label>
+                                <input 
+                                    className="form-input" 
+                                    style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
+                                    placeholder="Сумма"
+                                    value={quickExpense.amount}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+                                        setQuickExpense(prev => ({ ...prev, amount: formatted }));
+                                    }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: 4 }}>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-primary" 
+                                    style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={handleSaveQuickExpense}
+                                >
+                                    Добавить
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="btn btn-secondary" 
+                                    style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', border: 'none', background: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                    onClick={() => {
+                                        setShowQuickExpense(false);
+                                        setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
+                                    }}
+                                >
+                                    Отмена
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* ── Actions ── */}
                 <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 14 }}>
                     {deal.status === 'active' && (
@@ -649,6 +805,13 @@ export function DealsPage() {
                             <CheckCircle size={18} /> Закрыть
                         </button>
                     )}
+                    <button 
+                        className="card-clickable" 
+                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 500, fontSize: 12, padding: '0 14px' }} 
+                        onClick={() => setShowQuickExpense(!showQuickExpense)}
+                    >
+                        <Plus size={16} /> Расход
+                    </button>
                     <button className="icon-btn-edit" onClick={() => editDeal(deal)} title="Редактировать">
                         <Pencil size={18} />
                     </button>
