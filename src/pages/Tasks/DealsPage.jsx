@@ -533,12 +533,31 @@ export function DealsPage() {
                         </div>
                         {sideExpenses.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                {sideExpenses.map(exp => (
-                                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-muted)', fontWeight: 300, flex: 1, marginRight: 6 }}>{exp.title}</span>
-                                        <span style={{ color: 'var(--text)', fontWeight: 500, whiteSpace: 'nowrap' }}>{Number(exp.amount).toLocaleString()} ₽</span>
-                                    </div>
-                                ))}
+                                {[...sideExpenses]
+                                    .sort((a, b) => {
+                                        if (a.title === 'Комиссия') return -1;
+                                        if (b.title === 'Комиссия') return 1;
+                                        return 0;
+                                    })
+                                    .map(exp => {
+                                        const isCommission = exp.title === 'Комиссия';
+                                        return (
+                                            <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                                                <span style={{ 
+                                                    color: isCommission ? '#10b981' : 'var(--text-muted)', 
+                                                    fontWeight: isCommission ? 600 : 300, 
+                                                    flex: 1, 
+                                                    marginRight: 6 
+                                                }}>{exp.title}</span>
+                                                <span style={{ 
+                                                    color: isCommission ? '#10b981' : 'var(--text)', 
+                                                    fontWeight: isCommission ? 600 : 500, 
+                                                    whiteSpace: 'nowrap' 
+                                                }}>{Number(exp.amount).toLocaleString()} ₽</span>
+                                            </div>
+                                        );
+                                    })
+                                }
                             </div>
                         ) : (
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, fontStyle: 'italic' }}>Нет расходов</div>
