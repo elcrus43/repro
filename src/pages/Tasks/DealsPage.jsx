@@ -311,7 +311,12 @@ export function DealsPage() {
             lawyer: newDeal.lawyer || null,
             price: Number(parsePriceInput(String(newDeal.price))) || 0,
             deposit_amount: Number(parsePriceInput(String(newDeal.deposit_amount))) || 0,
-            commission: Number(parsePriceInput(String(newDeal.commission))) || 0,
+            commission: (newDeal.expenses || []).reduce((sum, e) => {
+                if (e.title === 'Комиссия') {
+                    return sum + (Number(parsePriceInput(String(e.amount))) || 0);
+                }
+                return sum;
+            }, 0),
             deal_date: newDeal.deal_date ? parseLocalDateTime(newDeal.deal_date)?.toISOString() : null,
             deposit_date: newDeal.deposit_date ? parseLocalDateTime(newDeal.deposit_date)?.toISOString() : null,
             status: newDeal.status || 'active',
@@ -380,14 +385,25 @@ export function DealsPage() {
     function editDeal(deal) {
         const sellerIds = parsePgArray(deal.seller_ids);
         const buyerIds = parsePgArray(deal.buyer_ids);
+        let parsedExpenses = parseExpenses(deal.expenses);
+        
+        // If the deal has a commission but no 'Комиссия' expense, migrate it dynamically for editing
+        if (deal.commission > 0 && !parsedExpenses.some(e => e.title === 'Комиссия')) {
+            parsedExpenses.push({
+                id: nanoid(),
+                title: 'Комиссия',
+                amount: deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' '),
+                payer: 'seller' // default to seller side
+            });
+        }
+
         setNewDeal({ 
             ...deal, 
             seller_ids: sellerIds.length > 0 ? sellerIds : (deal.seller_id ? [deal.seller_id] : []),
             buyer_ids: buyerIds.length > 0 ? buyerIds : (deal.buyer_id ? [deal.buyer_id] : []),
-            expenses: parseExpenses(deal.expenses),
+            expenses: parsedExpenses,
             price: deal.price ? deal.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deposit_amount: deal.deposit_amount ? deal.deposit_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
-            commission: deal.commission ? deal.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deal_date: deal.deal_date ? toLocalISOString(deal.deal_date) : '',
             deposit_date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
             mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
@@ -501,9 +517,21 @@ export function DealsPage() {
                             </span>
                         </div>
                     )}
-                    {sideExpenses.length > 0 && (
-                        <div style={{ borderTop: `1px dashed ${accentColor}33`, paddingTop: 8, marginTop: 2 }}>
-                            <div style={{ fontSize: 9, color: accentColor, fontWeight: 500, marginBottom: 5, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Расходы</div>
+                    <div style={{ borderTop: `1px dashed ${accentColor}33`, paddingTop: 8, marginTop: 2 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                            <div style={{ fontSize: 9, color: accentColor, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Расходы</div>
+                            <button 
+                                type="button"
+                                onClick={() => {
+                                    setQuickExpense(prev => ({ ...prev, payer: side }));
+                                    setShowQuickExpense(showQuickExpense && quickExpense.payer === side ? false : true);
+                                }}
+                                style={{ background: 'transparent', border: 'none', color: accentColor, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, padding: '0 4px', fontWeight: 600, fontFamily: "'Oswald', sans-serif" }}
+                            >
+                                + Добавить
+                            </button>
+                        </div>
+                        {sideExpenses.length > 0 ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 {sideExpenses.map(exp => (
                                     <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
@@ -512,8 +540,10 @@ export function DealsPage() {
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, fontStyle: 'italic' }}>Нет расходов</div>
+                        )}
+                    </div>
                 </div>
             );
         }
@@ -539,15 +569,9 @@ export function DealsPage() {
                 </div>
 
                 {/* ── Price row ── */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                    <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Цена</div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
-                    </div>
-                    <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Комиссия</div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600, color: '#10b981' }}>{Number(deal.commission).toLocaleString()} ₽</div>
-                    </div>
+                <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Цена объекта</div>
+                    <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
                 </div>
 
                 {/* ── Property ── */}
@@ -805,13 +829,7 @@ export function DealsPage() {
                             <CheckCircle size={18} /> Закрыть
                         </button>
                     )}
-                    <button 
-                        className="card-clickable" 
-                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 500, fontSize: 12, padding: '0 14px' }} 
-                        onClick={() => setShowQuickExpense(!showQuickExpense)}
-                    >
-                        <Plus size={16} /> Расход
-                    </button>
+
                     <button className="icon-btn-edit" onClick={() => editDeal(deal)} title="Редактировать">
                         <Pencil size={18} />
                     </button>
@@ -1012,15 +1030,9 @@ export function DealsPage() {
                             <SearchableSelect value={newDeal.property_id || ''} onChange={v => handleFieldChange('property_id', v)} placeholder="Выберите объект..." options={propertyOptions} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 12 }}>
-                            <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Цена</label>
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
-                            </div>
-                            <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Комиссия</label>
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.commission} onChange={e => handleFieldChange('commission', formatPriceInput(e.target.value))} />
-                            </div>
+                        <div className="form-group">
+                            <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Цена объекта</label>
+                            <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
