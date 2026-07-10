@@ -618,9 +618,15 @@ export function DealsPage() {
                                 <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
                                     <DollarSign size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--warning)" />
                                     Задаток
-                                    {deal.deposit_date && ` · до ${new Date(deal.deposit_date).toLocaleDateString('ru-RU')}`}
                                 </span>
-                                <span style={{ fontWeight: 600, color: 'var(--text)' }}>{Number(deal.deposit_amount).toLocaleString()} ₽</span>
+                                <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+                                    {Number(deal.deposit_amount).toLocaleString()} ₽
+                                    {deal.deposit_date && (
+                                        <span style={{ color: 'var(--text-muted)', fontWeight: 300, marginLeft: 6 }}>
+                                            до {new Date(deal.deposit_date).toLocaleDateString('ru-RU')}
+                                        </span>
+                                    )}
+                                </span>
                             </div>
                         )}
                         {deal.deal_date && (
