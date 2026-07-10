@@ -98,10 +98,59 @@ export function DealsPage() {
 
     const parsePriceInput = (val) => val.replace(/\D/g, '');
 
-    const propertyOptions = state.properties.map(p => ({ 
+        const propertyOptions = state.properties.map(p => ({ 
         id: p.id, 
         label: `${p.address || p.city} — ${p.price?.toLocaleString()} ₽` 
     }));
+
+    const ExpenseFormItem = ({ exp }) => (
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 8 }}>
+            <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <select 
+                    className="form-input" 
+                    style={{ height: 36, fontSize: 12, padding: '0 4px', borderRadius: 8, background: 'var(--surface)', border: '1px solid var(--border-light)' }} 
+                    value={state.pricelist.some(p => p.name === exp.title) ? exp.title : (exp.title ? 'custom' : '')} 
+                    onChange={e => {
+                        const val = e.target.value;
+                        if (val === '') {
+                            updateExpense(exp.id, 'title', '');
+                            updateExpense(exp.id, 'amount', '');
+                        } else if (val === 'custom') {
+                            updateExpense(exp.id, 'title', 'Другое');
+                        } else {
+                            const selectedItem = state.pricelist.find(p => p.name === val);
+                            if (selectedItem) {
+                                updateExpense(exp.id, 'title', selectedItem.name);
+                                let amt = selectedItem.price;
+                                if (selectedItem.name === 'Сделка/СЭР') {
+                                    const dealPrice = Number(parsePriceInput(String(newDeal.price))) || 0;
+                                    amt = Math.round(dealPrice * 0.03);
+                                }
+                                updateExpense(exp.id, 'amount', formatPriceInput(String(amt)));
+                            }
+                        }
+                    }}
+                >
+                    <option value="">-- Выбрать расход --</option>
+                    {state.pricelist.map(p => (
+                        <option key={p.id} value={p.name}>{p.name} ({p.price?.toLocaleString()} ₽)</option>
+                    ))}
+                    <option value="custom">Другое (свой вариант)</option>
+                </select>
+                {(exp.title === 'Другое' || !state.pricelist.some(p => p.name === exp.title)) && exp.title !== '' && (
+                    <input 
+                        className="form-input" 
+                        style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
+                        placeholder="Название расхода" 
+                        value={exp.title === 'Другое' ? '' : exp.title} 
+                        onChange={e => updateExpense(exp.id, 'title', e.target.value)} 
+                    />
+                )}
+            </div>
+            <input className="form-input" style={{ flex: 1.2, height: 36, fontSize: 12, borderRadius: 8 }} placeholder="Сумма" value={exp.amount} onChange={e => updateExpense(exp.id, 'amount', formatPriceInput(e.target.value))} />
+            <button type="button" onClick={() => removeExpense(exp.id)} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', background: 'var(--danger-light)', color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><XCircle size={16} /></button>
+        </div>
+    );
 
     useEffect(() => {
         if (location.state?.prefillDeal) {
@@ -188,8 +237,8 @@ export function DealsPage() {
         toast.success('Покупатель создан и выбран');
     }
 
-    const addExpense = () => {
-        const newExpense = { id: nanoid(), title: '', amount: '', payer: 'seller' };
+    const addExpense = (payer = 'seller') => {
+        const newExpense = { id: nanoid(), title: '', amount: '', payer };
         setNewDeal(prev => ({ ...prev, expenses: [...(prev.expenses || []), newExpense] }));
     };
 
@@ -601,43 +650,70 @@ export function DealsPage() {
                         
                         <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} placeholder="Название сделки (напр. Продажа 1к. на Ленина)" value={newDeal.title} required onChange={e => handleFieldChange('title', e.target.value)} />
 
-                        <div className="form-group">
-                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Стороны сделки</label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            {/* Карточка продавца */}
+                            <div style={{
+                                padding: '16px 20px',
+                                background: 'rgba(139,92,246,0.03)',
+                                borderRadius: 20,
+                                border: '1px solid rgba(139,92,246,0.12)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 12
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6' }} />
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Продавец</span>
+                                </div>
+
                                 <div>
                                     <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Продавцы</label>
                                     <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." />
                                 </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                    <div>
-                                        <label style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Агент продавца</label>
-                                        <select 
-                                            className="form-input" 
-                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
-                                            value={newDeal.seller_agent_id || ''} 
-                                            onChange={e => handleFieldChange('seller_agent_id', e.target.value || null)}
-                                        >
-                                            <option value="">Без агента</option>
-                                            {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
-                                                <option key={a.id} value={a.id}>{a.full_name}</option>
-                                            ))}
-                                        </select>
+
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Агент продавца</label>
+                                    <select 
+                                        className="form-input" 
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
+                                        value={newDeal.seller_agent_id || ''} 
+                                        onChange={e => handleFieldChange('seller_agent_id', e.target.value || null)}
+                                    >
+                                        <option value="">Без агента</option>
+                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
+                                            <option key={a.id} value={a.id}>{a.full_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ borderTop: '1px dashed rgba(139,92,246,0.2)', paddingTop: 10, marginTop: 4 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <label style={{ fontSize: 11, fontWeight: 500, color: '#8b5cf6' }}>Расходы продавца</label>
+                                        <button type="button" onClick={() => addExpense('seller')} style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 500 }}>+ Добавить</button>
                                     </div>
-                                    <div>
-                                        <label style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Агент покупателя</label>
-                                        <select 
-                                            className="form-input" 
-                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
-                                            value={newDeal.buyer_agent_id || ''} 
-                                            onChange={e => handleFieldChange('buyer_agent_id', e.target.value || null)}
-                                        >
-                                            <option value="">Без агента</option>
-                                            {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
-                                                <option key={a.id} value={a.id}>{a.full_name}</option>
-                                            ))}
-                                        </select>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {parseExpenses(newDeal.expenses).filter(e => e.payer === 'seller').map(exp => (
+                                            <ExpenseFormItem key={exp.id} exp={exp} />
+                                        ))}
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Карточка покупателя */}
+                            <div style={{
+                                padding: '16px 20px',
+                                background: 'rgba(0,82,255,0.03)',
+                                borderRadius: 20,
+                                border: '1px solid rgba(0,82,255,0.1)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 12
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Покупатель</span>
+                                </div>
+
                                 <div>
                                     <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Покупатели</label>
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -660,6 +736,33 @@ export function DealsPage() {
                                         </button>
                                     </div>
                                 </div>
+
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Агент покупателя</label>
+                                    <select 
+                                        className="form-input" 
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
+                                        value={newDeal.buyer_agent_id || ''} 
+                                        onChange={e => handleFieldChange('buyer_agent_id', e.target.value || null)}
+                                    >
+                                        <option value="">Без агента</option>
+                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
+                                            <option key={a.id} value={a.id}>{a.full_name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div style={{ borderTop: '1px dashed rgba(0,82,255,0.2)', paddingTop: 10, marginTop: 4 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                        <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--primary)' }}>Расходы покупателя</label>
+                                        <button type="button" onClick={() => addExpense('buyer')} style={{ background: 'var(--primary-light)', color: 'var(--primary)', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 500 }}>+ Добавить</button>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {parseExpenses(newDeal.expenses).filter(e => e.payer === 'buyer').map(exp => (
+                                            <ExpenseFormItem key={exp.id} exp={exp} />
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -679,7 +782,6 @@ export function DealsPage() {
                             </div>
                         </div>
 
-
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата задатка</label>
@@ -696,7 +798,6 @@ export function DealsPage() {
                             <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.deal_date} onChange={e => handleFieldChange('deal_date', e.target.value)} />
                         </div>
 
-
                         <div className="form-group">
                             <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Юрист по сделке</label>
                             <select
@@ -707,68 +808,12 @@ export function DealsPage() {
                             >
                                 <option value="">Без юриста</option>
                                 {(state.clients || [])
-                                    .filter(c => c.client_types?.includes('lawyer') || c.client_types?.includes('agent'))
+                                    .filter(c => c.client_types?.includes('lawyer') && !c.client_types?.includes('agent'))
                                     .map(c => (
                                         <option key={c.id} value={c.id}>{c.full_name}</option>
                                     ))
                                 }
                             </select>
-                        </div>
-
-                        <div className="form-group">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', display: 'block' }}>Расходы сторон</label>
-                                <button type="button" onClick={addExpense} style={{ background: 'var(--primary-light)', color: 'var(--primary)', border: 'none', borderRadius: 8, padding: '4px 10px', fontSize: 10, fontWeight: 300 }}>+ Добавить</button>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                {parseExpenses(newDeal.expenses).map(exp => (
-                                    <div key={exp.id} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-                                        <div style={{ flex: 2, display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                            <select 
-                                                className="form-input" 
-                                                style={{ height: 36, fontSize: 12, padding: '0 4px', borderRadius: 8 }} 
-                                                value={state.pricelist.some(p => p.name === exp.title) ? exp.title : (exp.title ? 'custom' : '')} 
-                                                onChange={e => {
-                                                    const val = e.target.value;
-                                                    if (val === '') {
-                                                        updateExpense(exp.id, 'title', '');
-                                                        updateExpense(exp.id, 'amount', '');
-                                                    } else if (val === 'custom') {
-                                                        updateExpense(exp.id, 'title', 'Другое');
-                                                    } else {
-                                                        const selectedItem = state.pricelist.find(p => p.name === val);
-                                                        if (selectedItem) {
-                                                            updateExpense(exp.id, 'title', selectedItem.name);
-                                                            updateExpense(exp.id, 'amount', formatPriceInput(String(selectedItem.price)));
-                                                        }
-                                                    }
-                                                }}
-                                            >
-                                                <option value="">-- Выбрать из прейскуранта --</option>
-                                                {state.pricelist.map(p => (
-                                                    <option key={p.id} value={p.name}>{p.name} ({p.price?.toLocaleString()} ₽)</option>
-                                                ))}
-                                                <option value="custom">Другое (свой вариант)</option>
-                                            </select>
-                                            {(exp.title === 'Другое' || !state.pricelist.some(p => p.name === exp.title)) && exp.title !== '' && (
-                                                <input 
-                                                    className="form-input" 
-                                                    style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
-                                                    placeholder="Название расхода" 
-                                                    value={exp.title === 'Другое' ? '' : exp.title} 
-                                                    onChange={e => updateExpense(exp.id, 'title', e.target.value)} 
-                                                />
-                                            )}
-                                        </div>
-                                        <input className="form-input" style={{ flex: 1, height: 36, fontSize: 12, borderRadius: 8 }} placeholder="Сумма" value={exp.amount} onChange={e => updateExpense(exp.id, 'amount', formatPriceInput(e.target.value))} />
-                                        <select className="form-input" style={{ flex: 1, height: 36, fontSize: 11, padding: '0 4px', borderRadius: 8 }} value={exp.payer} onChange={e => updateExpense(exp.id, 'payer', e.target.value)}>
-                                            <option value="seller">Прод.</option>
-                                            <option value="buyer">Покуп.</option>
-                                        </select>
-                                        <button onClick={() => removeExpense(exp.id)} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', background: 'var(--danger-light)', color: 'var(--danger)', flexShrink: 0 }}><XCircle size={16} /></button>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: 10 }}>

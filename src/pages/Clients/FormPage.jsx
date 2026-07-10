@@ -72,6 +72,7 @@ export function FormPage() {
         { id: 'agent', label: 'Агент' },
         { id: 'landlord', label: 'Арендодатель' },
         { id: 'tenant', label: 'Арендатор' },
+        { id: 'lawyer', label: 'Юрист' },
     ];
 
     const toggleType = (typeId) => {
