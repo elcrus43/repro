@@ -748,9 +748,14 @@ export function DealsPage() {
                                         onChange={e => handleFieldChange('seller_agent_id', e.target.value || null)}
                                     >
                                         <option value="">Без агента</option>
-                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
-                                            <option key={a.id} value={a.id}>{a.full_name}</option>
-                                        ))}
+                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => {
+                                            const isMe = a.full_name === user?.full_name || a.full_name?.toLowerCase() === 'я';
+                                            return (
+                                                <option key={a.id} value={a.id}>
+                                                    {isMe ? `Я (${a.full_name})` : a.full_name}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
 
@@ -814,9 +819,14 @@ export function DealsPage() {
                                         onChange={e => handleFieldChange('buyer_agent_id', e.target.value || null)}
                                     >
                                         <option value="">Без агента</option>
-                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
-                                            <option key={a.id} value={a.id}>{a.full_name}</option>
-                                        ))}
+                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => {
+                                            const isMe = a.full_name === user?.full_name || a.full_name?.toLowerCase() === 'я';
+                                            return (
+                                                <option key={a.id} value={a.id}>
+                                                    {isMe ? `Я (${a.full_name})` : a.full_name}
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
 
