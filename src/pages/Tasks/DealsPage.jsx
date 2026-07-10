@@ -623,7 +623,7 @@ export function DealsPage() {
                                     {Number(deal.deposit_amount).toLocaleString()} ₽
                                     {deal.deposit_date && (
                                         <span style={{ color: 'var(--text-muted)', fontWeight: 300, marginLeft: 6 }}>
-                                            до {new Date(deal.deposit_date).toLocaleDateString('ru-RU')}
+                                            до {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     )}
                                 </span>
