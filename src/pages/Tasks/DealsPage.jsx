@@ -6,6 +6,7 @@ import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { DealChat } from '../../components/DealChat';
+import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 
@@ -91,6 +92,41 @@ export function DealsPage() {
     const filteredDeals = useMemo(() => {
         return filteredByPeriod.filter(d => filter === 'all' || d.status === filter);
     }, [filteredByPeriod, filter]);
+
+    const [lastMessages, setLastMessages] = useState({});
+
+    useEffect(() => {
+        if (!user) return;
+        let isMounted = true;
+        const fetchLastMessages = async () => {
+            try {
+                const res = await neonDb.query(
+                    `SELECT DISTINCT ON (deal_id, side) deal_id, side, sender_id, created_at
+                     FROM deal_messages
+                     ORDER BY deal_id, side, created_at DESC`
+                );
+                if (isMounted && res && res.data) {
+                    const lookup = {};
+                    res.data.forEach(item => {
+                        if (!lookup[item.deal_id]) lookup[item.deal_id] = {};
+                        lookup[item.deal_id][item.side] = {
+                            sender_id: item.sender_id,
+                            created_at: item.created_at
+                        };
+                    });
+                    setLastMessages(lookup);
+                }
+            } catch (e) {
+                console.error('Error fetching chat summaries:', e);
+            }
+        };
+        fetchLastMessages();
+        const iv = setInterval(fetchLastMessages, 12000);
+        return () => {
+            isMounted = false;
+            clearInterval(iv);
+        };
+    }, [user]);
 
     const formatPriceInput = (val) => {
         const digits = val.replace(/\D/g, '');
@@ -416,7 +452,7 @@ export function DealsPage() {
         setShowForm(true);
     }
 
-    function DealCard({ deal }) {
+    function DealCard({ deal, lastMessages = {}, setLastMessages }) {
         const sellerIds = parsePgArray(deal.seller_ids);
         const buyerIds = parsePgArray(deal.buyer_ids);
         const sellers = state.clients.filter(c => (sellerIds.length > 0 ? sellerIds : (deal.seller_id ? [deal.seller_id] : [])).includes(c.id));
@@ -429,6 +465,24 @@ export function DealsPage() {
         const sellerExpenses = expenses.filter(e => e.payer === 'seller');
         const buyerExpenses = expenses.filter(e => e.payer === 'buyer');
         const property = state.properties.find(p => p.id === deal.property_id);
+
+        const hasSellerUnread = useMemo(() => {
+            const info = lastMessages[deal.id]?.seller;
+            if (!info) return false;
+            if (info.sender_id === user?.id) return false;
+            const lastRead = localStorage.getItem(`last_viewed_chat_${deal.id}_seller`);
+            if (!lastRead) return true;
+            return new Date(info.created_at) > new Date(lastRead);
+        }, [lastMessages, deal.id, user?.id]);
+
+        const hasBuyerUnread = useMemo(() => {
+            const info = lastMessages[deal.id]?.buyer;
+            if (!info) return false;
+            if (info.sender_id === user?.id) return false;
+            const lastRead = localStorage.getItem(`last_viewed_chat_${deal.id}_buyer`);
+            if (!lastRead) return true;
+            return new Date(info.created_at) > new Date(lastRead);
+        }, [lastMessages, deal.id, user?.id]);
 
         // Chat state — null | 'seller' | 'buyer'
         const [openChat, setOpenChat] = useState(null);
@@ -688,30 +742,72 @@ export function DealsPage() {
                 {/* ── Chat toggle buttons ── */}
                 <div style={{ display: 'flex', gap: 8 }}>
                     <button
-                        onClick={() => setOpenChat(openChat === 'seller' ? null : 'seller')}
+                        onClick={() => {
+                            const next = openChat === 'seller' ? null : 'seller';
+                            setOpenChat(next);
+                            if (next) {
+                                localStorage.setItem(`last_viewed_chat_${deal.id}_seller`, new Date().toISOString());
+                                setLastMessages(prev => {
+                                    const copy = { ...prev };
+                                    if (copy[deal.id]?.seller) {
+                                        copy[deal.id].seller = { ...copy[deal.id].seller, created_at: new Date(0).toISOString() };
+                                    }
+                                    return copy;
+                                });
+                            }
+                        }}
                         style={{
                             flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'seller' ? '#8b5cf6' : 'rgba(139,92,246,0.25)'}`,
                             background: openChat === 'seller' ? 'rgba(139,92,246,0.1)' : 'transparent',
                             color: '#8b5cf6', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
-                            transition: 'all 0.2s',
+                            transition: 'all 0.2s', position: 'relative'
                         }}
                     >
                         <MessageSquare size={14} />
                         Чат продавца
+                        {hasSellerUnread && (
+                            <span style={{
+                                position: 'absolute', top: 4, right: 6,
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: '#ef4444',
+                                boxShadow: '0 0 0 2px var(--surface)'
+                            }} />
+                        )}
                     </button>
                     <button
-                        onClick={() => setOpenChat(openChat === 'buyer' ? null : 'buyer')}
+                        onClick={() => {
+                            const next = openChat === 'buyer' ? null : 'buyer';
+                            setOpenChat(next);
+                            if (next) {
+                                localStorage.setItem(`last_viewed_chat_${deal.id}_buyer`, new Date().toISOString());
+                                setLastMessages(prev => {
+                                    const copy = { ...prev };
+                                    if (copy[deal.id]?.buyer) {
+                                        copy[deal.id].buyer = { ...copy[deal.id].buyer, created_at: new Date(0).toISOString() };
+                                    }
+                                    return copy;
+                                });
+                            }
+                        }}
                         style={{
                             flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'buyer' ? 'var(--primary)' : 'rgba(0,82,255,0.2)'}`,
                             background: openChat === 'buyer' ? 'var(--primary-light)' : 'transparent',
                             color: 'var(--primary)', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
                             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
-                            transition: 'all 0.2s',
+                            transition: 'all 0.2s', position: 'relative'
                         }}
                     >
                         <MessageSquare size={14} />
                         Чат покупателя
+                        {hasBuyerUnread && (
+                            <span style={{
+                                position: 'absolute', top: 4, right: 6,
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: '#ef4444',
+                                boxShadow: '0 0 0 2px var(--surface)'
+                            }} />
+                        )}
                     </button>
                 </div>
 
@@ -1121,7 +1217,7 @@ export function DealsPage() {
                             <div className="font-oswald" style={{ fontSize: 16, fontWeight: 300, color: 'var(--text-muted)' }}>Сделок не найдено</div>
                         </div>
                     ) : (
-                        filteredDeals.map(d => <DealCard key={d.id} deal={d} />)
+                        filteredDeals.map(d => <DealCard key={d.id} deal={d} lastMessages={lastMessages} setLastMessages={setLastMessages} />)
                     )}
                 </div>
             </div>
