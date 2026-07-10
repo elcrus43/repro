@@ -533,6 +533,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         dealData.seller_agent_id = action.deal.seller_agent_id || null;
         dealData.buyer_agent_id =  action.deal.buyer_agent_id || null;
 
+        // expenses must be JSON string for Neon jsonb column (raw array breaks)
+        if (Array.isArray(dealData.expenses)) dealData.expenses = JSON.stringify(dealData.expenses);
         Object.keys(dealData).forEach(key => { if (dealData[key] === undefined) delete dealData[key]; });
         result = await neonDb.insert('deals', dealData);
         break;
@@ -567,6 +569,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         updateData.seller_agent_id = action.deal.seller_agent_id || null;
         updateData.buyer_agent_id =  action.deal.buyer_agent_id || null;
 
+        // expenses must be JSON string for Neon jsonb column (raw array breaks)
+        if (Array.isArray(updateData.expenses)) updateData.expenses = JSON.stringify(updateData.expenses);
         Object.keys(updateData).forEach(key => { if (updateData[key] === undefined) delete updateData[key]; });
         result = await neonDb.update('deals', dId, updateData);
         break;
