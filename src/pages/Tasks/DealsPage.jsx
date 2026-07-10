@@ -625,15 +625,9 @@ export function DealsPage() {
             <div className="card" style={{ padding: '18px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.04)', background: 'var(--surface)', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* ── Header: Title + Status ── */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 2, lineHeight: 1.2 }}>{deal.title}</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)', fontWeight: 300 }}>
-                            <Calendar size={12} />
-                            {deal.deal_date
-                                ? `${new Date(deal.deal_date).toLocaleDateString('ru-RU')} ${new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-                                : 'Дата не назначена'}
-                        </div>
+                        <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 0, lineHeight: 1.2 }}>{deal.title}</div>
                     </div>
                     <span style={{
                         padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, flexShrink: 0, marginLeft: 10,
