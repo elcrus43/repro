@@ -641,8 +641,8 @@ export function DealsPage() {
                                 <span style={{ fontWeight: 500, color: 'var(--text)' }}>
                                     {Number(deal.deposit_amount).toLocaleString()} ₽
                                     {deal.deposit_date && (
-                                        <span style={{ color: 'var(--text-muted)', fontWeight: 300, marginLeft: 6 }}>
-                                            до {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                        <span style={{ color: 'var(--text)', fontWeight: 600, marginLeft: 6 }}>
+                                            {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     )}
                                 </span>
