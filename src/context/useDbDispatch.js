@@ -123,7 +123,7 @@ export function useDbDispatch(state, dispatch, onError) {
           : stateRef.current.matches;
         enhancedAction.task = action.customTask
           ? { ...action.customTask, id: action.customTask.id || nanoid(), created_at: now, realtor_id: sh.realtor_id }
-          : _buildShowingTask(sh, now);
+          : _buildShowingTask(sh, stateRef.current, now);
         break;
       }
 
@@ -382,12 +382,12 @@ const EVENT_TYPE_TITLES = {
   call: 'Звонок'
 };
 
-function _buildShowingTask(sh, now) {
+function _buildShowingTask(sh, state, now) {
   const label = EVENT_TYPE_TITLES[sh.event_type] || 'Показ';
-  const client = stateRef.current.clients?.find(c => String(c.id) === String(sh.client_id || (sh.client_ids || [])[0]));
+  const client = state?.clients?.find(c => String(c.id) === String(sh.client_id || (sh.client_ids || [])[0]));
   const clientName = client?.full_name || sh.contact_name || '';
   const withText = clientName ? ` — ${clientName}` : '';
-  const realtorId = sh.realtor_id || stateRef.current.currentUser?.id || client?.realtor_id || 'user-1';
+  const realtorId = sh.realtor_id || state?.currentUser?.id || client?.realtor_id || 'user-1';
   return {
     id: nanoid(),
     realtor_id: realtorId,

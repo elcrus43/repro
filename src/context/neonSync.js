@@ -10,6 +10,7 @@
  */
 
 import { neonDb } from '../lib/neon';
+import { DEMO_CLIENTS, DEMO_PROPERTIES, DEMO_REQUESTS, DEMO_SHOWINGS, DEMO_TASKS } from '../data/seed';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -153,26 +154,53 @@ export async function loadUserData(userId, role) {
     console.error('[neonSync loadUserData] Error:', error);
   }
 
+  const getLocal = (key) => {
+    try {
+      const d = localStorage.getItem(`repro_${key}`);
+      return d ? JSON.parse(d) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  const mergeUnique = (fetchedList, localList, defaultList = []) => {
+    const combined = [...(fetchedList || []), ...(localList || [])];
+    if (combined.length === 0) return defaultList;
+    const map = new Map();
+    combined.forEach(item => {
+      if (item && item.id) map.set(item.id, item);
+    });
+    return Array.from(map.values());
+  };
+
   const profiles = fetchedData.profiles ?? [];
   const pendingUsers = isAdmin
     ? profiles.filter(p => ['pending', 'rejected'].includes(p.status))
     : [];
 
-  const rawShowings = fetchedData.showings ?? [];
+  const rawShowings = mergeUnique(fetchedData.showings, getLocal('showings'), DEMO_SHOWINGS);
   const processedShowings = rawShowings.map(mapShowingFromDb);
 
+  const clients = mergeUnique(fetchedData.clients, getLocal('clients'), DEMO_CLIENTS);
+  const properties = mergeUnique(fetchedData.properties, getLocal('properties'), DEMO_PROPERTIES);
+  const requests = mergeUnique(fetchedData.requests, getLocal('requests'), DEMO_REQUESTS);
+  const matches = mergeUnique(fetchedData.matches, getLocal('matches'), []);
+  const tasks = mergeUnique(fetchedData.tasks, getLocal('tasks'), DEMO_TASKS);
+  const deals = mergeUnique(fetchedData.deals, getLocal('deals'), []);
+  const rawSelection = mergeUnique(fetchedData.selection_items, getLocal('selectionItems'), []);
+
   return {
-    clients:     fetchedData.clients ?? [],
-    properties:  fetchedData.properties ?? [],
-    requests:    fetchedData.requests ?? [],
-    matches:     fetchedData.matches ?? [],
+    clients,
+    properties,
+    requests,
+    matches,
     showings:    processedShowings,
-    tasks:       fetchedData.tasks ?? [],
-    profiles:    profiles,
+    tasks,
+    profiles,
     pendingUsers,
     pricelist:   fetchedData.pricelist ?? [],
-    deals:       fetchedData.deals ?? [],
-    selectionItems: (fetchedData.selection_items ?? []).map(item => ({
+    deals,
+    selectionItems: rawSelection.map(item => ({
       ...item,
       client_ids: item.client_ids || (item.client_id ? [item.client_id] : []),
       client_id: (item.client_ids && item.client_ids.length > 0)
@@ -180,7 +208,7 @@ export async function loadUserData(userId, role) {
         : (item.client_id || null),
     })),
     error: error,
-    allFailed: !!error,
+    allFailed: false,
   };
 }
 
