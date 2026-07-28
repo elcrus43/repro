@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -83,6 +83,8 @@ export function DealsPage() {
         lawyer_id: prefillData.lawyer_id || '',
         seller_agent_id: prefillData.seller_agent_id || '',
         buyer_agent_id: prefillData.buyer_agent_id || '',
+        handover_date: prefillData.handover_date || '',
+        handover_amount: prefillData.handover_amount || '',
     });
 
     const prevPropertyId = useRef(newDeal.property_id);
@@ -359,6 +361,8 @@ export function DealsPage() {
             }, 0),
             deal_date: newDeal.deal_date ? parseLocalDateTime(newDeal.deal_date)?.toISOString() : null,
             deposit_date: newDeal.deposit_date ? parseLocalDateTime(newDeal.deposit_date)?.toISOString() : null,
+            handover_date: newDeal.handover_date ? parseLocalDateTime(newDeal.handover_date)?.toISOString() : null,
+            handover_amount: Number(parsePriceInput(String(newDeal.handover_amount))) || 0,
             status: newDeal.status || 'active',
             mortgage: newDeal.mortgage || false,
             mortgage_bank: newDeal.mortgage_bank || '',
@@ -412,7 +416,9 @@ export function DealsPage() {
             lawyer: '', 
             lawyer_id: '', 
             seller_agent_id: '', 
-            buyer_agent_id: meAgent ? meAgent.id : '' 
+            buyer_agent_id: meAgent ? meAgent.id : '',
+            handover_date: '',
+            handover_amount: '' 
         });
         prevPropertyId.current = '';
     }
@@ -451,6 +457,8 @@ export function DealsPage() {
             lawyer_id: deal.lawyer_id || '',
             seller_agent_id: deal.seller_agent_id || '',
             buyer_agent_id: deal.buyer_agent_id || '',
+            handover_date: deal.handover_date ? toLocalISOString(deal.handover_date) : '',
+            handover_amount: deal.handover_amount ? deal.handover_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
         });
         prevPropertyId.current = deal.property_id;
         setShowForm(true);
@@ -668,6 +676,17 @@ export function DealsPage() {
                             <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.deal_date} onChange={e => handleFieldChange('deal_date', e.target.value)} />
                         </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата передачи объекта</label>
+                                <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.handover_date} onChange={e => handleFieldChange('handover_date', e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Стоимость передачи</label>
+                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.handover_amount} onChange={e => handleFieldChange('handover_amount', formatPriceInput(e.target.value))} />
+                            </div>
+                        </div>
+
                         <div className="form-group">
                             <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Юрист по сделке</label>
                             <select
@@ -789,6 +808,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
     const sellerExpenses = expenses.filter(e => e.payer === 'seller');
     const buyerExpenses = expenses.filter(e => e.payer === 'buyer');
     const property = state.properties.find(p => p.id === deal.property_id);
+    const propertyAddress = property?.address || property?.city || null;
+    const isAddressInTitle = propertyAddress && deal.title?.toLowerCase().includes(propertyAddress.toLowerCase());
 
     const hasSellerUnread = useMemo(() => {
         const info = lastMessages[deal.id]?.seller;
@@ -948,30 +969,47 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
     return (
         <div className="card" style={{ padding: '18px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.04)', background: 'var(--surface)', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-            {/* ── Header: Title + Status ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* ── Header: Title + Status + Compact Meta (Price, Lawyer, Property if not in title) ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 0, lineHeight: 1.2 }}>{deal.title}</div>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 14px', marginTop: 6 }}>
+                        {Number(deal.price) > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300 }}>Цена:</span>
+                                <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                    {Number(deal.price).toLocaleString()} ₽
+                                </span>
+                            </div>
+                        )}
+                        {lawyerName && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Scale size={11} color="#f59e0b" />
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300 }}>Юрист:</span>
+                                <span
+                                    style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default', textDecoration: lawyer ? 'underline' : 'none' }}
+                                    onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
+                                >
+                                    {lawyerName}
+                                </span>
+                            </div>
+                        )}
+                        {propertyAddress && !isAddressInTitle && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <Home size={11} color="var(--primary)" />
+                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>
+                                    {propertyAddress}
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
                 <span style={{
                     padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, flexShrink: 0, marginLeft: 10,
                     background: cfg.bg, color: cfg.color,
                 }}>{cfg.label}</span>
             </div>
-
-            {/* ── Price row ── */}
-            <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 300, marginBottom: 2 }}>Цена объекта</div>
-                <div className="font-oswald" style={{ fontSize: 18, fontWeight: 600 }}>{Number(deal.price).toLocaleString()} ₽</div>
-            </div>
-
-            {/* ── Property ── */}
-            {property && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(0,82,255,0.04)', borderRadius: 14, border: '1px solid rgba(0,82,255,0.08)' }}>
-                    <Home size={16} color="var(--primary)" />
-                    <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)' }}>{property.address || property.city}</div>
-                </div>
-            )}
 
             {/* ── Seller + Buyer mini-cards ── */}
             {(sellers.length > 0 || buyers.length > 0) && (
@@ -998,7 +1036,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             )}
 
             {/* ── Dates & Events card ── */}
-            {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || lawyerName || deal.mortgage) && (
+            {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || deal.handover_date || deal.mortgage) && (
                 <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.04)', borderRadius: 16, border: '1px solid rgba(245,158,11,0.15)', display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                         <Calendar size={12} color="var(--warning)" />
@@ -1031,17 +1069,19 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             </span>
                         </div>
                     )}
-                    {lawyerName && (
+                    {deal.handover_date && (
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
                             <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                <Scale size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#f59e0b" />
-                                Юрист
+                                <Home size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--primary)" />
+                                Передача объекта
                             </span>
-                            <span
-                                style={{ fontWeight: 500, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default' }}
-                                onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
-                            >
-                                {lawyerName}
+                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>
+                                {new Date(deal.handover_date).toLocaleDateString('ru-RU')} {new Date(deal.handover_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                {deal.handover_amount > 0 && (
+                                    <span style={{ color: 'var(--text)', fontWeight: 600, marginLeft: 6 }}>
+                                        · {Number(deal.handover_amount).toLocaleString()} ₽
+                                    </span>
+                                )}
                             </span>
                         </div>
                     )}
@@ -1058,7 +1098,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             )}
 
             {/* ── Chat toggle buttons ── */}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button
                     onClick={() => {
                         const next = openChat === 'seller' ? null : 'seller';
@@ -1094,6 +1134,25 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     )}
                 </button>
                 <button
+                    type="button"
+                    title="Скопировать ссылку на чат продавца"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const link = `${window.location.origin}/#/chat/${deal.id}/seller`;
+                        navigator.clipboard.writeText(link)
+                            .then(() => toast.success('Ссылка на чат продавца скопирована!'))
+                            .catch(() => toast.error('Не удалось скопировать'));
+                    }}
+                    style={{
+                        width: 38, height: 38, borderRadius: 12, border: '1.5px solid rgba(139,92,246,0.25)',
+                        background: 'transparent', color: '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', flexShrink: 0
+                    }}
+                >
+                    <Share2 size={14} />
+                </button>
+
+                <button
                     onClick={() => {
                         const next = openChat === 'buyer' ? null : 'buyer';
                         setOpenChat(next);
@@ -1126,6 +1185,24 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             boxShadow: '0 0 0 2px var(--surface)'
                         }} />
                     )}
+                </button>
+                <button
+                    type="button"
+                    title="Скопировать ссылку на чат покупателя"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const link = `${window.location.origin}/#/chat/${deal.id}/buyer`;
+                        navigator.clipboard.writeText(link)
+                            .then(() => toast.success('Ссылка на чат покупателя скопирована!'))
+                            .catch(() => toast.error('Не удалось скопировать'));
+                    }}
+                    style={{
+                        width: 38, height: 38, borderRadius: 12, border: '1.5px solid rgba(0,82,255,0.2)',
+                        background: 'transparent', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', flexShrink: 0
+                    }}
+                >
+                    <Share2 size={14} />
                 </button>
             </div>
 

@@ -22,7 +22,7 @@ import {
 
 const EVENT_TYPE_LABELS = {
   showing: 'Показ',
-  meeting: 'Встреча с собственником',
+  meeting: 'Встреча',
   viewing: 'Подбор',
   deposit: 'Задаток',
   deal: 'Сделка',
@@ -83,15 +83,16 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   const date = item.due_date || item.showing_date || item.deal_date;
   // Заголовок: "Тип события: Адрес объекта" или "Тип события: дата" если адреса нет
   const eventTypeLabel = EVENT_TYPE_LABELS[item.event_type] || 'Событие';
+  const clientName = item._clientName || item.contact_name || '';
   const defaultTitle = isShowing
     ? item.event_type === 'viewing'
-      ? 'Тип события: Объект подбора'
+      ? 'Подбор'
       : item._propertyAddress
-      ? `${eventTypeLabel}: ${item._propertyAddress}`
-      : `${eventTypeLabel}${item.showing_date ? ': ' + new Date(item.showing_date).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}`
+      ? `${eventTypeLabel}: ${item._propertyAddress}${clientName ? ' (' + clientName + ')' : ''}`
+      : `${eventTypeLabel}${clientName ? ' — ' + clientName : ''}`
     : isDeal
     ? `Сделка: ${item.title || ''}`
-    : `Задача: ${item.title || (item.due_date ? new Date(item.due_date).toLocaleDateString('ru-RU') : '')}`;
+    : `Задача: ${item.title || ''}`;
   const title = isDeal ? `Сделка: ${item.title || ''}` : (item.title || defaultTitle);
   
   // Описание события — дата + адрес + заметки

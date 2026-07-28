@@ -7,7 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquare, RefreshCw, AlertCircle } from 'lucide-react';
+import { Send, MessageSquare, RefreshCw, AlertCircle, Share2, Check } from 'lucide-react';
 import { useDealChat } from '../hooks/useDealChat';
 
 const ROLE_CONFIG = {
@@ -98,7 +98,7 @@ function ChatMessage({ msg, isOwn }) {
         }}>
           {msg.text}
         </div>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', paddingLeft: 4, paddingRight: 4 }}>
+        <span style={{ fontSize: 9, color: 'var(--text-muted)', padding: '0 4px' }}>
           {msg._pending ? 'Отправка...' : formatMsgTime(msg.created_at)}
         </span>
       </div>
@@ -109,6 +109,7 @@ function ChatMessage({ msg, isOwn }) {
 export function DealChat({ dealId, side, currentUser, title, accentColor }) {
   const { messages, loading, sending, error, sendMessage, refetch } = useDealChat(dealId, side);
   const [text, setText] = useState('');
+  const [copied, setCopied] = useState(false);
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
 
@@ -130,10 +131,20 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
     setText('');
     await sendMessage({
       text: trimmed,
-      senderId:   currentUser.id,
-      senderName: currentUser.full_name || currentUser.name || 'Риелтор',
-      senderRole: 'realtor',
+      senderId:   currentUser?.id || 'guest',
+      senderName: currentUser?.full_name || currentUser?.name || 'Пользователь',
+      senderRole: currentUser?.role || 'realtor',
     });
+  }
+
+  function handleCopyShareLink() {
+    const shareUrl = `${window.location.origin}/#/chat/${dealId}/${side}`;
+    navigator.clipboard.writeText(shareUrl)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2500);
+      })
+      .catch(() => {});
   }
 
   function handleKeyDown(e) {
@@ -169,13 +180,29 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
             </span>
           )}
         </div>
-        <button
-          onClick={refetch}
-          style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: `${accentColor}15`, color: accentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
-          title="Обновить"
-        >
-          <RefreshCw size={12} />
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button
+            onClick={handleCopyShareLink}
+            style={{
+              height: 26, padding: '0 8px', borderRadius: 8, border: 'none',
+              background: copied ? 'var(--success-light, rgba(16,185,129,0.15))' : `${accentColor}15`,
+              color: copied ? '#10b981' : accentColor,
+              display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+              fontSize: 10, fontWeight: 600, transition: 'all 0.2s'
+            }}
+            title="Скопировать публичную ссылку для клиента"
+          >
+            {copied ? <Check size={12} /> : <Share2 size={12} />}
+            <span>{copied ? 'Скопировано!' : 'Ссылка'}</span>
+          </button>
+          <button
+            onClick={refetch}
+            style={{ width: 26, height: 26, borderRadius: 8, border: 'none', background: `${accentColor}15`, color: accentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            title="Обновить"
+          >
+            <RefreshCw size={12} />
+          </button>
+        </div>
       </div>
 
       {/* Messages */}

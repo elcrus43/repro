@@ -39,6 +39,7 @@ const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
 const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
 const RemindersPage = lazy(() => import('./pages/Tasks/RemindersPage'));
 const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m => ({ default: m.SelectionFormPage })));
+const PublicChatPage = lazy(() => import('./pages/Messaging/PublicChatPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 
 /* ─── BottomNav ────────────────────────────────────────────────────────────── */
@@ -65,7 +66,6 @@ function BottomNav() {
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
-    { path: '/matches', icon: <Sparkles size={22} />, label: 'Совпадения', badge: newMatchCount > 0 },
     { path: '/history', icon: <History size={22} />, label: 'История' },
     { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
     { path: '/reminders', icon: <Bell size={22} />, label: 'Задачи', badge: overdueTasksCount > 0 },
@@ -257,7 +257,7 @@ function RequireAuth({ children }) {
 
 function AppLayout({ children }) {
   const { pathname } = useLocation();
-  const noNav = ['/login', '/register', '/auth/callback', '/update-password', '/compare', '/documents'].includes(pathname) || pathname.startsWith('/p/') || pathname.startsWith('/c/');
+  const noNav = ['/login', '/register', '/auth/callback', '/update-password', '/compare', '/documents'].includes(pathname) || pathname.startsWith('/p/') || pathname.startsWith('/c/') || pathname.startsWith('/chat/');
 
   return (
     <div className="app-layout">
@@ -328,6 +328,7 @@ function AppRoutes() {
           <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
           <Route path="/p/:slug" element={<PublicPropertyPage />} />
           <Route path="/c/:token" element={<PublicClientPage />} />
+          <Route path="/chat/:dealId/:side" element={<PublicChatPage />} />
           <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
           <Route path="/debug" element={<DebugPage />} />

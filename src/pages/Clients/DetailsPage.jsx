@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, stripPhone, formatNumber } from '../../utils/format';
-import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText } from 'lucide-react';
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../../utils/format';
+import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
+import { nanoid } from '../../utils/nanoid';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
@@ -16,6 +17,13 @@ export function DetailsPage() {
     const { toast } = useToastContext();
     const client = state.clients.find(c => c.id === id);
     const [isEditingTypes, setIsEditingTypes] = useState(false);
+    const [quickModalType, setQuickModalType] = useState(null); // null | 'meeting' | 'call'
+    const [quickForm, setQuickForm] = useState({
+        showing_date: '',
+        property_id: '',
+        status: 'planned',
+        feedback_comment: '',
+    });
 
     if (!client) return (
         <div className="page">
@@ -60,7 +68,8 @@ export function DetailsPage() {
 
     // Показы / звонки клиента
     const myShowings = state.showings.filter(s =>
-        s.client_id === id || (s.client_ids || []).includes(id)
+        (s.client_id && String(s.client_id) === String(id)) ||
+        (Array.isArray(s.client_ids) && s.client_ids.some(cid => String(cid) === String(id)))
     ).sort((a, b) => new Date(b.showing_date) - new Date(a.showing_date));
 
     const totalCommission = myDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
@@ -100,7 +109,68 @@ export function DetailsPage() {
     const dealStatusLabel  = { active: 'Активна', closed: 'Закрыта', cancelled: 'Отменена' };
     const dealStatusColor  = { active: 'var(--primary)', closed: '#10b981', cancelled: 'var(--danger)' };
 
+    const eventTypeLabels = {
+        showing: 'Показ',
+        meeting: 'Встреча',
+        viewing: 'Подбор',
+        deposit: 'Задаток',
+        deal: 'Сделка',
+        call: 'Звонок'
+    };
+
     /* ─── Обработчики ───────────────────────────────── */
+    function openQuickModal(type) {
+        const nextHour = new Date(Date.now() + 60 * 60 * 1000);
+        setQuickForm({
+            showing_date: toLocalISOString(nextHour),
+            property_id: '',
+            status: 'planned',
+            feedback_comment: '',
+        });
+        setQuickModalType(type);
+    }
+
+    function handleQuickSubmit(e) {
+        e.preventDefault();
+        if (!quickForm.showing_date) {
+            toast.error('Укажите дату и время');
+            return;
+        }
+        let dateIso = null;
+        const parsedDate = parseLocalDateTime(quickForm.showing_date);
+        if (parsedDate && !isNaN(parsedDate.getTime())) {
+            dateIso = parsedDate.toISOString();
+        } else {
+            const fallbackDate = new Date(quickForm.showing_date);
+            if (!isNaN(fallbackDate.getTime())) {
+                dateIso = fallbackDate.toISOString();
+            }
+        }
+
+        if (!dateIso) {
+            toast.error('Некорректная дата');
+            return;
+        }
+
+        const eventTitle = quickModalType === 'meeting' ? 'Встреча' : 'Звонок';
+        const newShowing = {
+            id: nanoid(),
+            realtor_id: state.currentUser?.id || client?.realtor_id || null,
+            client_id: id,
+            client_ids: [id],
+            property_id: quickForm.property_id || null,
+            showing_date: dateIso,
+            status: quickForm.status || 'planned',
+            event_type: quickModalType,
+            feedback_comment: quickForm.feedback_comment ? quickForm.feedback_comment.trim() : (quickModalType === 'call' ? `Звонок клиенту ${client.full_name}` : `Встреча с клиентом ${client.full_name}`),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
+
+        dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+        toast.success(`${eventTitle} добавлена в календарь!`);
+        setQuickModalType(null);
+    }
     function handleStatusChange(newStatus) {
         if (newStatus === client.status) return;
         const updatedClient = { ...client, status: newStatus };
@@ -421,15 +491,87 @@ export function DetailsPage() {
                 {/* ── Последняя активность ──────────────────────────── */}
                 {!client.client_types?.includes('lawyer') && (
                     <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
                             <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Последняя активность</div>
-                            <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)}><Plus size={18} /></button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <button
+                                    className="card-clickable"
+                                    onClick={() => openQuickModal('meeting')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 5,
+                                        padding: '6px 12px', borderRadius: 12, border: 'none',
+                                        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                                        color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                                        boxShadow: '0 2px 8px rgba(139, 92, 246, 0.25)'
+                                    }}
+                                    title="Быстро добавить встречу"
+                                >
+                                    <Calendar size={14} /> + Встреча
+                                </button>
+                                <button
+                                    className="card-clickable"
+                                    onClick={() => openQuickModal('call')}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 5,
+                                        padding: '6px 12px', borderRadius: 12, border: 'none',
+                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                        color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                                        boxShadow: '0 2px 8px rgba(59, 130, 246, 0.25)'
+                                    }}
+                                    title="Быстро добавить звонок"
+                                >
+                                    <Phone size={14} /> + Звонок
+                                </button>
+                                <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)} title="Добавить другое событие" style={{ width: 32, height: 32, borderRadius: 10 }}>
+                                    <Plus size={16} />
+                                </button>
+                            </div>
                         </div>
 
-                        {activeProperties.length === 0 && myRequests.length === 0 && allMatches.length === 0 ? (
+                        {activeProperties.length === 0 && myRequests.length === 0 && allMatches.length === 0 && myShowings.length === 0 ? (
                             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, opacity: 0.6 }}>Активности пока нет</div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+                                {/* События / Встречи / Звонки / Показы */}
+                                {myShowings.map(s => {
+                                    const prop = state.properties.find(p => p.id === s.property_id);
+                                    const isCall = s.event_type === 'call';
+                                    const isMeeting = s.event_type === 'meeting';
+                                    const iconBg = isCall ? '#eff6ff' : isMeeting ? '#f5f3ff' : '#ecfdf5';
+                                    const iconColor = isCall ? '#3b82f6' : isMeeting ? '#8b5cf6' : '#10b981';
+                                    const IconComp = isCall ? Phone : (isMeeting ? Calendar : Home);
+                                    const dateStr = s.showing_date ? new Date(s.showing_date).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+                                    const typeTitle = eventTypeLabels[s.event_type] || 'Событие';
+                                    const statusText = getEventStatusLabel(s.event_type, s.status);
+
+                                    return (
+                                        <div key={s.id} className="card-clickable" onClick={() => navigate(`/history`)}
+                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
+                                                    <IconComp size={16} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <div style={{ fontSize: 10, fontWeight: 300, color: iconColor }}>
+                                                            {typeTitle} · {statusText}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>
+                                                        {dateStr ? dateStr : 'Дата не указана'} {prop ? `(${prop.address || prop.city})` : ''}
+                                                    </div>
+                                                    {s.feedback_comment && (
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>
+                                                            {s.feedback_comment}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} color="var(--text-muted)" />
+                                        </div>
+                                    );
+                                })}
 
                                 {/* Объекты в продаже (все статусы кроме sold/deal_closed) */}
                                 {activeProperties.map(p => {
@@ -501,6 +643,132 @@ export function DetailsPage() {
                                 })}
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* ── Модальное окно быстрого создания встречи/звонка ── */}
+                {quickModalType && (
+                    <div
+                        className="modal-overlay fade-in"
+                        onClick={() => setQuickModalType(null)}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'var(--modal-bg, rgba(0,0,0,0.5))',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2000,
+                            padding: 16
+                        }}
+                    >
+                        <div
+                            className="modal-content fade-up"
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'var(--surface)',
+                                borderRadius: 24,
+                                padding: 24,
+                                width: '100%',
+                                maxWidth: 440,
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+                                border: '1px solid var(--border-light)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        width: 40, height: 40, borderRadius: 12,
+                                        background: quickModalType === 'meeting' ? '#f5f3ff' : '#eff6ff',
+                                        color: quickModalType === 'meeting' ? '#8b5cf6' : '#3b82f6',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        {quickModalType === 'meeting' ? <Calendar size={20} /> : <Phone size={20} />}
+                                    </div>
+                                    <div>
+                                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                            {quickModalType === 'meeting' ? 'Запланировать встречу' : 'Запланировать звонок'}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setQuickModalType(null)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleQuickSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Дата и время *
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        className="form-input"
+                                        required
+                                        value={quickForm.showing_date}
+                                        onChange={e => setQuickForm({ ...quickForm, showing_date: e.target.value })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    />
+                                </div>
+
+
+
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Статус
+                                    </label>
+                                    <select
+                                        className="form-select"
+                                        value={quickForm.status}
+                                        onChange={e => setQuickForm({ ...quickForm, status: e.target.value })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    >
+                                        <option value="planned">Запланировано</option>
+                                        <option value="completed">{quickModalType === 'meeting' ? 'Состоялась' : 'Совершен'}</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Комментарий / Заметка
+                                    </label>
+                                    <textarea
+                                        className="form-textarea"
+                                        rows={3}
+                                        placeholder={quickModalType === 'meeting' ? 'Тема или детали встречи...' : 'Заметка к звонку...'}
+                                        value={quickForm.feedback_comment}
+                                        onChange={e => setQuickForm({ ...quickForm, feedback_comment: e.target.value })}
+                                        style={{ width: '100%', borderRadius: 14, border: '1px solid var(--border-light)', padding: '10px 14px', background: 'var(--bg-light)', color: 'var(--text)', resize: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuickModalType(null)}
+                                        style={{ flex: 1, height: 46, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
+                                    >
+                                        Отмена
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        style={{
+                                            flex: 1.5, height: 46, borderRadius: 14, border: 'none',
+                                            background: quickModalType === 'meeting' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                            color: '#fff', fontWeight: 600, cursor: 'pointer',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                        }}
+                                    >
+                                        Добавить в календарь
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
 

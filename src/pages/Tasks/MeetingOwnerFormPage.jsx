@@ -32,7 +32,7 @@ export function MeetingOwnerFormPage() {
         status: 'pending',
         priority: 'high',
         description: '',
-        task_type: 'Встреча с собственником',
+        task_type: 'Встреча',
         realtor_id: state.currentUser?.id
     });
 
@@ -74,12 +74,12 @@ export function MeetingOwnerFormPage() {
             realtor_id: state.currentUser?.id,
             client_id: form.client_id,
             property_id: form.property_id || null,
-            title: `Встреча с собственником — ${state.clients.find(c => c.id === form.client_id)?.full_name || ''}`,
+            title: `Встреча — ${state.clients.find(c => c.id === form.client_id)?.full_name || ''}`,
             description: form.description || '',
             due_date: parseLocalDateTime(form.due_date)?.toISOString() || new Date().toISOString(),
             status: form.status,
             priority: form.priority,
-            task_type: 'Встреча с собственником',
+            task_type: 'Встреча',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
         };

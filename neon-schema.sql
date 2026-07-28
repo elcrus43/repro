@@ -287,6 +287,10 @@ CREATE TABLE IF NOT EXISTS deals (
   -- Юрист
   lawyer          TEXT,
 
+  -- Передача объекта
+  handover_date   TIMESTAMPTZ,
+  handover_amount NUMERIC DEFAULT 0,
+
   -- Расходы (мигр. 040)
   expenses        JSONB DEFAULT '[]',
 
@@ -336,6 +340,18 @@ CREATE TABLE IF NOT EXISTS app_errors (
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ─── TABLE: deal_messages ─────────────────────────────────────
+CREATE TABLE IF NOT EXISTS deal_messages (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  deal_id     UUID NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+  side        TEXT NOT NULL CHECK (side IN ('seller', 'buyer')),
+  sender_id   UUID REFERENCES profiles(id),
+  sender_name TEXT NOT NULL,
+  sender_role TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ═══════════════════════════════════════════════════════════════
 -- ИНДЕКСЫ
 -- ═══════════════════════════════════════════════════════════════
@@ -369,6 +385,7 @@ CREATE INDEX IF NOT EXISTS idx_deals_realtor_id       ON deals(realtor_id);
 CREATE INDEX IF NOT EXISTS idx_deals_status           ON deals(status);
 CREATE INDEX IF NOT EXISTS idx_deals_deal_date        ON deals(deal_date);
 CREATE INDEX IF NOT EXISTS idx_deals_deposit_date     ON deals(deposit_date);
+CREATE INDEX IF NOT EXISTS idx_deals_handover_date    ON deals(handover_date);
 
 CREATE INDEX IF NOT EXISTS idx_selection_items_realtor_id ON selection_items(realtor_id);
 CREATE INDEX IF NOT EXISTS idx_selection_items_client_id  ON selection_items(client_id);

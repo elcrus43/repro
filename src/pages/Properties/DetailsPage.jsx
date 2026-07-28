@@ -530,7 +530,7 @@ export function DetailsPage() {
     // Unified history from showings with event_type
     const eventTypeLabels = {
         showing: 'Показ',
-        meeting: 'Встреча с собственником',
+        meeting: 'Встреча',
         viewing: 'Просмотр',
         deposit: 'Задаток',
         deal: 'Сделка',

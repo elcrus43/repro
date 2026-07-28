@@ -114,7 +114,7 @@ export function TasksPage() {
 
     const myClients = state.clients.filter(c => (user?.role === 'admin' || c.realtor_id === user?.id) && c.status === 'active');
 
-    const TASK_TYPES = ['Позвонить', 'Встреча с собственником', 'Показ', 'Задаток', 'Сделка', 'Другое'];
+    const TASK_TYPES = ['Позвонить', 'Встреча', 'Показ', 'Задаток', 'Сделка', 'Другое'];
 
     function handleFieldChange(field, value) {
         setNewTask(prev => {

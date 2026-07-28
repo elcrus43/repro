@@ -24,19 +24,9 @@ export function sanitizeObj(obj) {
     return sanitizeObj(item);
   });
 
-  const UUID_FIELDS = new Set(['id', 'client_id', 'realtor_id', 'property_id', 'request_id']);
-  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
   const sanitized = { ...obj };
   Object.keys(sanitized).forEach(key => {
     const val = sanitized[key];
-
-    if (UUID_FIELDS.has(key) && key !== 'id' &&
-        typeof val === 'string' && val.length > 0 && !UUID_RE.test(val)) {
-      console.warn(`[Neon] Stripping invalid UUID for field ${key}:`, val);
-      sanitized[key] = null;
-      return;
-    }
 
     if (val === '') {
       sanitized[key] = null;
@@ -511,7 +501,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
           'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
-          'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id'
+          'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
+          'handover_date', 'handover_amount'
         ];
         const dealData = {};
         VALID_DEAL_COLUMNS.forEach(col => {
@@ -520,6 +511,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         dealData.deal_date =      dealData.deal_date || null;
         dealData.deposit_date =   dealData.deposit_date || null;
         dealData.deposit_amount = dealData.deposit_amount || 0;
+        dealData.handover_date =  dealData.handover_date || null;
+        dealData.handover_amount = dealData.handover_amount || 0;
         dealData.seller_ids =     dealData.seller_ids || [];
         dealData.buyer_ids =      dealData.buyer_ids || [];
         dealData.notes =          dealData.notes || null;
@@ -547,7 +540,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
           'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
-          'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id'
+          'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
+          'handover_date', 'handover_amount'
         ];
         const updateData = {};
         VALID_DEAL_COLUMNS.forEach(col => {
@@ -556,6 +550,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         updateData.deal_date =      updateData.deal_date || null;
         updateData.deposit_date =   updateData.deposit_date || null;
         updateData.deposit_amount = updateData.deposit_amount ?? 0;
+        updateData.handover_date =  updateData.handover_date || null;
+        updateData.handover_amount = updateData.handover_amount ?? 0;
         updateData.seller_ids =     updateData.seller_ids || [];
         updateData.buyer_ids =      updateData.buyer_ids || [];
         updateData.notes =          updateData.notes || null;

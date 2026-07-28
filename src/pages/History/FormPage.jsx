@@ -232,10 +232,26 @@ export function FormPage() {
             return;
         }
 
+        let dateIso = null;
+        const parsedDate = parseLocalDateTime(form.showing_date);
+        if (parsedDate && !isNaN(parsedDate.getTime())) {
+            dateIso = parsedDate.toISOString();
+        } else {
+            const fallbackDate = new Date(form.showing_date);
+            if (!isNaN(fallbackDate.getTime())) dateIso = fallbackDate.toISOString();
+        }
+
+        if (!dateIso) {
+            toast.error('Некорректная дата');
+            return;
+        }
+
         const showing = {
             ...form,
+            realtor_id: form.realtor_id || state.currentUser?.id || null,
             client_id: form.client_ids[0],
-            showing_date: parseLocalDateTime(form.showing_date)?.toISOString()
+            property_id: form.property_id || null,
+            showing_date: dateIso
         };
 
         if (editId) {
@@ -313,7 +329,8 @@ export function FormPage() {
                             <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Тип события</label>
                             <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value, property_id: '' })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                 <option value="showing">Показ</option>
-                                <option value="meeting">Встреча с собственником</option>
+                                <option value="meeting">Встреча</option>
+                                <option value="call">Звонок</option>
                                 <option value="viewing">Подбор</option>
                                 <option value="deposit">Задаток</option>
                                 <option value="deal">Сделка</option>
@@ -567,7 +584,7 @@ export function FormPage() {
                                     </button>
                                 </div>
                             ) : (
-                                <select className="form-select" value={form.property_id} onChange={e => setForm({ ...form, property_id: e.target.value })} required={form.event_type !== 'viewing'} disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
+                                <select className="form-select" value={form.property_id || ''} onChange={e => setForm({ ...form, property_id: e.target.value })} disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
                                     <option value="">— Выбрать объект —</option>
                                     {form.event_type === 'viewing' ? (
                                         allSelectionItems.map(p => (

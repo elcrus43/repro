@@ -28,7 +28,7 @@ export function ListPage() {
         call: 'Звонок'
     };
 
-    const myShowings = state.showings.filter(s => user?.role === 'admin' || s.realtor_id === user?.id);
+    const myShowings = state.showings.filter(s => !user?.id || user?.role === 'admin' || s.realtor_id === user?.id || !s.realtor_id);
 
     // Calendar logic
     const now = new Date();
@@ -477,8 +477,10 @@ export function ListPage() {
                                                     color: s.status === 'completed' ? '#059669' : s.status === 'failed' ? '#dc2626' : '#94a3b8'
                                                 }}>{getEventStatusLabel(s.event_type, s.status)}</div>
                                             </div>
-                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>{prop?.address || 'Без объекта'}</div>
-                                            <div style={{ fontSize: 12, color: '#000000', fontWeight: 200 }}>{clientNames || '—'}</div>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 2 }}>
+                                                {eventTypeLabels[s.event_type] || 'Событие'}{clientNames ? ` — ${clientNames}` : ''}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 300 }}>{prop?.address || 'Объект не указан'}</div>
                                         </div>
                                     </div>
                                 );

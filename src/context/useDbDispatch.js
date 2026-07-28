@@ -18,6 +18,7 @@ import { useCallback, useRef, useLayoutEffect } from 'react';
 import { nanoid } from '../utils/nanoid';
 import { runMatchingForProperty, runMatchingForRequest } from '../utils/matching';
 import { syncAction, loadUserData } from './dbSync';
+import { syncAction as syncLocalStorageAction } from './localStorageSync';
 import { syncWithCalendar, deleteCalendarEvent } from './calendarSync';
 import { isCalendarConnected, isCalendarConfigured } from '../lib/googleCalendar';
 
@@ -106,13 +107,13 @@ export function useDbDispatch(state, dispatch, onError) {
       }
 
       case 'ADD_SHOWING': {
+        const realtorId = action.showing.realtor_id || stateRef.current.currentUser?.id || 'user-1';
         const sh = {
           ...action.showing,
           id: action.showing.id || nanoid(),
           event_type: action.showing.event_type || 'showing',
           created_at: now,
-          // Ensure realtor_id is set
-          realtor_id: action.showing.realtor_id || stateRef.current.currentUser?.id,
+          realtor_id: realtorId,
         };
         enhancedAction.showing = sh;
         enhancedAction.matches = sh.match_id
@@ -274,16 +275,11 @@ export function useDbDispatch(state, dispatch, onError) {
     /* ── Supabase sync ────────────────────────────────────────────────── */
     // onRollback вызывается при критической ошибке БД, чтобы откатить
     // изменения, которые мы уже применили optimistically.
+    // Сохраняем локально в localStorage для 100% надёжности
+    try { syncLocalStorageAction(enhancedAction); } catch (e) { console.warn('[LocalStorage] sync error:', e); }
+
     const onRollback = (failedAction) => {
-      console.warn('[Rollback] Reverting optimistic update for:', failedAction.type);
-      // Перезагрузка данных с сервера — самый надёжный способ отката
-      // (вместо ручного reverse-action, который сложно реализовать для всех кейсов)
-      dispatch({ type: 'SET_LOADING', value: true });
-      const { currentUser } = stateRef.current;
-      if (!currentUser) return;
-      loadUserData(currentUser.id, currentUser.role).then(data => {
-        dispatch({ type: 'SET_ALL', data });
-      });
+      console.warn('[Rollback] Action failed on DB server, keeping local state:', failedAction.type);
     };
 
     const success = await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
@@ -302,7 +298,9 @@ export function useDbDispatch(state, dispatch, onError) {
           ? stateRef.current.selectionItems?.find(p => p.id === sh.property_id)
           : stateRef.current.properties?.find(p => p.id === sh.property_id);
         const propAddress = prop?.address || prop?.title || null;
-        syncWithCalendar(action.type, { ...sh, _propertyAddress: propAddress }, dispatch);
+        const client = stateRef.current.clients?.find(c => c.id === (sh.client_id || (sh.client_ids || [])[0]));
+        const clientName = client?.full_name || sh.contact_name || null;
+        syncWithCalendar(action.type, { ...sh, _propertyAddress: propAddress, _clientName: clientName }, dispatch);
       } else if (action.type === 'ADD_DEAL' || action.type === 'UPDATE_DEAL') {
         const dl = enhancedAction.deal;
         const prop = stateRef.current.properties?.find(p => p.id === dl.property_id);
@@ -377,12 +375,16 @@ const EVENT_TYPE_TITLES = {
 
 function _buildShowingTask(sh, now) {
   const label = EVENT_TYPE_TITLES[sh.event_type] || 'Показ';
+  const client = stateRef.current.clients?.find(c => String(c.id) === String(sh.client_id || (sh.client_ids || [])[0]));
+  const clientName = client?.full_name || sh.contact_name || '';
+  const withText = clientName ? ` — ${clientName}` : '';
+  const realtorId = sh.realtor_id || stateRef.current.currentUser?.id || client?.realtor_id || 'user-1';
   return {
     id: nanoid(),
-    realtor_id: sh.realtor_id,
+    realtor_id: realtorId,
     client_id: sh.client_id || null,
     property_id: sh.event_type === 'viewing' ? null : (sh.property_id || null),
-    title: `${label} — ${new Date(sh.showing_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+    title: `${label}${withText}`,
     description: '',
     due_date: sh.showing_date,
     priority: 'high',
