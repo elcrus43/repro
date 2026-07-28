@@ -321,8 +321,15 @@ export function useDbDispatch(state, dispatch, onError) {
           : action.type === 'DELETE_SHOWING'
           ? stateRef.current.showings
           : stateRef.current.deals;
-        const item = items.find(i => i.id === action.id);
+        const item = items?.find(i => i.id === action.id);
         deleteCalendarEvent(item, dispatch);
+
+        if (action.type === 'DELETE_SHOWING' && item) {
+          const associatedTask = stateRef.current.tasks?.find(t => t.due_date === item.showing_date && (t.client_id === item.client_id || t.title?.includes(item.event_type)));
+          if (associatedTask?.google_event_id) {
+            deleteCalendarEvent(associatedTask, dispatch);
+          }
+        }
       }
     } else if (isCalendarConfigured() && !isCalendarConnected()) {
       console.info('[Google Calendar Sync] Skipped — user not connected (token expired or not set)');

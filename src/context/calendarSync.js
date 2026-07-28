@@ -33,6 +33,18 @@ const backend = import.meta.env.VITE_BACKEND || 'neon';
 const isFirebase = backend === 'firebase';
 const isNeon = backend === 'neon';
 
+export function getRawGoogleEventId(googleEventId) {
+  if (!googleEventId || typeof googleEventId !== 'string') return null;
+  if (googleEventId.includes('::cal_id:')) {
+    const parts = googleEventId.split('::cal_id:');
+    return parts[1] || null;
+  }
+  if (googleEventId.startsWith('selection_prop_id:')) {
+    return null;
+  }
+  return googleEventId;
+}
+
 async function updateGoogleEventId(table, item, eventId) {
   const id = item.id;
   let dbEventId = eventId;
@@ -113,31 +125,33 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   }
   const description = descParts.join('\n');
 
+  const rawId = getRawGoogleEventId(item.google_event_id);
+
   // Нет даты и нет существующего события — ничего не делаем
-  if (!date && !item.google_event_id) {
+  if (!date && !rawId) {
     console.info('[Google Calendar Sync] No date and no existing event — skipping');
     return;
   }
 
-  console.info('[Google Calendar Sync] Starting sync:', { actionType, itemId: item.id, title, date, existingEventId: item.google_event_id });
+  console.info('[Google Calendar Sync] Starting sync:', { actionType, itemId: item.id, title, date, existingEventId: rawId });
 
   dispatch({ type: 'SET_CALENDAR_STATUS', status: 'loading' });
 
   try {
-    if (item.google_event_id && !date) {
+    if (rawId && !date) {
       // Дата убрана — удаляем событие из Calendar
-      console.info('[Google Calendar Sync] Deleting event:', item.google_event_id);
-      await deleteEventFromCalendar(item.google_event_id);
+      console.info('[Google Calendar Sync] Deleting event:', rawId);
+      await deleteEventFromCalendar(rawId);
       await updateGoogleEventId(table, item, null);
       dispatch({ type: updateType, [updateKey]: { ...item, google_event_id: null } });
 
-    } else if (item.google_event_id) {
-      // Событие уже есть — обновляем
-      console.info('[Google Calendar Sync] Updating event:', item.google_event_id);
-      await updateEventInCalendar(item.google_event_id, { title, description, startDateTime: date });
+    } else if (rawId) {
+      // Событие уже есть — обновляем в Google Календаре
+      console.info('[Google Calendar Sync] Updating event:', rawId);
+      await updateEventInCalendar(rawId, { title, description, startDateTime: date });
 
     } else if (date) {
-      // Нового события нет — создаём
+      // Нового события нет — создаём событие в Google Календаре
       console.info('[Google Calendar Sync] Creating new event:', { title, date });
       const calEvent = await addEventToCalendar({ title, description, startDateTime: date });
       console.info('[Google Calendar Sync] Event created:', calEvent);
@@ -166,12 +180,13 @@ export async function syncWithCalendar(actionType, item, dispatch) {
  * @param {function}         dispatch — диспатч для статуса
  */
 export async function deleteCalendarEvent(item, dispatch) {
-  if (!item?.google_event_id) return;
+  const rawId = getRawGoogleEventId(item?.google_event_id);
+  if (!rawId) return;
 
   dispatch({ type: 'SET_CALENDAR_STATUS', status: 'loading' });
 
   try {
-    await deleteEventFromCalendar(item.google_event_id);
+    await deleteEventFromCalendar(rawId);
     dispatch({ type: 'SET_CALENDAR_STATUS', status: 'ok' });
     setTimeout(() => dispatch({ type: 'SET_CALENDAR_STATUS', status: null }), 3000);
   } catch (err) {
