@@ -271,6 +271,15 @@ export function useDbDispatch(state, dispatch, onError) {
       const nextSelection = (stateRef.current.selectionItems || []).filter(i => i.id !== enhancedAction.id);
       stateRef.current = { ...stateRef.current, selectionItems: nextSelection };
     }
+    if (enhancedAction.type === 'ADD_SHOWING') {
+      const nextShowings = [...(stateRef.current.showings || []), enhancedAction.showing];
+      const nextTasks = enhancedAction.task ? [...(stateRef.current.tasks || []), enhancedAction.task] : stateRef.current.tasks;
+      stateRef.current = { ...stateRef.current, showings: nextShowings, tasks: nextTasks };
+    }
+    if (enhancedAction.type === 'UPDATE_SHOWING') {
+      const nextShowings = (stateRef.current.showings || []).map(s => s.id === enhancedAction.showing.id ? enhancedAction.showing : s);
+      stateRef.current = { ...stateRef.current, showings: nextShowings };
+    }
 
     /* ── Supabase sync ────────────────────────────────────────────────── */
     // onRollback вызывается при критической ошибке БД, чтобы откатить

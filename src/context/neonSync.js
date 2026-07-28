@@ -66,6 +66,21 @@ export function mapShowingFromDb(s) {
 export function mapShowingToDb(s) {
   if (!s) return s;
   const dbShowing = { ...s };
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  if (dbShowing.client_id && !UUID_RE.test(dbShowing.client_id)) {
+    dbShowing.client_id = null;
+  }
+  if (dbShowing.realtor_id && !UUID_RE.test(dbShowing.realtor_id)) {
+    dbShowing.realtor_id = null;
+  }
+  if (dbShowing.property_id && !UUID_RE.test(dbShowing.property_id)) {
+    dbShowing.property_id = null;
+  }
+  if (Array.isArray(dbShowing.client_ids)) {
+    dbShowing.client_ids = dbShowing.client_ids.filter(cid => UUID_RE.test(cid));
+  }
+
   if (dbShowing.event_type === 'viewing' && dbShowing.property_id) {
     const propId = dbShowing.property_id;
     dbShowing.property_id = null;
