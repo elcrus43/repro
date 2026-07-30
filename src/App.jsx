@@ -141,11 +141,9 @@ function LoadingScreen() {
   const [showRetry, setShowRetry] = React.useState(false);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => setShowRetry(true), 8000);
+    const timer = setTimeout(() => setShowRetry(true), 5000);
     return () => clearTimeout(timer);
   }, []);
-
-  if (!showRetry) return null;
 
   return (
     <div className="loading-screen" style={{

@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   
   return {
-    base: './',
+    base: '/',
     plugins: [
       react(),
       {
@@ -80,25 +80,9 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       target: 'es2020',
-      minify: 'terser',
-      cssMinify: 'esbuild',
-      // Удаление console.log/console.debug из продакшен-билда
-      terserOptions: {
-        compress: {
-          drop_console: ['log', 'debug'],
-          drop_debugger: true,
-        }
-      },
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'vendor': ['react', 'react-dom', 'react-router-dom'],
-            'docx': ['docxtemplater', 'pizzip', 'file-saver'],
-            'xlsx': ['xlsx']
-          }
-        }
-      },
-      chunkSizeWarningLimit: 500
+      minify: false,
+      cssMinify: true,
+      chunkSizeWarningLimit: 2000
     }
   }
 })

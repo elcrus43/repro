@@ -9,7 +9,6 @@ import {
 import { formatNumber } from '../utils/format';
 import { estimateOffline } from '../utils/estimation';
 import { API_BASE } from '../config';
-import * as XLSX from 'xlsx';
 import { nanoid } from '../utils/nanoid';
 import { RENOVATION_LABELS, BUILDING_TYPES } from '../data/constants';
 
@@ -275,7 +274,8 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         });
     };
 
-    const downloadPresentation = () => {
+    const downloadPresentation = async () => {
+        const XLSX = await import('xlsx');
         const wb = XLSX.utils.book_new();
         const propData = [
             ["ПАРАМЕТР", "ЗНАЧЕНИЕ"],

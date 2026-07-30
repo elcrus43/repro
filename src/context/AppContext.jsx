@@ -272,9 +272,9 @@ export function AppProvider({ children }) {
       dispatch({ type: 'SET_LOADING', value: true });
 
       const hardTimeout = setTimeout(() => {
-        console.warn('[Auth Hard Timeout] Force-stopping loader after 45s.');
+        console.warn('[Auth Hard Timeout] Force-stopping loader after 5s.');
         dispatch({ type: 'SET_LOADING', value: false });
-      }, 45000);
+      }, 5000);
 
       try {
         const sessionTimeout = setTimeout(() => {
