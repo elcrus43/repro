@@ -97,9 +97,12 @@ export function ProfilePage() {
         if (outcome === 'accepted') setDeferredPrompt(null);
     }
 
-    const handleSave = () => {
-        dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
-        setIsEditing(false);
+    const handleSave = async () => {
+        const ok = await dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
+        if (ok !== false) {
+            toast.success('Профиль сохранён');
+            setIsEditing(false);
+        }
     };
 
     const handleConnectCalendar = () => {

@@ -306,9 +306,8 @@ export function useDbDispatch(state, dispatch, onError) {
 
     const success = await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
 
-    /* ── Cache invalidation for client updates ───────────────────────────── */
-    // After a successful client update, refresh the AppContext cache so the next
-    // reload doesn't restore stale client data from the 12h cache.
+    /* ── Cache invalidation for client & profile updates ─────────────────── */
+    // After a successful client or profile update, refresh local cache/session
     if (success && (enhancedAction.type === 'UPDATE_CLIENT' || enhancedAction.type === 'ADD_CLIENT' || enhancedAction.type === 'DELETE_CLIENT')) {
       try {
         const userId = stateRef.current.currentUser?.id;
@@ -335,6 +334,21 @@ export function useDbDispatch(state, dispatch, onError) {
         }
       } catch (e) {
         console.warn('[Cache] Failed to update client in cache:', e);
+      }
+    }
+
+    if (success && enhancedAction.type === 'UPDATE_PROFILE') {
+      try {
+        const rawSession = localStorage.getItem('neon_session');
+        if (rawSession) {
+          const parsed = JSON.parse(rawSession);
+          if (parsed?.user) {
+            parsed.user = { ...parsed.user, ...enhancedAction.profile };
+            localStorage.setItem('neon_session', JSON.stringify(parsed));
+          }
+        }
+      } catch (e) {
+        console.warn('[Session Cache] Failed to update user in neon_session:', e);
       }
     }
 
