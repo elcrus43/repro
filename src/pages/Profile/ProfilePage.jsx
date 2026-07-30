@@ -347,47 +347,41 @@ export function ProfilePage() {
             </div>
 
             <div className="page-content" style={{ padding: '20px', gap: 24, paddingBottom: 120 }}>
-                {/* Profile Header Card */}
-            <div className="card" style={{ padding: '20px 20px', borderRadius: 24, textAlign: 'center', position: 'relative', overflow: 'hidden', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }}>
-                    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 60, background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', opacity: 0.07 }} />
-                    
-                    <div style={{ position: 'relative', zIndex: 1 }}>
-
-                        {isEditing ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
-                                <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
-                                <input
-                                    className="form-input"
-                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
-                                    value={editData.phone || ''}
-                                    type="tel"
-                                    onChange={e => setEditData({ ...editData, phone: formatPhone(e.target.value, true) })}
-                                    placeholder="+7 (___) ___-__-__"
-                                />
-                                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                                    <button className="btn btn-secondary" style={{ flex: 1, borderRadius: 12 }} onClick={() => setIsEditing(false)}>Отмена</button>
-                                    <button className="btn btn-primary" style={{ flex: 1, borderRadius: 12 }} onClick={handleSave}>Сохранить</button>
-                                </div>
+                {/* Profile Header */}
+                {isEditing ? (
+                    <div className="card" style={{ padding: '16px', borderRadius: 20, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
+                            <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
+                            <input
+                                className="form-input"
+                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
+                                value={editData.phone || ''}
+                                type="tel"
+                                onChange={e => setEditData({ ...editData, phone: formatPhone(e.target.value, true) })}
+                                placeholder="+7 (___) ___-__-__"
+                            />
+                            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+                                <button className="btn btn-secondary" style={{ flex: 1, borderRadius: 12 }} onClick={() => setIsEditing(false)}>Отмена</button>
+                                <button className="btn btn-primary" style={{ flex: 1, borderRadius: 12 }} onClick={handleSave}>Сохранить</button>
                             </div>
-                        ) : (
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 4px' }}>
+                        <span className="font-oswald" style={{ fontSize: 16, fontWeight: 400, color: 'var(--text)', whiteSpace: 'nowrap' }}>{user.full_name}</span>
+                        <span style={{ color: 'var(--border)', fontSize: 14 }}>·</span>
+                        <span style={{ fontSize: 13, fontWeight: 300, color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                            {user.role === 'admin' ? 'Администратор' : 'Риэлтор'}
+                        </span>
+                        {user.agency_name && (
                             <>
-                                <h2 className="font-oswald" style={{ fontSize: 22, fontWeight: 300, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 6 }}>{user.full_name}</h2>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 8 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--primary)' }}>
-                                        {user.role === 'admin' ? 'Администратор' : 'Риэлтор'}
-                                    </div>
-                                    {user.agency_name && (
-                                        <div style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                            <Building2 size={12} /> {user.agency_name}
-                                        </div>
-                                    )}
-                                </div>
-                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, fontWeight: 200 }}>{user.email} • {user.phone}</div>
+                                <span style={{ color: 'var(--border)', fontSize: 14 }}>·</span>
+                                <span style={{ fontSize: 13, fontWeight: 300, color: 'var(--text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.agency_name}</span>
                             </>
                         )}
                     </div>
-                </div>
+                )}
 
 
                 {/* Settings Menu */}
