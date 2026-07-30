@@ -99,7 +99,7 @@ export function FormPage() {
     useEffect(() => {
         const clean = stripPhone(form.contact_phone);
         if (clean && clean.length >= 10) {
-            const found = state.clients.find(c => {
+            const found = (state.clients || []).find(c => {
                 const cleanTarget = stripPhone(c.phone);
                 const cleanPhones = (c.phones || []).map(p => stripPhone(p));
                 return cleanTarget === clean || cleanPhones.includes(clean);
@@ -136,7 +136,7 @@ export function FormPage() {
             // Auto-save contact as client in database if filled
             const cleanContactPhone = stripPhone(form.contact_phone);
             if (form.contact_name?.trim() && cleanContactPhone) {
-                const found = state.clients.find(c => {
+                const found = (state.clients || []).find(c => {
                     const cleanTarget = stripPhone(c.phone);
                     const cleanPhones = (c.phones || []).map(p => stripPhone(p));
                     return cleanTarget === cleanContactPhone || cleanPhones.includes(cleanContactPhone);

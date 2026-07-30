@@ -14,12 +14,12 @@ export function MultiClientSelector({ selectedIds = [], onChange, clients = [], 
     const [search, setSearch] = useState('');
     const ref = useRef(null);
 
-    const filtered = clients.filter(c =>
-        c.full_name.toLowerCase().includes(search.toLowerCase()) ||
-        (c.phone && c.phone.includes(search))
+    const filtered = (clients || []).filter(c =>
+        c && ((c.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (c.phone && String(c.phone).includes(search)))
     );
 
-    const selectedClients = clients.filter(c => selectedIds.includes(c.id));
+    const selectedClients = (clients || []).filter(c => c && selectedIds.includes(c.id));
 
     useEffect(() => {
         if (!isOpen) setSearch('');
@@ -64,7 +64,7 @@ export function MultiClientSelector({ selectedIds = [], onChange, clients = [], 
                             background: 'var(--primary-light)', color: 'var(--primary)',
                             padding: '4px 8px', borderRadius: 6, fontSize: 13, fontWeight: 600
                         }}>
-                            {c.full_name}
+                            {c.full_name || 'Без имени'}
                             <X size={14} style={{ cursor: 'pointer' }} onClick={(e) => { e.stopPropagation(); toggle(c.id); }} />
                         </span>
                     ))
@@ -123,7 +123,7 @@ export function MultiClientSelector({ selectedIds = [], onChange, clients = [], 
                                         {isSelected && <Check size={12} color="white" />}
                                     </div>
                                     <div style={{ flex: 1 }}>
-                                        <div style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400, color: 'var(--text)' }}>{c.full_name}</div>
+                                        <div style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400, color: 'var(--text)' }}>{c.full_name || 'Без имени'}</div>
                                         {c.phone && <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{c.phone}</div>}
                                     </div>
                                 </div>
