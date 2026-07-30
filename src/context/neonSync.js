@@ -181,7 +181,22 @@ export async function loadUserData(userId, role) {
   const rawShowings = mergeUnique(fetchedData.showings, getLocal('showings'), DEMO_SHOWINGS);
   const processedShowings = rawShowings.map(mapShowingFromDb);
 
-  const clients = mergeUnique(fetchedData.clients, getLocal('clients'), DEMO_CLIENTS);
+  const rawClients = mergeUnique(fetchedData.clients, getLocal('clients'), DEMO_CLIENTS);
+  const clients = rawClients.map(c => {
+    let addContacts = c.additional_contacts;
+    if (typeof addContacts === 'string') {
+      try { addContacts = JSON.parse(addContacts); } catch { addContacts = []; }
+    }
+    let passport = c.passport_details;
+    if (typeof passport === 'string') {
+      try { passport = JSON.parse(passport); } catch { passport = {}; }
+    }
+    return {
+      ...c,
+      additional_contacts: Array.isArray(addContacts) ? addContacts : [],
+      passport_details: passport || {}
+    };
+  });
   const properties = mergeUnique(fetchedData.properties, getLocal('properties'), DEMO_PROPERTIES);
   const requests = mergeUnique(fetchedData.requests, getLocal('requests'), DEMO_REQUESTS);
   const matches = mergeUnique(fetchedData.matches, getLocal('matches'), []);
@@ -256,18 +271,18 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       /* ── Клиенты ──────────────────────────────────────────── */
       case 'ADD_CLIENT': {
         const clientData = {
-          realtor_id: action.client.realtor_id,
+          realtor_id: action.client.realtor_id || currentUser?.id,
           full_name: action.client.full_name || '',
           phone: action.client.phone || (action.client.phones && action.client.phones[0]) || '',
           phone_2: (action.client.phones && action.client.phones.length > 1) ? action.client.phones[1] : (action.client.phone_2 || ''),
           email: action.client.email || null,
           messenger: action.client.messenger || null,
           client_types: action.client.client_types || ['buyer'],
-          additional_contacts: action.client.additional_contacts || [],
+          additional_contacts: action.client.additional_contacts ? (typeof action.client.additional_contacts === 'string' ? action.client.additional_contacts : JSON.stringify(action.client.additional_contacts)) : '[]',
           source: action.client.source || null,
           status: action.client.status || 'active',
           notes: action.client.notes || null,
-          passport_details: action.client.passport_details || null,
+          passport_details: action.client.passport_details ? (typeof action.client.passport_details === 'string' ? action.client.passport_details : JSON.stringify(action.client.passport_details)) : null,
         };
         if (action.client.id) clientData.id = action.client.id;
         if (action.client.created_at) clientData.created_at = action.client.created_at;
@@ -280,18 +295,18 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       case 'UPDATE_CLIENT': {
         const { id: cId } = action.client;
         const normalizedData = {
-          realtor_id: action.client.realtor_id,
+          realtor_id: action.client.realtor_id || currentUser?.id,
           full_name: action.client.full_name || '',
           phone: action.client.phone || (action.client.phones && action.client.phones[0]) || '',
           phone_2: (action.client.phones && action.client.phones.length > 1) ? action.client.phones[1] : (action.client.phone_2 || ''),
           email: action.client.email || null,
           messenger: action.client.messenger || null,
           client_types: action.client.client_types || ['buyer'],
-          additional_contacts: action.client.additional_contacts || [],
+          additional_contacts: action.client.additional_contacts ? (typeof action.client.additional_contacts === 'string' ? action.client.additional_contacts : JSON.stringify(action.client.additional_contacts)) : '[]',
           source: action.client.source || null,
           status: action.client.status || 'active',
           notes: action.client.notes || null,
-          passport_details: action.client.passport_details || null,
+          passport_details: action.client.passport_details ? (typeof action.client.passport_details === 'string' ? action.client.passport_details : JSON.stringify(action.client.passport_details)) : null,
         };
         if (action.client.created_at) normalizedData.created_at = action.client.created_at;
         if (action.client.updated_at) normalizedData.updated_at = action.client.updated_at;
