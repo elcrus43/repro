@@ -389,35 +389,20 @@ export function ProfilePage() {
                     </div>
                 </div>
 
-                {/* Performance Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                    <div className="card" style={{ padding: '24px 20px', borderRadius: 28, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'var(--surface)' }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em', marginBottom: 4 }}>Конверсия</div>
-                        <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--text)' }}>{conversion}%</div>
-                        <div style={{ height: 4, background: 'var(--bg-light)', borderRadius: 2, marginTop: 12 }}>
-                            <div style={{ width: `${conversion}%`, height: '100%', background: 'var(--primary)', borderRadius: 2 }} />
-                        </div>
-                    </div>
-                    <div className="card" style={{ padding: '24px 20px', borderRadius: 28, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'var(--surface)' }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em', marginBottom: 4 }}>Сделки</div>
-                        <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, color: 'var(--success)' }}>{deals}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 8, fontWeight: 300 }}>За всё время</div>
-                    </div>
-                </div>
 
                 {/* Settings Menu */}
                 <div className="card" style={{ padding: 8, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
                     {menuItems.map((item, i) => (
                         <button key={item.label} onClick={item.action} style={{
-                            display: 'flex', alignItems: 'center', gap: 16, width: '100%', padding: '16px 20px',
+                            display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '10px 16px',
                             border: 'none', background: 'none', cursor: 'pointer',
-                            borderRadius: 20,
-                            marginBottom: i < menuItems.length - 1 ? 4 : 0,
-                            textAlign: 'left', fontSize: 15, color: 'var(--text)',
+                            borderRadius: 16,
+                            marginBottom: i < menuItems.length - 1 ? 2 : 0,
+                            textAlign: 'left', fontSize: 14, color: 'var(--text)',
                             transition: 'background 0.2s'
                         }} className="card-clickable">
                             <span style={{ 
-                                width: 40, height: 40, borderRadius: 12, 
+                                width: 32, height: 32, borderRadius: 10, 
                                 background: 'var(--bg-light)', color: 'var(--text)', 
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.8
                             }}>{item.icon}</span>
