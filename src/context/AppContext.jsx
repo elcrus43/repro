@@ -89,18 +89,10 @@ export function AppProvider({ children }) {
     const allFailed = data.allFailed;
 
     if (allFailed) {
-      console.warn('[Data Load] All queries failed, retrying in 3s...', data.error);
-      if (!cached) dispatch({ type: 'SET_LOADING', value: true });
-      await new Promise(r => setTimeout(r, 3000));
-      const retryData = await loadUserData(sessionUser.id, sessionUser.role);
-      if (retryData.error) {
-        console.warn('[Data Load] Retry also failed:', retryData.error);
-        if (!cached) toast.error('Не удалось загрузить данные: ' + retryData.error);
-      } else {
-        console.log('[Data Load] Retry succeeded!');
-        setCachedData(sessionUser.id, retryData);
+      console.warn('[Data Load] All queries failed, serving from cache or seed data.', data.error);
+      if (!cached) {
+        dispatch({ type: 'SET_ALL', data });
       }
-      dispatch({ type: 'SET_ALL', data: retryData });
       return;
     }
 
@@ -268,22 +260,18 @@ export function AppProvider({ children }) {
       }
     }
 
+    // Глобальный страховочный таймаут вне init() — не может быть заблокирован await внутри init
+    const hardTimeout = setTimeout(() => {
+      console.warn('[Auth Hard Timeout] Force-stopping loader after 8s.');
+      dispatch({ type: 'SET_LOADING', value: false });
+    }, 8000);
+
     async function init() {
       dispatch({ type: 'SET_LOADING', value: true });
 
-      const hardTimeout = setTimeout(() => {
-        console.warn('[Auth Hard Timeout] Force-stopping loader after 5s.');
-        dispatch({ type: 'SET_LOADING', value: false });
-      }, 5000);
-
       try {
-        const sessionTimeout = setTimeout(() => {
-          console.warn('[Auth Timeout] Session retrieval took too long.');
-        }, 10000);
-
         console.log('[Auth Init] Getting session...');
         const { data: { session }, error: sessionErr } = await authService.getSession();
-        clearTimeout(sessionTimeout);
 
         if (sessionErr) console.error('[Auth Init] Session error:', sessionErr);
 
@@ -316,7 +304,10 @@ export function AppProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(hardTimeout);
+      subscription.unsubscribe();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

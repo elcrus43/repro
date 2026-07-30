@@ -48,16 +48,24 @@ function _loadSession() {
 /* ─── Auth API call ─────────────────────────────────────────── */
 
 async function _authRequest(body) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
   try {
     const res = await fetch(AUTH_API, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
+      signal:  controller.signal,
     });
     const json = await res.json();
     return json;
   } catch (err) {
+    if (err.name === 'AbortError') {
+      return { data: null, error: 'Превышено время ожидания (10с)' };
+    }
     return { data: null, error: err.message };
+  } finally {
+    clearTimeout(timeout);
   }
 }
 

@@ -44,6 +44,9 @@ async function request(sql, params = []) {
   const token  = getToken();
   const userId = getUserId();
 
+  const controller = new AbortController();
+  const fetchTimeout = setTimeout(() => controller.abort(), 12000);
+
   try {
     const headers = {
       'Content-Type': 'application/json',
@@ -56,6 +59,7 @@ async function request(sql, params = []) {
       method:  'POST',
       headers,
       body: JSON.stringify({ query: sql, params, userId }),
+      signal: controller.signal,
     });
 
     if (res.status === 401) {
@@ -69,8 +73,14 @@ async function request(sql, params = []) {
     return json;
 
   } catch (err) {
+    if (err.name === 'AbortError') {
+      console.error('[neonDb] Request timed out after 12s');
+      return { data: null, error: { message: 'Превышено время ожидания запроса (12с)', code: 'TIMEOUT' } };
+    }
     console.error('[neonDb] Fetch error:', err.message);
     return { data: null, error: { message: 'Сетевая ошибка: ' + err.message, code: 'NETWORK' } };
+  } finally {
+    clearTimeout(fetchTimeout);
   }
 }
 
