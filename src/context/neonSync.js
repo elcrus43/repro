@@ -281,7 +281,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         const { id: cId } = action.client;
         const normalizedData = {
           realtor_id: action.client.realtor_id,
-          full_name: action.client.full_name,
+          full_name: action.client.full_name || '',
           phone: action.client.phone || (action.client.phones && action.client.phones[0]) || '',
           phone_2: (action.client.phones && action.client.phones.length > 1) ? action.client.phones[1] : (action.client.phone_2 || ''),
           email: action.client.email || null,

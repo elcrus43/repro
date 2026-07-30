@@ -293,6 +293,38 @@ export function useDbDispatch(state, dispatch, onError) {
 
     const success = await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
 
+    /* ── Cache invalidation for client updates ───────────────────────────── */
+    // After a successful client update, refresh the AppContext cache so the next
+    // reload doesn't restore stale client data from the 12h cache.
+    if (success && (enhancedAction.type === 'UPDATE_CLIENT' || enhancedAction.type === 'ADD_CLIENT' || enhancedAction.type === 'DELETE_CLIENT')) {
+      try {
+        const userId = stateRef.current.currentUser?.id;
+        if (userId) {
+          const cacheKey = `rm_cache_${userId}`;
+          const raw = localStorage.getItem(cacheKey);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.data?.clients) {
+              if (enhancedAction.type === 'DELETE_CLIENT') {
+                parsed.data.clients = parsed.data.clients.filter(c => c.id !== enhancedAction.id);
+              } else {
+                const idx = parsed.data.clients.findIndex(c => c.id === enhancedAction.client.id);
+                if (idx >= 0) {
+                  parsed.data.clients[idx] = enhancedAction.client;
+                } else {
+                  parsed.data.clients.push(enhancedAction.client);
+                }
+              }
+              parsed.ts = Date.now();
+              localStorage.setItem(cacheKey, JSON.stringify(parsed));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Cache] Failed to update client in cache:', e);
+      }
+    }
+
     /* ── Google Calendar sync ─────────────────────────────────────────── */
     // Sync only if Google Calendar is configured AND the user has an active token.
     // Without an active token, requestAccessToken() would try to open a popup
