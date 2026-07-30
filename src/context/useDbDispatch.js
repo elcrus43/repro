@@ -403,11 +403,13 @@ export function useDbDispatch(state, dispatch, onError) {
 /* ─── Private helpers ──────────────────────────────────────────────────────── */
 
 function _buildPropertyMatches(prop, state, now) {
-  return runMatchingForProperty(prop, state.requests).map(m => {
-    const existing = state.matches.find(
+  const requests = state?.requests || [];
+  const matches  = state?.matches || [];
+  return runMatchingForProperty(prop, requests).map(m => {
+    const existing = matches.find(
       ex => ex.property_id === prop.id && ex.request_id === m.request_id
     );
-    const request = state.requests.find(r => r.id === m.request_id);
+    const request = requests.find(r => r.id === m.request_id);
     return {
       id: existing?.id || nanoid(),
       ...m,
@@ -422,8 +424,10 @@ function _buildPropertyMatches(prop, state, now) {
 }
 
 function _buildRequestMatches(req, state, now) {
-  return runMatchingForRequest(req, state.properties).map(m => {
-    const existing = state.matches.find(
+  const properties = state?.properties || [];
+  const matches    = state?.matches || [];
+  return runMatchingForRequest(req, properties).map(m => {
+    const existing = matches.find(
       ex => ex.request_id === req.id && ex.property_id === m.property_id
     );
     return {

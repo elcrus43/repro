@@ -250,16 +250,16 @@ export function FormPage() {
         if (importParam) {
             try {
                 const data = decodeImportData(importParam);
-                if (data) {
+                if (data && typeof data === 'object') {
                     setForm(f => ({
                         ...f,
                         address: data.address || data.title || '',
-                        price: data.price ? Number(data.price) : 0,
-                        area_total: data.area_total ? Number(data.area_total) : 0,
-                        rooms: data.rooms !== undefined ? data.rooms : 1,
-                        floor: data.floor ? Number(data.floor) : 1,
-                        floors_total: data.floors_total ? Number(data.floors_total) : 9,
-                        notes: `${data.description || ''}\n\nИсточник: ${data.source_url || ''}`.trim(),
+                        price: data.price ? (isNaN(Number(data.price)) ? 0 : Number(data.price)) : 0,
+                        area_total: data.area_total ? (isNaN(Number(data.area_total)) ? 0 : Number(data.area_total)) : 0,
+                        rooms: data.rooms !== undefined && data.rooms !== null ? (isNaN(Number(data.rooms)) ? 1 : Number(data.rooms)) : 1,
+                        floor: data.floor ? (isNaN(Number(data.floor)) ? 1 : Number(data.floor)) : 1,
+                        floors_total: data.floors_total ? (isNaN(Number(data.floors_total)) ? 9 : Number(data.floors_total)) : 9,
+                        notes: `${data.description || ''}\n\nИсточник: ${data.source_url || data.link || ''}`.trim(),
                     }));
                     toast.success('Данные успешно импортированы! Проверьте и сохраните.');
                 }

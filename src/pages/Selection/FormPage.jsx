@@ -66,22 +66,22 @@ export function FormPage() {
         if (importData) {
             try {
                 const data = decodeImportData(importData);
-                if (data) {
+                if (data && typeof data === 'object') {
                     setForm(f => ({
                         ...f,
                         address: data.address || data.title || '',
                         price: data.price ? (Number(String(data.price).replace(/\D/g, '')) || 0) : 0,
-                        rooms: data.rooms !== undefined ? Number(data.rooms) : 1,
-                        area_total: data.area_total ? Number(data.area_total) : '',
-                        floor: data.floor ? Number(data.floor) : '',
-                        floors_total: data.floors_total ? Number(data.floors_total) : '',
+                        rooms: data.rooms !== undefined && data.rooms !== null ? (isNaN(Number(data.rooms)) ? 1 : Number(data.rooms)) : 1,
+                        area_total: data.area_total ? (isNaN(Number(data.area_total)) ? '' : Number(data.area_total)) : '',
+                        floor: data.floor ? (isNaN(Number(data.floor)) ? '' : Number(data.floor)) : '',
+                        floors_total: data.floors_total ? (isNaN(Number(data.floors_total)) ? '' : Number(data.floors_total)) : '',
                         property_type: data.property_type || 'apartment',
                         link: data.link || data.url || '',
-                        images: data.images && data.images.length > 0 
+                        images: Array.isArray(data.images) && data.images.length > 0 
                             ? [data.images[0]] 
                             : (data.image 
                                 ? [data.image] 
-                                : (data.photos && data.photos.length > 0 ? [data.photos[0]] : []))
+                                : (Array.isArray(data.photos) && data.photos.length > 0 ? [data.photos[0]] : []))
                     }));
                     // Show toast only once per page load to avoid spam
                     if (!importToastShown.current) {

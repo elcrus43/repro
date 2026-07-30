@@ -17,11 +17,12 @@ export function ListPage() {
         if (!window.confirm('Импортировать этот объект подбора в активные объекты?')) return;
         
         try {
+            const currentUserId = user?.id || state.currentUser?.id;
             const notes = [item.notes, item.link ? `Ссылка: ${item.link}` : null]
                 .filter(Boolean).join('\n');
 
             const newProperty = {
-                realtor_id: user?.id,
+                realtor_id: currentUserId,
                 client_id: item.client_id || null,
                 client_ids: item.client_ids && item.client_ids.length > 0 ? item.client_ids : (item.client_id ? [item.client_id] : []),
                 status: 'meeting',
@@ -40,10 +41,11 @@ export function ListPage() {
                 contact_phone: item.contact_phone || null,
             };
 
-            await dispatch({ type: 'ADD_PROPERTY', property: newProperty });
-            await dispatch({ type: 'DELETE_SELECTION_ITEM', id: item.id });
-            
-            toast.success('Объект успешно импортирован в активные!');
+            const ok = await dispatch({ type: 'ADD_PROPERTY', property: newProperty });
+            if (ok !== false) {
+                await dispatch({ type: 'DELETE_SELECTION_ITEM', id: item.id });
+                toast.success('Объект успешно импортирован в активные!');
+            }
         } catch (err) {
             console.error('[Import Error]', err);
             toast.error('Не удалось импортировать объект: ' + err.message);
