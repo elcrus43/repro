@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star, Store, GraduationCap, Bus, User, Handshake, Copy, SlidersHorizontal
+    TrendingDown, Star, Store, GraduationCap, Bus, User, Handshake, Copy, SlidersHorizontal, ExternalLink
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -382,38 +382,99 @@ function NewBuildsSelection({ currentProp, allProperties, onNavigate }) {
         return !!p.residential_complex || !!p.developer || (p.build_year && p.build_year >= 2020) || (p.year_built && p.year_built >= 2020);
     }, []);
 
-    const selection = React.useMemo(() => {
-        const complex = currentProp.residential_complex?.trim();
-        if (complex) {
-            const sameComplex = allProperties.filter(p => 
-                p.id !== currentProp.id && 
-                p.residential_complex?.toLowerCase().trim() === complex.toLowerCase()
-            );
-            if (sameComplex.length > 0) return { title: `Объекты в ЖК «${complex}»`, items: sameComplex };
-        }
+    const [avitoAnalogs, setAvitoAnalogs] = useState([]);
+    const [loadingAvito, setLoadingAvito] = useState(false);
+    const [collapsed, setCollapsed] = useState(false);
+    const [activeTab, setActiveTab] = useState('all'); // 'all' | 'crm' | 'avito'
 
-        const city = currentProp.city?.trim();
-        const newBuilds = allProperties.filter(p => 
-            p.id !== currentProp.id && 
-            isNewBuild(p) &&
-            (!city || p.city?.toLowerCase().trim() === city.toLowerCase())
-        );
+    // Fetch Avito parser analogs on mount/prop change
+    React.useEffect(() => {
+        let isMounted = true;
+        const fetchAvitoAnalogs = async () => {
+            if (!currentProp) return;
+            setLoadingAvito(true);
+            try {
+                const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
+                const proxyUrl = isCapacitor ? `https://realtor-match.vercel.app/api/ai-proxy` : `/api/ai-proxy`;
+                
+                const res = await fetch(proxyUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'getNewBuildAnalogs',
+                        property: currentProp
+                    })
+                });
 
-        if (newBuilds.length > 0) {
-            return { title: 'Похожие новостройки', items: newBuilds.slice(0, 4) };
-        }
+                if (res.ok) {
+                    const json = await res.json();
+                    if (isMounted && Array.isArray(json)) {
+                        setAvitoAnalogs(json);
+                    }
+                }
+            } catch (err) {
+                console.error('[NewBuildsSelection] Error fetching Avito analogs:', err);
+            } finally {
+                if (isMounted) setLoadingAvito(false);
+            }
+        };
 
-        const generalNewBuilds = allProperties.filter(p => p.id !== currentProp.id && isNewBuild(p));
-        if (generalNewBuilds.length > 0) {
-            return { title: 'Новостройки в CRM', items: generalNewBuilds.slice(0, 4) };
-        }
+        fetchAvitoAnalogs();
+        return () => { isMounted = false; };
+    }, [currentProp]);
 
-        return null;
+    // Local CRM new builds
+    const crmNewBuilds = React.useMemo(() => {
+        if (!currentProp) return [];
+        const complex = currentProp.residential_complex?.trim().toLowerCase();
+        const city = currentProp.city?.trim().toLowerCase();
+
+        return allProperties.filter(p => {
+            if (p.id === currentProp.id) return false;
+            const pComplex = p.residential_complex?.trim().toLowerCase();
+            const pCity = p.city?.trim().toLowerCase();
+            
+            if (complex && pComplex === complex) return true;
+            if (city && pCity === city && isNewBuild(p)) return true;
+            return isNewBuild(p);
+        }).slice(0, 4).map(p => ({
+            ...p,
+            source: 'CRM',
+            price_per_sqm: p.area_total ? Math.round(Number(p.price) / parseFloat(p.area_total)) : null
+        }));
     }, [currentProp, allProperties, isNewBuild]);
 
-    const [collapsed, setCollapsed] = useState(true);
+    const combinedItems = React.useMemo(() => {
+        if (activeTab === 'crm') return crmNewBuilds;
+        if (activeTab === 'avito') return avitoAnalogs;
 
-    if (!selection) return null;
+        const crmIds = new Set(crmNewBuilds.map(i => i.id));
+        const filteredAvito = avitoAnalogs.filter(a => !crmIds.has(a.id));
+        return [...crmNewBuilds, ...filteredAvito];
+    }, [activeTab, crmNewBuilds, avitoAnalogs]);
+
+    const avitoCatalogUrl = React.useMemo(() => {
+        const cityLower = (currentProp?.city || '').toLowerCase().trim();
+        let citySlug = 'kirovskaya_oblast_kirov';
+        if (cityLower.includes('москв')) citySlug = 'moskva';
+        else if (cityLower.includes('петербург') || cityLower.includes('спб')) citySlug = 'sankt-peterburg';
+        else if (cityLower.includes('казан')) citySlug = 'kazan';
+        else if (cityLower.includes('краснодар')) citySlug = 'krasnodar';
+        else if (cityLower.includes('сочи')) citySlug = 'sochi';
+        else if (cityLower.includes('екатеринбург')) citySlug = 'ekaterinburg';
+        else if (cityLower.includes('новосибирск')) citySlug = 'novosibirsk';
+        else if (cityLower.includes('нижн')) citySlug = 'nizhniy_novgorod';
+        else if (cityLower.includes('киров')) citySlug = 'kirovskaya_oblast_kirov';
+
+        return `https://www.avito.ru/${citySlug}/kvartiry/catalog/novostroyki-ASgBAgICA0SSA8YQ5geOUvLFDvCTmgI?cd=0&spaFlow=true&verticalCategoryId=1&rootCategoryId=4`;
+    }, [currentProp?.city]);
+
+    const totalCount = crmNewBuilds.length + avitoAnalogs.length;
+    if (totalCount === 0 && !loadingAvito) return null;
+
+    const title = currentProp.residential_complex 
+        ? `Новостройки в ЖК «${currentProp.residential_complex}» и аналоги`
+        : 'Похожие новостройки';
 
     return (
         <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
@@ -425,62 +486,190 @@ function NewBuildsSelection({ currentProp, allProperties, onNavigate }) {
                     <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
                         <Building2 size={22} />
                     </div>
-                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
-                        {selection.title} ({selection.items.length})
+                    <div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                            {title} ({totalCount})
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                            Внутренние объекты CRM и новостройки из каталога Avito Parser
+                        </div>
                     </div>
                 </div>
-                <div style={{ color: 'var(--primary)' }}>
-                    {collapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <a
+                        href={avitoCatalogUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        title="Открыть каталог новостроек на Avito"
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '6px 12px',
+                            borderRadius: 16,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: 'rgba(123, 161, 25, 0.12)',
+                            color: '#5d7d0d',
+                            textDecoration: 'none',
+                            transition: 'all 0.2s ease'
+                        }}
+                    >
+                        <span>Каталог Avito</span>
+                        <ExternalLink size={12} />
+                    </a>
+                    {loadingAvito && <Loader size={16} className="spin" style={{ color: 'var(--primary)' }} />}
+                    <div style={{ color: 'var(--primary)' }}>
+                        {collapsed ? <ChevronDown size={20} /> : <ChevronUp size={20} />}
+                    </div>
                 </div>
             </div>
 
             {!collapsed && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 }}>
-                    {selection.items.map(item => (
-                        <div 
-                            key={item.id}
-                            className="card-clickable"
-                            onClick={() => onNavigate(`/properties/${item.id}`)}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 20 }}>
+                    {/* Tabs / Filter Chips */}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setActiveTab('all'); }}
                             style={{
-                                display: 'flex',
-                                gap: 14,
-                                padding: '12px',
-                                background: 'var(--bg-light)',
-                                borderRadius: '20px',
-                                border: '1px solid rgba(0,0,0,0.02)',
+                                padding: '6px 14px',
+                                borderRadius: 16,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                border: 'none',
                                 cursor: 'pointer',
-                                alignItems: 'center'
+                                background: activeTab === 'all' ? 'var(--primary)' : 'var(--bg-light)',
+                                color: activeTab === 'all' ? '#fff' : 'var(--text-secondary)',
+                                transition: 'all 0.2s ease'
                             }}
                         >
-                            <div style={{ width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0, background: 'var(--bg-light)' }}>
-                                <img 
-                                    src={item.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=100&q=80'} 
-                                    alt="" 
-                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                                />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                                    <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
-                                        {formatNumber(item.price)} ₽
-                                    </span>
-                                    {item.area_total && (
-                                        <span style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
-                                            {item.rooms === 0 ? 'Студия' : `${item.rooms}к`} · {item.area_total} м²
-                                        </span>
-                                    )}
-                                </div>
-                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {item.residential_complex ? `ЖК «${item.residential_complex}»` : (item.address || item.city || '—')}
-                                </div>
-                                {item.developer && (
-                                    <div style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 400 }}>
-                                        Застройщик: {item.developer}
+                            Все ({totalCount})
+                        </button>
+                        {crmNewBuilds.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setActiveTab('crm'); }}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 16,
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'crm' ? 'var(--primary)' : 'var(--bg-light)',
+                                    color: activeTab === 'crm' ? '#fff' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                В CRM ({crmNewBuilds.length})
+                            </button>
+                        )}
+                        {avitoAnalogs.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); setActiveTab('avito'); }}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 16,
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    background: activeTab === 'avito' ? '#7ba119' : 'var(--bg-light)',
+                                    color: activeTab === 'avito' ? '#fff' : 'var(--text-secondary)',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                Avito Parser ({avitoAnalogs.length})
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Items List */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {combinedItems.map(item => {
+                            const isAvito = item.source === 'AVITO';
+                            const handleCardClick = () => {
+                                if (isAvito && item.source_url) {
+                                    window.open(item.source_url, '_blank', 'noopener,noreferrer');
+                                } else if (!isAvito) {
+                                    onNavigate(`/properties/${item.id}`);
+                                }
+                            };
+
+                            return (
+                                <div 
+                                    key={item.id}
+                                    className="card-clickable"
+                                    onClick={handleCardClick}
+                                    style={{
+                                        display: 'flex',
+                                        gap: 14,
+                                        padding: '14px',
+                                        background: 'var(--bg-light)',
+                                        borderRadius: '20px',
+                                        border: '1px solid rgba(0,0,0,0.03)',
+                                        cursor: 'pointer',
+                                        alignItems: 'center'
+                                    }}
+                                >
+                                    <div style={{ width: 72, height: 72, borderRadius: 14, overflow: 'hidden', flexShrink: 0, background: 'var(--border-light)', position: 'relative' }}>
+                                        <img 
+                                            src={item.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=150&q=80'} 
+                                            alt="" 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                                        />
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    ))}
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                                                <span className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+                                                    {formatNumber(item.price)} ₽
+                                                </span>
+                                                {item.price_per_sqm && (
+                                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                        {formatNumber(item.price_per_sqm)} ₽/м²
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{
+                                                    fontSize: 10,
+                                                    fontWeight: 700,
+                                                    padding: '2px 8px',
+                                                    borderRadius: 6,
+                                                    background: isAvito ? 'rgba(123, 161, 25, 0.15)' : 'rgba(40, 100, 240, 0.12)',
+                                                    color: isAvito ? '#5d7d0d' : 'var(--primary)'
+                                                }}>
+                                                    {isAvito ? 'Avito' : 'CRM'}
+                                                </span>
+                                                {isAvito && item.source_url && (
+                                                    <ExternalLink size={14} style={{ color: 'var(--text-secondary)' }} />
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                            {item.rooms === 0 ? 'Студия' : `${item.rooms}к`} · {item.total_area || item.area_total} м²
+                                            {(item.floor || item.floors_total) && ` · ${item.floor || '?'}/${item.floors_total || item.total_floors || '?'} эт.`}
+                                        </div>
+
+                                        <div style={{ fontSize: 12, color: 'var(--text)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {item.residential_complex ? `ЖК «${item.residential_complex}»` : (item.address || item.city || item.title || '—')}
+                                        </div>
+
+                                        {item.developer && (
+                                            <div style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 400 }}>
+                                                Застройщик: {item.developer}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
         </div>
@@ -815,8 +1004,8 @@ export function DetailsPage() {
                 {/* Mortgage Calculator */}
                 <MortgageCalculator propertyPrice={prop.price} />
 
-                {/* New Construction Collection */}
-                <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} />
+                {/* New Construction Collection (Temporarily removed per user request) */}
+                {/* <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} /> */}
 
                 {/* ГАЛЕРЕЯ ФОТО */}
                 {prop.images && prop.images.length > 0 && (

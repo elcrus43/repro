@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { FormCard } from '../../components/FormCard';
 import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus } from 'lucide-react';
@@ -13,6 +14,7 @@ const defaultClient = {
 
 export function FormPage() {
     const { state, dispatch } = useApp();
+    const { toast } = useToastContext();
     const navigate = useNavigate();
     const { id } = useParams();
     const [searchParams] = useSearchParams();
@@ -41,7 +43,7 @@ export function FormPage() {
         }));
     }
 
-    function handleSubmit(e) {
+    async function handleSubmit(e) {
         e.preventDefault();
         const phones = (form.phones || [form.phone || '']).map(p => stripPhone(p)).filter(Boolean);
         const client = {
@@ -54,13 +56,19 @@ export function FormPage() {
             }))
         };
         if (id) {
-            dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
-            navigate(`/clients/${id}`);
+            const ok = await dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
+            if (ok !== false) {
+                toast.success('Клиент сохранён');
+                navigate(`/clients/${id}`);
+            }
         } else {
-            dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
-            const returnTo = searchParams.get('returnTo');
-            if (returnTo) navigate(returnTo);
-            else navigate('/clients');
+            const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
+            if (ok !== false) {
+                toast.success('Клиент создан');
+                const returnTo = searchParams.get('returnTo');
+                if (returnTo) navigate(returnTo);
+                else navigate('/clients');
+            }
         }
     }
 

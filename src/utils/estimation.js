@@ -108,22 +108,38 @@ const TYPICAL_AREAS = {
 /**
  * Build Avito search URL for apartments with precise filters.
  */
-function buildAvitoUrl({ city, district, rooms, deal_type, total_area, price }) {
+function buildAvitoUrl({ city, district, rooms, deal_type, total_area, price, market_type }) {
     const citySlug = {
-        'Киров': 'kirov',
+        'Киров': 'kirovskaya_oblast_kirov',
         'Москва': 'moskva',
         'Санкт-Петербург': 'sankt-peterburg',
         'Новосибирск': 'novosibirsk',
-    }[city] || 'kirov';
+        'Екатеринбург': 'ekaterinburg',
+        'Казань': 'kazan',
+        'Краснодар': 'krasnodar',
+        'Сочи': 'sochi'
+    }[city] || 'kirovskaya_oblast_kirov';
 
-    const categoryPath = deal_type === 'RENT' ? 'nedvizhimost/kvartiry/sdam' : 'nedvizhimost/kvartiry/prodam';
+    const isNovostroyka = market_type === 'PRIMARY' || market_type === 'novostroyka';
+    let categoryPath = 'kvartiry/prodam';
+    if (deal_type === 'RENT') {
+        categoryPath = 'kvartiry/sdam';
+    } else if (isNovostroyka) {
+        categoryPath = 'kvartiry/catalog/novostroyki-ASgBAgICA0SSA8YQ5geOUvLFDvCTmgI';
+    }
 
     const params = new URLSearchParams();
+    if (isNovostroyka) {
+        params.set('cd', '0');
+        params.set('spaFlow', 'true');
+        params.set('verticalCategoryId', '1');
+        params.set('rootCategoryId', '4');
+    }
 
     // Rooms - only reliable filter
     if (rooms === 0) {
         params.set('roomsCount', 'studio');
-    } else {
+    } else if (rooms) {
         params.set('roomsCount', String(rooms));
     }
 
@@ -141,7 +157,7 @@ function buildAvitoUrl({ city, district, rooms, deal_type, total_area, price }) 
         params.set('area', `${minArea}-${maxArea}`);
     }
 
-    // District via search query (more reliable than pca)
+    // District via search query
     if (district) {
         params.set('district', district);
     }

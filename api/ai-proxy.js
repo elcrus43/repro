@@ -63,6 +63,15 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    if (action === 'getNewBuildAnalogs') {
+      const { property } = req.body;
+      if (!property) {
+        return res.status(400).json({ error: 'Missing property parameter' });
+      }
+      const data = await handleGetNewBuildAnalogs(property);
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'Unknown action' });
   } catch (err) {
     console.error('[ai-proxy error]:', err.message);
@@ -595,3 +604,140 @@ async function findLocalAnalogs(sql, property) {
   console.log(`[CMA] Fallback to all active listings in city for rooms. Found ${rows.length} analogs.`);
   return rows;
 }
+
+async function handleGetNewBuildAnalogs(property) {
+  if (!NEON_DATABASE_URL) {
+    throw new Error('Database not configured on server');
+  }
+  const sql = neon(NEON_DATABASE_URL);
+  return await findNewBuildAnalogs(sql, property);
+}
+
+async function findNewBuildAnalogs(sql, property) {
+  const rawCity = property.city || 'Москва';
+  const cityClean = rawCity.replace(/область|край|республ\w*/gi, '').trim();
+  const cityPattern = '%' + (cityClean || rawCity) + '%';
+  const complex = (property.residential_complex || property.complex || '').trim();
+  const rooms = property.rooms !== undefined && property.rooms !== null ? parseInt(property.rooms) : 1;
+  const area = parseFloat(property.total_area || property.area_total || 40);
+  const district = (property.district || '').trim();
+  const lat = property.latitude ? parseFloat(property.latitude) : null;
+  const lon = property.longitude ? parseFloat(property.longitude) : null;
+
+  let results = [];
+
+  // 1. Search by exact or partial residential complex name if specified
+  if (complex) {
+    const complexPattern = '%' + complex + '%';
+    const rows = await sql`
+      SELECT * FROM analog_listings
+      WHERE source = 'AVITO'
+        AND city ILIKE ${cityPattern}
+        AND is_active = true
+        AND (
+          title ILIKE ${complexPattern}
+          OR address ILIKE ${complexPattern}
+          OR (raw_data->>'residential_complex') ILIKE ${complexPattern}
+          OR (raw_data->>'jk') ILIKE ${complexPattern}
+        )
+      ORDER BY last_seen_at DESC
+      LIMIT 10
+    `;
+    if (rows && rows.length > 0) {
+      results = rows;
+    }
+  }
+
+  // 2. Nearby / District search for new buildings (year_built >= 2019 or unspecified)
+  if (results.length < 4) {
+    let rows = [];
+    if (lat && lon) {
+      const lat_delta = 2.0 / 111.0;
+      const lon_delta = 2.0 / (111.0 * 0.57);
+      rows = await sql`
+        SELECT * FROM analog_listings
+        WHERE source = 'AVITO'
+          AND city ILIKE ${cityPattern}
+          AND is_active = true
+          AND (year_built IS NULL OR year_built >= 2019)
+          AND rooms = ${rooms}
+          AND total_area BETWEEN ${area - 10} AND ${area + 10}
+          AND latitude BETWEEN ${lat - lat_delta} AND ${lat + lat_delta}
+          AND longitude BETWEEN ${lon - lon_delta} AND ${lon + lon_delta}
+        ORDER BY last_seen_at DESC
+        LIMIT 10
+      `;
+    }
+
+    if (rows.length < 4 && district) {
+      const distRows = await sql`
+        SELECT * FROM analog_listings
+        WHERE source = 'AVITO'
+          AND city ILIKE ${cityPattern}
+          AND is_active = true
+          AND (year_built IS NULL OR year_built >= 2019)
+          AND rooms = ${rooms}
+          AND total_area BETWEEN ${area - 12} AND ${area + 12}
+          AND district ILIKE ${'%' + district + '%'}
+        ORDER BY last_seen_at DESC
+        LIMIT 10
+      `;
+      const existingIds = new Set(rows.map(r => r.id));
+      distRows.forEach(r => { if (!existingIds.has(r.id)) rows.push(r); });
+    }
+
+    const existingIds = new Set(results.map(r => r.id));
+    rows.forEach(r => { if (!existingIds.has(r.id)) results.push(r); });
+  }
+
+  // 3. Fallback: City-wide new buildings
+  if (results.length < 4) {
+    const cityRows = await sql`
+      SELECT * FROM analog_listings
+      WHERE source = 'AVITO'
+        AND city ILIKE ${cityPattern}
+        AND is_active = true
+        AND (year_built IS NULL OR year_built >= 2019)
+        AND rooms = ${rooms}
+      ORDER BY last_seen_at DESC
+      LIMIT 10
+    `;
+    const existingIds = new Set(results.map(r => r.id));
+    cityRows.forEach(r => { if (!existingIds.has(r.id)) results.push(r); });
+  }
+
+  return results.slice(0, 8).map(row => {
+    let raw = row.raw_data || {};
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw); } catch (e) { raw = {}; }
+    }
+    const totalArea = row.total_area ? parseFloat(row.total_area) : null;
+    const price = Number(row.price);
+
+    return {
+      id: row.id,
+      source: row.source || 'AVITO',
+      source_url: row.source_url,
+      title: row.title,
+      price: price,
+      price_per_sqm: totalArea && totalArea > 0 ? Math.round(price / totalArea) : null,
+      city: row.city,
+      district: row.district,
+      address: row.address,
+      rooms: row.rooms,
+      area_total: totalArea,
+      total_area: totalArea,
+      floor: row.floor,
+      floors_total: row.total_floors,
+      total_floors: row.total_floors,
+      building_type: row.building_type,
+      year_built: row.year_built,
+      residential_complex: raw.residential_complex || raw.jk || (row.title && row.title.includes('ЖК') ? row.title : null),
+      developer: raw.developer || raw.builder || null,
+      images: Array.isArray(raw.images) && raw.images.length > 0 
+        ? raw.images 
+        : (raw.image ? [raw.image] : [])
+    };
+  });
+}
+

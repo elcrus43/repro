@@ -43,7 +43,7 @@ class AvitoSearchParser:
             "нижний новгород": "nizhniy_novgorod",
             "краснодар": "krasnodar",
             "сочи": "sochi",
-            "киров": "kirov"
+            "киров": "kirovskaya_oblast_kirov"
         }
         if city in mapping:
             return mapping[city]
@@ -133,13 +133,23 @@ class AvitoSearchParser:
 
     def _build_search_url(self, params: dict) -> str:
         city_slug = self._get_city_slug(params.get("city"))
-        url = f"{self.BASE_URL}/{city_slug}/kvartiry"
+        is_new_build = params.get("is_new_build") or params.get("market_type") == "PRIMARY"
+        
+        if is_new_build:
+            url = f"{self.BASE_URL}/{city_slug}/kvartiry/catalog/novostroyki-ASgBAgICA0SSA8YQ5geOUvLFDvCTmgI"
+        else:
+            url = f"{self.BASE_URL}/{city_slug}/kvartiry/prodam/vtorichka"
         
         query_params = {
-            "s": "104", # Newest first
-            "f": self._get_rooms_filter(params.get("rooms")),
+            "cd": "0",
+            "spaFlow": "true",
+            "verticalCategoryId": "1",
+            "rootCategoryId": "4"
         }
-        
+        rooms_filter = self._get_rooms_filter(params.get("rooms"))
+        if rooms_filter:
+            query_params["f"] = rooms_filter
+
         if params.get("area_min"): query_params["amin"] = int(params["area_min"])
         if params.get("area_max"): query_params["amax"] = int(params["area_max"])
         
