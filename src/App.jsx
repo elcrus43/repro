@@ -9,7 +9,6 @@ import { Building2, Users, Sparkles, FileCheck, UserCircle, History, Bell, Clipb
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.RegisterPage })));
-const AuthCallbackPage = lazy(() => import('./pages/Auth/AuthCallback'));
 const UpdatePasswordPage = lazy(() => import('./pages/Auth/UpdatePasswordPage'));
 const DashboardPage = lazy(() => import('./pages/Dashboard/DashboardPage'));
 const ClientsPage = lazy(() => import('./pages/Clients/index.js'));
@@ -255,7 +254,7 @@ function RequireAuth({ children }) {
 
 function AppLayout({ children }) {
   const { pathname } = useLocation();
-  const noNav = ['/login', '/register', '/auth/callback', '/update-password', '/compare', '/documents'].includes(pathname) || pathname.startsWith('/p/') || pathname.startsWith('/c/') || pathname.startsWith('/chat/');
+  const noNav = ['/login', '/register', '/update-password', '/compare', '/documents'].includes(pathname) || pathname.startsWith('/p/') || pathname.startsWith('/c/') || pathname.startsWith('/chat/');
 
   return (
     <div className="app-layout">
@@ -277,7 +276,6 @@ function AppRoutes() {
           {/* Auth */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/update-password" element={<UpdatePasswordPage />} />
 
           {/* Protected */}
