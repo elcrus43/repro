@@ -9,8 +9,6 @@
  * Экспортирует единственную функцию syncWithCalendar().
  */
 
-// Firebase imports are loaded dynamically only when VITE_BACKEND=firebase
-// to avoid crashing environments where VITE_FIREBASE_API_KEY is not set.
 import { neonDb } from '../lib/neon';
 import {
   addEventToCalendar,
@@ -29,9 +27,6 @@ const EVENT_TYPE_LABELS = {
   call: 'Звонок',
 };
 
-const backend = import.meta.env.VITE_BACKEND || 'neon';
-const isFirebase = backend === 'firebase';
-const isNeon = backend === 'neon';
 
 export function getRawGoogleEventId(googleEventId) {
   if (!googleEventId || typeof googleEventId !== 'string') return null;
@@ -56,14 +51,7 @@ async function updateGoogleEventId(table, item, eventId) {
     }
   }
 
-  if (isFirebase) {
-    const { db } = await import('../lib/firebase');
-    const { doc, updateDoc } = await import('firebase/firestore');
-    const docRef = doc(db, table, id);
-    await updateDoc(docRef, { google_event_id: dbEventId });
-  } else {
-    await neonDb.update(table, id, { google_event_id: dbEventId });
-  }
+  await neonDb.update(table, id, { google_event_id: dbEventId });
 }
 
 /**

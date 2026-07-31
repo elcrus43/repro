@@ -4,14 +4,12 @@
  *
  * Тонкий провайдер:
  *  1. Держит state (useReducer)
- *  2. Загружает данные при старте (Supabase auth)
+ *  2. Загружает данные при старте (Neon auth)
  *  3. Пробрасывает dbDispatch из useDbDispatch
  *  4. Экспортирует reloadData для ручного обновления данных
  */
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
-// Firebase imports are loaded dynamically only when VITE_BACKEND=firebase
-// to avoid crashing environments where VITE_FIREBASE_API_KEY is not set.
 import { reducer, EMPTY_STATE } from './reducer';
 import { loadUserData } from './dbSync';
 import { authService } from '../lib/auth';
@@ -82,7 +80,7 @@ export function AppProvider({ children }) {
       dispatch({ type: 'SET_LOADING', value: true });
     }
 
-    // 2. Загружаем актуальные данные из Supabase
+    // 2. Загружаем актуальные данные из Neon
     console.log('[Data Load] Loading tables for role:', sessionUser.role);
     const data = await loadUserData(sessionUser.id, sessionUser.role);
 
@@ -131,14 +129,13 @@ export function AppProvider({ children }) {
     await loadData(su, { silent: false, forceRefresh: true });
     toast.success('Данные обновлены');
   }, [loadData, toast]);
+
   /* ── Auth flow ─────────────────────────────────────────────────────────── */
 
   useEffect(() => {
     let isInitial = true;
     const backend = import.meta.env.VITE_BACKEND || 'neon';
-    const isFirebase = backend === 'firebase';
     const isLocalStorage = backend === 'localstorage';
-    const isNeon = backend === 'neon';
 
     async function loadProfileAndData(sessionUser) {
       try {
@@ -156,18 +153,6 @@ export function AppProvider({ children }) {
             role: 'admin',
             status: 'approved',
           };
-        } else if (isFirebase) {
-          try {
-            const { db: fbDb } = await import('../lib/firebase');
-            const { doc, getDoc } = await import('firebase/firestore');
-            const docRef = doc(fbDb, 'profiles', sessionUser.id);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-              profile = { id: docSnap.id, ...docSnap.data() };
-            }
-          } catch (e) {
-            profileErr = e;
-          }
         } else {
           const res = await neonDb.select('profiles', { id: sessionUser.id });
           if (res.error) {
@@ -177,7 +162,7 @@ export function AppProvider({ children }) {
           }
         }
 
-        if (profileErr && (isFirebase || isNeon || profileErr.code !== 'PGRST116')) {
+        if (profileErr) {
           console.error('[Profile load error]', profileErr);
           const fallback = {
             id: sessionUser.id,
@@ -205,23 +190,9 @@ export function AppProvider({ children }) {
             status: isAdmin ? 'approved' : 'pending',
           };
 
-          let createdProfile = null;
-          let createErr = null;
-
-          if (isFirebase) {
-            try {
-              const { db: fbDb } = await import('../lib/firebase');
-              const { doc, setDoc } = await import('firebase/firestore');
-              await setDoc(doc(fbDb, 'profiles', sessionUser.id), newProfile);
-              createdProfile = { ...newProfile, id: sessionUser.id };
-            } catch (e) {
-              createErr = e;
-            }
-          } else {
-            const res = await neonDb.insert('profiles', newProfile);
-            createdProfile = res.data?.[0];
-            createErr = res.error;
-          }
+          const res = await neonDb.insert('profiles', newProfile);
+          const createdProfile = res.data?.[0];
+          const createErr = res.error;
 
           if (createErr) {
             console.error('[Profile creation error]', createErr);
@@ -251,9 +222,9 @@ export function AppProvider({ children }) {
         const enriched = { ...profile, id: sessionUser.id };
         dispatch({ type: 'SET_USER', user: { ...profile, email: sessionUser.email } });
         sessionUserRef.current = enriched;
-        
+
         const { data: { session } } = await authService.getSession();
-        if (session?.access_token && !isFirebase) {
+        if (session?.access_token) {
           initCalendarAuth(session.access_token, !!profile.google_refresh_token);
         }
 
@@ -281,7 +252,7 @@ export function AppProvider({ children }) {
 
         if (session?.user) {
           console.log('[Auth Init] User found:', session.user.id);
-          if (session.access_token && !isFirebase) initCalendarAuth(session.access_token);
+          if (session.access_token) initCalendarAuth(session.access_token);
           await loadProfileAndData(session.user);
         } else {
           console.log('[Auth Init] No session found, showing login page');
@@ -303,7 +274,7 @@ export function AppProvider({ children }) {
         sessionUserRef.current = null;
         dispatch({ type: 'LOGOUT' });
       } else if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session?.user) {
-        if (session.access_token && !isFirebase) initCalendarAuth(session.access_token);
+        if (session.access_token) initCalendarAuth(session.access_token);
         if (!isInitial) await loadProfileAndData(session.user);
       }
     });

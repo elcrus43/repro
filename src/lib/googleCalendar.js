@@ -178,7 +178,7 @@ function loadGsiScript() {
 /* ─── Public API ─────────────────────────────────────────────────────────────── */
 
 export function isCalendarConfigured() {
-    if (import.meta.env.VITE_BACKEND === 'firebase') return false;
+    // neon backend — calendar always allowed
     return !!CLIENT_ID && CLIENT_ID !== 'your_google_client_id.apps.googleusercontent.com';
 }
 

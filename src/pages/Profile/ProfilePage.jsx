@@ -50,7 +50,7 @@ export function ProfilePage() {
     // Initialize Google Calendar auth with current session
     React.useEffect(() => {
         authService.getSession().then(({ data: { session } }) => {
-            if (session?.access_token && import.meta.env.VITE_BACKEND !== 'firebase') {
+            if (session?.access_token) {
                 initCalendarAuth(session.access_token, !!state.currentUser?.google_refresh_token);
             }
         });
@@ -309,7 +309,7 @@ export function ProfilePage() {
         try {
             await authService.signOut();
             Object.keys(localStorage).forEach(key => {
-                if (key.startsWith('sb-') || key.startsWith('firebase:')) localStorage.removeItem(key);
+                if (key.startsWith('sb-') || key.startsWith('rm_cache_')) localStorage.removeItem(key);
             });
             window.location.href = '/login';
         } catch (e) {
