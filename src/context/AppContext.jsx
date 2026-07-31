@@ -10,8 +10,8 @@
  */
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
-import { db } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+// Firebase imports are loaded dynamically only when VITE_BACKEND=firebase
+// to avoid crashing environments where VITE_FIREBASE_API_KEY is not set.
 import { reducer, EMPTY_STATE } from './reducer';
 import { loadUserData } from './dbSync';
 import { authService } from '../lib/auth';
@@ -158,7 +158,9 @@ export function AppProvider({ children }) {
           };
         } else if (isFirebase) {
           try {
-            const docRef = doc(db, 'profiles', sessionUser.id);
+            const { db: fbDb } = await import('../lib/firebase');
+            const { doc, getDoc } = await import('firebase/firestore');
+            const docRef = doc(fbDb, 'profiles', sessionUser.id);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
               profile = { id: docSnap.id, ...docSnap.data() };
@@ -208,7 +210,9 @@ export function AppProvider({ children }) {
 
           if (isFirebase) {
             try {
-              await setDoc(doc(db, 'profiles', sessionUser.id), newProfile);
+              const { db: fbDb } = await import('../lib/firebase');
+              const { doc, setDoc } = await import('firebase/firestore');
+              await setDoc(doc(fbDb, 'profiles', sessionUser.id), newProfile);
               createdProfile = { ...newProfile, id: sessionUser.id };
             } catch (e) {
               createErr = e;

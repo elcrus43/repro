@@ -9,8 +9,8 @@
  * Экспортирует единственную функцию syncWithCalendar().
  */
 
-import { db } from '../lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+// Firebase imports are loaded dynamically only when VITE_BACKEND=firebase
+// to avoid crashing environments where VITE_FIREBASE_API_KEY is not set.
 import { neonDb } from '../lib/neon';
 import {
   addEventToCalendar,
@@ -57,6 +57,8 @@ async function updateGoogleEventId(table, item, eventId) {
   }
 
   if (isFirebase) {
+    const { db } = await import('../lib/firebase');
+    const { doc, updateDoc } = await import('firebase/firestore');
     const docRef = doc(db, table, id);
     await updateDoc(docRef, { google_event_id: dbEventId });
   } else {
