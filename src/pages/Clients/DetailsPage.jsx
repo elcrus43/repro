@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../../utils/format';
-import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock } from 'lucide-react';
+import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2 } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 
@@ -247,6 +247,14 @@ export function DetailsPage() {
         });
     }
 
+    function handleDeleteClient() {
+        if (window.confirm(`Удалить клиента "${client.full_name}"? Это действие нельзя отменить.`)) {
+            dispatch({ type: 'DELETE_CLIENT', id });
+            toast.success('Клиент успешно удален');
+            navigate('/clients');
+        }
+    }
+
     const initial  = client.full_name?.charAt(0).toUpperCase() || '?';
     const colors   = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
     const avatarBg = colors[initial.charCodeAt(0) % colors.length];
@@ -272,9 +280,32 @@ export function DetailsPage() {
                     </span>
                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Управление</span>
                 </div>
-                <button className="icon-btn-edit" onClick={() => navigate(`/clients/${id}/edit`)} title="Редактировать">
-                    <Pencil size={18} />
-                </button>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button 
+                        className="card-clickable" 
+                        onClick={() => navigate(`/clients/${id}/edit`)} 
+                        title="Редактировать"
+                        style={{
+                            width: 44, height: 44, borderRadius: 14, border: 'none',
+                            background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', cursor: 'pointer'
+                        }}
+                    >
+                        <Pencil size={18} />
+                    </button>
+                    <button 
+                        className="card-clickable" 
+                        onClick={handleDeleteClient} 
+                        title="Удалить клиента"
+                        style={{
+                            width: 44, height: 44, borderRadius: 14, border: 'none',
+                            background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', boxShadow: '0 2px 8px rgba(239,68,68,0.1)', cursor: 'pointer'
+                        }}
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </div>
             </div>
 
             <div className="page-content" style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -828,13 +859,30 @@ export function DetailsPage() {
                     )}
                 </div>
 
-                {/* ── Заметки ── */}
-                {client.notes && (
-                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 12 }}>Особые заметки</div>
-                        <div style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{client.notes}</div>
-                    </div>
-                )}
+                {/* ── Кнопка удаления клиента ── */}
+                <button
+                    onClick={handleDeleteClient}
+                    className="card-clickable"
+                    style={{
+                        width: '100%',
+                        padding: '16px',
+                        borderRadius: 20,
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        background: 'rgba(239, 68, 68, 0.05)',
+                        color: '#ef4444',
+                        fontWeight: 500,
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        marginTop: 12
+                    }}
+                >
+                    <Trash2 size={18} />
+                    <span>Удалить клиента</span>
+                </button>
             </div>
         </div>
     );

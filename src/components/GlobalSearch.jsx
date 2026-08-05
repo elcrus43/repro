@@ -34,7 +34,12 @@ export function GlobalSearch() {
                 r.property_types?.some(t => (PROPERTY_TYPES[t] || t).toLowerCase().includes(q)) ||
                 r.budget_max?.toString().includes(q)
             ).slice(0, 5),
-            matches: state.matches.filter(m => m.score > 80).slice(0, 3),
+            matches: state.matches.filter(m => {
+                const prop = state.properties.find(p => p.id === m.property_id);
+                const client = state.clients.find(c => c.id === m.client_id);
+                const text = `${prop?.address || ''} ${prop?.city || ''} ${client?.full_name || ''} ${m.status || ''}`.toLowerCase();
+                return text.includes(q) && m.score > 70;
+            }).slice(0, 3),
         };
     }, [query, state.properties, state.clients, state.requests, state.matches]);
 

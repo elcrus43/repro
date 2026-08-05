@@ -27,6 +27,14 @@ import { isCalendarConnected, isCalendarConfigured } from '../lib/googleCalendar
  * @param {function} dispatch  — dispatch из useReducer
  * @param {function} onError   — callback для показа ошибок (toast.error)
  */
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function ensureUuid(id) {
+  if (!id || !UUID_REGEX.test(id)) {
+    return nanoid();
+  }
+  return id;
+}
+
 export function useDbDispatch(state, dispatch, onError) {
   // stateRef — всегда актуальная копия state без stale closure.
   // useLayoutEffect синхронно обновляет ref после каждого рендера,
@@ -47,14 +55,18 @@ export function useDbDispatch(state, dispatch, onError) {
       case 'ADD_CLIENT':
         enhancedAction.client = {
           ...action.client,
-          id: action.client.id || nanoid(),
+          id: ensureUuid(action.client?.id),
           created_at: now,
           updated_at: now,
         };
         break;
 
       case 'UPDATE_CLIENT':
-        enhancedAction.client = { ...action.client, updated_at: now };
+        enhancedAction.client = { 
+          ...action.client, 
+          id: ensureUuid(action.client?.id),
+          updated_at: now 
+        };
         break;
 
       case 'ADD_PROPERTY':
@@ -107,10 +119,10 @@ export function useDbDispatch(state, dispatch, onError) {
       }
 
       case 'ADD_SHOWING': {
-        const realtorId = action.showing.realtor_id || stateRef.current.currentUser?.id || 'user-1';
+        const realtorId = ensureUuid(action.showing.realtor_id || stateRef.current.currentUser?.id);
         const sh = {
           ...action.showing,
-          id: action.showing.id || nanoid(),
+          id: ensureUuid(action.showing.id),
           event_type: action.showing.event_type || 'showing',
           created_at: now,
           realtor_id: realtorId,
@@ -457,7 +469,7 @@ function _buildShowingTask(sh, state, now) {
   const client = state?.clients?.find(c => String(c.id) === String(sh.client_id || (sh.client_ids || [])[0]));
   const clientName = client?.full_name || sh.contact_name || '';
   const withText = clientName ? ` — ${clientName}` : '';
-  const realtorId = sh.realtor_id || state?.currentUser?.id || client?.realtor_id || 'user-1';
+  const realtorId = ensureUuid(sh.realtor_id || state?.currentUser?.id || client?.realtor_id);
   return {
     id: nanoid(),
     realtor_id: realtorId,

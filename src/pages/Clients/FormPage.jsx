@@ -3,8 +3,9 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone } from '../../utils/format';
+import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
-import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus } from 'lucide-react';
+import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle } from 'lucide-react';
 
 const defaultClient = {
     full_name: '', phone: '', email: '',
@@ -150,6 +151,39 @@ export function FormPage() {
                                 setF('phones', [...phones, '']);
                             }}><Plus size={16} /> Добавить телефон</button>
                         </div>
+
+                        {(() => {
+                            const dups = !id ? findDuplicateClients(
+                                (state.clients || []).filter(c => c.id !== id),
+                                { full_name: form.full_name, phone: form.phones?.[0] || form.phone }
+                            ) : { phoneMatches: [], nameMatches: [] };
+                            const matches = [...dups.phoneMatches, ...dups.nameMatches];
+
+                            if (matches.length === 0) return null;
+                            return (
+                                <div style={{ padding: 14, borderRadius: 16, background: '#FFFBEB', border: '1px solid #F59E0B', marginTop: 12 }}>
+                                    <div style={{ fontWeight: 600, color: '#B45309', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                                        <AlertTriangle size={18} /> Найдено совпадение в базе ({matches.length}):
+                                    </div>
+                                    {matches.slice(0, 3).map(m => (
+                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '10px 12px', background: 'white', borderRadius: 12, border: '1px solid rgba(0,0,0,0.06)' }}>
+                                            <div>
+                                                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>{m.full_name || 'Без имени'}</div>
+                                                <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{m.phone || 'Без телефона'}</div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="btn btn-secondary card-clickable"
+                                                style={{ fontSize: 12, padding: '6px 12px', height: 36, borderRadius: 10 }}
+                                                onClick={() => navigate(`/clients/${m.id}`)}
+                                            >
+                                                Открыть
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        })()}
 
                         <div className="form-group">
                             <label className="form-label">Типы клиента</label>

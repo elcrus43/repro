@@ -42,7 +42,11 @@
             data.floors_total = floorMatch[2];
         }
 
-        // 4. ADDRESS / JSON-LD
+        // 4. ADDRESS / JSON-LD / IMAGES
+        const extractedImages = [];
+        const ogImage = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+        if (ogImage) extractedImages.push(ogImage);
+
         const ldJsons = document.querySelectorAll('script[type="application/ld+json"]');
         ldJsons.forEach(script => {
             try {
@@ -51,11 +55,24 @@
                     if (key === 'price' && !data.price) data.price = String(value);
                     if ((key === 'addressLocality' || key === 'addressRegion') && value) data.city = value;
                     if (key === 'streetAddress' && value) data.address = value;
-                    if (key === 'description' && value && value.length > data.description.length) data.description = value;
+                    if (key === 'description' && value && value.length > (data.description || '').length) data.description = value;
+                    if (key === 'image' || key === 'photos') {
+                        if (typeof value === 'string' && value.startsWith('http')) extractedImages.push(value);
+                        else if (Array.isArray(value)) {
+                            value.forEach(v => {
+                                if (typeof v === 'string' && v.startsWith('http')) extractedImages.push(v);
+                                else if (v && typeof v === 'object' && typeof v.url === 'string') extractedImages.push(v.url);
+                            });
+                        }
+                    }
                     return value;
                 });
             } catch (e) {}
         });
+
+        if (extractedImages.length > 0) {
+            data.images = [...new Set(extractedImages)];
+        }
 
         if (!data.address) {
             const addressMatch = bodyText.match(/(?:Адрес|Расположение)\s*\n([^\n]+)/i);

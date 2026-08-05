@@ -17,6 +17,9 @@ import { DEMO_CLIENTS, DEMO_PROPERTIES, DEMO_REQUESTS, DEMO_SHOWINGS, DEMO_TASKS
 /**
  * Рекурсивно заменяет пустые строки на null перед отправкой в БД.
  */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_KEYS = new Set(['id', 'realtor_id', 'client_id', 'agent_id', 'lawyer_id', 'property_id', 'seller_id', 'buyer_id', 'user_id', 'match_id', 'request_id']);
+
 export function sanitizeObj(obj) {
   if (obj === '') return null;
   if (!obj || typeof obj !== 'object') return obj;
@@ -30,6 +33,8 @@ export function sanitizeObj(obj) {
     const val = sanitized[key];
 
     if (val === '') {
+      sanitized[key] = null;
+    } else if (UUID_KEYS.has(key) && typeof val === 'string' && !UUID_RE.test(val)) {
       sanitized[key] = null;
     } else if (Array.isArray(val)) {
       sanitized[key] = val.map(item => {
@@ -164,12 +169,10 @@ export async function loadUserData(userId, role) {
   };
 
   const mergeUnique = (fetchedList, localList, defaultList = []) => {
-    const combined = [...(fetchedList || []), ...(localList || [])];
-    if (combined.length === 0) return defaultList;
     const map = new Map();
-    combined.forEach(item => {
-      if (item && item.id) map.set(item.id, item);
-    });
+    (defaultList || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+    (localList || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+    (fetchedList || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
     return Array.from(map.values());
   };
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 
 /**
  * useToast — замена нативного alert() для ошибок Supabase и Calendar.
@@ -36,12 +36,12 @@ export function useToast(defaultDuration = 5000) {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
 
-  const toast = {
+  const toast = useMemo(() => ({
     error:   (msg, dur) => add(msg, 'error',   dur),
     success: (msg, dur) => add(msg, 'success', dur),
     warn:    (msg, dur) => add(msg, 'warn',    dur),
     info:    (msg, dur) => add(msg, 'info',    dur),
-  };
+  }), [add]);
 
   return { toasts, toast, dismiss };
 }

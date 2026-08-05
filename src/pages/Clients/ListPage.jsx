@@ -81,18 +81,19 @@ export function ListPage() {
         return state.clients
             .filter(c => scope === 'all' || c.realtor_id === user?.id)
             .filter(c => {
-                const isAgent = c.client_types?.includes('agent');
-                if (filter === 'agent') return isAgent;
-                if (isAgent) return false;
+                const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+                const isAgent = types.includes('agent');
+                const isLawyer = types.includes('lawyer');
 
-                if (filter === 'buyer') return c.client_types?.includes('buyer');
-                if (filter === 'seller') return c.client_types?.includes('seller');
-                if (filter === 'developer') return c.client_types?.includes('developer');
-                if (filter === 'landlord') return c.client_types?.includes('landlord');
-                if (filter === 'tenant') return c.client_types?.includes('tenant');
-                if (filter === 'active') {
-                    return mapStatus(c.status) !== 'refused';
-                }
+                if (filter === 'agent') return isAgent;
+                if (filter === 'lawyer') return isLawyer;
+                if (filter !== 'all' && isAgent) return false;
+
+                if (filter === 'buyer') return types.includes('buyer');
+                if (filter === 'seller') return types.includes('seller');
+                if (filter === 'developer') return types.includes('developer');
+                if (filter === 'landlord') return types.includes('landlord');
+                if (filter === 'tenant') return types.includes('tenant');
                 return true;
             })
             .filter(c => {
@@ -220,7 +221,7 @@ export function ListPage() {
 
                     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
                         {[
-                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['agent', 'Агенты'], ['active', 'Активные']
+                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['agent', 'Агенты'], ['lawyer', 'Юристы']
                         ].map(([val, label]) => (
                             <button 
                                 key={val} 
@@ -253,233 +254,90 @@ export function ListPage() {
                 )}
 
                 {viewMode === 'list' && filteredClients.length > 0 && (
-                    filter === 'agent' ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {filteredClients.map(client => {
-                                const matches = state.matches.filter(m => {
-                                    const prop = state.properties.find(p => p.id === m.property_id);
-                                    const req = state.requests.find(r => r.id === m.request_id);
-                                    return prop?.client_id === client.id || req?.client_id === client.id;
-                                });
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {filteredClients.map(client => {
+                            const initial = client.full_name?.charAt(0).toUpperCase() || '?';
+                            const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+                            const avatarBg = colors[initial.charCodeAt(0) % colors.length];
 
-                                const initial = client.full_name?.charAt(0).toUpperCase() || '?';
-                                const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-                                const avatarBg = colors[initial.charCodeAt(0) % colors.length];
-
-                                const getStatusClass = (st) => {
-                                    const mapped = mapStatus(st);
-                                    if (mapped === 'new') return 'badge-muted';
-                                    if (mapped === 'selection') return 'badge-primary';
-                                    if (mapped === 'active') return 'badge-success';
-                                    if (mapped === 'refused') return 'badge-danger';
-                                    return 'badge-muted';
-                                };
-
-                                return (
-                                    <div 
-                                        key={client.id} 
-                                        className="card card-clickable fade-in" 
-                                        style={{ 
-                                            padding: '12px 16px', border: 'none', background: 'var(--surface)', borderRadius: 20, 
-                                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)', position: 'relative', overflow: 'hidden',
-                                            borderLeft: `4px solid ${avatarBg}`,
-                                            display: 'flex', flexDirection: 'column', gap: 6
-                                        }} 
-                                        onClick={() => navigate(`/clients/${client.id}`)}
-                                    >
-                                        {/* Строка 1: ФИО и статус */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                            <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                                                {client.full_name}
-                                            </div>
-                                            {client.status && (
-                                                <span className={`badge ${getStatusClass(client.status)}`} style={{ 
-                                                    padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 500, letterSpacing: '0.02em',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {statusLabels[mapStatus(client.status)] || client.status}
-                                                </span>
-                                            )}
+                            return (
+                                <div 
+                                    key={client.id} 
+                                    className="card card-clickable fade-in" 
+                                    style={{ 
+                                        padding: '10px 16px', 
+                                        border: '1px solid var(--border-light, rgba(0,0,0,0.06))', 
+                                        background: 'var(--surface)', 
+                                        borderRadius: 14, 
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'space-between',
+                                        gap: 12,
+                                        cursor: 'pointer'
+                                    }} 
+                                    onClick={() => navigate(`/clients/${client.id}`)}
+                                >
+                                    {/* Left: Avatar, Name & Phone in 1 Line */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
+                                        <div style={{ 
+                                            width: 32, 
+                                            height: 32, 
+                                            borderRadius: '50%', 
+                                            background: avatarBg, 
+                                            color: '#fff', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            justifyContent: 'center', 
+                                            fontWeight: 600, 
+                                            fontSize: 13,
+                                            flexShrink: 0 
+                                        }}>
+                                            {initial}
                                         </div>
-
-                                        {/* Строка 2: Телефон, типы и совпадения */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                                            <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 400, whiteSpace: 'nowrap' }}>
+                                        <div style={{ 
+                                            fontWeight: 600, 
+                                            fontSize: 14, 
+                                            color: 'var(--text)', 
+                                            whiteSpace: 'nowrap', 
+                                            overflow: 'hidden', 
+                                            textOverflow: 'ellipsis' 
+                                        }}>
+                                            {client.full_name}
+                                        </div>
+                                        {client.phone && (
+                                            <div style={{ 
+                                                fontSize: 13, 
+                                                color: 'var(--text-secondary)', 
+                                                fontWeight: 400, 
+                                                whiteSpace: 'nowrap',
+                                                flexShrink: 0
+                                            }}>
                                                 {formatPhone(client.phone)}
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                                <div style={{ display: 'flex', gap: 4 }}>
-                                                    {client.client_types?.map(t => (
-                                                        <span key={t} style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, background: 'var(--bg-light)', padding: '1px 6px', borderRadius: 4 }}>
-                                                            {typeLabels[t] || t}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                                {matches.length > 0 && (
-                                                    <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 600, background: 'var(--primary-light)', padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
-                                                        {matches.length} совп.
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            {statusOrder.map(status => {
-                                const items = groupedClients[status] || [];
-                                const isCollapsed = !!collapsedStatuses[status];
-
-                                return (
-                                    <div key={status} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                        {/* Group Header */}
-                                        <div 
-                                            onClick={() => toggleStatus(status)}
-                                            className="card-clickable"
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                padding: '12px 16px',
-                                                borderRadius: '16px',
-                                                background: 'var(--bg-light)',
-                                                cursor: 'pointer',
-                                                userSelect: 'none',
-                                                transition: 'all 0.2s ease',
-                                                border: 'none',
-                                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
-                                            }}
-                                        >
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <div style={{
-                                                    width: 10,
-                                                    height: 10,
-                                                    borderRadius: '50%',
-                                                    background: statusSolidColors[status] || 'var(--primary)',
-                                                    boxShadow: `0 0 6px ${statusSolidColors[status] || 'var(--primary)'}80`
-                                                }} />
-                                                <span className="font-oswald" style={{
-                                                    fontSize: 13,
-                                                    fontWeight: 600,
-                                                    color: 'var(--text)',
-                                                    textTransform: 'uppercase',
-                                                    letterSpacing: '0.05em'
-                                                }}>
-                                                    {statusLabels[status] || status}
-                                                </span>
-                                                <span style={{
-                                                    fontSize: 11,
-                                                    fontWeight: 700,
-                                                    color: statusSolidColors[status] || 'var(--primary)',
-                                                    background: `${statusSolidColors[status] || 'var(--primary)'}18`,
-                                                    borderRadius: 8,
-                                                    padding: '2px 8px',
-                                                    marginLeft: 4
-                                                }}>
-                                                    {items.length}
-                                                </span>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 12 }}>
-                                                <span style={{ fontWeight: 300 }}>{isCollapsed ? 'Развернуть' : 'Свернуть'}</span>
-                                                {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                                            </div>
-                                        </div>
-
-                                        {/* Group Content */}
-                                        {!isCollapsed && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                                {items.length === 0 ? (
-                                                    <div style={{
-                                                        padding: '24px 20px',
-                                                        borderRadius: 24,
-                                                        border: `1.5px dashed ${(statusSolidColors && statusSolidColors[status]) || 'rgba(0,0,0,0.1)'}33`,
-                                                        textAlign: 'center',
-                                                        color: 'var(--text-secondary)',
-                                                        fontSize: 13,
-                                                        opacity: 0.6,
-                                                        background: 'rgba(0, 0, 0, 0.01)'
-                                                    }}>
-                                                        Нет клиентов
-                                                    </div>
-                                                ) : (
-                                                    items.map(client => {
-                                                        const matches = state.matches.filter(m => {
-                                                            const prop = state.properties.find(p => p.id === m.property_id);
-                                                            const req = state.requests.find(r => r.id === m.request_id);
-                                                            return prop?.client_id === client.id || req?.client_id === client.id;
-                                                        });
-
-                                                        const initial = client.full_name?.charAt(0).toUpperCase() || '?';
-                                                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
-                                                        const avatarBg = colors[initial.charCodeAt(0) % colors.length];
-
-                                                        const getStatusClass = (st) => {
-                                                            const mapped = mapStatus(st);
-                                                            if (mapped === 'new') return 'badge-muted';
-                                                            if (mapped === 'selection') return 'badge-primary';
-                                                            if (mapped === 'active') return 'badge-success';
-                                                            if (mapped === 'refused') return 'badge-danger';
-                                                            return 'badge-muted';
-                                                        };
-
-                                                        return (
-                                                            <div 
-                                                                key={client.id} 
-                                                                className="card card-clickable fade-in" 
-                                                                style={{ 
-                                                                    padding: '12px 16px', border: 'none', background: 'var(--surface)', borderRadius: 20, 
-                                                                    boxShadow: '0 4px 20px rgba(0,0,0,0.02)', position: 'relative', overflow: 'hidden',
-                                                                    borderLeft: `4px solid ${avatarBg}`,
-                                                                    display: 'flex', flexDirection: 'column', gap: 6
-                                                                }} 
-                                                                onClick={() => navigate(`/clients/${client.id}`)}
-                                                            >
-                                                                {/* Строка 1: ФИО и статус */}
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                                                    <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1 }}>
-                                                                        {client.full_name}
-                                                                    </div>
-                                                                    <span className={`badge ${getStatusClass(client.status)}`} style={{ 
-                                                                        padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 500, letterSpacing: '0.02em',
-                                                                        whiteSpace: 'nowrap'
-                                                                    }}>
-                                                                        {statusLabels[mapStatus(client.status)] || client.status}
-                                                                    </span>
-                                                                </div>
-
-                                                                {/* Строка 2: Телефон, типы и совпадения */}
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                                                                    <div style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 400, whiteSpace: 'nowrap' }}>
-                                                                        {formatPhone(client.phone)}
-                                                                    </div>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                                                        <div style={{ display: 'flex', gap: 4 }}>
-                                                                            {client.client_types?.map(t => (
-                                                                                <span key={t} style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, background: 'var(--bg-light)', padding: '1px 6px', borderRadius: 4 }}>
-                                                                                    {typeLabels[t] || t}
-                                                                                </span>
-                                                                            ))}
-                                                                        </div>
-                                                                        {matches.length > 0 && (
-                                                                            <span style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 600, background: 'var(--primary-light)', padding: '1px 6px', borderRadius: 4, whiteSpace: 'nowrap' }}>
-                                                                                {matches.length} совп.
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })
-                                                )}
                                             </div>
                                         )}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    )
+
+                                    {/* Right: Role Badges */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                        {client.client_types?.map(t => (
+                                            <span key={t} style={{ 
+                                                fontSize: 11, 
+                                                color: 'var(--text-secondary)', 
+                                                fontWeight: 400, 
+                                                background: 'var(--bg-light)', 
+                                                padding: '3px 8px', 
+                                                borderRadius: 6,
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                {typeLabels[t] || t}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
         </div>

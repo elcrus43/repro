@@ -82,6 +82,19 @@ export const DEMO_CLIENTS = [
         created_at: '2024-11-20T10:00:00Z',
         updated_at: '2025-01-01T10:00:00Z',
     },
+    {
+        id: 'c9999999-0000-4000-8000-000000000099',
+        realtor_id: 'user-1',
+        full_name: 'Шумейко Татьяна',
+        phone: '+7-999-333-4455',
+        email: 'shumeyko.tatyana@law.ru',
+        client_type: 'lawyer',
+        client_types: ['lawyer'],
+        status: 'active',
+        notes: 'Юрист по недвижимости',
+        created_at: '2025-01-01T10:00:00Z',
+        updated_at: '2025-01-01T10:00:00Z',
+    },
 ];
 
 export const DEMO_PROPERTIES = [
