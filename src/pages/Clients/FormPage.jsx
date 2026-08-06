@@ -5,7 +5,8 @@ import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
-import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle } from 'lucide-react';
+import { PassportScanModal } from '../../components/PassportScanModal';
+import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera } from 'lucide-react';
 
 const defaultClient = {
     full_name: '', phone: '', email: '', inn: '', birth_date: '', reg_address: '',
@@ -37,8 +38,22 @@ export function FormPage() {
 
     const [form, setForm] = useState(initialForm);
     const [showPassport, setShowPassport] = useState(!!(form.passport_details?.series || form.inn || form.birth_date));
+    const [showPassportScan, setShowPassportScan] = useState(false);
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
+
+    // Автозаполнение формы данными из OCR сканирования паспорта
+    function handlePassportExtracted(data) {
+        if (data.full_name) setF('full_name', data.full_name);
+        if (data.birth_date) {
+            setF('birth_date', data.birth_date);
+            setPassport('birth_date', data.birth_date);
+        }
+        if (data.series) setPassport('series', data.series);
+        if (data.number) setPassport('number', data.number);
+        if (data.unit_code) setPassport('unit_code', data.unit_code);
+        setShowPassport(true);
+    }
 
     function setPassport(key, val) {
         setForm(f => ({
@@ -140,7 +155,24 @@ export function FormPage() {
                 </div>
 
                 <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <FormCard title="Основная информация">
+                <FormCard title="Основная информация">
+                        {/* Кнопка сканирования паспорта */}
+                        <button
+                            type="button"
+                            onClick={() => setShowPassportScan(true)}
+                            style={{
+                                width: '100%', marginBottom: 16,
+                                padding: '14px 0', borderRadius: 16, border: 'none',
+                                background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
+                                color: '#ffffff', fontSize: 14, fontWeight: 700,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                cursor: 'pointer', boxShadow: '0 4px 16px rgba(30,41,59,0.25)'
+                            }}
+                        >
+                            <Camera size={20} />
+                            <span>📸 Сканировать паспорт (авто-заполнение)</span>
+                        </button>
+
                         <div className="form-group">
                             <label className="form-label">ФИО клиента</label>
                             <div style={{ position: 'relative' }}>
@@ -313,6 +345,13 @@ export function FormPage() {
                     </div>
                 </div>
             </form>
+
+            {/* Модальное окно сканирования паспорта */}
+            <PassportScanModal
+                isOpen={showPassportScan}
+                onClose={() => setShowPassportScan(false)}
+                onExtracted={handlePassportExtracted}
+            />
         </div>
     );
 }
