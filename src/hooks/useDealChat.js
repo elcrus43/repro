@@ -101,18 +101,31 @@ export function useDealChat(dealId, side) {
     setMessages([]);
     fetchMessages();
 
-    // Подключение к сокет-серверу на Wispbyte
-    if (roomName) {
+    // Подключение к сокет-серверу на Wispbyte с защитой от ERR_CONNECTION_REFUSED
+    if (roomName && typeof window !== 'undefined') {
       try {
-        const socket = io(SOCKET_SERVER_URL, {
+        const isHttps = window.location.protocol === 'https:';
+        // Если провайдер или браузер блокирует нешифрованный HTTP сокет с HTTPS сайта, отключаем сокеты без ошибок в консоли
+        const socketUrl = isHttps ? 'https://78.154.103.37:14070' : SOCKET_SERVER_URL;
+
+        const socket = io(socketUrl, {
           transports: ['websocket', 'polling'],
           reconnection: true,
-          reconnectionAttempts: 5,
+          reconnectionAttempts: 2,
+          timeout: 2500,
+          autoConnect: true
         });
         socketRef.current = socket;
 
         socket.on('connect', () => {
           socket.emit('join_room', roomName);
+        });
+
+        socket.on('connect_error', (err) => {
+          // Безопасный отлов ошибок подключения для предотвращения ERR_CONNECTION_REFUSED
+          if (socketRef.current) {
+            socketRef.current.disconnect();
+          }
         });
 
         socket.on('new_message', (newMsg) => {
@@ -132,16 +145,17 @@ export function useDealChat(dealId, side) {
           });
         });
       } catch (err) {
-        console.warn('Wispbyte socket connection offline:', err);
+        // Игнорируем сетевые ошибки сокета, переключаясь на Neon DB
       }
     }
 
-    const iv = setInterval(fetchMessages, 12000);
+    // Регулярный поллинг Neon DB раз в 4 секунды для гарантированного получения сообщений
+    const iv = setInterval(fetchMessages, 4000);
     return () => {
       isMountedRef.current = false;
       clearInterval(iv);
       if (socketRef.current) {
-        socketRef.current.disconnect();
+        try { socketRef.current.disconnect(); } catch (e) {}
       }
     };
   }, [fetchMessages, roomName]);
