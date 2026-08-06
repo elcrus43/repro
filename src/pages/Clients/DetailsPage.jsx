@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../../utils/format';
-import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2 } from 'lucide-react';
+import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
+import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
@@ -17,6 +18,7 @@ export function DetailsPage() {
     const { toast } = useToastContext();
     const client = state.clients.find(c => c.id === id);
     const [isEditingTypes, setIsEditingTypes] = useState(false);
+    const [isVerificationOpen, setIsVerificationOpen] = useState(false);
     const [quickModalType, setQuickModalType] = useState(null); // null | 'meeting' | 'call'
     const [quickForm, setQuickForm] = useState({
         showing_date: '',
@@ -414,6 +416,34 @@ export function DetailsPage() {
                             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
                         </a>
                     </div>
+
+                    <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}>
+                        <button
+                            type="button"
+                            onClick={() => setIsVerificationOpen(true)}
+                            className="card-clickable"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                padding: '10px 18px',
+                                borderRadius: 14,
+                                border: '1.5px solid #10b981',
+                                background: 'rgba(16, 185, 129, 0.08)',
+                                color: '#059669',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+                            }}
+                        >
+                            <ShieldCheck size={16} color="#10b981" />
+                            <span>Проверить клиента (ФССП, МВД, Федресурс)</span>
+                        </button>
+                    </div>
+
                     {client.client_types?.includes('buyer') && (
                         <div style={{ marginTop: 16 }}>
                             <button
@@ -831,6 +861,13 @@ export function DetailsPage() {
                     <span>Удалить клиента</span>
                 </button>
             </div>
+
+            {/* Модальное окно проверки клиента по госреестрам и отчета */}
+            <ClientVerificationModal
+                isOpen={isVerificationOpen}
+                onClose={() => setIsVerificationOpen(false)}
+                client={client}
+            />
         </div>
     );
 }
