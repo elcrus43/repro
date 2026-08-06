@@ -1,33 +1,29 @@
 /**
  * DealChat.jsx
  *
- * Компонент чата по сделке.
- * Поддерживает сокеты Wispbyte, файлы/документы, адаптивный компактный дизайн и ролевые имена.
+ * Компонент чата в стиле Telegram (Telegram Web UI).
+ * Поддерживает сокеты Wispbyte, файлы/документы, Telegram-пузыри, онлайн-статус и отправку вложений.
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquare, RefreshCw, AlertCircle, Share2, Check, Paperclip, FileText, Download, ExternalLink, Loader2 } from 'lucide-react';
+import { Send, MessageSquare, RefreshCw, AlertCircle, Share2, Check, Paperclip, FileText, Download, Loader2, CheckCheck } from 'lucide-react';
 import { useDealChat } from '../hooks/useDealChat';
 
 const ROLE_CONFIG = {
-  realtor:      { label: 'Риелтор',       color: '#0052ff', bg: 'rgba(0,82,255,0.12)',   initials: 'Р' },
-  seller_agent: { label: 'Агент прод.',   color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', initials: 'А' },
-  buyer_agent:  { label: 'Агент покуп.',  color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',  initials: 'А' },
-  agent:        { label: 'Агент',         color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', initials: 'А' },
-  lawyer:       { label: 'Юрист',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)',  initials: 'Ю' },
-  client:       { label: 'Клиент',        color: '#10b981', bg: 'rgba(16,185,129,0.12)',  initials: 'К' },
-  seller:       { label: 'Продавец',      color: '#8b5cf6', bg: 'rgba(139,92,246,0.12)', initials: 'П' },
-  buyer:        { label: 'Покупатель',    color: '#06b6d4', bg: 'rgba(6,182,212,0.12)',  initials: 'П' },
+  realtor:      { label: 'Риелтор',       color: '#2b5278', bg: '#eef2f5', initials: 'Р' },
+  seller_agent: { label: 'Агент прод.',   color: '#a265e6', bg: '#f5eeff', initials: 'А' },
+  buyer_agent:  { label: 'Агент покуп.',  color: '#007aff', bg: '#e5f2ff', initials: 'А' },
+  agent:        { label: 'Агент',         color: '#3390ec', bg: '#eef6ff', initials: 'А' },
+  lawyer:       { label: 'Юрист',         color: '#d97706', bg: '#fff7ed', initials: 'Ю' },
+  client:       { label: 'Клиент',        color: '#10b981', bg: '#ecfdf5', initials: 'К' },
+  seller:       { label: 'Продавец',      color: '#a265e6', bg: '#f5eeff', initials: 'П' },
+  buyer:        { label: 'Покупатель',    color: '#007aff', bg: '#e5f2ff', initials: 'П' },
 };
 
 function formatMsgTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const time = d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  if (isToday) return time;
-  return `${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })} ${time}`;
+  return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
 function isSameDay(a, b) {
@@ -48,10 +44,18 @@ function DayDivider({ date }) {
   else label = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '8px 0' }}>
-      <div style={{ flex: 1, height: 1, background: 'var(--border-light)' }} />
-      <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400 }}>{label}</span>
-      <div style={{ flex: 1, height: 1, background: 'var(--border-light)' }} />
+    <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
+      <span style={{ 
+        fontSize: 11, 
+        fontWeight: 500, 
+        color: '#ffffff', 
+        background: 'rgba(0, 0, 0, 0.25)', 
+        padding: '3px 12px', 
+        borderRadius: 12,
+        backdropFilter: 'blur(4px)' 
+      }}>
+        {label}
+      </span>
     </div>
   );
 }
@@ -61,11 +65,11 @@ function Avatar({ role, name }) {
   const letter = name && name !== cfg.label ? name[0].toUpperCase() : cfg.initials;
   return (
     <div style={{
-      width: 24, height: 24, borderRadius: '50%',
-      background: cfg.bg, color: cfg.color,
+      width: 28, height: 28, borderRadius: '50%',
+      background: cfg.color, color: '#ffffff',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: 10, fontWeight: 700, flexShrink: 0,
-      border: `1px solid ${cfg.color}40`,
+      fontSize: 11, fontWeight: 700, flexShrink: 0,
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
     }}>
       {letter}
     </div>
@@ -78,7 +82,6 @@ function ChatMessage({ msg, isOwn }) {
   const isGeneric = !rawName || rawName.toLowerCase() === 'пользователь' || rawName.toLowerCase() === 'user' || rawName.toLowerCase() === 'guest';
   const displayName = isGeneric ? cfg.label : rawName;
 
-  // Определение вложений (файлы / изображения)
   const isImage = msg.file_type?.startsWith('image/') || (msg.file_url && /\.(png|jpe?g|webp|gif)$/i.test(msg.file_url));
   const hasFile = Boolean(msg.file_url);
 
@@ -86,33 +89,48 @@ function ChatMessage({ msg, isOwn }) {
     <div style={{
       display: 'flex',
       flexDirection: isOwn ? 'row-reverse' : 'row',
-      gap: 6, alignItems: 'flex-end',
+      gap: 8, 
+      alignItems: 'flex-end',
+      margin: '2px 0'
     }}>
       {!isOwn && <Avatar role={msg.sender_role} name={displayName} />}
-      <div style={{ maxWidth: '80%', display: 'flex', flexDirection: 'column', gap: 2, alignItems: isOwn ? 'flex-end' : 'flex-start' }}>
-        {!isOwn && (
-          <span style={{ fontSize: 10, color: cfg.color, fontWeight: 600, paddingLeft: 2 }}>
-            {displayName} {displayName !== cfg.label ? `· ${cfg.label}` : ''}
-          </span>
-        )}
-        
+      
+      <div style={{ 
+        maxWidth: '78%', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: isOwn ? 'flex-end' : 'flex-start' 
+      }}>
         <div style={{
-          background: isOwn ? 'var(--primary)' : 'var(--bg-light)',
-          color: isOwn ? '#fff' : 'var(--text)',
-          padding: '7px 11px',
-          borderRadius: isOwn ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-          fontSize: 12.5, fontWeight: 400, lineHeight: 1.4,
-          opacity: msg._pending ? 0.65 : 1,
-          boxShadow: isOwn ? '0 2px 6px rgba(0,82,255,0.18)' : '0 1px 3px rgba(0,0,0,0.05)',
+          background: isOwn ? '#eeffde' : '#ffffff', // Telegram light green bubble for own, white for others
+          color: '#111827',
+          padding: '7px 10px 6px 11px',
+          borderRadius: isOwn ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+          fontSize: 13, 
+          lineHeight: 1.4,
+          boxShadow: '0 1px 2px rgba(0, 0, 0, 0.12)',
+          position: 'relative',
           wordBreak: 'break-word',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 4
+          minWidth: 90
         }}>
+          {/* Имя отправителя в стиле Telegram (для входящих) */}
+          {!isOwn && (
+            <div style={{ 
+              fontSize: 11, 
+              fontWeight: 700, 
+              color: cfg.color, 
+              marginBottom: 3, 
+              lineHeight: 1.2 
+            }}>
+              {displayName} {displayName !== cfg.label ? `· ${cfg.label}` : ''}
+            </div>
+          )}
+
+          {/* Документ / Фото */}
           {hasFile && (
             isImage ? (
-              <a href={msg.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 8, overflow: 'hidden' }}>
-                <img src={msg.file_url} alt={msg.file_name || 'Изображение'} style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'cover', borderRadius: 8 }} />
+              <a href={msg.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 8, overflow: 'hidden', marginBottom: 4 }}>
+                <img src={msg.file_url} alt={msg.file_name || 'Фото'} style={{ maxWidth: '100%', maxHeight: 220, objectFit: 'cover', borderRadius: 8 }} />
               </a>
             ) : (
               <a 
@@ -125,33 +143,51 @@ function ChatMessage({ msg, isOwn }) {
                   alignItems: 'center',
                   gap: 8,
                   padding: '6px 10px',
-                  background: isOwn ? 'rgba(255,255,255,0.15)' : 'var(--surface)',
-                  borderRadius: 8,
+                  background: isOwn ? 'rgba(79, 174, 78, 0.12)' : '#f3f4f6',
+                  borderRadius: 10,
                   textDecoration: 'none',
-                  color: isOwn ? '#fff' : 'var(--text)',
-                  border: isOwn ? '1px solid rgba(255,255,255,0.2)' : '1px solid var(--border-light)'
+                  color: '#1e293b',
+                  marginBottom: 4
                 }}
               >
-                <FileText size={18} color={isOwn ? '#fff' : 'var(--primary)'} />
+                <FileText size={20} color="#3390ec" />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 600, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                     {msg.file_name || 'Документ'}
                   </div>
-                  <div style={{ fontSize: 9, opacity: 0.8 }}>Скачать файл</div>
+                  <div style={{ fontSize: 9.5, color: '#64748b' }}>Нажмите для скачивания</div>
                 </div>
-                <Download size={14} />
+                <Download size={14} color="#3390ec" />
               </a>
             )
           )}
 
+          {/* Текст сообщения */}
           {msg.text && (msg.text !== msg.file_name) && (
-            <span>{msg.text}</span>
+            <div style={{ paddingRight: 45, whiteSpace: 'pre-wrap' }}>
+              {msg.text}
+            </div>
           )}
-        </div>
 
-        <span style={{ fontSize: 9, color: 'var(--text-muted)', padding: '0 2px' }}>
-          {msg._pending ? 'Отправка...' : formatMsgTime(msg.created_at)}
-        </span>
+          {/* Время и статус прочтения в стиле Telegram (в правом нижнем углу пузыря) */}
+          <div style={{
+            position: 'absolute',
+            bottom: 3,
+            right: 7,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            fontSize: 9.5,
+            color: isOwn ? '#598958' : '#a2acb4',
+            fontWeight: 400,
+            userSelect: 'none'
+          }}>
+            <span>{msg._pending ? 'отправка...' : formatMsgTime(msg.created_at)}</span>
+            {isOwn && (
+              msg._pending ? null : <CheckCheck size={13} color="#4fae4e" />
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -214,13 +250,15 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
     };
     reader.onerror = () => {
       setUploading(false);
-      alert('Ошибка чтения файла');
+      alert('Ошибка при загрузке файла');
     };
     reader.readAsDataURL(file);
   }
 
   function handleCopyShareLink() {
-    const shareUrl = `${window.location.origin}/#/chat/${dealId}/${side}`;
+    const hash = Math.abs(dealId.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
+    const secretToken = `t_sec_${side}_${dealId.substring(0, 8)}_${hash}`;
+    const shareUrl = `${window.location.origin}/#/chat/${secretToken}`;
     navigator.clipboard.writeText(shareUrl)
       .then(() => {
         setCopied(true);
@@ -239,28 +277,36 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      borderRadius: 16, overflow: 'hidden',
-      border: `1px solid ${accentColor}30`,
-      background: 'var(--surface)',
-      boxShadow: `0 2px 16px ${accentColor}10`,
+      borderRadius: 18, overflow: 'hidden',
+      border: '1px solid #7ea5c9',
+      background: '#8ab0d4', // Классические обои Telegram
+      boxShadow: '0 8px 30px rgba(0, 0, 0, 0.12)',
     }}>
-      {/* Header */}
+      {/* Telegram Header */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 12px',
-        background: `linear-gradient(135deg, ${accentColor}12, ${accentColor}05)`,
-        borderBottom: `1px solid ${accentColor}20`,
+        padding: '10px 14px',
+        background: '#517da2', // Telegram classic blue header
+        color: '#ffffff',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <MessageSquare size={13} color={accentColor} />
-          <span style={{ fontSize: 11, fontWeight: 600, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-            {title}
-          </span>
-          {messages.length > 0 && (
-            <span style={{ fontSize: 10, background: `${accentColor}18`, color: accentColor, padding: '1px 6px', borderRadius: 6, fontWeight: 600 }}>
-              {messages.length}
-            </span>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'rgba(255,255,255,0.2)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <MessageSquare size={16} color="#ffffff" />
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#ffffff', lineHeight: 1.2 }}>
+              {title}
+            </div>
+            <div style={{ fontSize: 10, color: '#c7dbe8', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4fae4e' }} />
+              <span>онлайн · {messages.length} сообщ.</span>
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -268,48 +314,50 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
             type="button"
             onClick={handleCopyShareLink}
             style={{
-              height: 24, padding: '0 8px', borderRadius: 6, border: 'none',
-              background: copied ? 'rgba(16,185,129,0.15)' : `${accentColor}15`,
-              color: copied ? '#10b981' : accentColor,
+              height: 28, padding: '0 10px', borderRadius: 14, border: 'none',
+              background: copied ? '#4fae4e' : 'rgba(255,255,255,0.2)',
+              color: '#ffffff',
               display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
-              fontSize: 10, fontWeight: 600, transition: 'all 0.2s'
+              fontSize: 11, fontWeight: 600, transition: 'all 0.2s'
             }}
-            title="Скопировать публичную ссылку на чат"
+            title="Скопировать секретную ссылку"
           >
-            {copied ? <Check size={11} /> : <Share2 size={11} />}
+            {copied ? <Check size={12} /> : <Share2 size={12} />}
             <span>{copied ? 'Скопировано' : 'Ссылка'}</span>
           </button>
           <button
             type="button"
             onClick={refetch}
-            style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: `${accentColor}15`, color: accentColor, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+            style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.15)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
             title="Обновить"
           >
-            <RefreshCw size={11} />
+            <RefreshCw size={12} />
           </button>
         </div>
       </div>
 
-      {/* Messages List */}
+      {/* Messages List (Telegram Wallpaper Body) */}
       <div style={{
-        flex: 1, minHeight: 160, maxHeight: 300, overflowY: 'auto',
-        padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 6,
+        flex: 1, minHeight: 200, maxHeight: 340, overflowY: 'auto',
+        padding: '12px 14px', display: 'flex', flexDirection: 'column',
         scrollbarWidth: 'thin',
+        backgroundImage: 'radial-gradient(rgba(255,255,255,0.12) 1px, transparent 0)',
+        backgroundSize: '16px 16px'
       }}>
         {loading && (
-          <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontSize: 11 }}>
-            Загрузка сообщений...
+          <div style={{ textAlign: 'center', padding: '20px 0', color: '#ffffff', fontSize: 12 }}>
+            Загрузка сообщений Telegram...
           </div>
         )}
         {!loading && error && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', background: 'var(--danger-light)', borderRadius: 8, color: 'var(--danger)', fontSize: 11 }}>
-            <AlertCircle size={13} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: '#ef4444', borderRadius: 10, color: '#ffffff', fontSize: 11 }}>
+            <AlertCircle size={14} />
             {error}
           </div>
         )}
         {!loading && !error && messages.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-muted)', fontSize: 11 }}>
-            Сообщений пока нет
+          <div style={{ textAlign: 'center', padding: '30px 0', color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: 500 }}>
+            Чат пуст. Напишите первое сообщение!
           </div>
         )}
         {messages.map((msg, i) => {
@@ -325,12 +373,12 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input & Attachments */}
+      {/* Telegram Input Bar */}
       <div style={{
-        display: 'flex', gap: 6, padding: '8px 10px',
-        borderTop: `1px solid ${accentColor}20`,
-        background: 'var(--bg-light)',
-        alignItems: 'center'
+        display: 'flex', gap: 8, padding: '8px 10px',
+        background: '#ffffff',
+        alignItems: 'center',
+        boxShadow: '0 -2px 10px rgba(0,0,0,0.05)'
       }}>
         {/* Файловый ввод */}
         <input 
@@ -346,14 +394,14 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
           style={{
-            width: 32, height: 32, borderRadius: 8, border: 'none',
-            background: 'var(--surface)', color: 'var(--text-secondary)',
+            width: 36, height: 36, borderRadius: '50%', border: 'none',
+            background: '#f1f5f9', color: '#64748b',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0
           }}
-          title="Прикрепить файл или документ"
+          title="Прикрепить файл или фото"
         >
-          {uploading ? <Loader2 size={14} className="animate-spin" /> : <Paperclip size={14} />}
+          {uploading ? <Loader2 size={16} className="animate-spin" color="#3390ec" /> : <Paperclip size={16} color="#64748b" />}
         </button>
 
         <textarea
@@ -361,31 +409,32 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
           value={text}
           onChange={e => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Сообщение..."
+          placeholder="Написать сообщение..."
           rows={1}
           style={{
-            flex: 1, border: 'none', background: 'var(--surface)',
-            borderRadius: 8, padding: '6px 10px', fontSize: 12.5,
+            flex: 1, border: 'none', background: '#f1f5f9',
+            borderRadius: 18, padding: '8px 14px', fontSize: 13,
             fontFamily: 'inherit', resize: 'none', outline: 'none',
-            color: 'var(--text)', lineHeight: 1.35,
-            minHeight: 32, maxHeight: 80,
+            color: '#0f172a', lineHeight: 1.4,
+            minHeight: 36, maxHeight: 90,
           }}
         />
         
         <button
           type="button"
           onClick={() => handleSend()}
-          disabled={!text.trim() || sending}
+          disabled={!text.trim() && !uploading}
           style={{
-            width: 32, height: 32, borderRadius: 8, border: 'none',
-            background: text.trim() && !sending ? accentColor : 'var(--bg-light)',
-            color: text.trim() && !sending ? '#fff' : 'var(--text-muted)',
+            width: 36, height: 36, borderRadius: '50%', border: 'none',
+            background: text.trim() ? '#3390ec' : '#e2e8f0', // Telegram classic blue send button
+            color: text.trim() ? '#ffffff' : '#94a3b8',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: text.trim() && !sending ? 'pointer' : 'default',
-            flexShrink: 0, transition: 'all 0.2s'
+            cursor: text.trim() ? 'pointer' : 'default',
+            flexShrink: 0, transition: 'all 0.2s',
+            boxShadow: text.trim() ? '0 2px 8px rgba(51, 144, 236, 0.35)' : 'none'
           }}
         >
-          <Send size={13} />
+          <Send size={15} />
         </button>
       </div>
     </div>
