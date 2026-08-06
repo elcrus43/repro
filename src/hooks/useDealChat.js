@@ -3,6 +3,22 @@ import { neonDb } from '../lib/neon';
 import { io } from 'socket.io-client';
 
 const SOCKET_SERVER_URL = 'http://78.154.103.37:14070';
+let schemaMigrated = false;
+
+// Автомиграция таблицы deal_messages в Neon DB
+async function ensureDealMessagesSchema() {
+  if (schemaMigrated) return;
+  try {
+    await neonDb.query(`
+      ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_url" TEXT;
+      ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_name" TEXT;
+      ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_type" TEXT;
+    `);
+    schemaMigrated = true;
+  } catch (e) {
+    console.warn('Neon DB schema auto-migration notice:', e);
+  }
+}
 
 // Звуковое оповещение Telegram chime
 function playChatNotificationSound() {
@@ -11,8 +27,8 @@ function playChatNotificationSound() {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
     gain.gain.setValueAtTime(0.15, ctx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
     osc.connect(gain);
@@ -47,8 +63,9 @@ export function useDealChat(dealId, side) {
 
   const roomName = dealId && side ? `deal_${dealId}_${side}` : null;
 
-  // Запрос разрешения на уведомления при первом подключении
+  // Запрос разрешения на уведомления и миграция схемы Neon DB
   useEffect(() => {
+    ensureDealMessagesSchema();
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
@@ -57,6 +74,7 @@ export function useDealChat(dealId, side) {
   const fetchMessages = useCallback(async () => {
     if (!dealId || !side) return;
     try {
+      await ensureDealMessagesSchema();
       const res = await neonDb.query(
         `SELECT * FROM "deal_messages"
          WHERE "deal_id" = $1 AND "side" = $2
@@ -100,7 +118,6 @@ export function useDealChat(dealId, side) {
         socket.on('new_message', (newMsg) => {
           if (!isMountedRef.current) return;
           
-          // Звук и push если новое входящее сообщение
           playChatNotificationSound();
           sendWebPushNotification(
             '💬 Новое сообщение в чате',
@@ -130,11 +147,13 @@ export function useDealChat(dealId, side) {
   }, [fetchMessages, roomName]);
 
   /**
-   * Отправить сообщение с оптимистичным обновлением UI и сокет-трансляцией.
+   * Отправить сообщение с автомиграцией и безопасным fallback.
    */
   const sendMessage = useCallback(async ({ text, senderId, senderName, senderRole, file_url, file_name, file_type }) => {
     if (!text?.trim() && !file_url) return;
     if (!dealId || !side) return;
+
+    await ensureDealMessagesSchema();
 
     const tmpId = `tmp-${Date.now()}`;
     const optimistic = {
@@ -155,7 +174,7 @@ export function useDealChat(dealId, side) {
     setMessages(prev => [...prev, optimistic]);
     setSending(true);
 
-    // Трансляция через Wispbyte сокет
+    // Сокет-трансляция через Wispbyte
     if (socketRef.current && socketRef.current.connected && roomName) {
       socketRef.current.emit('send_message', {
         room: roomName,
@@ -169,17 +188,41 @@ export function useDealChat(dealId, side) {
     }
 
     try {
-      const res = await neonDb.insert('deal_messages', {
+      let insertPayload = {
         deal_id:     dealId,
         side,
         sender_id:   senderId,
         sender_name: senderName,
         sender_role: senderRole,
         text:        text?.trim() || file_name || 'Документ',
-        file_url,
-        file_name,
-        file_type
-      });
+      };
+
+      if (file_url) {
+        insertPayload.file_url  = file_url;
+        insertPayload.file_name = file_name;
+        insertPayload.file_type = file_type;
+      }
+
+      let res = await neonDb.insert('deal_messages', insertPayload);
+
+      // Если возникла ошибка из-за отсутствия колонок, мигрируем таблицу и повторяем запрос
+      if (res.error && (res.error.message?.includes('file_url') || res.error.message?.includes('does not exist'))) {
+        await neonDb.query(`
+          ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_url" TEXT;
+          ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_name" TEXT;
+          ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_type" TEXT;
+        `);
+        res = await neonDb.insert('deal_messages', insertPayload);
+      }
+
+      // Если все еще есть ошибка схемы, делаем fallback через инлайновый URL в тексте
+      if (res.error && file_url) {
+        delete insertPayload.file_url;
+        delete insertPayload.file_name;
+        delete insertPayload.file_type;
+        insertPayload.text = `${insertPayload.text}\n[FILE]:${file_url}`;
+        res = await neonDb.insert('deal_messages', insertPayload);
+      }
 
       if (!isMountedRef.current) return;
 
