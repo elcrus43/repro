@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../../utils/format';
-import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck } from 'lucide-react';
+import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck, Copy, Check } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
@@ -417,31 +417,130 @@ export function DetailsPage() {
                         </a>
                     </div>
 
-                    <div style={{ marginTop: 14, display: 'flex', justifyContent: 'center' }}>
-                        <button
-                            type="button"
-                            onClick={() => setIsVerificationOpen(true)}
-                            className="card-clickable"
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 8,
-                                padding: '10px 18px',
-                                borderRadius: 14,
-                                border: '1.5px solid #10b981',
-                                background: 'rgba(16, 185, 129, 0.08)',
-                                color: '#059669',
-                                fontSize: 13,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
-                            }}
-                        >
-                            <ShieldCheck size={16} color="#10b981" />
-                            <span>Проверить клиента (ФССП, МВД, Федресурс)</span>
-                        </button>
+                    {/* ── Блок проверки и реквизитов госреестров ── */}
+                    <div style={{
+                        marginTop: 18,
+                        padding: '18px 20px',
+                        borderRadius: 24,
+                        background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12,
+                        textAlign: 'left'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <ShieldCheck size={18} color="#10b981" />
+                                <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                    Реквизиты для госреестров
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsVerificationOpen(true)}
+                                className="card-clickable"
+                                style={{
+                                    padding: '6px 14px', borderRadius: 10, border: 'none',
+                                    background: '#10b981', color: '#ffffff', fontSize: 12, fontWeight: 600,
+                                    display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(16,185,129,0.2)'
+                                }}
+                            >
+                                <ShieldCheck size={14} />
+                                <span>Проверить в ФССП, МВД</span>
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, fontSize: 12 }}>
+                            {/* ИНН */}
+                            <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>ИНН клиента:</div>
+                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{client.inn || client.passport_details?.inn || 'Не указан'}</div>
+                                </div>
+                                {(client.inn || client.passport_details?.inn) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(client.inn || client.passport_details?.inn);
+                                            toast.success('ИНН скопирован!');
+                                        }}
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', padding: 2 }}
+                                        title="Скопировать ИНН"
+                                    >
+                                        <Copy size={13} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Дата рождения */}
+                            <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Дата рождения:</div>
+                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{client.birth_date || client.passport_details?.birth_date || 'Не указана'}</div>
+                                </div>
+                                {(client.birth_date || client.passport_details?.birth_date) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(client.birth_date || client.passport_details?.birth_date);
+                                            toast.success('Дата рождения скопирована!');
+                                        }}
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', padding: 2 }}
+                                        title="Скопировать дату рождения"
+                                    >
+                                        <Copy size={13} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Паспорт */}
+                            <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Паспорт РФ:</div>
+                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                        {client.passport || (client.passport_details?.series ? `${client.passport_details.series} ${client.passport_details.number}` : 'Не указан')}
+                                    </div>
+                                </div>
+                                {(client.passport || client.passport_details?.series) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(client.passport || `${client.passport_details?.series} ${client.passport_details?.number}`);
+                                            toast.success('Паспорт скопирован!');
+                                        }}
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', padding: 2 }}
+                                        title="Скопировать паспорт"
+                                    >
+                                        <Copy size={13} />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Адрес регистрации */}
+                            <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                    <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Адрес регистрации:</div>
+                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>
+                                        {client.reg_address || client.passport_details?.registration_address || 'Не указан'}
+                                    </div>
+                                </div>
+                                {(client.reg_address || client.passport_details?.registration_address) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(client.reg_address || client.passport_details?.registration_address);
+                                            toast.success('Адрес регистрации скопирован!');
+                                        }}
+                                        style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#64748b', padding: 2 }}
+                                        title="Скопировать адрес регистрации"
+                                    >
+                                        <Copy size={13} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {client.client_types?.includes('buyer') && (

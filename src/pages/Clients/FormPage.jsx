@@ -8,9 +8,9 @@ import { FormCard } from '../../components/FormCard';
 import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle } from 'lucide-react';
 
 const defaultClient = {
-    full_name: '', phone: '', email: '',
+    full_name: '', phone: '', email: '', inn: '', birth_date: '', reg_address: '',
     client_types: ['buyer'], additional_contacts: [], source: '', status: 'new', notes: '',
-    passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '' }
+    passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '', inn: '', birth_date: '', snils: '' }
 };
 
 export function FormPage() {
@@ -28,12 +28,15 @@ export function FormPage() {
 
     const initialForm = existing ? {
         ...existing,
+        inn: existing.inn || existing.passport_details?.inn || '',
+        birth_date: existing.birth_date || existing.passport_details?.birth_date || '',
+        reg_address: existing.reg_address || existing.passport_details?.registration_address || '',
         phones: initialPhones,
         passport_details: existing.passport_details || defaultClient.passport_details
     } : { ...defaultClient, realtor_id: state.currentUser?.id };
 
     const [form, setForm] = useState(initialForm);
-    const [showPassport, setShowPassport] = useState(!!form.passport_details?.series);
+    const [showPassport, setShowPassport] = useState(!!(form.passport_details?.series || form.inn || form.birth_date));
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -47,10 +50,30 @@ export function FormPage() {
     async function handleSubmit(e) {
         e.preventDefault();
         const phones = (form.phones || [form.phone || '']).map(p => stripPhone(p)).filter(Boolean);
+        
+        // Синхронизация верхнеуровневых полей с паспортом для госреестров
+        const pDetails = form.passport_details || {};
+        const passportStr = (pDetails.series && pDetails.number) 
+            ? `${pDetails.series} ${pDetails.number}` 
+            : (form.passport || '');
+        const birthDateStr = form.birth_date || pDetails.birth_date || '';
+        const innStr = form.inn || pDetails.inn || '';
+        const regAddressStr = form.reg_address || pDetails.registration_address || '';
+
         const client = {
             ...form,
             phone: phones[0] || '',
             phones: phones.length > 1 ? phones : undefined,
+            inn: innStr,
+            birth_date: birthDateStr,
+            passport: passportStr,
+            reg_address: regAddressStr,
+            passport_details: {
+                ...pDetails,
+                inn: innStr,
+                birth_date: birthDateStr,
+                registration_address: regAddressStr
+            },
             additional_contacts: (form.additional_contacts || []).map(c => ({
                 ...c,
                 phone: stripPhone(c.phone)
@@ -243,10 +266,14 @@ export function FormPage() {
 
                         {showPassport && (
                             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                                    <div className="form-group">
+                                        <label className="form-label">ИНН клиента</label>
+                                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.inn || form.passport_details?.inn || ''} onChange={e => { setF('inn', e.target.value); setPassport('inn', e.target.value); }} placeholder="771234567890" maxLength={12} />
+                                    </div>
                                     <div className="form-group">
                                         <label className="form-label">Дата рождения</label>
-                                        <input type="date" className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.birth_date || ''} onChange={e => setPassport('birth_date', e.target.value)} />
+                                        <input type="date" className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.birth_date || form.passport_details?.birth_date || ''} onChange={e => { setF('birth_date', e.target.value); setPassport('birth_date', e.target.value); }} />
                                     </div>
                                     <div className="form-group">
                                         <label className="form-label">СНИЛС</label>
