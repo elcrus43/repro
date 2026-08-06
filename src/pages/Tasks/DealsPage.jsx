@@ -1514,7 +1514,10 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         e.stopPropagation();
                         const hash = Math.abs(deal.id.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
                         const secretToken = `t_sec_seller_${deal.id.substring(0, 8)}_${hash}`;
-                        const link = `${window.location.origin}/#/chat/${secretToken}`;
+                        const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                            ? 'https://realtor-match.vercel.app'
+                            : window.location.origin;
+                        const link = `${baseOrigin}/#/chat/${secretToken}`;
                         navigator.clipboard.writeText(link)
                             .then(() => toast.success('Защищенная ссылка на чат продавца скопирована!'))
                             .catch(() => toast.error('Не удалось скопировать'));
@@ -1569,7 +1572,10 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         e.stopPropagation();
                         const hash = Math.abs(deal.id.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
                         const secretToken = `t_sec_buyer_${deal.id.substring(0, 8)}_${hash}`;
-                        const link = `${window.location.origin}/#/chat/${secretToken}`;
+                        const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+                            ? 'https://realtor-match.vercel.app'
+                            : window.location.origin;
+                        const link = `${baseOrigin}/#/chat/${secretToken}`;
                         navigator.clipboard.writeText(link)
                             .then(() => toast.success('Защищенная ссылка на чат покупателя скопирована!'))
                             .catch(() => toast.error('Не удалось скопировать'));

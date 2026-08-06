@@ -258,7 +258,10 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
   function handleCopyShareLink() {
     const hash = Math.abs(dealId.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
     const secretToken = `t_sec_${side}_${dealId.substring(0, 8)}_${hash}`;
-    const shareUrl = `${window.location.origin}/#/chat/${secretToken}`;
+    const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'https://realtor-match.vercel.app'
+      : window.location.origin;
+    const shareUrl = `${baseOrigin}/#/chat/${secretToken}`;
     navigator.clipboard.writeText(shareUrl)
       .then(() => {
         setCopied(true);
