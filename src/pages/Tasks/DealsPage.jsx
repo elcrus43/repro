@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2 } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { DealChat } from '../../components/DealChat';
+import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
 import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
@@ -108,6 +109,7 @@ export function DealsPage() {
     }, [filteredByPeriod, filter]);
 
     const [lastMessages, setLastMessages] = useState({});
+    const [verificationClient, setVerificationClient] = useState(null);
 
     useEffect(() => {
         if (!user) return;
@@ -973,6 +975,13 @@ export function DealsPage() {
                     </div>
                 </div>
             )}
+
+            {/* Модальное окно проверки клиента по госреестрам */}
+            <ClientVerificationModal 
+                isOpen={Boolean(verificationClient)} 
+                onClose={() => setVerificationClient(null)} 
+                client={verificationClient} 
+            />
         </div>
     );
 }
@@ -1104,18 +1113,38 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 </div>
 
                 {clients.map(c => (
-                    <div key={c.id}
-                        onClick={() => navigate(`/clients/${c.id}`)}
-                        style={{ 
-                            fontSize: 14, 
-                            fontWeight: 600, 
-                            color: 'var(--text)', 
-                            cursor: 'pointer', 
-                            lineHeight: 1.3,
-                            transition: 'color 0.2s' 
-                        }}
-                    >
-                        {c.full_name}
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                        <div
+                            onClick={() => navigate(`/clients/${c.id}`)}
+                            style={{ 
+                                fontSize: 14, 
+                                fontWeight: 600, 
+                                color: 'var(--text)', 
+                                cursor: 'pointer', 
+                                lineHeight: 1.3,
+                                transition: 'color 0.2s' 
+                            }}
+                        >
+                            {c.full_name}
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setVerificationClient(c);
+                            }}
+                            style={{
+                                padding: '2px 7px', borderRadius: 8, border: `1px solid ${accentColor}35`,
+                                background: '#ffffff', color: accentColor, fontSize: 10, fontWeight: 600,
+                                display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
+                                flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
+                            }}
+                            title="Проверить клиента в госреестрах (ФССП, МВД, Банкротство, ФНС)"
+                        >
+                            <ShieldCheck size={11} color={accentColor} />
+                            <span>Проверить</span>
+                        </button>
                     </div>
                 ))}
 
