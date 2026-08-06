@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { ShieldCheck, ExternalLink, Copy, Check, AlertTriangle, FileText, User, Search, Building2, Scale, ShieldAlert, Printer, Download, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ShieldCheck, ExternalLink, Copy, Check, AlertTriangle, FileText, User, Search, Building2, Scale, ShieldAlert, Printer, Download, ArrowLeft, Zap, Loader2 } from 'lucide-react';
 import { useToastContext } from './Toast';
+import { parseOpenRegistries } from '../services/registryParser';
 
 const VERIFICATION_SERVICES = [
   {
@@ -86,9 +87,36 @@ export function ClientVerificationModal({ isOpen, onClose, client }) {
   const { toast } = useToastContext();
   const [copiedField, setCopiedField] = useState(null);
   const [viewMode, setViewMode] = useState('services'); // 'services' | 'report'
+  const [isParsing, setIsParsing] = useState(false);
+  const [parsedData, setParsedData] = useState(null);
   const [agentComment, setAgentComment] = useState(
     'По результатам комплексной проверки в официальных государственных реестрах юридических и финансовых рисков не выявлено. Задолженности в ФССП отсутствуют, сведения о банкротстве отсутствуют, паспорт действителен.'
   );
+
+  useEffect(() => {
+    if (isOpen && client?.full_name && !parsedData) {
+      runAutoParsing();
+    }
+  }, [isOpen, client]);
+
+  const runAutoParsing = async () => {
+    if (!client?.full_name) return;
+    setIsParsing(true);
+    try {
+      const res = await parseOpenRegistries({
+        fullName: client.full_name || client.name,
+        birthDate: client.birth_date || client.birthday,
+        inn: client.inn,
+        passport: client.passport || client.passport_data
+      });
+      setParsedData(res);
+      toast.success('Автоматическая экспресс-проверка открытых реестров завершена!');
+    } catch (e) {
+      console.warn('Auto registry parsing error:', e);
+    } finally {
+      setIsParsing(false);
+    }
+  };
 
   if (!isOpen || !client) return null;
 
@@ -302,6 +330,59 @@ export function ClientVerificationModal({ isOpen, onClose, client }) {
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Auto-parsing Live Banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)',
+              border: '1px solid #a7f3d0', borderRadius: 16, padding: '14px 16px',
+              display: 'flex', flexDirection: 'column', gap: 10
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Zap size={16} color="#059669" />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#065f46' }}>
+                    Экспресс-проверка открытых реестров (Федресурс, ФНС, Арбитраж)
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={runAutoParsing}
+                  disabled={isParsing}
+                  style={{
+                    padding: '4px 10px', borderRadius: 8, border: 'none',
+                    background: '#059669', color: '#ffffff', fontSize: 11, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
+                  }}
+                >
+                  {isParsing ? <Loader2 size={12} className="animate-spin" /> : <Zap size={12} />}
+                  <span>{isParsing ? 'Парсинг...' : 'Обновить'}</span>
+                </button>
+              </div>
+
+              {isParsing && (
+                <div style={{ fontSize: 12, color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Loader2 size={14} className="animate-spin" />
+                  <span>Выполняется фоновый парсинг открытых API реестров...</span>
+                </div>
+              )}
+
+              {!isParsing && parsedData && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#065f46' }}>
+                    <Check size={14} color="#10b981" />
+                    <span><strong>ЕФРСБ (Банкротство):</strong> {parsedData.bankrot?.message}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#065f46' }}>
+                    <Check size={14} color="#10b981" />
+                    <span><strong>ФНС / ИНН:</strong> {parsedData.fns?.message}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#065f46' }}>
+                    <Check size={14} color="#10b981" />
+                    <span><strong>Арбитраж:</strong> {parsedData.arbitr?.message}</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* List of Government Services */}
