@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, MessageSquare, RefreshCw, AlertCircle, Share2, Check, Paperclip, FileText, Download, Loader2, CheckCheck } from 'lucide-react';
+import { Send, MessageSquare, RefreshCw, AlertCircle, Share2, Check, Paperclip, FileText, Download, Loader2, CheckCheck, Trash2, Users, UserX, ShieldAlert, KeyRound } from 'lucide-react';
 import { useDealChat } from '../hooks/useDealChat';
 
 const ROLE_CONFIG = {
@@ -76,7 +76,8 @@ function Avatar({ role, name }) {
   );
 }
 
-function ChatMessage({ msg, isOwn }) {
+function ChatMessage({ msg, isOwn, canManage, onDelete }) {
+  const [hovered, setHovered] = useState(false);
   const cfg = ROLE_CONFIG[msg.sender_role] || ROLE_CONFIG.client;
   const rawName = (msg.sender_name || '').trim();
   const isGeneric = !rawName || rawName.toLowerCase() === 'пользователь' || rawName.toLowerCase() === 'user' || rawName.toLowerCase() === 'guest';
@@ -86,23 +87,29 @@ function ChatMessage({ msg, isOwn }) {
   const hasFile = Boolean(msg.file_url);
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: isOwn ? 'row-reverse' : 'row',
-      gap: 8, 
-      alignItems: 'flex-end',
-      margin: '2px 0'
-    }}>
+    <div 
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: 'flex',
+        flexDirection: isOwn ? 'row-reverse' : 'row',
+        gap: 6, 
+        alignItems: 'flex-end',
+        margin: '3px 0',
+        position: 'relative'
+      }}
+    >
       {!isOwn && <Avatar role={msg.sender_role} name={displayName} />}
       
       <div style={{ 
         maxWidth: '78%', 
         display: 'flex', 
         flexDirection: 'column', 
-        alignItems: isOwn ? 'flex-end' : 'flex-start' 
+        alignItems: isOwn ? 'flex-end' : 'flex-start',
+        position: 'relative'
       }}>
         <div style={{
-          background: isOwn ? '#eeffde' : '#ffffff', // Telegram light green bubble for own, white for others
+          background: isOwn ? '#eeffde' : '#ffffff',
           color: '#111827',
           padding: '7px 10px 6px 11px',
           borderRadius: isOwn ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
@@ -113,7 +120,6 @@ function ChatMessage({ msg, isOwn }) {
           wordBreak: 'break-word',
           minWidth: 90
         }}>
-          {/* Имя отправителя в стиле Telegram (для входящих) */}
           {!isOwn && (
             <div style={{ 
               fontSize: 11, 
@@ -126,7 +132,6 @@ function ChatMessage({ msg, isOwn }) {
             </div>
           )}
 
-          {/* Документ / Фото */}
           {hasFile && (
             isImage ? (
               <a href={msg.file_url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', borderRadius: 8, overflow: 'hidden', marginBottom: 4 }}>
@@ -162,14 +167,12 @@ function ChatMessage({ msg, isOwn }) {
             )
           )}
 
-          {/* Текст сообщения */}
           {msg.text && (msg.text !== msg.file_name) && (
             <div style={{ paddingRight: 45, whiteSpace: 'pre-wrap' }}>
               {msg.text}
             </div>
           )}
 
-          {/* Время и статус прочтения в стиле Telegram (в правом нижнем углу пузыря) */}
           <div style={{
             position: 'absolute',
             bottom: 3,
@@ -189,15 +192,39 @@ function ChatMessage({ msg, isOwn }) {
           </div>
         </div>
       </div>
+
+      {/* Кнопка удаления сообщения для Агента/Риелтора */}
+      {(canManage || isOwn) && hovered && !msg._pending && (
+        <button
+          type="button"
+          onClick={() => onDelete(msg.id)}
+          style={{
+            border: 'none', background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444',
+            width: 22, height: 22, borderRadius: '50%',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'pointer', flexShrink: 0
+          }}
+          title="Удалить сообщение"
+        >
+          <Trash2 size={11} />
+        </button>
+      )}
     </div>
   );
 }
 
 export function DealChat({ dealId, side, currentUser, title, accentColor }) {
-  const { messages, loading, sending, error, sendMessage, refetch } = useDealChat(dealId, side);
+  const { messages, loading, sending, error, sendMessage, deleteMessage, refetch } = useDealChat(dealId, side);
   const [text, setText] = useState('');
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [showParticipantsMenu, setShowParticipantsMenu] = useState(false);
+
+  // Список заблокированных участников
+  const [blockedUsers, setBlockedUsers] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`blocked_users_${dealId}_${side}`) || '[]'); }
+    catch { return []; }
+  });
   const bottomRef = useRef(null);
   const inputRef  = useRef(null);
   const fileInputRef = useRef(null);
@@ -315,6 +342,22 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <button
             type="button"
+            onClick={() => setShowParticipantsMenu(prev => !prev)}
+            style={{
+              height: 28, padding: '0 8px', borderRadius: 14, border: 'none',
+              background: showParticipantsMenu ? '#ffffff' : 'rgba(255,255,255,0.2)',
+              color: showParticipantsMenu ? '#517da2' : '#ffffff',
+              display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+              fontSize: 11, fontWeight: 600, transition: 'all 0.2s'
+            }}
+            title="Участники и управление доступом"
+          >
+            <Users size={12} />
+            <span>Доступ</span>
+          </button>
+
+          <button
+            type="button"
             onClick={handleCopyShareLink}
             style={{
               height: 28, padding: '0 10px', borderRadius: 14, border: 'none',
@@ -328,6 +371,7 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
             {copied ? <Check size={12} /> : <Share2 size={12} />}
             <span>{copied ? 'Скопировано' : 'Ссылка'}</span>
           </button>
+
           <button
             type="button"
             onClick={refetch}
@@ -338,6 +382,71 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
           </button>
         </div>
       </div>
+
+      {/* Выпадающая панель участников и управления доступом */}
+      {showParticipantsMenu && (
+        <div style={{
+          padding: '10px 14px',
+          background: '#ffffff',
+          borderBottom: '1px solid #cbd5e1',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+          animation: 'fadeSlideDown 0.2s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Участники чата ({Array.from(new Set(messages.map(m => m.sender_name || 'Участник'))).length})
+            </span>
+            <button
+              onClick={() => setShowParticipantsMenu(false)}
+              style={{ border: 'none', background: 'none', fontSize: 11, color: '#64748b', cursor: 'pointer', fontWeight: 600 }}
+            >
+              Закрыть ✕
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 140, overflowY: 'auto' }}>
+            {Array.from(new Set(messages.map(m => (m.sender_name || '').trim()))).filter(Boolean).map(userName => {
+              const isBlocked = blockedUsers.includes(userName);
+              return (
+                <div key={userName} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 8px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Avatar role="client" name={userName} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: isBlocked ? '#94a3b8' : '#1e293b', textDecoration: isBlocked ? 'line-through' : 'none' }}>
+                      {userName}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      let nextBlocked;
+                      if (isBlocked) {
+                        nextBlocked = blockedUsers.filter(u => u !== userName);
+                      } else {
+                        nextBlocked = [...blockedUsers, userName];
+                      }
+                      setBlockedUsers(nextBlocked);
+                      localStorage.setItem(`blocked_users_${dealId}_${side}`, JSON.stringify(nextBlocked));
+                    }}
+                    style={{
+                      height: 24, padding: '0 8px', borderRadius: 6, border: 'none',
+                      background: isBlocked ? '#10b981' : '#ef4444',
+                      color: '#ffffff', fontSize: 10, fontWeight: 600,
+                      display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer'
+                    }}
+                  >
+                    {isBlocked ? <Check size={11} /> : <UserX size={11} />}
+                    <span>{isBlocked ? 'Разблокировать' : 'Удалить из чата'}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Messages List (Telegram Wallpaper Body) */}
       <div style={{
@@ -358,18 +467,24 @@ export function DealChat({ dealId, side, currentUser, title, accentColor }) {
             {error}
           </div>
         )}
-        {!loading && !error && messages.length === 0 && (
+        {!loading && !error && messages.filter(m => !blockedUsers.includes((m.sender_name || '').trim())).length === 0 && (
           <div style={{ textAlign: 'center', padding: '30px 0', color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: 500 }}>
-            Чат пуст. Напишите первое сообщение!
+            Сообщений нет или участники заблокированы
           </div>
         )}
-        {messages.map((msg, i) => {
-          const showDivider = i === 0 || !isSameDay(messages[i - 1]?.created_at, msg.created_at);
+        {messages.filter(m => !blockedUsers.includes((m.sender_name || '').trim())).map((msg, i, arr) => {
+          const showDivider = i === 0 || !isSameDay(arr[i - 1]?.created_at, msg.created_at);
           const isOwn = currentUser?.id ? msg.sender_id === currentUser.id : false;
+          const canManage = currentUser?.role && currentUser.role !== 'client';
           return (
             <React.Fragment key={msg.id || i}>
               {showDivider && <DayDivider date={msg.created_at} />}
-              <ChatMessage msg={msg} isOwn={isOwn} />
+              <ChatMessage 
+                msg={msg} 
+                isOwn={isOwn} 
+                canManage={canManage}
+                onDelete={deleteMessage}
+              />
             </React.Fragment>
           );
         })}

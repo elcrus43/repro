@@ -263,5 +263,15 @@ export function useDealChat(dealId, side) {
     }
   }, [dealId, side, roomName]);
 
-  return { messages, loading, sending, error, sendMessage, refetch: fetchMessages };
+  const deleteMessage = useCallback(async (msgId) => {
+    if (!msgId) return;
+    setMessages(prev => prev.filter(m => m.id !== msgId));
+    try {
+      await neonDb.delete('deal_messages', msgId);
+    } catch (e) {
+      console.warn('Failed to delete message from DB:', e);
+    }
+  }, []);
+
+  return { messages, loading, sending, error, sendMessage, deleteMessage, refetch: fetchMessages };
 }
