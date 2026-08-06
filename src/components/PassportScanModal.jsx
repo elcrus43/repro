@@ -4,97 +4,159 @@ import { useToastContext } from './Toast';
 
 /**
  * Парсинг российского внутреннего паспорта (паспорт гражданина РФ)
- * 
- * Структура страницы 2-3 (основные данные):
- * - Фамилия
- * - Имя Отчество
- * - Пол / Дата рождения
- * - Место рождения
- * - Серия и номер (XXXX XXXXXX)
- * - Дата выдачи
- * - Код подразделения (XXX-XXX)
- * - Кем выдан
+ *
+ * Структура разворота стр. 2-3:
+ * Стр.2: Фото | СЕРИЯ НОМЕР вверху | ФАМИЛИЯ → значение | ИМЯ → значение |
+ *        ОТЧЕСТВО → значение | ПОЛ → значение | ДАТА РОЖДЕНИЯ → значение |
+ *        МЕСТО РОЖДЕНИЯ → значение
+ * Стр.3: КЕМ ВЫДАН → значение | ДАТА ВЫДАЧИ → значение | КОД ПОДРАЗДЕЛЕНИЯ → значение
+ *
+ * Подход: label-based — находим метку, следующая непустая строка = значение.
  */
 function parseRussianPassport(text) {
   if (!text) return {};
   const result = {};
 
-  // Нормализация — убираем лишние пробелы, переносы
-  const normalized = text.replace(/\r/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  // Нормализация текста
+  const normalized = text
+    .replace(/\r/g, '\n')
+    .replace(/[–—]/g, '-')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // 1. Серия и номер паспорта — паттерн: 4 цифры + пробел + 6 цифр
-  const seriesNumMatch = text.match(/(\d{4})\s{1,3}(\d{6})/);
+  // Маппинг меток паспорта РФ (Tesseract может распознать их по-разному)
+  const LABELS = {
+    lastName:   ['ФАМИЛИЯ', 'ФАМИЛ ИЯ', 'ФАМИЛ', 'SURNAME'],
+    firstName:  ['ИМЯ', 'NAME', 'ИМ Я'],
+    patronymic: ['ОТЧЕСТВО', 'ОТЧЕСТ ВО', 'PATRONYMIC'],
+    sex:        ['ПОЛ', 'SEX', 'GENDER'],
+    birthDate:  ['ДАТА РОЖДЕНИЯ', 'ДАТАРОЖДЕНИЯ', 'DATE OF BIRTH', 'BIRTH DATE', 'ДАТА РОЖД'],
+    birthPlace: ['МЕСТО РОЖДЕНИЯ', 'МЕСТЕРОЖДЕНИЯ', 'PLACE OF BIRTH', 'МЕСТО РОЖД'],
+    issuedBy:   ['КЕМ ВЫДАН', 'КЕМВЫДАН', 'ВЫДАН', 'ISSUED BY', 'КЕМ ВЫД'],
+    issueDate:  ['ДАТА ВЫДАЧИ', 'ДАТАВЫДАЧИ', 'DATE OF ISSUE', 'ДАТА ВЫД', 'ДАТА ВЫДА'],
+    unitCode:   ['КОД ПОДРАЗДЕЛЕНИЯ', 'КОДПОДРАЗДЕЛЕНИЯ', 'CODE', 'КОД ПОДР', 'КОД ПОД'],
+  };
+
+  // Поиск значения по метке
+  function findValueAfterLabel(labelVariants) {
+    for (let i = 0; i < lines.length; i++) {
+      const upperLine = lines[i].toUpperCase().replace(/\s+/g, ' ');
+      const matched = labelVariants.some(lv => upperLine.includes(lv));
+      if (matched) {
+        // Следующая непустая строка = значение (пропускаем другие метки)
+        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+          const candidate = lines[j].trim();
+          // Пропускаем пустые строки и другие метки
+          const isLabel = Object.values(LABELS).flat().some(lv =>
+            candidate.toUpperCase().includes(lv)
+          );
+          if (candidate && !isLabel && candidate.length > 0) {
+            return candidate;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  // --- Серия и номер (в верхней части страницы: 4 цифры + 6 цифр) ---
+  const seriesNumMatch = text.match(/\b(\d{4})\s{1,4}(\d{6})\b/);
   if (seriesNumMatch) {
     result.series = seriesNumMatch[1];
     result.number = seriesNumMatch[2];
   }
 
-  // 2. Дата рождения — паттерн: ДД.ММ.ГГГГ или ДД ММ ГГГГ (на строке с "рождения" или просто дата)
-  const birthDateMatches = [...text.matchAll(/(\d{2})[.\s/](\d{2})[.\s/](\d{4})/g)];
-  // Обычно первая дата — дата рождения, вторая — дата выдачи
-  if (birthDateMatches.length > 0) {
-    const [, d, m, y] = birthDateMatches[0];
-    result.birth_date = `${y}-${m}-${d}`; // ISO для input[type=date]
+  // --- ФИО по меткам ---
+  const rawLastName = findValueAfterLabel(LABELS.lastName);
+  const rawFirstName = findValueAfterLabel(LABELS.firstName);
+  const rawPatronymic = findValueAfterLabel(LABELS.patronymic);
+
+  // Tesseract может объединить имя и отчество в одну строку
+  if (rawFirstName && rawFirstName.includes(' ') && !rawPatronymic) {
+    const parts = rawFirstName.trim().split(/\s+/);
+    result.first_name = parts[0];
+    result.patronymic = parts.slice(1).join(' ');
+  } else {
+    result.first_name = rawFirstName || '';
+    result.patronymic = rawPatronymic || '';
+  }
+  result.last_name = rawLastName || '';
+
+  if (result.last_name || result.first_name) {
+    result.full_name = `${result.last_name} ${result.first_name} ${result.patronymic}`.trim().replace(/\s+/g, ' ');
+  }
+
+  // --- Пол ---
+  const rawSex = findValueAfterLabel(LABELS.sex);
+  if (rawSex) result.sex = rawSex;
+  else if (/МУЖСКОЙ|МУЖ\./i.test(text)) result.sex = 'МУЖСКОЙ';
+  else if (/ЖЕНСКИЙ|ЖЕН\./i.test(text)) result.sex = 'ЖЕНСКИЙ';
+
+  // --- Дата рождения (ДД.ММ.ГГГГ) ---
+  // Ищем сначала под меткой, потом по паттерну
+  const rawBirthDate = findValueAfterLabel(LABELS.birthDate);
+  const allDates = [...text.matchAll(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/g)];
+
+  if (rawBirthDate) {
+    const dm = rawBirthDate.match(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/);
+    if (dm) {
+      result.birth_date = `${dm[3]}-${dm[2]}-${dm[1]}`;
+      result.birth_date_display = `${dm[1]}.${dm[2]}.${dm[3]}`;
+    }
+  } else if (allDates.length > 0) {
+    const [, d, m, y] = allDates[0];
+    result.birth_date = `${y}-${m}-${d}`;
     result.birth_date_display = `${d}.${m}.${y}`;
   }
-  if (birthDateMatches.length > 1) {
-    const [, d, m, y] = birthDateMatches[1];
+
+  // --- Дата выдачи (обычно вторая дата на странице 3) ---
+  const rawIssueDate = findValueAfterLabel(LABELS.issueDate);
+  if (rawIssueDate) {
+    const dm = rawIssueDate.match(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/);
+    if (dm) result.issue_date = `${dm[1]}.${dm[2]}.${dm[3]}`;
+  } else if (allDates.length > 1) {
+    const [, d, m, y] = allDates[1];
     result.issue_date = `${d}.${m}.${y}`;
   }
 
-  // 3. Код подразделения — паттерн: XXX-XXX или XXX XXX
-  const unitCodeMatch = text.match(/(\d{3})[\s-](\d{3})/);
-  if (unitCodeMatch) {
-    result.unit_code = `${unitCodeMatch[1]}-${unitCodeMatch[2]}`;
+  // --- Место рождения ---
+  const rawBirthPlace = findValueAfterLabel(LABELS.birthPlace);
+  if (rawBirthPlace) result.birth_place = rawBirthPlace;
+
+  // --- Кем выдан ---
+  const rawIssuedBy = findValueAfterLabel(LABELS.issuedBy);
+  if (rawIssuedBy) {
+    // Может занимать несколько строк — собираем до следующей метки или даты
+    const startIdx = lines.findIndex(l => l.trim() === rawIssuedBy.trim());
+    if (startIdx !== -1) {
+      let issuedByParts = [rawIssuedBy];
+      for (let k = startIdx + 1; k < Math.min(startIdx + 4, lines.length); k++) {
+        const nextLine = lines[k].trim();
+        const isNextLabel = Object.values(LABELS).flat().some(lv =>
+          nextLine.toUpperCase().includes(lv)
+        );
+        const isDate = /^\d{2}[.\-/]\d{2}[.\-/]\d{4}/.test(nextLine);
+        if (isNextLabel || isDate || !nextLine) break;
+        issuedByParts.push(nextLine);
+      }
+      result.issued_by = issuedByParts.join(' ').substring(0, 150);
+    } else {
+      result.issued_by = rawIssuedBy;
+    }
   }
 
-  // 4. ФИО — ищем строки с русскими заглавными буквами
-  //    В паспорте РФ: Фамилия на одной строке, Имя Отчество — на следующей
-  const cyrillicUpperLines = lines.filter(l =>
-    /^[А-ЯЁ][А-ЯЁа-яё\s-]{2,}$/.test(l) &&
-    l.length >= 3 &&
-    l.length <= 50 &&
-    !/\d/.test(l) &&
-    !['РОССИЙСКАЯ', 'ФЕДЕРАЦИЯ', 'ПАСПОРТ', 'ФАМИЛИЯ', 'ИМЯ', 'ОТЧЕСТВО', 'МЕСТО', 'РОЖДЕНИЯ',
-      'ДАТА', 'ВЫДАЧИ', 'КОД', 'ПОЛА', 'МУЖСКОЙ', 'ЖЕНСКИЙ', 'ПОЛ', 'ВЫДАН'].includes(l.toUpperCase())
-  );
-
-  // Обычно первые 2-3 строки с именами — это ФИО
-  if (cyrillicUpperLines.length >= 2) {
-    const lastName = cyrillicUpperLines[0];
-    const firstParts = cyrillicUpperLines[1].split(/\s+/);
-    const firstName = firstParts[0] || '';
-    const patronymic = firstParts.slice(1).join(' ') || (cyrillicUpperLines[2] || '');
-    
-    result.last_name = lastName;
-    result.first_name = firstName;
-    result.patronymic = patronymic;
-    result.full_name = `${lastName} ${firstName} ${patronymic}`.trim().replace(/\s+/g, ' ');
-  } else if (cyrillicUpperLines.length === 1) {
-    result.full_name = cyrillicUpperLines[0];
-  }
-
-  // 5. Пол
-  if (/МУЖСКОЙ|муж\./i.test(text)) result.sex = 'М';
-  else if (/ЖЕНСКИЙ|жен\./i.test(text)) result.sex = 'Ж';
-
-  // 6. Место рождения — строка после "МЕСТО РОЖДЕНИЯ" или "место рождения"
-  const birthPlaceMatch = text.match(/(?:место\s+рождения|birth\s+place)[:\s\n]+([А-ЯЁа-яё\s.,\-]+)/i);
-  if (birthPlaceMatch) {
-    result.birth_place = birthPlaceMatch[1].trim().substring(0, 80);
-  }
-
-  // 7. Орган выдачи — строка после "Кем выдан" или "выдан"
-  const issuedByMatch = text.match(/(?:кем\s+выдан|выдан|орган|department)[:\s\n]+([А-ЯЁа-яё\s.,\-№\d]+)/i);
-  if (issuedByMatch) {
-    result.issued_by = issuedByMatch[1].trim().substring(0, 120);
-  }
-
-  // 8. Адрес регистрации (страница 5) — ищем типичный адресный паттерн
-  const addressMatch = text.match(/(?:г\.?\s|ул\.?\s|пр\.?\s|д\.?\s|кв\.?\s|обл\.?)([А-ЯЁа-яё\s.,\-\d№]+)/i);
-  if (addressMatch) {
-    result.address = addressMatch[0].trim().substring(0, 150);
+  // --- Код подразделения (XXX-XXX) ---
+  const rawUnitCode = findValueAfterLabel(LABELS.unitCode);
+  if (rawUnitCode) {
+    const ucMatch = rawUnitCode.match(/(\d{3})[\s-](\d{3})/);
+    if (ucMatch) result.unit_code = `${ucMatch[1]}-${ucMatch[2]}`;
+    else result.unit_code = rawUnitCode;
+  } else {
+    // Резервный поиск по паттерну
+    const ucMatch = text.match(/\b(\d{3})[-\s](\d{3})\b/);
+    if (ucMatch) result.unit_code = `${ucMatch[1]}-${ucMatch[2]}`;
   }
 
   return result;
