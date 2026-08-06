@@ -122,7 +122,7 @@ function ChatMessage({ msg, isOwn }) {
               marginBottom: 3, 
               lineHeight: 1.2 
             }}>
-              {displayName} {displayName !== cfg.label ? `· ${cfg.label}` : ''}
+              {displayName}
             </div>
           )}
 
