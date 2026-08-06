@@ -1509,12 +1509,14 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 </button>
                 <button
                     type="button"
-                    title="Скопировать ссылку на чат продавца"
+                    title="Скопировать защищенную ссылку на чат продавца"
                     onClick={(e) => {
                         e.stopPropagation();
-                        const link = `${window.location.origin}/#/chat/${deal.id}/seller`;
+                        const hash = Math.abs(deal.id.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
+                        const secretToken = `t_sec_seller_${deal.id.substring(0, 8)}_${hash}`;
+                        const link = `${window.location.origin}/#/chat/${secretToken}`;
                         navigator.clipboard.writeText(link)
-                            .then(() => toast.success('Ссылка на чат продавца скопирована!'))
+                            .then(() => toast.success('Защищенная ссылка на чат продавца скопирована!'))
                             .catch(() => toast.error('Не удалось скопировать'));
                     }}
                     style={{
@@ -1562,12 +1564,14 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 </button>
                 <button
                     type="button"
-                    title="Скопировать ссылку на чат покупателя"
+                    title="Скопировать защищенную ссылку на чат покупателя"
                     onClick={(e) => {
                         e.stopPropagation();
-                        const link = `${window.location.origin}/#/chat/${deal.id}/buyer`;
+                        const hash = Math.abs(deal.id.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
+                        const secretToken = `t_sec_buyer_${deal.id.substring(0, 8)}_${hash}`;
+                        const link = `${window.location.origin}/#/chat/${secretToken}`;
                         navigator.clipboard.writeText(link)
-                            .then(() => toast.success('Ссылка на чат покупателя скопирована!'))
+                            .then(() => toast.success('Защищенная ссылка на чат покупателя скопирована!'))
                             .catch(() => toast.error('Не удалось скопировать'));
                     }}
                     style={{

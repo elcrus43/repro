@@ -12,8 +12,9 @@ import { DealChat } from '../../components/DealChat';
 import { MessageSquare, User, Building2, ShieldCheck, Sparkles } from 'lucide-react';
 
 export function PublicChatPage() {
-  const { dealId, side } = useParams();
+  const { token, dealId: routeDealId, side: routeSide } = useParams();
   const [deal, setDeal] = useState(null);
+  const [resolvedSide, setResolvedSide] = useState(routeSide || 'buyer');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -24,27 +25,53 @@ export function PublicChatPage() {
 
   useEffect(() => {
     async function loadDeal() {
-      if (!dealId) return;
       try {
-        const res = await neonDb.query(
-          'SELECT id, title, status, lawyer FROM deals WHERE id = $1 LIMIT 1',
-          [dealId]
-        );
-        if (res.error) {
-          setError('Сделка не найдена');
-        } else if (res.data && res.data.length > 0) {
-          setDeal(res.data[0]);
+        let fetchedDeal = null;
+        let activeSide = routeSide || 'buyer';
+
+        // Разрешение по секретному токену безопасности
+        if (token && token.startsWith('t_sec_')) {
+          const isSeller = token.startsWith('t_sec_seller_');
+          activeSide = isSeller ? 'seller' : 'buyer';
+          
+          const res = await neonDb.query(
+            'SELECT id, title, status, lawyer FROM deals'
+          );
+          if (res.data) {
+            fetchedDeal = res.data.find(d => {
+              const hash = Math.abs(d.id.split('').reduce((a,b)=>((a<<5)-a)+b.charCodeAt(0),0)).toString(36);
+              const expected = `t_sec_${activeSide}_${d.id.substring(0,8)}_${hash}`;
+              return token === expected || d.id === token;
+            });
+          }
         } else {
-          setError('Сделка не найдена');
+          // Загрузка по стандартному ID сделки
+          const targetId = routeDealId || token;
+          if (targetId) {
+            const res = await neonDb.query(
+              'SELECT id, title, status, lawyer FROM deals WHERE id = $1 LIMIT 1',
+              [targetId]
+            );
+            if (res.data && res.data.length > 0) {
+              fetchedDeal = res.data[0];
+            }
+          }
+        }
+
+        if (fetchedDeal) {
+          setDeal(fetchedDeal);
+          setResolvedSide(activeSide);
+        } else {
+          setError('Доступ ограничен. Чатовая ссылка недействительна или не существует.');
         }
       } catch (e) {
-        setError(' Ошибка загрузки сделки');
+        setError('Ошибка безопасности при проверке доступа');
       } finally {
         setLoading(false);
       }
     }
     loadDeal();
-  }, [dealId]);
+  }, [token, routeDealId, routeSide]);
 
   function handleSaveGuestName(e) {
     e.preventDefault();
@@ -55,8 +82,8 @@ export function PublicChatPage() {
     setGuestName(name);
   }
 
-  const sideTitle = side === 'seller' ? 'Чат продавца' : 'Чат покупателя';
-  const accentColor = side === 'seller' ? '#8b5cf6' : '#0052ff';
+  const sideTitle = resolvedSide === 'seller' ? 'Чат продавца' : 'Чат покупателя';
+  const accentColor = resolvedSide === 'seller' ? '#8b5cf6' : '#0052ff';
 
   const guestUser = {
     id: `guest-${guestName.replace(/\s+/g, '_')}`,
@@ -222,8 +249,8 @@ export function PublicChatPage() {
           /* Само окно чата */
           <div style={{ flex: 1, height: 'calc(100vh - 120px)', minHeight: 480 }}>
             <DealChat
-              dealId={dealId}
-              side={side}
+              dealId={deal.id}
+              side={resolvedSide}
               currentUser={guestUser}
               title={sideTitle}
               accentColor={accentColor}

@@ -324,6 +324,7 @@ function AppRoutes() {
           <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
           <Route path="/p/:slug" element={<PublicPropertyPage />} />
           <Route path="/c/:token" element={<PublicClientPage />} />
+          <Route path="/chat/:token" element={<PublicChatPage />} />
           <Route path="/chat/:dealId/:side" element={<PublicChatPage />} />
           <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
