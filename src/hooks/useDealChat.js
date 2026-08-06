@@ -1,16 +1,8 @@
-/**
- * useDealChat.js
- *
- * Хук для чата по сделке.
- * Загружает сообщения из БД и обновляет их каждые 12 секунд (polling).
- * Поддерживает оптимистичную отправку.
- *
- * @param {string} dealId - ID сделки
- * @param {string} side   - 'seller' | 'buyer'
- */
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { neonDb } from '../lib/neon';
+import { io } from 'socket.io-client';
+
+const SOCKET_SERVER_URL = 'http://78.154.103.37:14070';
 
 export function useDealChat(dealId, side) {
   const [messages, setMessages]   = useState([]);
@@ -18,6 +10,9 @@ export function useDealChat(dealId, side) {
   const [sending, setSending]     = useState(false);
   const [error, setError]         = useState(null);
   const isMountedRef              = useRef(true);
+  const socketRef                 = useRef(null);
+
+  const roomName = dealId && side ? `deal_${dealId}_${side}` : null;
 
   const fetchMessages = useCallback(async () => {
     if (!dealId || !side) return;
@@ -47,16 +42,47 @@ export function useDealChat(dealId, side) {
     setLoading(true);
     setMessages([]);
     fetchMessages();
+
+    // Подключение к сокет-серверу на Wispbyte
+    if (roomName) {
+      try {
+        const socket = io(SOCKET_SERVER_URL, {
+          transports: ['websocket', 'polling'],
+          reconnection: true,
+          reconnectionAttempts: 5,
+        });
+        socketRef.current = socket;
+
+        socket.on('connect', () => {
+          socket.emit('join_room', roomName);
+        });
+
+        socket.on('new_message', (newMsg) => {
+          if (!isMountedRef.current) return;
+          setMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id || (m._pending && m.text === newMsg.text))) {
+              return prev.map(m => (m._pending && m.text === newMsg.text) ? { ...newMsg, _pending: false } : m);
+            }
+            return [...prev, newMsg];
+          });
+        });
+      } catch (err) {
+        console.warn('Wispbyte socket connection offline:', err);
+      }
+    }
+
     const iv = setInterval(fetchMessages, 12000);
     return () => {
       isMountedRef.current = false;
       clearInterval(iv);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
-  }, [fetchMessages]);
+  }, [fetchMessages, roomName]);
 
   /**
-   * Отправить сообщение с оптимистичным обновлением UI.
-   * @param {{ text: string, senderId: string, senderName: string, senderRole: string }} opts
+   * Отправить сообщение с оптимистичным обновлением UI и сокет-трансляцией.
    */
   const sendMessage = useCallback(async ({ text, senderId, senderName, senderRole }) => {
     if (!text?.trim() || !dealId || !side) return;
@@ -72,8 +98,19 @@ export function useDealChat(dealId, side) {
       created_at:  new Date().toISOString(),
       _pending:    true,
     };
+
     setMessages(prev => [...prev, optimistic]);
     setSending(true);
+
+    // Трансляция через Wispbyte сокет
+    if (socketRef.current && socketRef.current.connected && roomName) {
+      socketRef.current.emit('send_message', {
+        room: roomName,
+        text: text.trim(),
+        sender_name: senderName,
+        sender_role: senderRole
+      });
+    }
 
     try {
       const res = await neonDb.insert('deal_messages', {
@@ -88,7 +125,6 @@ export function useDealChat(dealId, side) {
       if (!isMountedRef.current) return;
 
       if (res.error) {
-        // Убираем оптимистичное сообщение при ошибке
         setMessages(prev => prev.filter(m => m.id !== tmpId));
         setError(res.error.message || 'Не удалось отправить');
       } else {
@@ -96,7 +132,6 @@ export function useDealChat(dealId, side) {
         if (saved) {
           setMessages(prev => prev.map(m => m.id === tmpId ? saved : m));
         } else {
-          // Если ответ пустой — просто убираем _pending флаг
           setMessages(prev => prev.map(m =>
             m.id === tmpId ? { ...m, _pending: false } : m
           ));
@@ -110,7 +145,7 @@ export function useDealChat(dealId, side) {
     } finally {
       if (isMountedRef.current) setSending(false);
     }
-  }, [dealId, side]);
+  }, [dealId, side, roomName]);
 
   return { messages, loading, sending, error, sendMessage, refetch: fetchMessages };
 }

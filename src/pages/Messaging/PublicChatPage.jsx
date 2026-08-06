@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react';
+import { useParams } from 'react-router-dom';
 import { neonDb } from '../../lib/neon';
 import { DealChat } from '../../components/DealChat';
 import { MessageSquare, User, Building2, ShieldCheck, Sparkles } from 'lucide-react';

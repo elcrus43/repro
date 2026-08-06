@@ -654,9 +654,20 @@ export function FormPage() {
                                 style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
                             >
                                 <option value="">Без агента</option>
-                                {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => (
-                                    <option key={a.id} value={a.id}>{a.full_name}</option>
-                                ))}
+                                {(() => {
+                                    const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
+                                    const seenNames = new Set();
+                                    const uniqueAgents = [];
+                                    for (const a of agents) {
+                                        const nameKey = (a.full_name || '').trim().toLowerCase();
+                                        if (nameKey && seenNames.has(nameKey)) continue;
+                                        if (nameKey) seenNames.add(nameKey);
+                                        uniqueAgents.push(a);
+                                    }
+                                    return uniqueAgents.map(a => (
+                                        <option key={a.id} value={a.id}>{a.full_name}</option>
+                                    ));
+                                })()}
                             </select>
                             <button 
                                 type="button" 

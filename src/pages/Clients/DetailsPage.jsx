@@ -56,11 +56,10 @@ export function DetailsPage() {
     );
     const allMatches = [...new Map([...propMatches, ...reqMatches].map(m => [m.id, m])).values()];
 
-    // Сделки клиента (продавец, покупатель или юрист)
+    // Сделки клиента (продавец, покупатель, агент или юрист)
     const myDeals = state.deals.filter(d => {
-        if (client?.client_types?.includes('lawyer') && d.lawyer_id === id) {
-            return true;
-        }
+        if (d.lawyer_id === id) return true;
+        if (d.seller_agent_id === id || d.buyer_agent_id === id) return true;
         const sellerIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
         const buyerIds  = d.buyer_ids  || (d.buyer_id  ? [d.buyer_id]  : []);
         return sellerIds.includes(id) || buyerIds.includes(id);
@@ -382,47 +381,6 @@ export function DetailsPage() {
                                 </button>
                             </div>
                         )}
-                        {(() => {
-                            const getStatusStyle = (status) => {
-                                const mapped = mapStatus(status);
-                                switch(mapped) {
-                                    case 'new': return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
-                                    case 'selection': return { color: '#2563eb', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' };
-                                    case 'active': return { color: 'var(--success)', background: 'var(--success-light)', border: '1px solid rgba(16,185,129,0.2)' };
-                                    case 'refused': return { color: 'var(--danger)', background: 'var(--danger-light)', border: '1px solid rgba(239,68,68,0.2)' };
-                                    default: return { color: 'var(--text-secondary)', background: 'var(--bg-light)', border: '1px solid var(--border-light)' };
-                                }
-                            };
-                            const statusStyle = getStatusStyle(client.status);
-                            return (
-                                <div style={{ position: 'relative', display: 'inline-block' }}>
-                                    <select
-                                        value={mapStatus(client.status)}
-                                        onChange={(e) => handleStatusChange(e.target.value)}
-                                        style={{
-                                            padding: '6px 20px 6px 12px',
-                                            borderRadius: 10,
-                                            fontSize: 11,
-                                            fontWeight: 400,
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            outline: 'none',
-                                            appearance: 'none',
-                                            WebkitAppearance: 'none',
-                                            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 16 16'%3E%3Cpath fill='${encodeURIComponent(statusStyle.color || 'var(--text-secondary)')}' d='M8 10.5L3 5h10z'/%3E%3C/svg%3E")`,
-                                            backgroundRepeat: 'no-repeat',
-                                            backgroundPosition: 'right 6px center',
-                                            ...statusStyle
-                                        }}
-                                    >
-                                        <option value="new" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Не отработан</option>
-                                        <option value="selection" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Подбор</option>
-                                        <option value="active" style={{ background: 'var(--surface)', color: 'var(--text)' }}>В работе</option>
-                                        <option value="refused" style={{ background: 'var(--surface)', color: 'var(--text)' }}>Отказ</option>
-                                    </select>
-                                </div>
-                            );
-                        })()}
                     </div>
 
 
@@ -559,7 +517,7 @@ export function DetailsPage() {
                             </div>
                         </div>
 
-                        {activeProperties.length === 0 && myRequests.length === 0 && allMatches.length === 0 && myShowings.length === 0 ? (
+                        {activeProperties.length === 0 && myRequests.length === 0 && myShowings.length === 0 ? (
                             <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, opacity: 0.6 }}>Активности пока нет</div>
                         ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -645,33 +603,6 @@ export function DetailsPage() {
                                         <ChevronRight size={16} color="var(--text-muted)" />
                                     </div>
                                 ))}
-
-                                {/* Совпадения (кроме deal / rejected) */}
-                                {allMatches.map(m => {
-                                    const prop = state.properties.find(p => p.id === m.property_id);
-                                    return (
-                                        <div key={m.id} className="card-clickable" onClick={() => navigate(`/matches/${m.id}`)}
-                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                                                    <Sparkles size={16} />
-                                                </div>
-                                                <div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <div style={{ fontSize: 10, fontWeight: 300, color: matchStatusColor[m.status] || '#64748b' }}>
-                                                            Совпадение · {matchStatusLabel[m.status] || m.status}
-                                                        </div>
-                                                        <div style={{ fontSize: 10, background: `${matchStatusColor[m.status] || '#64748b'}15`, color: matchStatusColor[m.status] || '#64748b', padding: '1px 6px', borderRadius: 6 }}>
-                                                            {m.score}%
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>{prop?.address || prop?.city || 'Объект'}</div>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} color="var(--text-muted)" />
-                                        </div>
-                                    );
-                                })}
                             </div>
                         )}
                     </div>
@@ -831,7 +762,23 @@ export function DetailsPage() {
                                 const prop = state.properties.find(p => p.id === d.property_id);
                                 const color = dealStatusColor[d.status] || 'var(--primary)';
                                 const sellerIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
-                                const isSellerRole = sellerIds.includes(id);
+                                const buyerIds  = d.buyer_ids  || (d.buyer_id  ? [d.buyer_id]  : []);
+                                
+                                let roleLabel = 'Участник';
+                                if (d.lawyer_id === id) {
+                                    roleLabel = 'Юрист';
+                                } else if (d.seller_agent_id === id || d.buyer_agent_id === id) {
+                                    roleLabel = 'Агент';
+                                } else if (sellerIds.includes(id)) {
+                                    roleLabel = 'Продавец';
+                                } else if (buyerIds.includes(id)) {
+                                    roleLabel = 'Покупатель';
+                                } else if (client?.client_types?.includes('lawyer')) {
+                                    roleLabel = 'Юрист';
+                                } else if (client?.client_types?.includes('agent')) {
+                                    roleLabel = 'Агент';
+                                }
+
                                 return (
                                     <div key={d.id} className="card-clickable" onClick={() => navigate('/tasks')}
                                         style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -842,7 +789,7 @@ export function DetailsPage() {
                                             <div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <div style={{ fontSize: 10, fontWeight: 300, color }}>
-                                                        {dealStatusLabel[d.status] || 'Сделка'} · {isSellerRole ? 'Продавец' : 'Покупатель'}
+                                                        {dealStatusLabel[d.status] || 'Сделка'} · {roleLabel}
                                                     </div>
                                                 </div>
                                                 <div style={{ fontSize: 14, fontWeight: 300 }}>{d.title}</div>

@@ -6,6 +6,7 @@ import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { DealChat } from '../../components/DealChat';
+import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
 import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
@@ -468,52 +469,129 @@ export function DealsPage() {
 
     return (
         <div className="page fade-in">
-            {/* Sticky Header — Open Design */}
+            {/* Compact Sticky Topbar */}
             <div className="topbar sticky" style={{ 
                 background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px',
+                padding: '14px 18px',
                 borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 16,
+                gap: 10,
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Управление сделками</span>
-                    <button className="card-clickable" onClick={() => { resetForm(); setShowForm(!showForm); }} style={{ 
-                        width: 44, height: 44, borderRadius: 14, background: 'var(--primary)', color: 'white', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                        <Plus size={24} />
-                    </button>
-                </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Сделки</span>
+                        {/* Compact Inline Month Selector */}
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 4, 
+                            background: 'var(--bg-light)', 
+                            padding: '3px 8px', 
+                            borderRadius: 10, 
+                            border: '1px solid var(--border-light)' 
+                        }}>
+                            <button 
+                                type="button" 
+                                className="card-clickable" 
+                                style={{ background: 'transparent', border: 'none', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }} 
+                                onClick={prevMonth}
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>
+                                {monthNames[selectedMonth]} {selectedYear}
+                            </span>
+                            <button 
+                                type="button" 
+                                className="card-clickable" 
+                                style={{ background: 'transparent', border: 'none', padding: 2, display: 'flex', alignItems: 'center', color: 'var(--text-secondary)' }} 
+                                onClick={nextMonth}
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--surface)', padding: '8px 12px', borderRadius: 16, boxShadow: '0 2px 8px rgba(0,0,0,0.03)' }}>
-                    <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={prevMonth}><ChevronLeft size={20} /></button>
-                    <div className="font-oswald" style={{ fontSize: 17, fontWeight: 300 }}>{monthNames[selectedMonth]} {selectedYear}</div>
-                    <button className="card-clickable" style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--bg-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={nextMonth}><ChevronRight size={20} /></button>
+                    <button 
+                        className="card-clickable" 
+                        onClick={() => { resetForm(); setShowForm(!showForm); }} 
+                        style={{ 
+                            height: 36, 
+                            padding: '0 14px', 
+                            borderRadius: 10, 
+                            background: 'var(--primary)', 
+                            color: 'white', 
+                            border: 'none', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 6, 
+                            fontSize: 13, 
+                            fontWeight: 600 
+                        }}
+                    >
+                        <Plus size={16} />
+                        <span>Новая</span>
+                    </button>
                 </div>
             </div>
 
-            <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
+            <div className="page-content" style={{ padding: '14px 18px 120px', gap: 12 }}>
                 
-                {/* Statistics Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Activity size={16} /></div>
-                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>В работе</span>
+                {/* Compact Statistics Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <div className="card" style={{ 
+                        padding: '12px 14px', 
+                        borderRadius: 16, 
+                        border: '1px solid var(--border-light)', 
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)', 
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Activity size={14} />
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>В работе</span>
+                            </div>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                                {stats.activeCount} <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>сд.</span>
+                            </span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300 }}>{stats.activeCount} <span style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 200 }}>сд.</span></div>
-                        <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--primary)', marginTop: 4 }}>{stats.activeVolume.toLocaleString()} ₽</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>
+                            {stats.activeVolume.toLocaleString()} ₽
+                        </div>
                     </div>
-                    <div className="card" style={{ padding: 20, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                            <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Wallet size={16} /></div>
-                            <span className="font-oswald" style={{ fontSize: 11, fontWeight: 200, color: 'var(--text-muted)' }}>Выручка</span>
+
+                    <div className="card" style={{ 
+                        padding: '12px 14px', 
+                        borderRadius: 16, 
+                        border: '1px solid var(--border-light)', 
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)', 
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 26, height: 26, borderRadius: 7, background: 'var(--success-light)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <Wallet size={14} />
+                                </div>
+                                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>Выручка</span>
+                            </div>
+                            <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
+                                {monthNames[selectedMonth].toLowerCase()}
+                            </span>
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: '#10b981' }}>{stats.totalCommission.toLocaleString()} <span style={{ fontSize: 14 }}>₽</span></div>
-                        <div style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginTop: 4 }}>За {monthNames[selectedMonth].toLowerCase()}</div>
+                        <div style={{ fontSize: 16, fontWeight: 700, color: '#10b981' }}>
+                            {stats.totalCommission.toLocaleString()} ₽
+                        </div>
                     </div>
                 </div>
 
@@ -554,14 +632,25 @@ export function DealsPage() {
                                         onChange={e => handleFieldChange('seller_agent_id', e.target.value || null)}
                                     >
                                         <option value="">Без агента</option>
-                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => {
-                                            const isMe = a.full_name === user?.full_name || a.full_name?.toLowerCase() === 'я';
-                                            return (
-                                                <option key={a.id} value={a.id}>
-                                                    {isMe ? `Я (${a.full_name})` : a.full_name}
-                                                </option>
-                                            );
-                                        })}
+                                        {(() => {
+                                            const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
+                                            const seenNames = new Set();
+                                            const uniqueAgents = [];
+                                            for (const a of agents) {
+                                                const nameKey = (a.full_name || '').trim().toLowerCase();
+                                                if (nameKey && seenNames.has(nameKey)) continue;
+                                                if (nameKey) seenNames.add(nameKey);
+                                                uniqueAgents.push(a);
+                                            }
+                                            return uniqueAgents.map(a => {
+                                                const isMe = a.full_name === user?.full_name || a.full_name?.toLowerCase() === 'я';
+                                                return (
+                                                    <option key={a.id} value={a.id}>
+                                                        {isMe ? `Я (${a.full_name})` : a.full_name}
+                                                    </option>
+                                                );
+                                            });
+                                        })()}
                                     </select>
                                 </div>
 
@@ -625,14 +714,25 @@ export function DealsPage() {
                                         onChange={e => handleFieldChange('buyer_agent_id', e.target.value || null)}
                                     >
                                         <option value="">Без агента</option>
-                                        {(state.clients || []).filter(c => c.client_types?.includes('agent')).map(a => {
-                                            const isMe = a.full_name === user?.full_name || a.full_name?.toLowerCase() === 'я';
-                                            return (
-                                                <option key={a.id} value={a.id}>
-                                                    {isMe ? `Я (${a.full_name})` : a.full_name}
-                                                </option>
-                                            );
-                                        })}
+                                        {(() => {
+                                            const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
+                                            const seenNames = new Set();
+                                            const uniqueAgents = [];
+                                            for (const a of agents) {
+                                                const nameKey = (a.full_name || '').trim().toLowerCase();
+                                                if (nameKey && seenNames.has(nameKey)) continue;
+                                                if (nameKey) seenNames.add(nameKey);
+                                                uniqueAgents.push(a);
+                                            }
+                                            return uniqueAgents.map(a => {
+                                                const isMe = a.full_name === user?.full_name || a.full_name?.toLowerCase() === 'я';
+                                                return (
+                                                    <option key={a.id} value={a.id}>
+                                                        {isMe ? `Я (${a.full_name})` : a.full_name}
+                                                    </option>
+                                                );
+                                            });
+                                        })()}
                                     </select>
                                 </div>
 
@@ -658,6 +758,74 @@ export function DealsPage() {
                         <div className="form-group">
                             <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Цена объекта</label>
                             <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.price} onChange={e => handleFieldChange('price', formatPriceInput(e.target.value))} />
+                        </div>
+
+                        {/* ── Ипотека Section ── */}
+                        <div style={{
+                            padding: '14px 16px',
+                            background: 'rgba(99,102,241,0.04)',
+                            borderRadius: 18,
+                            border: '1px solid rgba(99,102,241,0.15)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10,
+                            marginBottom: 16
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <CreditCard size={15} color="#6366f1" />
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Ипотека</span>
+                                </div>
+                                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(newDeal.mortgage)}
+                                        onChange={e => {
+                                            const checked = e.target.checked;
+                                            handleFieldChange('mortgage', checked);
+                                        }}
+                                        style={{ transform: 'scale(1.2)', accentColor: '#6366f1' }}
+                                    />
+                                    <span style={{ fontSize: 12, fontWeight: 500 }}>Сделка в ипотеку</span>
+                                </label>
+                            </div>
+
+                            {newDeal.mortgage && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, paddingTop: 4 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Банк</label>
+                                        <select
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }}
+                                            value={newDeal.mortgage_bank || ''}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                handleFieldChange('mortgage_bank', val);
+                                                if (val) handleFieldChange('mortgage', true);
+                                            }}
+                                        >
+                                            <option value="">— Выбрать банк —</option>
+                                            {RUSSIAN_BANKS.map(b => (
+                                                <option key={b.id} value={b.name}>{b.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Сумма кредита</label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
+                                            placeholder="0 ₽"
+                                            value={newDeal.mortgage_amount}
+                                            onChange={e => {
+                                                const formatted = formatPriceInput(e.target.value);
+                                                handleFieldChange('mortgage_amount', formatted);
+                                                if (formatted) handleFieldChange('mortgage', true);
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -696,12 +864,20 @@ export function DealsPage() {
                                 onChange={e => handleFieldChange('lawyer_id', e.target.value || null)}
                             >
                                 <option value="">Без юриста</option>
-                                {(state.clients || [])
-                                    .filter(c => c.client_types?.includes('lawyer') && !c.client_types?.includes('agent'))
-                                    .map(c => (
+                                {(() => {
+                                    const lawyers = (state.clients || []).filter(c => c.client_types?.includes('lawyer') && !c.client_types?.includes('agent'));
+                                    const seenNames = new Set();
+                                    const uniqueLawyers = [];
+                                    for (const c of lawyers) {
+                                        const nameKey = (c.full_name || '').trim().toLowerCase();
+                                        if (nameKey && seenNames.has(nameKey)) continue;
+                                        if (nameKey) seenNames.add(nameKey);
+                                        uniqueLawyers.push(c);
+                                    }
+                                    return uniqueLawyers.map(c => (
                                         <option key={c.id} value={c.id}>{c.full_name}</option>
-                                    ))
-                                }
+                                    ));
+                                })()}
                             </select>
                         </div>
 
@@ -712,16 +888,27 @@ export function DealsPage() {
                     </div>
                 )}
 
-                {/* Status Tabs */}
-                <div className="tab-filters" style={{ padding: '4px 0', gap: 10 }}>
+                {/* Status Tabs — Compact Segmented Control */}
+                <div className="tab-filters" style={{ padding: '2px 0', gap: 6, display: 'flex' }}>
                     {[['active', 'Активные'], ['closed', 'Закрытые'], ['all', 'Все']].map(([v, l]) => (
-                        <button key={v} className={`tab-filter ${filter === v ? 'active' : ''}`} style={{ 
-                            padding: '8px 16px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
-                            background: filter === v ? 'var(--primary)' : 'var(--surface)',
-                            color: filter === v ? 'white' : 'var(--text-secondary)',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                            fontFamily: 'Oswald'
-                        }} onClick={() => setFilter(v)}>{l}</button>
+                        <button 
+                            key={v} 
+                            className={`tab-filter ${filter === v ? 'active' : ''}`} 
+                            style={{ 
+                                padding: '6px 14px', 
+                                borderRadius: 10, 
+                                border: '1px solid ' + (filter === v ? 'var(--primary)' : 'var(--border-light)'), 
+                                fontSize: 12, 
+                                fontWeight: filter === v ? 600 : 500,
+                                background: filter === v ? 'var(--primary-light)' : 'var(--surface)',
+                                color: filter === v ? 'var(--primary)' : 'var(--text-secondary)',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }} 
+                            onClick={() => setFilter(v)}
+                        >
+                            {l}
+                        </button>
                     ))}
                 </div>
 
@@ -809,7 +996,13 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
     const buyerExpenses = expenses.filter(e => e.payer === 'buyer');
     const property = state.properties.find(p => p.id === deal.property_id);
     const propertyAddress = property?.address || property?.city || null;
-    const isAddressInTitle = propertyAddress && deal.title?.toLowerCase().includes(propertyAddress.toLowerCase());
+    const isAddressInTitle = Boolean(
+        propertyAddress && (
+            deal.title?.toLowerCase().includes(propertyAddress.toLowerCase()) ||
+            (property?.address && deal.title?.toLowerCase().includes(property.address.toLowerCase())) ||
+            (property?.address && property.address.split(',').some(part => part.trim().length > 4 && deal.title?.toLowerCase().includes(part.trim().toLowerCase())))
+        )
+    );
 
     const hasSellerUnread = useMemo(() => {
         const info = lastMessages[deal.id]?.seller;
@@ -887,51 +1080,95 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
         if (!clients.length && !agent) return null;
         return (
             <div style={{
-                flex: 1, padding: '12px 14px',
+                flex: 1, 
+                padding: '14px 16px',
                 background: accentBg,
                 borderRadius: 16,
-                border: `1px solid ${accentColor}22`,
-                display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+                border: `1px solid ${accentColor}25`,
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 10, 
+                minWidth: 0,
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
-                    <span style={{ fontSize: 9, fontWeight: 500, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>{label}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: accentColor, flexShrink: 0 }} />
+                    <span style={{ 
+                        fontSize: 11, 
+                        fontWeight: 600, 
+                        color: accentColor, 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.03em' 
+                    }}>
+                        {label}
+                    </span>
                 </div>
+
                 {clients.map(c => (
                     <div key={c.id}
                         onClick={() => navigate(`/clients/${c.id}`)}
-                        style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', cursor: 'pointer', lineHeight: 1.2 }}
+                        style={{ 
+                            fontSize: 14, 
+                            fontWeight: 600, 
+                            color: 'var(--text)', 
+                            cursor: 'pointer', 
+                            lineHeight: 1.3,
+                            transition: 'color 0.2s' 
+                        }}
                     >
                         {c.full_name}
                     </div>
                 ))}
+
                 {agent && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <User size={11} color={accentColor} />
+                        <User size={12} color={accentColor} />
                         <span
                             onClick={() => navigate(`/clients/${agent.id}`)}
-                            style={{ fontSize: 11, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}
+                            style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}
                         >
                             {agent.full_name}
                         </span>
                     </div>
                 )}
-                <div style={{ borderTop: `1px dashed ${accentColor}33`, paddingTop: 8, marginTop: 2 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                        <div style={{ fontSize: 9, color: accentColor, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Расходы</div>
+
+                <div style={{ borderTop: `1px dashed ${accentColor}35`, paddingTop: 10, marginTop: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <div style={{ 
+                            fontSize: 10, 
+                            color: accentColor, 
+                            fontWeight: 600, 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '0.04em' 
+                        }}>
+                            Расходы
+                        </div>
                         <button 
                             type="button"
                             onClick={() => {
                                 setQuickExpense(prev => ({ ...prev, payer: side }));
                                 setShowQuickExpense(showQuickExpense && quickExpense.payer === side ? false : true);
                             }}
-                            style={{ background: 'transparent', border: 'none', color: accentColor, fontSize: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 2, padding: '0 4px', fontWeight: 600, fontFamily: "'Oswald', sans-serif" }}
+                            style={{ 
+                                background: `${accentColor}12`, 
+                                border: 'none', 
+                                color: accentColor, 
+                                fontSize: 11, 
+                                cursor: 'pointer', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 3, 
+                                padding: '2px 8px', 
+                                borderRadius: 6,
+                                fontWeight: 600,
+                                transition: 'all 0.2s'
+                            }}
                         >
                             + Добавить
                         </button>
                     </div>
+
                     {sideExpenses.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                             {[...sideExpenses]
                                 .sort((a, b) => {
                                     if (a.title === 'Комиссия') return -1;
@@ -941,16 +1178,16 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                 .map(exp => {
                                     const isCommission = exp.title === 'Комиссия';
                                     return (
-                                        <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                                        <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
                                             <span style={{ 
-                                                color: isCommission ? '#10b981' : 'var(--text-muted)', 
-                                                fontWeight: isCommission ? 600 : 300, 
+                                                color: isCommission ? '#10b981' : 'var(--text-secondary)', 
+                                                fontWeight: isCommission ? 600 : 400, 
                                                 flex: 1, 
                                                 marginRight: 6 
                                             }}>{exp.title}</span>
                                             <span style={{ 
                                                 color: isCommission ? '#10b981' : 'var(--text)', 
-                                                fontWeight: isCommission ? 600 : 500, 
+                                                fontWeight: isCommission ? 700 : 600, 
                                                 whiteSpace: 'nowrap' 
                                             }}>{Number(exp.amount).toLocaleString()} ₽</span>
                                         </div>
@@ -959,7 +1196,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             }
                         </div>
                     ) : (
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300, fontStyle: 'italic' }}>Нет расходов</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, fontStyle: 'italic' }}>Нет расходов</div>
                     )}
                 </div>
             </div>
@@ -967,48 +1204,120 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
     }
 
     return (
-        <div className="card" style={{ padding: '18px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.04)', background: 'var(--surface)', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="card" style={{ 
+            padding: '20px 22px', 
+            borderRadius: 20, 
+            border: '1px solid #374151', 
+            boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)', 
+            background: 'var(--surface)', 
+            marginBottom: 14, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: 16 
+        }}>
 
-            {/* ── Header: Title + Status + Compact Meta (Price, Lawyer, Property if not in title) ── */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            {/* ── Header: Title + Status + Edit button ── */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="font-oswald" style={{ fontWeight: 600, fontSize: 17, marginBottom: 0, lineHeight: 1.2 }}>{deal.title}</div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 14px', marginTop: 6 }}>
-                        {Number(deal.price) > 0 && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300 }}>Цена:</span>
-                                <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
-                                    {Number(deal.price).toLocaleString()} ₽
-                                </span>
-                            </div>
-                        )}
-                        {lawyerName && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <Scale size={11} color="#f59e0b" />
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300 }}>Юрист:</span>
-                                <span
-                                    style={{ fontSize: 11, fontWeight: 500, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default', textDecoration: lawyer ? 'underline' : 'none' }}
-                                    onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
-                                >
-                                    {lawyerName}
-                                </span>
-                            </div>
-                        )}
-                        {propertyAddress && !isAddressInTitle && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <Home size={11} color="var(--primary)" />
-                                <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 400 }}>
-                                    {propertyAddress}
-                                </span>
-                            </div>
-                        )}
+                    <div style={{ 
+                        fontWeight: 600, 
+                        fontSize: 18, 
+                        lineHeight: 1.3, 
+                        color: 'var(--text)',
+                        letterSpacing: '-0.01em'
+                    }}>
+                        {deal.title}
                     </div>
                 </div>
-                <span style={{
-                    padding: '4px 10px', borderRadius: 8, fontSize: 11, fontWeight: 500, flexShrink: 0, marginLeft: 10,
-                    background: cfg.bg, color: cfg.color,
-                }}>{cfg.label}</span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <span style={{
+                        padding: '5px 12px', 
+                        borderRadius: 12, 
+                        fontSize: 11, 
+                        fontWeight: 600,
+                        background: cfg.bg, 
+                        color: cfg.color,
+                        letterSpacing: '0.02em'
+                    }}>
+                        {cfg.label}
+                    </span>
+                    <button
+                        type="button"
+                        className="icon-btn-edit"
+                        style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 10,
+                            border: 'none',
+                            background: 'var(--bg-light, rgba(0,0,0,0.03))',
+                            color: 'var(--text-secondary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justify: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onClick={() => editDeal(deal)}
+                        title="Редактировать сделку"
+                    >
+                        <Pencil size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* ── Financial & Meta Highlight Bar ── */}
+            <div style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 12,
+                padding: '12px 14px',
+                background: 'var(--bg-light, rgba(0,0,0,0.02))',
+                borderRadius: 16,
+                border: '1px solid var(--border-light, rgba(0,0,0,0.04))'
+            }}>
+                {Number(deal.price) > 0 && (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>Цена:</span>
+                        <span className="font-oswald" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                            {Number(deal.price).toLocaleString()} ₽
+                        </span>
+                    </div>
+                )}
+
+                {Boolean(deal.mortgage || deal.mortgage_bank || Number(deal.mortgage_amount) > 0) && (
+                    <BankBadge bankName={deal.mortgage_bank} amount={deal.mortgage_amount} />
+                )}
+
+                {lawyerName && (
+                    <div style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: 6,
+                        padding: '4px 10px',
+                        background: 'rgba(245, 158, 11, 0.08)',
+                        borderRadius: 10,
+                        border: '1px solid rgba(245, 158, 11, 0.2)',
+                        fontSize: 11
+                    }}>
+                        <Scale size={13} color="#d97706" />
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Юрист:</span>
+                        <span
+                            style={{ fontWeight: 600, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default', textDecoration: lawyer ? 'underline' : 'none' }}
+                            onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
+                        >
+                            {lawyerName}
+                        </span>
+                    </div>
+                )}
+
+                {propertyAddress && !isAddressInTitle && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
+                        <Home size={12} color="var(--primary)" />
+                        <span>{propertyAddress}</span>
+                    </div>
+                )}
             </div>
 
             {/* ── Seller + Buyer mini-cards ── */}
@@ -1037,63 +1346,128 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
 
             {/* ── Dates & Events card ── */}
             {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || deal.handover_date || deal.mortgage) && (
-                <div style={{ padding: '12px 14px', background: 'rgba(245,158,11,0.04)', borderRadius: 16, border: '1px solid rgba(245,158,11,0.15)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ 
+                    padding: '14px 16px', 
+                    background: 'rgba(245, 158, 11, 0.05)', 
+                    borderRadius: 16, 
+                    border: '1px solid rgba(245, 158, 11, 0.2)', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 10 
+                }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                        <Calendar size={12} color="var(--warning)" />
-                        <span style={{ fontSize: 9, fontWeight: 500, color: 'var(--warning)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'Oswald', sans-serif" }}>Даты и события</span>
+                        <Calendar size={14} color="#d97706" />
+                        <span style={{ 
+                            fontSize: 11, 
+                            fontWeight: 600, 
+                            color: '#b45309', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '0.04em' 
+                        }}>
+                            Даты и события
+                        </span>
                     </div>
-                    {deal.deposit_amount > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                <DollarSign size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--warning)" />
-                                Задаток
-                            </span>
-                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>
-                                {Number(deal.deposit_amount).toLocaleString()} ₽
-                                {deal.deposit_date && (
-                                    <span style={{ color: 'var(--text)', fontWeight: 600, marginLeft: 6 }}>
-                                        {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {deal.deposit_amount > 0 && (
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                gap: 10,
+                                flexWrap: 'wrap'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <DollarSign size={14} color="#d97706" />
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Задаток</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                                        {Number(deal.deposit_amount).toLocaleString()} ₽
                                     </span>
-                                )}
-                            </span>
-                        </div>
-                    )}
-                    {deal.deal_date && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                <CheckCircle size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#10b981" />
-                                Регистрация
-                            </span>
-                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>
-                                {new Date(deal.deal_date).toLocaleDateString('ru-RU')} {new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                        </div>
-                    )}
-                    {deal.handover_date && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                <Home size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="var(--primary)" />
-                                Передача объекта
-                            </span>
-                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>
-                                {new Date(deal.handover_date).toLocaleDateString('ru-RU')} {new Date(deal.handover_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                {deal.handover_amount > 0 && (
-                                    <span style={{ color: 'var(--text)', fontWeight: 600, marginLeft: 6 }}>
-                                        · {Number(deal.handover_amount).toLocaleString()} ₽
+                                    {deal.deposit_date && (
+                                        <span style={{ 
+                                            fontSize: 11, 
+                                            fontWeight: 500,
+                                            color: 'var(--text-secondary)', 
+                                            background: 'var(--surface, #ffffff)', 
+                                            padding: '3px 9px', 
+                                            borderRadius: 8, 
+                                            border: '1px solid rgba(245,158,11,0.25)',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                        }}>
+                                            {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} в {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {deal.deal_date && (
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                gap: 10,
+                                flexWrap: 'wrap',
+                                borderTop: deal.deposit_amount > 0 ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                paddingTop: deal.deposit_amount > 0 ? 8 : 0
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <CheckCircle size={14} color="#10b981" />
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Регистрация</span>
+                                </div>
+                                <span style={{ 
+                                    fontSize: 11, 
+                                    fontWeight: 500,
+                                    color: 'var(--text-secondary)', 
+                                    background: 'var(--surface, #ffffff)', 
+                                    padding: '3px 9px', 
+                                    borderRadius: 8, 
+                                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                }}>
+                                    {new Date(deal.deal_date).toLocaleDateString('ru-RU')} в {new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                        )}
+
+                        {deal.handover_date && (
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                gap: 10,
+                                flexWrap: 'wrap',
+                                borderTop: (deal.deposit_amount > 0 || deal.deal_date) ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                paddingTop: (deal.deposit_amount > 0 || deal.deal_date) ? 8 : 0
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Home size={14} color="var(--primary)" />
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Передача объекта</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    {deal.handover_amount > 0 && (
+                                        <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
+                                            {Number(deal.handover_amount).toLocaleString()} ₽
+                                        </span>
+                                    )}
+                                    <span style={{ 
+                                        fontSize: 11, 
+                                        fontWeight: 500,
+                                        color: 'var(--text-secondary)', 
+                                        background: 'var(--surface, #ffffff)', 
+                                        padding: '3px 9px', 
+                                        borderRadius: 8, 
+                                        border: '1px solid rgba(0, 82, 255, 0.2)',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                    }}>
+                                        {new Date(deal.handover_date).toLocaleDateString('ru-RU')} в {new Date(deal.handover_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
                                     </span>
-                                )}
-                            </span>
-                        </div>
-                    )}
-                    {deal.mortgage && deal.mortgage_bank && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12 }}>
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 300 }}>
-                                <CreditCard size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} color="#06b6d4" />
-                                Ипотека · {deal.mortgage_bank}
-                            </span>
-                            <span style={{ fontWeight: 600, color: '#06b6d4' }}>{Number(deal.mortgage_amount).toLocaleString()} ₽</span>
-                        </div>
-                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
 
@@ -1225,134 +1599,6 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     accentColor="#0052ff"
                 />
             )}
-
-            {/* ── Quick Expense Panel ── */}
-            {showQuickExpense && (
-                <div className="fade-in" style={{ 
-                    padding: 16, 
-                    background: 'var(--bg-light)', 
-                    borderRadius: 16, 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: 10,
-                    border: '1px solid var(--border-light)',
-                    marginTop: 10
-                }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, textTransform: 'uppercase', fontFamily: "'Oswald', sans-serif", letterSpacing: '0.04em' }}>
-                        <Plus size={14} /> Быстрый расход
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                        <div>
-                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Кто платит</label>
-                            <select 
-                                className="form-input" 
-                                style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
-                                value={quickExpense.payer}
-                                onChange={e => setQuickExpense(prev => ({ ...prev, payer: e.target.value }))}
-                            >
-                                <option value="seller">Продавец</option>
-                                <option value="buyer">Покупатель</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Расход</label>
-                            <select 
-                                className="form-input" 
-                                style={{ height: 36, fontSize: 12, borderRadius: 8, padding: '0 4px', width: '100%', background: 'var(--surface)', border: '1px solid var(--border-light)' }}
-                                value={state.pricelist.some(p => p.name === quickExpense.title) ? quickExpense.title : (quickExpense.title ? 'custom' : '')}
-                                onChange={e => {
-                                    const val = e.target.value;
-                                    if (val === '') {
-                                        setQuickExpense(prev => ({ ...prev, title: '', amount: '' }));
-                                    } else if (val === 'custom') {
-                                        setQuickExpense(prev => ({ ...prev, title: 'Другое', amount: '' }));
-                                    } else {
-                                        const selectedItem = state.pricelist.find(p => p.name === val);
-                                        if (selectedItem) {
-                                            let amt = selectedItem.price;
-                                            if (selectedItem.name === 'Сделка/СЭР') {
-                                                const dealPrice = Number(deal.price) || 0;
-                                                amt = Math.min(20000, Math.round(dealPrice * 0.003));
-                                            }
-                                            setQuickExpense(prev => ({ ...prev, title: selectedItem.name, amount: formatPriceInput(String(amt)) }));
-                                        }
-                                    }
-                                }}
-                            >
-                                <option value="">-- Выбрать --</option>
-                                {state.pricelist.map(p => (
-                                    <option key={p.id} value={p.name}>{p.name}</option>
-                                ))}
-                                <option value="custom">Другое (свой вариант)</option>
-                            </select>
-                        </div>
-                    </div>
-                    {quickExpense.title === 'Другое' && (
-                        <div>
-                            <input 
-                                className="form-input" 
-                                style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
-                                placeholder="Название расхода"
-                                value={quickExpense.customTitle || ''}
-                                onChange={e => setQuickExpense(prev => ({ ...prev, customTitle: e.target.value }))}
-                            />
-                        </div>
-                    )}
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, alignItems: 'end' }}>
-                        <div>
-                            <label style={{ fontSize: 10, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Сумма</label>
-                            <input 
-                                className="form-input" 
-                                style={{ height: 36, fontSize: 12, borderRadius: 8 }} 
-                                placeholder="Сумма"
-                                value={quickExpense.amount}
-                                onChange={e => {
-                                    const digits = e.target.value.replace(/\D/g, '');
-                                    const formatted = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-                                    setQuickExpense(prev => ({ ...prev, amount: formatted }));
-                                }}
-                            />
-                        </div>
-                        <div style={{ display: 'flex', gap: 4 }}>
-                            <button 
-                                type="button" 
-                                className="btn btn-primary" 
-                                style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                onClick={handleSaveQuickExpense}
-                            >
-                                Добавить
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ height: 36, fontSize: 11, borderRadius: 8, padding: '0 8px', border: 'none', background: 'rgba(0,0,0,0.05)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                                onClick={() => {
-                                    setShowQuickExpense(false);
-                                    setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
-                                }}
-                            >
-                                Отмена
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ── Actions ── */}
-            <div style={{ display: 'flex', gap: 8, borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: 14 }}>
-                {deal.status === 'active' && (
-                    <button className="card-clickable" style={{ flex: 1, height: 44, borderRadius: 12, background: 'var(--success-light)', color: '#10b981', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, fontWeight: 500, fontSize: 12, textTransform: 'uppercase' }} onClick={() => updateStatus(deal, 'closed')}>
-                        <CheckCircle size={18} /> Закрыть
-                    </button>
-                )}
-
-                <button className="icon-btn-edit" onClick={() => editDeal(deal)} title="Редактировать">
-                    <Pencil size={18} />
-                </button>
-                <button className="icon-btn-delete" onClick={() => { if(window.confirm('Удалить?')) dispatch({type:'DELETE_DEAL', id: deal.id}); }} title="Удалить">
-                    <Trash size={18} />
-                </button>
-            </div>
         </div>
     );
 }
