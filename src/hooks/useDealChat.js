@@ -4,6 +4,39 @@ import { io } from 'socket.io-client';
 
 const SOCKET_SERVER_URL = 'http://78.154.103.37:14070';
 
+// Звуковое оповещение Telegram chime
+function playChatNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch (e) {}
+}
+
+// Пуш-уведомление браузера
+function sendWebPushNotification(title, body) {
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (Notification.permission === 'granted') {
+      try { new Notification(title, { body }); } catch (e) {}
+    } else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          try { new Notification(title, { body }); } catch (e) {}
+        }
+      }).catch(() => {});
+    }
+  }
+}
+
 export function useDealChat(dealId, side) {
   const [messages, setMessages]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -13,6 +46,13 @@ export function useDealChat(dealId, side) {
   const socketRef                 = useRef(null);
 
   const roomName = dealId && side ? `deal_${dealId}_${side}` : null;
+
+  // Запрос разрешения на уведомления при первом подключении
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, []);
 
   const fetchMessages = useCallback(async () => {
     if (!dealId || !side) return;
@@ -59,6 +99,14 @@ export function useDealChat(dealId, side) {
 
         socket.on('new_message', (newMsg) => {
           if (!isMountedRef.current) return;
+          
+          // Звук и push если новое входящее сообщение
+          playChatNotificationSound();
+          sendWebPushNotification(
+            '💬 Новое сообщение в чате',
+            `${newMsg.sender_name || 'Участник'}: ${newMsg.text || 'Вложение'}`
+          );
+
           setMessages(prev => {
             if (prev.some(m => m.id === newMsg.id || (m._pending && m.text === newMsg.text))) {
               return prev.map(m => (m._pending && m.text === newMsg.text) ? { ...newMsg, _pending: false } : m);
@@ -84,8 +132,10 @@ export function useDealChat(dealId, side) {
   /**
    * Отправить сообщение с оптимистичным обновлением UI и сокет-трансляцией.
    */
-  const sendMessage = useCallback(async ({ text, senderId, senderName, senderRole }) => {
-    if (!text?.trim() || !dealId || !side) return;
+  const sendMessage = useCallback(async ({ text, senderId, senderName, senderRole, file_url, file_name, file_type }) => {
+    if (!text?.trim() && !file_url) return;
+    if (!dealId || !side) return;
+
     const tmpId = `tmp-${Date.now()}`;
     const optimistic = {
       id:          tmpId,
@@ -94,7 +144,10 @@ export function useDealChat(dealId, side) {
       sender_id:   senderId,
       sender_name: senderName,
       sender_role: senderRole,
-      text:        text.trim(),
+      text:        text?.trim() || file_name || 'Документ',
+      file_url,
+      file_name,
+      file_type,
       created_at:  new Date().toISOString(),
       _pending:    true,
     };
@@ -106,9 +159,12 @@ export function useDealChat(dealId, side) {
     if (socketRef.current && socketRef.current.connected && roomName) {
       socketRef.current.emit('send_message', {
         room: roomName,
-        text: text.trim(),
+        text: text?.trim() || file_name || 'Документ',
         sender_name: senderName,
-        sender_role: senderRole
+        sender_role: senderRole,
+        file_url,
+        file_name,
+        file_type
       });
     }
 
@@ -119,7 +175,10 @@ export function useDealChat(dealId, side) {
         sender_id:   senderId,
         sender_name: senderName,
         sender_role: senderRole,
-        text:        text.trim(),
+        text:        text?.trim() || file_name || 'Документ',
+        file_url,
+        file_name,
+        file_type
       });
 
       if (!isMountedRef.current) return;
@@ -140,7 +199,7 @@ export function useDealChat(dealId, side) {
     } catch (e) {
       if (isMountedRef.current) {
         setMessages(prev => prev.filter(m => m.id !== tmpId));
-        setError('Сетевая ошибка при отправке');
+        setError('Ошибка при отправке сообщения');
       }
     } finally {
       if (isMountedRef.current) setSending(false);
