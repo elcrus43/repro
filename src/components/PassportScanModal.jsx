@@ -5,19 +5,31 @@ import { useToastContext } from './Toast';
 /**
  * Парсинг российского внутреннего паспорта (паспорт гражданина РФ)
  *
- * Структура разворота стр. 2-3:
- * Стр.2: Фото | СЕРИЯ НОМЕР вверху | ФАМИЛИЯ → значение | ИМЯ → значение |
- *        ОТЧЕСТВО → значение | ПОЛ → значение | ДАТА РОЖДЕНИЯ → значение |
- *        МЕСТО РОЖДЕНИЯ → значение
- * Стр.3: КЕМ ВЫДАН → значение | ДАТА ВЫДАЧИ → значение | КОД ПОДРАЗДЕЛЕНИЯ → значение
+ * Реальная структура разворота (по образцу):
  *
- * Подход: label-based — находим метку, следующая непустая строка = значение.
+ * Страница 3 (верх — орган выдачи):
+ *   РОССИЙСКАЯ ФЕДЕРАЦИЯ
+ *   Паспорт выдан ОТДЕЛОМ УФМС РОССИЙ ПО КИРОВСКОЙ ОБЛАСТИ В ПГТ. ОРИЧИ
+ *   Дата выдачи 17.12.2015    вподразделения 430-024
+ *
+ * Страница 2 (низ — личные данные):
+ *   ПУШКАРЕВ          <- ЗНАЧЕНИЕ (крупный шрифт)
+ *   Фамилия           <- метка (мелкий курсив НИЖЕ значения!)
+ *   СЕРГЕЙ
+ *   Имя
+ *   БОРИСОВИЧ
+ *   Отчество
+ *   МУЖ   07.12.1970
+ *   Пол   Дата рождения
+ *   С.АДЫШЕВО ОРИЧЕВСКОГО Р-НА КИРОВСКОЙ ОБЛ.
+ *   Место рождения
+ *
+ * Серия+номер: "33 15 382413" — вертикально на полях.
  */
 function parseRussianPassport(text) {
   if (!text) return {};
   const result = {};
 
-  // Нормализация текста
   const normalized = text
     .replace(/\r/g, '\n')
     .replace(/[–—]/g, '-')
@@ -26,136 +38,158 @@ function parseRussianPassport(text) {
 
   const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
 
-  // Маппинг меток паспорта РФ (Tesseract может распознать их по-разному)
-  const LABELS = {
-    lastName:   ['ФАМИЛИЯ', 'ФАМИЛ ИЯ', 'ФАМИЛ', 'SURNAME'],
-    firstName:  ['ИМЯ', 'NAME', 'ИМ Я'],
-    patronymic: ['ОТЧЕСТВО', 'ОТЧЕСТ ВО', 'PATRONYMIC'],
-    sex:        ['ПОЛ', 'SEX', 'GENDER'],
-    birthDate:  ['ДАТА РОЖДЕНИЯ', 'ДАТАРОЖДЕНИЯ', 'DATE OF BIRTH', 'BIRTH DATE', 'ДАТА РОЖД'],
-    birthPlace: ['МЕСТО РОЖДЕНИЯ', 'МЕСТЕРОЖДЕНИЯ', 'PLACE OF BIRTH', 'МЕСТО РОЖД'],
-    issuedBy:   ['КЕМ ВЫДАН', 'КЕМВЫДАН', 'ВЫДАН', 'ISSUED BY', 'КЕМ ВЫД'],
-    issueDate:  ['ДАТА ВЫДАЧИ', 'ДАТАВЫДАЧИ', 'DATE OF ISSUE', 'ДАТА ВЫД', 'ДАТА ВЫДА'],
-    unitCode:   ['КОД ПОДРАЗДЕЛЕНИЯ', 'КОДПОДРАЗДЕЛЕНИЯ', 'CODE', 'КОД ПОДР', 'КОД ПОД'],
+  // Метки паспорта РФ (все варианты OCR)
+  const LABEL_MAP = {
+    lastName:   ['ФАМИЛИЯ', 'ФАМИЛ', 'SURNAME'],
+    firstName:  ['ИМЯ', 'NAME'],
+    patronymic: ['ОТЧЕСТВО', 'ОТЧЕСТ', 'PATRONYMIC'],
+    sex:        ['ПОЛ', 'SEX'],
+    birthDate:  ['ДАТА РОЖДЕНИЯ', 'ДАТАРОЖДЕНИЯ', 'ДАТА РОЖД', 'DATE OF BIRTH'],
+    birthPlace: ['МЕСТО РОЖДЕНИЯ', 'МЕСТЕРОЖДЕНИЯ', 'МЕСТО РОЖД', 'PLACE OF BIRTH'],
+    issuedBy:   ['ПАСПОРТ ВЫДАН', 'КЕМ ВЫДАН', 'КЕМВЫДАН', 'ВЫДАН'],
+    issueDate:  ['ДАТА ВЫДАЧИ', 'ДАТАВЫДАЧИ', 'ДАТА ВЫД'],
+    unitCode:   ['ВПОДРАЗДЕЛЕНИЯ', 'КОД ПОДРАЗДЕЛЕНИЯ', 'КОДПОДРАЗДЕЛЕНИЯ', 'КОД ПОДР', 'ПОДРАЗДЕЛЕН'],
   };
 
-  // Поиск значения по метке
-  function findValueAfterLabel(labelVariants) {
+  const allLabelStrings = Object.values(LABEL_MAP).flat();
+  const isLabelLine = (line) =>
+    allLabelStrings.some(lv => line.toUpperCase().replace(/\s+/g, ' ').includes(lv));
+
+  // Страница 2: значение находится ПЕРЕД меткой (выше неё)
+  function findValueBeforeLabel(labelVariants) {
     for (let i = 0; i < lines.length; i++) {
-      const upperLine = lines[i].toUpperCase().replace(/\s+/g, ' ');
-      const matched = labelVariants.some(lv => upperLine.includes(lv));
-      if (matched) {
-        // Следующая непустая строка = значение (пропускаем другие метки)
-        for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+      const upper = lines[i].toUpperCase().replace(/\s+/g, ' ');
+      if (labelVariants.some(lv => upper.includes(lv))) {
+        for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
           const candidate = lines[j].trim();
-          // Пропускаем пустые строки и другие метки
-          const isLabel = Object.values(LABELS).flat().some(lv =>
-            candidate.toUpperCase().includes(lv)
-          );
-          if (candidate && !isLabel && candidate.length > 0) {
-            return candidate;
-          }
+          if (candidate && !isLabelLine(candidate)) return candidate;
         }
       }
     }
     return null;
   }
 
-  // --- Серия и номер (в верхней части страницы: 4 цифры + 6 цифр) ---
-  const seriesNumMatch = text.match(/\b(\d{4})\s{1,4}(\d{6})\b/);
-  if (seriesNumMatch) {
-    result.series = seriesNumMatch[1];
-    result.number = seriesNumMatch[2];
+  // Страница 3: значение находится ПОСЛЕ метки или на той же строке
+  function findValueAfterLabel(labelVariants) {
+    for (let i = 0; i < lines.length; i++) {
+      const upper = lines[i].toUpperCase().replace(/\s+/g, ' ');
+      const matchedLv = labelVariants.find(lv => upper.includes(lv));
+      if (matchedLv) {
+        const sameLineVal = lines[i]
+          .substring(lines[i].toUpperCase().indexOf(matchedLv) + matchedLv.length)
+          .trim();
+        if (sameLineVal && sameLineVal.length > 1) return sameLineVal;
+        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+          const candidate = lines[j].trim();
+          if (candidate && !isLabelLine(candidate)) return candidate;
+        }
+      }
+    }
+    return null;
   }
 
-  // --- ФИО по меткам ---
-  const rawLastName = findValueAfterLabel(LABELS.lastName);
-  const rawFirstName = findValueAfterLabel(LABELS.firstName);
-  const rawPatronymic = findValueAfterLabel(LABELS.patronymic);
+  // ── СЕРИЯ И НОМЕР ──
+  // "33 15 382413" → серия "3315", номер "382413"
+  const snMatch1 = text.match(/\b(\d{2})\s+(\d{2})\s+(\d{6})\b/);
+  const snMatch2 = text.match(/\b(\d{4})\s{1,4}(\d{6})\b/);
+  if (snMatch1) {
+    result.series = snMatch1[1] + snMatch1[2];
+    result.number = snMatch1[3];
+  } else if (snMatch2) {
+    result.series = snMatch2[1];
+    result.number = snMatch2[2];
+  }
 
-  // Tesseract может объединить имя и отчество в одну строку
-  if (rawFirstName && rawFirstName.includes(' ') && !rawPatronymic) {
-    const parts = rawFirstName.trim().split(/\s+/);
+  // ── ФИО (значение ПЕРЕД меткой) ──
+  result.last_name  = findValueBeforeLabel(LABEL_MAP.lastName)   || '';
+  result.first_name = findValueBeforeLabel(LABEL_MAP.firstName)  || '';
+  result.patronymic = findValueBeforeLabel(LABEL_MAP.patronymic) || '';
+
+  // Имя и отчество могут слиться: "СЕРГЕЙ БОРИСОВИЧ"
+  if (result.first_name.includes(' ') && !result.patronymic) {
+    const parts = result.first_name.trim().split(/\s+/);
     result.first_name = parts[0];
     result.patronymic = parts.slice(1).join(' ');
-  } else {
-    result.first_name = rawFirstName || '';
-    result.patronymic = rawPatronymic || '';
   }
-  result.last_name = rawLastName || '';
 
   if (result.last_name || result.first_name) {
-    result.full_name = `${result.last_name} ${result.first_name} ${result.patronymic}`.trim().replace(/\s+/g, ' ');
+    result.full_name = `${result.last_name} ${result.first_name} ${result.patronymic}`
+      .trim().replace(/\s+/g, ' ');
   }
 
-  // --- Пол ---
-  const rawSex = findValueAfterLabel(LABELS.sex);
-  if (rawSex) result.sex = rawSex;
-  else if (/МУЖСКОЙ|МУЖ\./i.test(text)) result.sex = 'МУЖСКОЙ';
-  else if (/ЖЕНСКИЙ|ЖЕН\./i.test(text)) result.sex = 'ЖЕНСКИЙ';
+  // ── ПОЛ ──
+  const rawSexLine = findValueBeforeLabel(LABEL_MAP.sex);
+  if (rawSexLine && /МУЖ|ЖЕН/i.test(rawSexLine)) {
+    result.sex = /МУЖ/i.test(rawSexLine) ? 'МУЖ' : 'ЖЕН';
+  } else if (/\bМУЖ\b/i.test(text)) result.sex = 'МУЖ';
+  else if (/\bЖЕН\b/i.test(text)) result.sex = 'ЖЕН';
 
-  // --- Дата рождения (ДД.ММ.ГГГГ) ---
-  // Ищем сначала под меткой, потом по паттерну
-  const rawBirthDate = findValueAfterLabel(LABELS.birthDate);
-  const allDates = [...text.matchAll(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/g)];
+  // ── ДАТА РОЖДЕНИЯ (значение ПЕРЕД меткой "Дата рождения") ──
+  const allDates = [...text.matchAll(/(\d{2})[.\-](\d{2})[.\-](\d{4})/g)];
+  const birthDateLine = findValueBeforeLabel(LABEL_MAP.birthDate);
 
-  if (rawBirthDate) {
-    const dm = rawBirthDate.match(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/);
+  if (birthDateLine) {
+    const dm = birthDateLine.match(/(\d{2})[.\-](\d{2})[.\-](\d{4})/);
     if (dm) {
       result.birth_date = `${dm[3]}-${dm[2]}-${dm[1]}`;
       result.birth_date_display = `${dm[1]}.${dm[2]}.${dm[3]}`;
     }
-  } else if (allDates.length > 0) {
+  }
+  if (!result.birth_date && allDates.length > 0) {
     const [, d, m, y] = allDates[0];
     result.birth_date = `${y}-${m}-${d}`;
     result.birth_date_display = `${d}.${m}.${y}`;
   }
 
-  // --- Дата выдачи (обычно вторая дата на странице 3) ---
-  const rawIssueDate = findValueAfterLabel(LABELS.issueDate);
-  if (rawIssueDate) {
-    const dm = rawIssueDate.match(/(\d{2})[.\-/](\d{2})[.\-/](\d{4})/);
-    if (dm) result.issue_date = `${dm[1]}.${dm[2]}.${dm[3]}`;
-  } else if (allDates.length > 1) {
-    const [, d, m, y] = allDates[1];
-    result.issue_date = `${d}.${m}.${y}`;
+  // ── МЕСТО РОЖДЕНИЯ (значение ПЕРЕД меткой, может быть многострочным) ──
+  const birthPlaceRaw = findValueBeforeLabel(LABEL_MAP.birthPlace);
+  if (birthPlaceRaw) {
+    const bpIdx = lines.findIndex(l => l.trim() === birthPlaceRaw.trim());
+    if (bpIdx !== -1) {
+      const parts = [birthPlaceRaw];
+      for (let k = bpIdx - 1; k >= Math.max(0, bpIdx - 3); k--) {
+        const ln = lines[k].trim();
+        if (!ln || isLabelLine(ln) || /\d{2}[.\-]\d{2}[.\-]\d{4}/.test(ln)) break;
+        parts.unshift(ln);
+      }
+      result.birth_place = parts.join(' ').substring(0, 100);
+    } else {
+      result.birth_place = birthPlaceRaw;
+    }
   }
 
-  // --- Место рождения ---
-  const rawBirthPlace = findValueAfterLabel(LABELS.birthPlace);
-  if (rawBirthPlace) result.birth_place = rawBirthPlace;
-
-  // --- Кем выдан ---
-  const rawIssuedBy = findValueAfterLabel(LABELS.issuedBy);
+  // ── КЕМ ВЫДАН (значение ПОСЛЕ "Паспорт выдан" — стр. 3) ──
+  const rawIssuedBy = findValueAfterLabel(LABEL_MAP.issuedBy);
   if (rawIssuedBy) {
-    // Может занимать несколько строк — собираем до следующей метки или даты
-    const startIdx = lines.findIndex(l => l.trim() === rawIssuedBy.trim());
-    if (startIdx !== -1) {
-      let issuedByParts = [rawIssuedBy];
-      for (let k = startIdx + 1; k < Math.min(startIdx + 4, lines.length); k++) {
-        const nextLine = lines[k].trim();
-        const isNextLabel = Object.values(LABELS).flat().some(lv =>
-          nextLine.toUpperCase().includes(lv)
-        );
-        const isDate = /^\d{2}[.\-/]\d{2}[.\-/]\d{4}/.test(nextLine);
-        if (isNextLabel || isDate || !nextLine) break;
-        issuedByParts.push(nextLine);
+    const idx = lines.findIndex(l => l.trim() === rawIssuedBy.trim());
+    if (idx !== -1) {
+      const parts = [rawIssuedBy];
+      for (let k = idx + 1; k < Math.min(idx + 4, lines.length); k++) {
+        const ln = lines[k].trim();
+        if (!ln || isLabelLine(ln) || /^\d{2}[.\-]\d{2}[.\-]\d{4}/.test(ln)) break;
+        parts.push(ln);
       }
-      result.issued_by = issuedByParts.join(' ').substring(0, 150);
+      result.issued_by = parts.join(' ').substring(0, 150);
     } else {
       result.issued_by = rawIssuedBy;
     }
   }
 
-  // --- Код подразделения (XXX-XXX) ---
-  const rawUnitCode = findValueAfterLabel(LABELS.unitCode);
-  if (rawUnitCode) {
-    const ucMatch = rawUnitCode.match(/(\d{3})[\s-](\d{3})/);
-    if (ucMatch) result.unit_code = `${ucMatch[1]}-${ucMatch[2]}`;
-    else result.unit_code = rawUnitCode;
+  // ── ДАТА ВЫДАЧИ (inline: "Дата выдачи 17.12.2015") ──
+  const issueDateInline = text.match(/[Дд]ата\s+выдачи[\s:]*(\d{2}[.\-]\d{2}[.\-]\d{4})/);
+  if (issueDateInline) {
+    result.issue_date = issueDateInline[1];
+  } else if (allDates.length > 1) {
+    const [, d, m, y] = allDates[1];
+    result.issue_date = `${d}.${m}.${y}`;
+  }
+
+  // ── КОД ПОДРАЗДЕЛЕНИЯ (XXX-XXX рядом с датой выдачи) ──
+  const ucInline = text.match(/(?:под\s*разделени[яе]|вподразделения)[\s:]*(\d{3}[-\s]\d{3})/i);
+  if (ucInline) {
+    result.unit_code = ucInline[1].replace(/\s/, '-');
   } else {
-    // Резервный поиск по паттерну
-    const ucMatch = text.match(/\b(\d{3})[-\s](\d{3})\b/);
+    const ucMatch = text.match(/\b(\d{3})-(\d{3})\b/);
     if (ucMatch) result.unit_code = `${ucMatch[1]}-${ucMatch[2]}`;
   }
 
@@ -173,7 +207,7 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
   const [progressStatus, setProgressStatus] = useState('');
   const [extracted, setExtracted] = useState(null);
   const [error, setError] = useState(null);
-  const [scanPage, setScanPage] = useState('main'); // 'main' | 'reg'
+  const [scanPage, setScanPage] = useState('main');
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
@@ -202,7 +236,7 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
 
       const result = await Tesseract.recognize(
         image,
-        'rus', // только русский язык для точности
+        'rus',
         {
           logger: (m) => {
             if (m.status === 'recognizing text') {
@@ -222,17 +256,15 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
       setProgress(100);
       setProgressStatus('Готово!');
 
-      // Для страницы регистрации — добавляем к уже извлечённым данным
       if (scanPage === 'reg' && extracted) {
         const merged = {
           ...extracted,
-          reg_address: parsedData.address || extracted.reg_address || '',
+          reg_address: parsedData.birth_place || parsedData.address || extracted.reg_address || '',
         };
         setExtracted(merged);
         toast.success('Адрес регистрации распознан!');
       } else {
         setExtracted(parsedData);
-
         const fieldsFound = Object.values(parsedData).filter(v => v && v.toString().trim()).length;
         if (fieldsFound === 0) {
           setError('Не удалось извлечь данные. Убедитесь что страница паспорта хорошо освещена, не смазана и полностью попадает в кадр.');
@@ -315,11 +347,11 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-          {/* Выбор страницы паспорта */}
+          {/* Выбор страницы */}
           <div style={{ display: 'flex', gap: 8 }}>
             {[
               { id: 'main', label: '📋 Стр. 2-3 (ФИО, дата, серия)', sub: 'Основные данные' },
-              { id: 'reg', label: '🏠 Стр. 5 (Прописка)', sub: 'Адрес регистрации' }
+              { id: 'reg',  label: '🏠 Стр. 5 (Прописка)',           sub: 'Адрес регистрации' }
             ].map(pg => (
               <button
                 key={pg.id}
@@ -351,12 +383,12 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
                   {scanPage === 'main' ? (
                     <>
                       <strong>Сфотографируйте разворот 2-3</strong> — страница с фото и данными.<br />
-                      Держите паспорт ровно, избегайте бликов и теней. Весь текст должен быть чётким.
+                      Держите паспорт ровно, избегайте бликов на ламинате. Весь текст должен быть чётким.
                     </>
                   ) : (
                     <>
                       <strong>Сфотографируйте страницу 5</strong> — «Место жительства».<br />
-                      Убедитесь что штамп с адресом полностью виден.
+                      Убедитесь что штамп с адресом полностью виден и не смазан.
                     </>
                   )}
                 </div>
@@ -482,14 +514,15 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {[
-                  { label: 'ФИО', key: 'full_name', type: 'text', placeholder: 'Иванов Иван Иванович' },
-                  { label: 'Дата рождения', key: 'birth_date', type: 'date', placeholder: '' },
-                  { label: 'Серия паспорта', key: 'series', type: 'text', placeholder: '1234' },
-                  { label: 'Номер паспорта', key: 'number', type: 'text', placeholder: '567890' },
-                  { label: 'Дата выдачи', key: 'issue_date', type: 'text', placeholder: 'ДД.ММ.ГГГГ' },
-                  { label: 'Код подразделения', key: 'unit_code', type: 'text', placeholder: '123-456' },
-                  { label: 'Кем выдан', key: 'issued_by', type: 'text', placeholder: 'ГУ МВД России...' },
-                  { label: 'Адрес регистрации', key: 'reg_address', type: 'text', placeholder: 'г. Москва, ул...' },
+                  { label: 'ФИО',                key: 'full_name',  type: 'text', placeholder: 'Иванов Иван Иванович' },
+                  { label: 'Дата рождения',      key: 'birth_date', type: 'date', placeholder: '' },
+                  { label: 'Серия паспорта',     key: 'series',     type: 'text', placeholder: '3315' },
+                  { label: 'Номер паспорта',     key: 'number',     type: 'text', placeholder: '382413' },
+                  { label: 'Место рождения',     key: 'birth_place',type: 'text', placeholder: 'г. Москва' },
+                  { label: 'Дата выдачи',        key: 'issue_date', type: 'text', placeholder: 'ДД.ММ.ГГГГ' },
+                  { label: 'Код подразделения',  key: 'unit_code',  type: 'text', placeholder: '430-024' },
+                  { label: 'Кем выдан',          key: 'issued_by',  type: 'text', placeholder: 'Отдел УФМС...' },
+                  { label: 'Адрес регистрации',  key: 'reg_address',type: 'text', placeholder: 'г. Москва, ул...' },
                 ].map(field => (
                   <div key={field.key} style={{
                     padding: '8px 12px', background: '#f8fafc',
@@ -499,7 +532,7 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
                     <input
                       type={field.type}
                       value={extracted[field.key] || ''}
-                      placeholder={extracted[field.key] ? '' : `${field.placeholder} (не распознано)`}
+                      placeholder={`${field.placeholder} (не распознано)`}
                       onChange={e => setExtracted(prev => ({ ...prev, [field.key]: e.target.value }))}
                       style={{
                         fontSize: 13, fontWeight: 600,
@@ -511,7 +544,6 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
                 ))}
               </div>
 
-              {/* Кнопка доп. сканирования страницы прописки */}
               {scanPage === 'main' && !extracted.reg_address && (
                 <button
                   type="button"
