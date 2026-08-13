@@ -133,5 +133,24 @@ export function parseLocalDateTime(dateStr) {
     return isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * Formats a Date object or date string (YYYY-MM-DD or ISO) to dd.mm.yyyy format
+ * @param {Date|string} dateOrStr
+ * @returns {string}
+ */
+export function formatDate(dateOrStr) {
+    if (!dateOrStr) return '';
+    // Handle string YYYY-MM-DD directly without timezone shift
+    if (typeof dateOrStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateOrStr)) {
+        const [y, m, d] = dateOrStr.split('-');
+        return `${d}.${m}.${y}`;
+    }
+    const d = new Date(dateOrStr);
+    if (isNaN(d.getTime())) return String(dateOrStr);
+    const pad = (num) => String(num).padStart(2, '0');
+    return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+
 
 

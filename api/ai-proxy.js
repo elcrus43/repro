@@ -72,6 +72,15 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+    if (action === 'scanPassport') {
+      const { imageBase64, mimeType } = req.body;
+      if (!imageBase64) {
+        return res.status(400).json({ error: 'Missing imageBase64 parameter' });
+      }
+      const data = await handleScanPassport(imageBase64, mimeType || 'image/jpeg');
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'Unknown action' });
   } catch (err) {
     console.error('[ai-proxy error]:', err.message);
@@ -741,3 +750,139 @@ async function findNewBuildAnalogs(sql, property) {
   });
 }
 
+/**
+ * Распознавание паспорта РФ через AI Vision (ZhipuAI GLM-4V-Flash → Gemini Vision)
+ * Принимает base64-изображение, возвращает структурированные поля паспорта.
+ */
+async function handleScanPassport(imageBase64, mimeType) {
+  const PASSPORT_PROMPT = `Ты — точный OCR-ассистент для российских паспортов. Внимательно прочитай все данные с фотографии паспорта РФ и верни ТОЛЬКО JSON без лишнего текста, комментариев и markdown-блоков.
+
+Структура ответа:
+{
+  "last_name": "ФАМИЛИЯ (кириллицей, прописными)",
+  "first_name": "ИМЯ (кириллицей, прописными)",
+  "patronymic": "ОТЧЕСТВО (кириллицей, прописными)",
+  "full_name": "ФАМИЛИЯ ИМЯ ОТЧЕСТВО",
+  "birth_date": "ГГГГ-ММ-ДД",
+  "birth_date_display": "ДД.ММ.ГГГГ",
+  "sex": "МУЖ или ЖЕН",
+  "birth_place": "место рождения как в паспорте",
+  "series": "4-значная серия без пробела",
+  "number": "6-значный номер",
+  "issue_date": "ДД.ММ.ГГГГ",
+  "issued_by": "кем выдан — полный текст органа",
+  "unit_code": "XXX-XXX",
+  "reg_address": "адрес регистрации если виден на фото, иначе пустая строка"
+}
+
+Если поле не видно на фото — ставь пустую строку "". Не выдумывай данные. Верни ТОЛЬКО JSON.`;
+
+  let lastError = null;
+
+  // 1. Zhipu GLM-4V-Flash — поддерживает vision, доступен из РФ
+  if (ZHIPU_API_KEY) {
+    const visionModels = ['glm-4v-flash', 'glm-4v', 'glm-4v-plus'];
+    for (const modelName of visionModels) {
+      try {
+        console.log(`[ai-proxy] Trying Zhipu Vision (${modelName}) for passport scan...`);
+        const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ZHIPU_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: { url: `data:${mimeType};base64,${imageBase64}` }
+                },
+                { type: 'text', text: PASSPORT_PROMPT }
+              ]
+            }],
+            temperature: 0.1,
+            max_tokens: 1000,
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data?.choices?.[0]?.message?.content?.trim() || '';
+          content = content
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```\s*$/, '')
+            .trim();
+          if (content) {
+            const parsed = JSON.parse(content);
+            // Дополнительно формируем full_name если пусто
+            if (!parsed.full_name && (parsed.last_name || parsed.first_name)) {
+              parsed.full_name = [parsed.last_name, parsed.first_name, parsed.patronymic]
+                .filter(Boolean).join(' ');
+            }
+            return parsed;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[ai-proxy] Zhipu Vision (${modelName}) status ${response.status}:`, errText);
+          lastError = new Error(`Zhipu Vision ${modelName} failed: ${response.status}`);
+        }
+      } catch (err) {
+        console.warn(`[ai-proxy] Zhipu Vision (${modelName}) error:`, err.message);
+        lastError = err;
+      }
+    }
+  }
+
+  // 2. Fallback — Gemini Vision (gemini-2.5-flash поддерживает изображения)
+  if (GEMINI_API_KEY) {
+    const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    for (const modelName of geminiModels) {
+      try {
+        console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for passport scan...`);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeType, data: imageBase64 } },
+                { text: PASSPORT_PROMPT }
+              ]
+            }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 1000 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          content = content
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```\s*$/, '')
+            .trim();
+          if (content) {
+            const parsed = JSON.parse(content);
+            if (!parsed.full_name && (parsed.last_name || parsed.first_name)) {
+              parsed.full_name = [parsed.last_name, parsed.first_name, parsed.patronymic]
+                .filter(Boolean).join(' ');
+            }
+            return parsed;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[ai-proxy] Gemini Vision (${modelName}) status ${response.status}:`, errText);
+          lastError = new Error(`Gemini Vision ${modelName} failed: ${response.status}`);
+        }
+      } catch (err) {
+        console.warn(`[ai-proxy] Gemini Vision (${modelName}) error:`, err.message);
+        lastError = err;
+      }
+    }
+  }
+
+  throw lastError || new Error('Все vision-модели недоступны или не сконфигурированы.');
+}

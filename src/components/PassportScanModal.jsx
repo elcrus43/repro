@@ -1,199 +1,21 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Camera, Upload, X, Loader2, CheckCircle, AlertTriangle, Eye, RefreshCw, ChevronRight, Info } from 'lucide-react';
+import { Camera, Upload, X, Loader2, CheckCircle, AlertTriangle, Eye, RefreshCw, ChevronRight, Info, Sparkles } from 'lucide-react';
 import { useToastContext } from './Toast';
 
 /**
- * Парсинг российского внутреннего паспорта (паспорт гражданина РФ)
- *
- * Реальная структура разворота (по образцу):
- *
- * Страница 3 (верх — орган выдачи):
- *   РОССИЙСКАЯ ФЕДЕРАЦИЯ
- *   Паспорт выдан ОТДЕЛОМ УФМС РОССИЙ ПО КИРОВСКОЙ ОБЛАСТИ В ПГТ. ОРИЧИ
- *   Дата выдачи 17.12.2015    вподразделения 430-024
- *
- * Страница 2 (низ — личные данные):
- *   ПУШКАРЕВ          <- ЗНАЧЕНИЕ (крупный шрифт)
- *   Фамилия           <- метка (мелкий курсив НИЖЕ значения!)
- *   СЕРГЕЙ
- *   Имя
- *   БОРИСОВИЧ
- *   Отчество
- *   МУЖ   07.12.1970
- *   Пол   Дата рождения
- *   С.АДЫШЕВО ОРИЧЕВСКОГО Р-НА КИРОВСКОЙ ОБЛ.
- *   Место рождения
- *
- * Серия+номер: "33 15 382413" — вертикально на полях.
+ * Конвертирует File в base64-строку (без data URI-префикса)
  */
-function parseRussianPassport(text) {
-  if (!text) return {};
-  const result = {};
-
-  const normalized = text
-    .replace(/\r/g, '\n')
-    .replace(/[–—]/g, '-')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-
-  const lines = normalized.split('\n').map(l => l.trim()).filter(Boolean);
-
-  // Метки паспорта РФ (все варианты OCR)
-  const LABEL_MAP = {
-    lastName:   ['ФАМИЛИЯ', 'ФАМИЛ', 'SURNAME'],
-    firstName:  ['ИМЯ', 'NAME'],
-    patronymic: ['ОТЧЕСТВО', 'ОТЧЕСТ', 'PATRONYMIC'],
-    sex:        ['ПОЛ', 'SEX'],
-    birthDate:  ['ДАТА РОЖДЕНИЯ', 'ДАТАРОЖДЕНИЯ', 'ДАТА РОЖД', 'DATE OF BIRTH'],
-    birthPlace: ['МЕСТО РОЖДЕНИЯ', 'МЕСТЕРОЖДЕНИЯ', 'МЕСТО РОЖД', 'PLACE OF BIRTH'],
-    issuedBy:   ['ПАСПОРТ ВЫДАН', 'КЕМ ВЫДАН', 'КЕМВЫДАН', 'ВЫДАН'],
-    issueDate:  ['ДАТА ВЫДАЧИ', 'ДАТАВЫДАЧИ', 'ДАТА ВЫД'],
-    unitCode:   ['ВПОДРАЗДЕЛЕНИЯ', 'КОД ПОДРАЗДЕЛЕНИЯ', 'КОДПОДРАЗДЕЛЕНИЯ', 'КОД ПОДР', 'ПОДРАЗДЕЛЕН'],
-  };
-
-  const allLabelStrings = Object.values(LABEL_MAP).flat();
-  const isLabelLine = (line) =>
-    allLabelStrings.some(lv => line.toUpperCase().replace(/\s+/g, ' ').includes(lv));
-
-  // Страница 2: значение находится ПЕРЕД меткой (выше неё)
-  function findValueBeforeLabel(labelVariants) {
-    for (let i = 0; i < lines.length; i++) {
-      const upper = lines[i].toUpperCase().replace(/\s+/g, ' ');
-      if (labelVariants.some(lv => upper.includes(lv))) {
-        for (let j = i - 1; j >= Math.max(0, i - 3); j--) {
-          const candidate = lines[j].trim();
-          if (candidate && !isLabelLine(candidate)) return candidate;
-        }
-      }
-    }
-    return null;
-  }
-
-  // Страница 3: значение находится ПОСЛЕ метки или на той же строке
-  function findValueAfterLabel(labelVariants) {
-    for (let i = 0; i < lines.length; i++) {
-      const upper = lines[i].toUpperCase().replace(/\s+/g, ' ');
-      const matchedLv = labelVariants.find(lv => upper.includes(lv));
-      if (matchedLv) {
-        const sameLineVal = lines[i]
-          .substring(lines[i].toUpperCase().indexOf(matchedLv) + matchedLv.length)
-          .trim();
-        if (sameLineVal && sameLineVal.length > 1) return sameLineVal;
-        for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
-          const candidate = lines[j].trim();
-          if (candidate && !isLabelLine(candidate)) return candidate;
-        }
-      }
-    }
-    return null;
-  }
-
-  // ── СЕРИЯ И НОМЕР ──
-  // "33 15 382413" → серия "3315", номер "382413"
-  const snMatch1 = text.match(/\b(\d{2})\s+(\d{2})\s+(\d{6})\b/);
-  const snMatch2 = text.match(/\b(\d{4})\s{1,4}(\d{6})\b/);
-  if (snMatch1) {
-    result.series = snMatch1[1] + snMatch1[2];
-    result.number = snMatch1[3];
-  } else if (snMatch2) {
-    result.series = snMatch2[1];
-    result.number = snMatch2[2];
-  }
-
-  // ── ФИО (значение ПЕРЕД меткой) ──
-  result.last_name  = findValueBeforeLabel(LABEL_MAP.lastName)   || '';
-  result.first_name = findValueBeforeLabel(LABEL_MAP.firstName)  || '';
-  result.patronymic = findValueBeforeLabel(LABEL_MAP.patronymic) || '';
-
-  // Имя и отчество могут слиться: "СЕРГЕЙ БОРИСОВИЧ"
-  if (result.first_name.includes(' ') && !result.patronymic) {
-    const parts = result.first_name.trim().split(/\s+/);
-    result.first_name = parts[0];
-    result.patronymic = parts.slice(1).join(' ');
-  }
-
-  if (result.last_name || result.first_name) {
-    result.full_name = `${result.last_name} ${result.first_name} ${result.patronymic}`
-      .trim().replace(/\s+/g, ' ');
-  }
-
-  // ── ПОЛ ──
-  const rawSexLine = findValueBeforeLabel(LABEL_MAP.sex);
-  if (rawSexLine && /МУЖ|ЖЕН/i.test(rawSexLine)) {
-    result.sex = /МУЖ/i.test(rawSexLine) ? 'МУЖ' : 'ЖЕН';
-  } else if (/\bМУЖ\b/i.test(text)) result.sex = 'МУЖ';
-  else if (/\bЖЕН\b/i.test(text)) result.sex = 'ЖЕН';
-
-  // ── ДАТА РОЖДЕНИЯ (значение ПЕРЕД меткой "Дата рождения") ──
-  const allDates = [...text.matchAll(/(\d{2})[.\-](\d{2})[.\-](\d{4})/g)];
-  const birthDateLine = findValueBeforeLabel(LABEL_MAP.birthDate);
-
-  if (birthDateLine) {
-    const dm = birthDateLine.match(/(\d{2})[.\-](\d{2})[.\-](\d{4})/);
-    if (dm) {
-      result.birth_date = `${dm[3]}-${dm[2]}-${dm[1]}`;
-      result.birth_date_display = `${dm[1]}.${dm[2]}.${dm[3]}`;
-    }
-  }
-  if (!result.birth_date && allDates.length > 0) {
-    const [, d, m, y] = allDates[0];
-    result.birth_date = `${y}-${m}-${d}`;
-    result.birth_date_display = `${d}.${m}.${y}`;
-  }
-
-  // ── МЕСТО РОЖДЕНИЯ (значение ПЕРЕД меткой, может быть многострочным) ──
-  const birthPlaceRaw = findValueBeforeLabel(LABEL_MAP.birthPlace);
-  if (birthPlaceRaw) {
-    const bpIdx = lines.findIndex(l => l.trim() === birthPlaceRaw.trim());
-    if (bpIdx !== -1) {
-      const parts = [birthPlaceRaw];
-      for (let k = bpIdx - 1; k >= Math.max(0, bpIdx - 3); k--) {
-        const ln = lines[k].trim();
-        if (!ln || isLabelLine(ln) || /\d{2}[.\-]\d{2}[.\-]\d{4}/.test(ln)) break;
-        parts.unshift(ln);
-      }
-      result.birth_place = parts.join(' ').substring(0, 100);
-    } else {
-      result.birth_place = birthPlaceRaw;
-    }
-  }
-
-  // ── КЕМ ВЫДАН (значение ПОСЛЕ "Паспорт выдан" — стр. 3) ──
-  const rawIssuedBy = findValueAfterLabel(LABEL_MAP.issuedBy);
-  if (rawIssuedBy) {
-    const idx = lines.findIndex(l => l.trim() === rawIssuedBy.trim());
-    if (idx !== -1) {
-      const parts = [rawIssuedBy];
-      for (let k = idx + 1; k < Math.min(idx + 4, lines.length); k++) {
-        const ln = lines[k].trim();
-        if (!ln || isLabelLine(ln) || /^\d{2}[.\-]\d{2}[.\-]\d{4}/.test(ln)) break;
-        parts.push(ln);
-      }
-      result.issued_by = parts.join(' ').substring(0, 150);
-    } else {
-      result.issued_by = rawIssuedBy;
-    }
-  }
-
-  // ── ДАТА ВЫДАЧИ (inline: "Дата выдачи 17.12.2015") ──
-  const issueDateInline = text.match(/[Дд]ата\s+выдачи[\s:]*(\d{2}[.\-]\d{2}[.\-]\d{4})/);
-  if (issueDateInline) {
-    result.issue_date = issueDateInline[1];
-  } else if (allDates.length > 1) {
-    const [, d, m, y] = allDates[1];
-    result.issue_date = `${d}.${m}.${y}`;
-  }
-
-  // ── КОД ПОДРАЗДЕЛЕНИЯ (XXX-XXX рядом с датой выдачи) ──
-  const ucInline = text.match(/(?:под\s*разделени[яе]|вподразделения)[\s:]*(\d{3}[-\s]\d{3})/i);
-  if (ucInline) {
-    result.unit_code = ucInline[1].replace(/\s/, '-');
-  } else {
-    const ucMatch = text.match(/\b(\d{3})-(\d{3})\b/);
-    if (ucMatch) result.unit_code = `${ucMatch[1]}-${ucMatch[2]}`;
-  }
-
-  return result;
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      // Убираем "data:image/jpeg;base64," — нужна только сама строка
+      const base64 = reader.result.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }
 
 export function PassportScanModal({ isOpen, onClose, onExtracted }) {
@@ -203,7 +25,6 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
   const [image, setImage] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [progressStatus, setProgressStatus] = useState('');
   const [extracted, setExtracted] = useState(null);
   const [error, setError] = useState(null);
@@ -225,41 +46,39 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
   const processImage = useCallback(async () => {
     if (!image) return;
     setIsProcessing(true);
-    setProgress(0);
     setError(null);
-    setProgressStatus('Загрузка движка (Tesseract.js)...');
+    setProgressStatus('Подготовка изображения...');
 
     try {
-      const Tesseract = await import('tesseract.js');
-      setProgressStatus('Распознавание текста на русском языке...');
-      setProgress(10);
+      // Конвертируем в base64
+      const imageBase64 = await fileToBase64(image);
+      const mimeType = image.type || 'image/jpeg';
 
-      const result = await Tesseract.recognize(
-        image,
-        'rus',
-        {
-          logger: (m) => {
-            if (m.status === 'recognizing text') {
-              setProgress(10 + Math.round(m.progress * 80));
-              setProgressStatus(`Обработка: ${Math.round(m.progress * 100)}%`);
-            }
-          }
-        }
-      );
+      setProgressStatus('Распознавание паспорта через ИИ...');
 
-      setProgress(90);
-      setProgressStatus('Анализ полей паспорта...');
+      const response = await fetch('/api/ai-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'scanPassport',
+          imageBase64,
+          mimeType,
+        }),
+      });
 
-      const text = result.data.text || '';
-      const parsedData = parseRussianPassport(text);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Ошибка сервера: ${response.status}`);
+      }
 
-      setProgress(100);
+      const parsedData = await response.json();
+
       setProgressStatus('Готово!');
 
       if (scanPage === 'reg' && extracted) {
         const merged = {
           ...extracted,
-          reg_address: parsedData.birth_place || parsedData.address || extracted.reg_address || '',
+          reg_address: parsedData.reg_address || parsedData.birth_place || extracted.reg_address || '',
         };
         setExtracted(merged);
         toast.success('Адрес регистрации распознан!');
@@ -273,7 +92,7 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
         }
       }
     } catch (err) {
-      console.error('OCR error:', err);
+      console.error('Passport scan error:', err);
       setError(`Ошибка распознавания: ${err.message || 'Попробуйте другое фото'}`);
     } finally {
       setIsProcessing(false);
@@ -292,7 +111,6 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
     setImageUrl(null);
     setExtracted(null);
     setError(null);
-    setProgress(0);
     setProgressStatus('');
   };
 
@@ -331,8 +149,9 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
             </div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700 }}>Сканирование паспорта РФ</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-                OCR распознавание · данные остаются на устройстве
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Sparkles size={10} color="#f59e0b" />
+                ИИ-распознавание · данные остаются на устройстве
               </div>
             </div>
           </div>
@@ -456,7 +275,7 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
                     }}
                   >
                     <Eye size={18} />
-                    Распознать паспорт
+                    Распознать паспорт (ИИ)
                   </button>
                 )}
                 <button
@@ -482,14 +301,15 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
                 <Loader2 size={22} color="#3b82f6" style={{ animation: 'spin 1s linear infinite' }} />
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{progressStatus}</div>
-                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>15–40 секунд, пожалуйста подождите...</div>
+                  <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>ИИ анализирует паспорт, несколько секунд...</div>
                 </div>
               </div>
-              <div style={{ height: 6, borderRadius: 4, background: '#e2e8f0', overflow: 'hidden' }}>
+              <div style={{ height: 4, borderRadius: 4, background: '#e2e8f0', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 4,
                   background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)',
-                  width: `${progress}%`, transition: 'width 0.4s ease'
+                  width: '100%',
+                  animation: 'indeterminate 1.5s ease-in-out infinite',
                 }} />
               </div>
               {imageUrl && <img src={imageUrl} alt="Паспорт" style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 12, border: '1px solid #e2e8f0', opacity: 0.5 }} />}
@@ -582,6 +402,11 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
 
           <style>{`
             @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            @keyframes indeterminate {
+              0%   { transform: translateX(-100%); width: 40%; }
+              50%  { transform: translateX(150%);  width: 60%; }
+              100% { transform: translateX(300%);  width: 40%; }
+            }
           `}</style>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -6,12 +6,15 @@ import { formatPhone, stripPhone } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
-import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera } from 'lucide-react';
+import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake } from 'lucide-react';
+
+const DADATA_TOKEN = import.meta.env.VITE_DADATA_TOKEN;
 
 const defaultClient = {
     full_name: '', phone: '', email: '', inn: '', birth_date: '', reg_address: '',
     client_types: ['buyer'], additional_contacts: [], source: '', status: 'new', notes: '',
-    passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '', inn: '', birth_date: '', snils: '' }
+    passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '', inn: '', birth_date: '', snils: '' },
+    bank_details: { bank_name: '', bik: '', account: '', corr_account: '', inn: '', kpp: '', beneficiary: '' }
 };
 
 export function FormPage() {
@@ -39,6 +42,10 @@ export function FormPage() {
     const [form, setForm] = useState(initialForm);
     const [showPassport, setShowPassport] = useState(!!(form.passport_details?.series || form.inn || form.birth_date));
     const [showPassportScan, setShowPassportScan] = useState(false);
+    const [showBank, setShowBank] = useState(!!(form.bank_details?.bik || form.bank_details?.account));
+    const [bankLoading, setBankLoading] = useState(false);
+    const [bankFound, setBankFound] = useState(false);
+    const bikTimerRef = useRef(null);
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -60,6 +67,111 @@ export function FormPage() {
             ...f,
             passport_details: { ...(f.passport_details || defaultClient.passport_details), [key]: val }
         }));
+    }
+
+    // Маска СНИЛС: XXX-XXX-XXX XX
+    function handleSnilsChange(raw) {
+        const digits = raw.replace(/\D/g, '').slice(0, 11);
+        let masked = '';
+        if (digits.length <= 3) masked = digits;
+        else if (digits.length <= 6) masked = digits.slice(0, 3) + '-' + digits.slice(3);
+        else if (digits.length <= 9) masked = digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6);
+        else masked = digits.slice(0, 3) + '-' + digits.slice(3, 6) + '-' + digits.slice(6, 9) + ' ' + digits.slice(9);
+        setPassport('snils', masked);
+    }
+
+    // Маска кода подразделения: XXX-XXX
+    function handleUnitCodeChange(raw) {
+        const digits = raw.replace(/\D/g, '').slice(0, 6);
+        const masked = digits.length <= 3 ? digits : digits.slice(0, 3) + '-' + digits.slice(3);
+        setPassport('unit_code', masked);
+    }
+
+    // ── Банковские реквизиты ──────────────────────────────────────────────
+    function setBank(key, val) {
+        setForm(f => ({
+            ...f,
+            bank_details: { ...(f.bank_details || {}), [key]: val }
+        }));
+    }
+
+    // БИК: 9 цифр + автоподгрузка реквизитов через DaData
+    const fetchBankByBik = useCallback(async (bik) => {
+        if (!DADATA_TOKEN || bik.length !== 9) return;
+        setBankLoading(true);
+        setBankFound(false);
+        try {
+            const res = await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/bank', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    Authorization: `Token ${DADATA_TOKEN}`,
+                },
+                body: JSON.stringify({ query: bik }),
+            });
+            if (!res.ok) throw new Error(`DaData: ${res.status}`);
+            const json = await res.json();
+            const s = json.suggestions?.[0];
+            if (!s) return;
+            const d = s.data || {};
+
+            // Форматируем к/с группами по 5
+            const formatAcc = (acc) => {
+                if (!acc) return '';
+                const digits = acc.replace(/\D/g, '').slice(0, 20);
+                const parts = [];
+                for (let i = 0; i < digits.length; i += 5) parts.push(digits.slice(i, i + 5));
+                return parts.join(' ');
+            };
+
+            setForm(f => ({
+                ...f,
+                bank_details: {
+                    ...(f.bank_details || {}),
+                    bank_name:    s.value || f.bank_details?.bank_name || '',
+                    inn:          d.inn   || f.bank_details?.inn || '',
+                    kpp:          d.kpp   || f.bank_details?.kpp || '',
+                    corr_account: formatAcc(d.correspondent_account) || f.bank_details?.corr_account || '',
+                }
+            }));
+            setBankFound(true);
+            toast.success(`Банк найден: ${s.value}`);
+        } catch (err) {
+            console.warn('[BIK lookup]', err.message);
+            toast.error('Не удалось найти банк по БИК');
+        } finally {
+            setBankLoading(false);
+        }
+    }, [toast]);
+
+    function handleBikChange(raw) {
+        const digits = raw.replace(/\D/g, '').slice(0, 9);
+        setBank('bik', digits);
+        setBankFound(false);
+        // Запускаем автоподгрузку как только введено 9 цифр
+        if (digits.length === 9) {
+            clearTimeout(bikTimerRef.current);
+            bikTimerRef.current = setTimeout(() => fetchBankByBik(digits), 300);
+        }
+    }
+
+    // Счёт: 20 цифр, группы по 5 через пробел → XXXXX XXXXX XXXXX XXXXX
+    function handleAccountChange(key, raw) {
+        const digits = raw.replace(/\D/g, '').slice(0, 20);
+        const parts = [];
+        for (let i = 0; i < digits.length; i += 5) parts.push(digits.slice(i, i + 5));
+        setBank(key, parts.join(' '));
+    }
+
+    // ИНН банка: 10 цифр
+    function handleBankInnChange(raw) {
+        setBank('inn', raw.replace(/\D/g, '').slice(0, 10));
+    }
+
+    // КПП: 9 цифр
+    function handleKppChange(raw) {
+        setBank('kpp', raw.replace(/\D/g, '').slice(0, 9));
     }
 
     async function handleSubmit(e) {
@@ -241,6 +353,46 @@ export function FormPage() {
                         })()}
 
                         <div className="form-group">
+                            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <Cake size={14} color="var(--text-muted)" />
+                                Дата рождения
+                                {(() => {
+                                    const bd = form.birth_date || form.passport_details?.birth_date;
+                                    if (!bd) return null;
+                                    const today = new Date();
+                                    const bDate = new Date(bd);
+                                    const age = today.getFullYear() - bDate.getFullYear() - (
+                                        today.getMonth() < bDate.getMonth() ||
+                                        (today.getMonth() === bDate.getMonth() && today.getDate() < bDate.getDate()) ? 1 : 0
+                                    );
+                                    const thisYear = new Date(today.getFullYear(), bDate.getMonth(), bDate.getDate());
+                                    const diff = Math.round((thisYear - today) / (1000 * 60 * 60 * 24));
+                                    const isToday = diff === 0;
+                                    const isSoon = diff > 0 && diff <= 7;
+                                    return (
+                                        <span style={{
+                                            marginLeft: 4, fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 8,
+                                            background: isToday ? '#fef3c7' : isSoon ? '#eff6ff' : 'var(--bg-light)',
+                                            color: isToday ? '#d97706' : isSoon ? '#2563eb' : 'var(--text-muted)'
+                                        }}>
+                                            {isToday ? '🎂 Сегодня!' : isSoon ? `через ${diff} дн.` : `${age} лет`}
+                                        </span>
+                                    );
+                                })()}
+                            </label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Cake size={18} /></span>
+                                <input
+                                    type="date"
+                                    className="form-input"
+                                    style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
+                                    value={form.birth_date || form.passport_details?.birth_date || ''}
+                                    onChange={e => { setF('birth_date', e.target.value); setPassport('birth_date', e.target.value); }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
                             <label className="form-label">Типы клиента</label>
                             <div className="chip-group" style={{ gap: 8 }}>
                                 {clientTypes.map(t => (
@@ -297,52 +449,217 @@ export function FormPage() {
                         </button>
 
                         {showPassport && (
-                            <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 24 }}>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                                    <div className="form-group">
-                                        <label className="form-label">ИНН клиента</label>
-                                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.inn || form.passport_details?.inn || ''} onChange={e => { setF('inn', e.target.value); setPassport('inn', e.target.value); }} placeholder="771234567890" maxLength={12} />
+                            <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+
+                                {/* Строка 1: Серия · Номер · Дата выдачи */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Серия</label>
+                                        <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }} value={form.passport_details?.series || ''} onChange={e => setPassport('series', e.target.value)} placeholder="1234" maxLength={4} inputMode="numeric" />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Дата рождения</label>
-                                        <input type="date" className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.birth_date || form.passport_details?.birth_date || ''} onChange={e => { setF('birth_date', e.target.value); setPassport('birth_date', e.target.value); }} />
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Номер</label>
+                                        <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }} value={form.passport_details?.number || ''} onChange={e => setPassport('number', e.target.value)} placeholder="567890" maxLength={6} inputMode="numeric" />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">СНИЛС</label>
-                                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.snils || ''} onChange={e => setPassport('snils', e.target.value)} placeholder="000-000-000 00" />
-                                    </div>
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div className="form-group">
-                                        <label className="form-label">Серия</label>
-                                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.series || ''} onChange={e => setPassport('series', e.target.value)} placeholder="1234" maxLength={4} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Номер</label>
-                                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.number || ''} onChange={e => setPassport('number', e.target.value)} placeholder="567890" maxLength={6} />
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Дата выдачи</label>
+                                        <input type="date" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }} value={form.passport_details?.issue_date || ''} onChange={e => setPassport('issue_date', e.target.value)} />
                                     </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Кем выдан</label>
-                                    <textarea className="form-textarea" style={{ minHeight: 80, borderRadius: 16, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.issued_by || ''} onChange={e => setPassport('issued_by', e.target.value)} placeholder="ГУ МВД России по г. Москве..." rows={2} />
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                    <div className="form-group">
-                                        <label className="form-label">Код подразделения</label>
-                                        <input className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.unit_code || ''} onChange={e => setPassport('unit_code', e.target.value)} placeholder="123-456" />
+
+                                {/* Строка 2: Код подразд. · Дата рождения */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Код подразделения</label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.05em' }}
+                                            value={form.passport_details?.unit_code || ''}
+                                            onChange={e => handleUnitCodeChange(e.target.value)}
+                                            placeholder="123-456"
+                                            inputMode="numeric"
+                                            maxLength={7}
+                                        />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label">Дата выдачи</label>
-                                        <input type="date" className="form-input" style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.issue_date || ''} onChange={e => setPassport('issue_date', e.target.value)} />
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Дата рождения</label>
+                                        <input type="date" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }} value={form.birth_date || form.passport_details?.birth_date || ''} onChange={e => { setF('birth_date', e.target.value); setPassport('birth_date', e.target.value); }} />
                                     </div>
                                 </div>
-                                <div className="form-group">
-                                    <label className="form-label">Адрес регистрации</label>
-                                    <textarea className="form-textarea" style={{ minHeight: 80, borderRadius: 16, background: 'var(--bg-light)', border: 'none' }} value={form.passport_details?.registration_address || ''} onChange={e => setPassport('registration_address', e.target.value)} placeholder="г. Москва, ул..." rows={2} />
+
+                                {/* Строка 3: ИНН · СНИЛС */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ИНН</label>
+                                        <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }} value={form.inn || form.passport_details?.inn || ''} onChange={e => { setF('inn', e.target.value); setPassport('inn', e.target.value); }} placeholder="771234567890" maxLength={12} inputMode="numeric" />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>СНИЛС</label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.05em' }}
+                                            value={form.passport_details?.snils || ''}
+                                            onChange={e => handleSnilsChange(e.target.value)}
+                                            placeholder="000-000-000 00"
+                                            inputMode="numeric"
+                                            maxLength={14}
+                                        />
+                                    </div>
                                 </div>
+
+                                {/* Кем выдан — полная строка */}
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Кем выдан</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        style={{ minHeight: 64, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: '10px 14px', resize: 'none' }}
+                                        value={form.passport_details?.issued_by || ''}
+                                        onChange={e => setPassport('issued_by', e.target.value)}
+                                        placeholder="ГУ МВД России по г. Москве..."
+                                        rows={2}
+                                    />
+                                </div>
+
+                                {/* Адрес регистрации — полная строка */}
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Адрес регистрации</label>
+                                    <textarea
+                                        className="form-textarea"
+                                        style={{ minHeight: 64, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: '10px 14px', resize: 'none' }}
+                                        value={form.passport_details?.registration_address || ''}
+                                        onChange={e => setPassport('registration_address', e.target.value)}
+                                        placeholder="г. Москва, ул..."
+                                        rows={2}
+                                    />
+                                </div>
+
                             </div>
                         )}
                     </div>
+
+                    {/* ── Банковские реквизиты ── */}
+                    <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: showBank ? 'white' : 'var(--bg-light)', transition: 'all 0.3s' }}>
+                        <button type="button"
+                            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'none', border: 'none', padding: 0 }}
+                            onClick={() => {
+                                if (!showBank && !form.bank_details?.beneficiary && form.full_name) {
+                                    setBank('beneficiary', form.full_name);
+                                }
+                                setShowBank(!showBank);
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                    <Landmark size={20} />
+                                </div>
+                                <span className="font-oswald" style={{ fontWeight: 600, fontSize: 16, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Банковские реквизиты</span>
+                            </div>
+                            {showBank ? <ChevronUp size={20} color="var(--text-muted)" /> : <ChevronDown size={20} color="var(--text-muted)" />}
+                        </button>
+
+                        {showBank && (
+                            <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
+
+                                {/* Получатель — полная строка */}
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ФИО / Название получателя</label>
+                                    <input
+                                        className="form-input"
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }}
+                                        value={form.bank_details?.beneficiary || form.full_name || ''}
+                                        onChange={e => setBank('beneficiary', e.target.value)}
+                                        placeholder="Иванов Иван Иванович"
+                                    />
+                                </div>
+
+                                {/* Банк — полная строка */}
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Банк</label>
+                                    <input
+                                        className="form-input"
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }}
+                                        value={form.bank_details?.bank_name || ''}
+                                        onChange={e => setBank('bank_name', e.target.value)}
+                                        placeholder="ПАО Сбербанк"
+                                    />
+                                </div>
+
+                                {/* БИК · ИНН · КПП */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                     <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>
+                                            БИК
+                                            {bankLoading && <Loader2 size={11} style={{ marginLeft: 5, verticalAlign: 'middle', animation: 'spin 1s linear infinite' }} />}
+                                            {bankFound && !bankLoading && <CheckCircle2 size={11} color="#10b981" style={{ marginLeft: 5, verticalAlign: 'middle' }} />}
+                                        </label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: `1.5px solid ${bankFound ? '#10b981' : 'transparent'}`, fontSize: 14, letterSpacing: '0.05em', transition: 'border-color 0.2s' }}
+                                            value={form.bank_details?.bik || ''}
+                                            onChange={e => handleBikChange(e.target.value)}
+                                            placeholder="044525225"
+                                            inputMode="numeric"
+                                            maxLength={9}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ИНН банка</label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.05em' }}
+                                            value={form.bank_details?.inn || ''}
+                                            onChange={e => handleBankInnChange(e.target.value)}
+                                            placeholder="7707083893"
+                                            inputMode="numeric"
+                                            maxLength={10}
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>КПП</label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.05em' }}
+                                            value={form.bank_details?.kpp || ''}
+                                            onChange={e => handleKppChange(e.target.value)}
+                                            placeholder="770801001"
+                                            inputMode="numeric"
+                                            maxLength={9}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Расчётный счёт */}
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Расчётный счёт (р/с)</label>
+                                    <input
+                                        className="form-input"
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums' }}
+                                        value={form.bank_details?.account || ''}
+                                        onChange={e => handleAccountChange('account', e.target.value)}
+                                        placeholder="40817 81038 00000 00000"
+                                        inputMode="numeric"
+                                        maxLength={23}
+                                    />
+                                </div>
+
+                                {/* Корр. счёт */}
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Корреспондентский счёт (к/с)</label>
+                                    <input
+                                        className="form-input"
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.08em', fontVariantNumeric: 'tabular-nums' }}
+                                        value={form.bank_details?.corr_account || ''}
+                                        onChange={e => handleAccountChange('corr_account', e.target.value)}
+                                        placeholder="30101 81040 00000 00000"
+                                        inputMode="numeric"
+                                        maxLength={23}
+                                    />
+                                </div>
+
+                            </div>
+                        )}
+                    </div>
+
                 </div>
             </form>
 
@@ -352,6 +669,7 @@ export function FormPage() {
                 onClose={() => setShowPassportScan(false)}
                 onExtracted={handlePassportExtracted}
             />
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
     );
 }

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Sparkles, TrendingUp, Users, Home, Search, Target, ArrowRight } from 'lucide-react';
+import { Sparkles, TrendingUp, Users, Home, Search, Target, ArrowRight, Cake } from 'lucide-react';
 
 export function DashboardPage() {
     const { state } = useApp();
@@ -38,6 +38,32 @@ export function DashboardPage() {
             .slice(0, 5),
         [myMatches]
     );
+
+    // Дни рождения клиентов (сегодня + ближайшие 7 дней)
+    const birthdayClients = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return myClients
+            .map(c => {
+                const bd = c.birth_date || c.passport_details?.birth_date;
+                if (!bd) return null;
+                const bDate = new Date(bd);
+                if (isNaN(bDate)) return null;
+                // Дата ДР в этом году
+                const thisYear = new Date(today.getFullYear(), bDate.getMonth(), bDate.getDate());
+                let daysLeft = Math.round((thisYear - today) / (1000 * 60 * 60 * 24));
+                // Если ДР уже прошёл в этом году — берём следующий
+                if (daysLeft < 0) {
+                    const nextYear = new Date(today.getFullYear() + 1, bDate.getMonth(), bDate.getDate());
+                    daysLeft = Math.round((nextYear - today) / (1000 * 60 * 60 * 24));
+                }
+                if (daysLeft > 7) return null;
+                const age = today.getFullYear() - bDate.getFullYear() + (daysLeft === 0 ? 0 : 0);
+                return { ...c, _daysLeft: daysLeft, _age: age };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a._daysLeft - b._daysLeft);
+    }, [myClients]);
 
     const analyticsData = useMemo(() => {
         const total = myProperties.length;
@@ -254,6 +280,67 @@ export function DashboardPage() {
                         </div>
                     );
                 })()}
+
+                {/* Дни рождения */}
+                {birthdayClients.length > 0 && (
+                    <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Cake size={16} color="#d97706" />
+                                <span className="font-oswald" style={{ fontSize: 16, fontWeight: 300, letterSpacing: '0.05em' }}>Дни рождения</span>
+                            </div>
+                            <span style={{
+                                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 8,
+                                background: '#fef3c7', color: '#d97706'
+                            }}>{birthdayClients.length} сл. в 7 дн.</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {birthdayClients.map(c => {
+                                const isToday = c._daysLeft === 0;
+                                return (
+                                    <div
+                                        key={c.id}
+                                        className="card-clickable"
+                                        onClick={() => navigate(`/clients/${c.id}`)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', gap: 12,
+                                            padding: '12px 16px',
+                                            borderRadius: 16,
+                                            background: isToday
+                                                ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                                                : 'var(--surface)',
+                                            border: isToday ? '1.5px solid #f59e0b' : '1px solid var(--border-light)',
+                                            boxShadow: isToday ? '0 4px 12px rgba(245,158,11,0.15)' : '0 2px 8px rgba(0,0,0,0.03)',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+                                            background: isToday ? '#f59e0b' : 'var(--bg-light)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            fontSize: isToday ? 18 : 14
+                                        }}>
+                                            {isToday ? '🎂' : <Cake size={16} color="#d97706" />}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                fontSize: 13, fontWeight: 600,
+                                                color: isToday ? '#92400e' : 'var(--text)',
+                                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                                            }}>
+                                                {c.full_name || 'Без имени'}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: isToday ? '#b45309' : 'var(--text-secondary)', marginTop: 2 }}>
+                                                {isToday ? `🎉 Сегодня ${c._age} лет!` : `через ${c._daysLeft} дн.  •  ${c._age} лет`}
+                                            </div>
+                                        </div>
+                                        <ArrowRight size={14} color={isToday ? '#d97706' : 'var(--text-muted)'} />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* Analytics Widget */}
                 <div>

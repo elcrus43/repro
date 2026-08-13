@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -858,6 +858,20 @@ export function DealsPage() {
                         </div>
 
                         <div className="form-group">
+                            <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Статус сделки</label>
+                            <select
+                                className="form-input"
+                                style={{ height: 50, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 12px', width: '100%', fontSize: 13 }}
+                                value={newDeal.status || 'active'}
+                                onChange={e => handleFieldChange('status', e.target.value)}
+                            >
+                                <option value="active">В работе</option>
+                                <option value="closed">Завершена (Успешно)</option>
+                                <option value="cancelled">Отменена</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
                             <label className="font-oswald" style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 8, display: 'block' }}>Юрист по сделке</label>
                             <select
                                 className="form-input"
@@ -1033,6 +1047,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
 
     // Chat state — null | 'seller' | 'buyer'
     const [openChat, setOpenChat] = useState(null);
+    const [showStatusMenu, setShowStatusMenu] = useState(false);
 
     // Quick Expense states
     const [showQuickExpense, setShowQuickExpense] = useState(false);
@@ -1128,23 +1143,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             {c.full_name}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setVerificationClient(c);
-                            }}
-                            style={{
-                                padding: '2px 7px', borderRadius: 8, border: `1px solid ${accentColor}35`,
-                                background: '#ffffff', color: accentColor, fontSize: 10, fontWeight: 600,
-                                display: 'inline-flex', alignItems: 'center', gap: 3, cursor: 'pointer',
-                                flexShrink: 0, boxShadow: '0 1px 2px rgba(0,0,0,0.03)'
-                            }}
-                            title="Проверить клиента в госреестрах (ФССП, МВД, Банкротство, ФНС)"
-                        >
-                            <ShieldCheck size={11} color={accentColor} />
-                            <span>Проверить</span>
-                        </button>
+
                     </div>
                 ))}
 
@@ -1257,20 +1256,157 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     }}>
                         {deal.title}
                     </div>
+                    {lawyerName && (
+                        <div style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: 6,
+                            padding: '3px 9px',
+                            marginTop: 6,
+                            background: 'rgba(245, 158, 11, 0.08)',
+                            borderRadius: 8,
+                            border: '1px solid rgba(245, 158, 11, 0.2)',
+                            fontSize: 11
+                        }}>
+                            <Scale size={12} color="#d97706" />
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Юрист:</span>
+                            <span
+                                style={{ fontWeight: 600, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default', textDecoration: lawyer ? 'underline' : 'none' }}
+                                onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
+                            >
+                                {lawyerName}
+                            </span>
+                        </div>
+                    )}
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <span style={{
-                        padding: '5px 12px', 
-                        borderRadius: 12, 
-                        fontSize: 11, 
-                        fontWeight: 600,
-                        background: cfg.bg, 
-                        color: cfg.color,
-                        letterSpacing: '0.02em'
-                    }}>
-                        {cfg.label}
-                    </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative' }}>
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowStatusMenu(prev => !prev);
+                            }}
+                            className="card-clickable"
+                            style={{
+                                padding: '5px 12px', 
+                                borderRadius: 12, 
+                                fontSize: 11, 
+                                fontWeight: 600,
+                                background: cfg.bg, 
+                                color: cfg.color,
+                                border: '1px solid ' + cfg.color + '40',
+                                letterSpacing: '0.02em',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                cursor: 'pointer'
+                            }}
+                            title="Нажмите, чтобы изменить статус"
+                        >
+                            <span>{cfg.label}</span>
+                            <ChevronDown size={12} />
+                        </button>
+
+                        {showStatusMenu && (
+                            <div 
+                                style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    marginTop: 6,
+                                    background: 'var(--surface, #ffffff)',
+                                    borderRadius: 14,
+                                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)',
+                                    border: '1px solid var(--border-light, rgba(0,0,0,0.08))',
+                                    padding: '6px',
+                                    zIndex: 100,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 2,
+                                    minWidth: 140
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        updateStatus(deal, 'active');
+                                        setShowStatusMenu(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '8px 12px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: deal.status === 'active' ? 'var(--primary-light)' : 'transparent',
+                                        color: deal.status === 'active' ? 'var(--primary)' : 'var(--text)',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />
+                                    <span>В работе</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        updateStatus(deal, 'closed');
+                                        setShowStatusMenu(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '8px 12px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: deal.status === 'closed' ? 'rgba(16,185,129,0.12)' : 'transparent',
+                                        color: deal.status === 'closed' ? '#10b981' : 'var(--text)',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <CheckCircle size={14} color="#10b981" />
+                                    <span>Завершить (Успешно)</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        updateStatus(deal, 'cancelled');
+                                        setShowStatusMenu(false);
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        padding: '8px 12px',
+                                        borderRadius: 10,
+                                        border: 'none',
+                                        background: deal.status === 'cancelled' ? 'var(--danger-light)' : 'transparent',
+                                        color: deal.status === 'cancelled' ? 'var(--danger)' : 'var(--text)',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <XCircle size={14} color="var(--danger)" />
+                                    <span>Отменить сделку</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
                     <button
                         type="button"
                         className="icon-btn-edit"
@@ -1283,7 +1419,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             color: 'var(--text-secondary)',
                             display: 'flex',
                             alignItems: 'center',
-                            justify: 'center',
+                            justifyContent: 'center',
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
@@ -1317,28 +1453,6 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
 
                 {Boolean(deal.mortgage || deal.mortgage_bank || Number(deal.mortgage_amount) > 0) && (
                     <BankBadge bankName={deal.mortgage_bank} amount={deal.mortgage_amount} />
-                )}
-
-                {lawyerName && (
-                    <div style={{ 
-                        display: 'inline-flex', 
-                        alignItems: 'center', 
-                        gap: 6,
-                        padding: '4px 10px',
-                        background: 'rgba(245, 158, 11, 0.08)',
-                        borderRadius: 10,
-                        border: '1px solid rgba(245, 158, 11, 0.2)',
-                        fontSize: 11
-                    }}>
-                        <Scale size={13} color="#d97706" />
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>Юрист:</span>
-                        <span
-                            style={{ fontWeight: 600, color: 'var(--text)', cursor: lawyer ? 'pointer' : 'default', textDecoration: lawyer ? 'underline' : 'none' }}
-                            onClick={() => lawyer && navigate(`/clients/${lawyer.id}`)}
-                        >
-                            {lawyerName}
-                        </span>
-                    </div>
                 )}
 
                 {propertyAddress && !isAddressInTitle && (

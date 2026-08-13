@@ -320,19 +320,23 @@ export function ListPage() {
 
                                     {/* Right: Role Badges */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                                        {client.client_types?.map(t => (
-                                            <span key={t} style={{ 
-                                                fontSize: 11, 
-                                                color: 'var(--text-secondary)', 
-                                                fontWeight: 400, 
-                                                background: 'var(--bg-light)', 
-                                                padding: '3px 8px', 
-                                                borderRadius: 6,
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                {typeLabels[t] || t}
-                                            </span>
-                                        ))}
+                                        {client.client_types?.map(t => {
+                                            const isAgent = t === 'agent';
+                                            return (
+                                                <span key={t} style={{ 
+                                                    fontSize: 11, 
+                                                    color: isAgent ? '#059669' : 'var(--text-secondary)', 
+                                                    fontWeight: isAgent ? 600 : 400, 
+                                                    background: isAgent ? '#ecfdf5' : 'var(--bg-light)', 
+                                                    border: isAgent ? '1px solid #10b981' : '1px solid transparent',
+                                                    padding: '3px 8px', 
+                                                    borderRadius: 6,
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {typeLabels[t] || t}
+                                                </span>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );

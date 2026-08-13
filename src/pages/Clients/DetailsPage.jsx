@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../../utils/format';
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
 import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck, Copy, Check } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
@@ -73,7 +73,50 @@ export function DetailsPage() {
         (Array.isArray(s.client_ids) && s.client_ids.some(cid => String(cid) === String(id)))
     ).sort((a, b) => new Date(b.showing_date) - new Date(a.showing_date));
 
-    const totalCommission = myDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
+    const totalCommission = myDeals.reduce((sum, d) => {
+        const sellerIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
+        const buyerIds  = d.buyer_ids  || (d.buyer_id  ? [d.buyer_id]  : []);
+        const isSeller = sellerIds.includes(id);
+        const isBuyer = buyerIds.includes(id);
+
+        let parsedExpenses = [];
+        if (d.expenses) {
+            if (Array.isArray(d.expenses)) parsedExpenses = d.expenses;
+            else if (typeof d.expenses === 'string') {
+                try { parsedExpenses = JSON.parse(d.expenses); } catch {}
+            }
+        }
+
+        // If expenses exist in deal
+        if (parsedExpenses.length > 0) {
+            const sideExpenses = parsedExpenses.filter(e => {
+                if (isSeller && e.payer === 'seller') return true;
+                if (isBuyer && e.payer === 'buyer') return true;
+                return false;
+            });
+            // Check for explicit 'Комиссия' expense for this side
+            const commExp = sideExpenses.find(e => e.title === 'Комиссия');
+            if (commExp) {
+                return sum + (Number(commExp.amount) || 0);
+            }
+            // If side has other expenses but no 'Комиссия' listed under their side,
+            // check if there's any commission expense at all
+            const hasAnyCommissionExp = parsedExpenses.some(e => e.title === 'Комиссия');
+            if (hasAnyCommissionExp) {
+                // If other side pays commission, client paid 0 commission
+                return sum;
+            }
+        }
+
+        // Fallback if no detailed expenses specified: split 50/50 if both sides present in client list or fallback to deal commission
+        if (isSeller && isBuyer) {
+            return sum + (Number(d.commission) || 0);
+        } else if (isSeller || isBuyer) {
+            // If deal.commission exists and no expenses split, default to d.commission
+            return sum + (Number(d.commission) || 0);
+        }
+        return sum + (Number(d.commission) || 0);
+    }, 0);
 
     const mapStatus = (status) => {
         switch (status) {
@@ -317,27 +360,30 @@ export function DetailsPage() {
                     <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
                         {!isEditingTypes ? (
                             <>
-                                {client.client_types?.map(t => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setIsEditingTypes(true)}
-                                        className="card-clickable"
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: 10,
-                                            fontSize: 11,
-                                            fontWeight: 300,
-                                            background: 'var(--primary-light)',
-                                            color: 'var(--primary)',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s'
-                                        }}
-                                        title="Нажмите, чтобы изменить типы"
-                                    >
-                                        {typeLabels[t]}
-                                    </button>
-                                ))}
+                                {client.client_types?.map(t => {
+                                    const isAgent = t === 'agent';
+                                    return (
+                                        <button
+                                            key={t}
+                                            onClick={() => setIsEditingTypes(true)}
+                                            className="card-clickable"
+                                            style={{
+                                                padding: '6px 12px',
+                                                borderRadius: 10,
+                                                fontSize: 11,
+                                                fontWeight: isAgent ? 600 : 300,
+                                                background: isAgent ? '#ecfdf5' : 'var(--primary-light)',
+                                                color: isAgent ? '#059669' : 'var(--primary)',
+                                                border: isAgent ? '1px solid #10b981' : 'none',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s'
+                                            }}
+                                            title="Нажмите, чтобы изменить типы"
+                                        >
+                                            {typeLabels[t] || t}
+                                        </button>
+                                    );
+                                })}
                             </>
                         ) : (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '12px', borderRadius: 16, width: '100%', marginTop: 8 }}>
@@ -478,7 +524,7 @@ export function DetailsPage() {
                             <div style={{ padding: '8px 12px', background: '#ffffff', borderRadius: 12, border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                     <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Дата рождения:</div>
-                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{client.birth_date || client.passport_details?.birth_date || 'Не указана'}</div>
+                                    <div style={{ fontWeight: 600, color: '#0f172a' }}>{formatDate(client.birth_date || client.passport_details?.birth_date) || 'Не указана'}</div>
                                 </div>
                                 {(client.birth_date || client.passport_details?.birth_date) && (
                                     <button
