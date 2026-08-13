@@ -56,7 +56,10 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
 
       setProgressStatus('Распознавание паспорта через ИИ...');
 
-      const response = await fetch('/api/ai-proxy', {
+      const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
+      const proxyUrl = isCapacitor ? `https://realtor-match.vercel.app/api/ai-proxy` : `/api/ai-proxy`;
+
+      const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
