@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, Loader } from 'lucide-react';
-import { formatNumber } from '../utils/format';
+import { formatNumber, formatPhone } from '../utils/format';
 
 
 
@@ -291,7 +291,8 @@ export function BannerGenerator({ property, currentUser, onClose }) {
             parts.push(property.floor + '/' + (property.floors_total || '?') + ' эт.');
         }
 
-        const phone = currentUser?.phone || '+7 (999) 000-00-00';
+        const rawPhone = currentUser?.phone || currentUser?.phone_number || property.realtor_phone || '+7 (999) 000-00-00';
+        const phone = formatPhone(rawPhone) || rawPhone;
 
         // Category label (spaced out)
         const roomsCount = property.rooms;
