@@ -3,9 +3,16 @@ import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, Us
 import { useToastContext } from './Toast';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure pdfjs worker via standard CDN matching installed version or disable worker in main thread
-if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.10.38'}/pdf.worker.min.mjs`;
+// Safe worker initialization
+if (typeof window !== 'undefined') {
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.mjs',
+      import.meta.url
+    ).toString();
+  } catch {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
+  }
 }
 
 function fileToBase64(file) {
@@ -19,7 +26,8 @@ function fileToBase64(file) {
 
 async function renderPdfPagesToBase64(file, maxPages = 4) {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+  const pdf = await loadingTask.promise;
   const numPages = Math.min(pdf.numPages, maxPages);
   const pages = [];
 
@@ -80,7 +88,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
         try {
           pagesBase64 = await renderPdfPagesToBase64(file, 4);
         } catch (pdfErr) {
-          console.warn('PDF.js render error, fallback to raw base64:', pdfErr);
+          console.warn('PDF.js render warning, will fallback to raw base64:', pdfErr);
         }
       }
 

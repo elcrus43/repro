@@ -938,21 +938,27 @@ async function handleScanEgrn(fileBase64, mimeType, pagesBase64 = []) {
 
   let lastError = null;
 
-  // 1. Zhipu GLM-4V (доступен из РФ)
-  const imagesToProcess = (Array.isArray(pagesBase64) && pagesBase64.length > 0)
-    ? pagesBase64
-    : (mimeType && mimeType.startsWith('image/') ? [{ data: fileBase64, mime: mimeType }] : []);
+  // 1. Zhipu GLM-4V (доступен из РФ, отлично распознает документы)
+  // Принимает как отрендеренные страницы (pagesBase64), так и прямое изображение (fileBase64)
+  let zhipuImages = [];
+  if (Array.isArray(pagesBase64) && pagesBase64.length > 0) {
+    zhipuImages = pagesBase64.map(p => ({
+      type: 'image_url',
+      image_url: { url: `data:${p.mime || 'image/jpeg'};base64,${p.data}` }
+    }));
+  } else if (fileBase64 && (!mimeType || mimeType.startsWith('image/'))) {
+    zhipuImages = [{
+      type: 'image_url',
+      image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${fileBase64}` }
+    }];
+  }
 
-  if (ZHIPU_API_KEY && imagesToProcess.length > 0) {
+  if (ZHIPU_API_KEY && zhipuImages.length > 0) {
     const visionModels = ['glm-4v-flash', 'glm-4v', 'glm-4v-plus'];
     for (const modelName of visionModels) {
       try {
         console.log(`[ai-proxy] Trying Zhipu Vision (${modelName}) for EGRN scan...`);
-        const contentParts = imagesToProcess.slice(0, 5).map(img => ({
-          type: 'image_url',
-          image_url: { url: `data:${img.mime || 'image/jpeg'};base64,${img.data}` }
-        }));
-        contentParts.push({ type: 'text', text: EGRN_PROMPT });
+        const contentParts = [...zhipuImages.slice(0, 6), { type: 'text', text: EGRN_PROMPT }];
 
         const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
           method: 'POST',
@@ -992,17 +998,17 @@ async function handleScanEgrn(fileBase64, mimeType, pagesBase64 = []) {
     }
   }
 
-  // 2. Gemini Vision
+  // 2. Gemini 2.5 Flash / Gemini 1.5 Flash (резервный канал)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.5-pro'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for EGRN scan...`);
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
         
         let parts = [];
-        if (imagesToProcess.length > 0) {
-          parts = imagesToProcess.slice(0, 5).map(img => ({
+        if (Array.isArray(pagesBase64) && pagesBase64.length > 0) {
+          parts = pagesBase64.slice(0, 6).map(img => ({
             inline_data: { mime_type: img.mime || 'image/jpeg', data: img.data }
           }));
         } else if (fileBase64) {
@@ -1043,5 +1049,5 @@ async function handleScanEgrn(fileBase64, mimeType, pagesBase64 = []) {
     }
   }
 
-  throw lastError || new Error('Все vision-модели (Zhipu, Gemini) недоступны или вернули ошибку.');
+  throw lastError || new Error('Все vision-модели (Zhipu, Gemini) вернули ошибку или недоступны.');
 }
