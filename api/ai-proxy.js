@@ -87,7 +87,8 @@ export default async function handler(req, res) {
       if (!fileBase64) {
         return res.status(400).json({ error: 'Missing fileBase64 parameter' });
       }
-      const data = await handleScanEgrn(fileBase64, mimeType || 'application/pdf');
+      const { pagesBase64 } = req.body;
+      const data = await handleScanEgrn(fileBase64, mimeType || 'application/pdf', pagesBase64 || []);
       return res.status(200).json(data);
     }
 
@@ -902,7 +903,7 @@ async function handleScanPassport(imageBase64, mimeType) {
  * Принимает base64-строку PDF или изображения, возвращает структурированные поля ЕГРН.
  * Gemini поддерживает PDF нативно (application/pdf inline_data).
  */
-async function handleScanEgrn(fileBase64, mimeType) {
+async function handleScanEgrn(fileBase64, mimeType, pagesBase64 = []) {
   const EGRN_PROMPT = `Ты — точный OCR-ассистент для российских выписок из ЕГРН (Единый государственный реестр недвижимости).
 Внимательно прочитай весь документ и верни ТОЛЬКО JSON без лишнего текста, комментариев и markdown-блоков.
 
@@ -937,60 +938,22 @@ async function handleScanEgrn(fileBase64, mimeType) {
 
   let lastError = null;
 
-  // 1. Gemini Vision — поддерживает PDF нативно (application/pdf inline_data)
-  if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
-    for (const modelName of geminiModels) {
-      try {
-        console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for EGRN scan...`);
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { inline_data: { mime_type: mimeType, data: fileBase64 } },
-                { text: EGRN_PROMPT }
-              ]
-            }],
-            generationConfig: { temperature: 0.05, maxOutputTokens: 3000 }
-          })
-        });
+  // 1. Zhipu GLM-4V (доступен из РФ)
+  const imagesToProcess = (Array.isArray(pagesBase64) && pagesBase64.length > 0)
+    ? pagesBase64
+    : (mimeType && mimeType.startsWith('image/') ? [{ data: fileBase64, mime: mimeType }] : []);
 
-        if (response.ok) {
-          const data = await response.json();
-          let content = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-          content = content
-            .replace(/^```(?:json)?\s*/i, '')
-            .replace(/\s*```\s*$/, '')
-            .trim();
-          if (content) {
-            const parsed = JSON.parse(content);
-            if (!Array.isArray(parsed.owners)) parsed.owners = [];
-            if (parsed.area_total && typeof parsed.area_total === 'string') {
-              parsed.area_total = parseFloat(parsed.area_total.replace(',', '.')) || null;
-            }
-            return parsed;
-          }
-        } else {
-          const errText = await response.text();
-          console.warn(`[ai-proxy] Gemini Vision (${modelName}) status ${response.status}:`, errText);
-          lastError = new Error(`Gemini Vision ${modelName} failed: ${response.status}`);
-        }
-      } catch (err) {
-        console.warn(`[ai-proxy] Gemini Vision (${modelName}) error:`, err.message);
-        lastError = err;
-      }
-    }
-  }
-
-  // 2. Fallback — Zhipu GLM-4V (только для изображений)
-  if (ZHIPU_API_KEY && mimeType.startsWith('image/')) {
+  if (ZHIPU_API_KEY && imagesToProcess.length > 0) {
     const visionModels = ['glm-4v-flash', 'glm-4v', 'glm-4v-plus'];
     for (const modelName of visionModels) {
       try {
         console.log(`[ai-proxy] Trying Zhipu Vision (${modelName}) for EGRN scan...`);
+        const contentParts = imagesToProcess.slice(0, 5).map(img => ({
+          type: 'image_url',
+          image_url: { url: `data:${img.mime || 'image/jpeg'};base64,${img.data}` }
+        }));
+        contentParts.push({ type: 'text', text: EGRN_PROMPT });
+
         const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
           method: 'POST',
           headers: {
@@ -999,16 +962,7 @@ async function handleScanEgrn(fileBase64, mimeType) {
           },
           body: JSON.stringify({
             model: modelName,
-            messages: [{
-              role: 'user',
-              content: [
-                {
-                  type: 'image_url',
-                  image_url: { url: `data:${mimeType};base64,${fileBase64}` }
-                },
-                { type: 'text', text: EGRN_PROMPT }
-              ]
-            }],
+            messages: [{ role: 'user', content: contentParts }],
             temperature: 0.05,
             max_tokens: 3000,
           })
@@ -1017,10 +971,7 @@ async function handleScanEgrn(fileBase64, mimeType) {
         if (response.ok) {
           const data = await response.json();
           let content = data?.choices?.[0]?.message?.content?.trim() || '';
-          content = content
-            .replace(/^```(?:json)?\s*/i, '')
-            .replace(/\s*```\s*$/, '')
-            .trim();
+          content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
           if (content) {
             const parsed = JSON.parse(content);
             if (!Array.isArray(parsed.owners)) parsed.owners = [];
@@ -1041,5 +992,56 @@ async function handleScanEgrn(fileBase64, mimeType) {
     }
   }
 
-  throw lastError || new Error('Все vision-модели недоступны или не сконфигурированы.');
+  // 2. Gemini Vision
+  if (GEMINI_API_KEY) {
+    const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+    for (const modelName of geminiModels) {
+      try {
+        console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for EGRN scan...`);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+        
+        let parts = [];
+        if (imagesToProcess.length > 0) {
+          parts = imagesToProcess.slice(0, 5).map(img => ({
+            inline_data: { mime_type: img.mime || 'image/jpeg', data: img.data }
+          }));
+        } else if (fileBase64) {
+          parts = [{ inline_data: { mime_type: mimeType || 'application/pdf', data: fileBase64 } }];
+        }
+        parts.push({ text: EGRN_PROMPT });
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts }],
+            generationConfig: { temperature: 0.05, maxOutputTokens: 3000 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+          if (content) {
+            const parsed = JSON.parse(content);
+            if (!Array.isArray(parsed.owners)) parsed.owners = [];
+            if (parsed.area_total && typeof parsed.area_total === 'string') {
+              parsed.area_total = parseFloat(parsed.area_total.replace(',', '.')) || null;
+            }
+            return parsed;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[ai-proxy] Gemini Vision (${modelName}) status ${response.status}:`, errText);
+          lastError = new Error(`Gemini Vision ${modelName} failed: ${response.status}`);
+        }
+      } catch (err) {
+        console.warn(`[ai-proxy] Gemini Vision (${modelName}) error:`, err.message);
+        lastError = err;
+      }
+    }
+  }
+
+  throw lastError || new Error('Все vision-модели (Zhipu, Gemini) недоступны или вернули ошибку.');
 }

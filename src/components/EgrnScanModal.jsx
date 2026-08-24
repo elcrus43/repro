@@ -1,6 +1,12 @@
 ﻿import React, { useState, useRef } from 'react';
 import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, User, Home, ChevronRight } from 'lucide-react';
 import { useToastContext } from './Toast';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure pdfjs worker via standard CDN matching installed version or disable worker in main thread
+if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version || '4.10.38'}/pdf.worker.min.mjs`;
+}
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -9,6 +15,29 @@ function fileToBase64(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+async function renderPdfPagesToBase64(file, maxPages = 4) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const numPages = Math.min(pdf.numPages, maxPages);
+  const pages = [];
+
+  for (let i = 1; i <= numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 1.5 });
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    await page.render({ canvasContext: context, viewport }).promise;
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const base64 = dataUrl.split(',')[1];
+    pages.push({ data: base64, mime: 'image/jpeg' });
+  }
+
+  return pages;
 }
 
 const PROPERTY_TYPE_LABELS = {
@@ -40,24 +69,45 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
   const processFile = async () => {
     if (!file) return;
     setIsProcessing(true); setError(null);
-    setProgressStatus('Подготовка файла...');
+    setProgressStatus('Подготовка документа...');
     try {
-      const fileBase64 = await fileToBase64(file);
+      let pagesBase64 = [];
+      let fileBase64 = '';
       const mimeType = file.type || 'application/pdf';
+
+      if (mimeType === 'application/pdf') {
+        setProgressStatus('Рендеринг страниц выписки...');
+        try {
+          pagesBase64 = await renderPdfPagesToBase64(file, 4);
+        } catch (pdfErr) {
+          console.warn('PDF.js render error, fallback to raw base64:', pdfErr);
+        }
+      }
+
+      fileBase64 = await fileToBase64(file);
+
       setProgressStatus('Распознавание выписки ЕГРН через ИИ...');
       const isCapacitor = typeof window !== 'undefined' && (
         window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === ''
       );
       const proxyUrl = isCapacitor ? 'https://realtor-match.vercel.app/api/ai-proxy' : '/api/ai-proxy';
+      
       const response = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'scanEgrn', fileBase64, mimeType }),
+        body: JSON.stringify({
+          action: 'scanEgrn',
+          fileBase64,
+          mimeType,
+          pagesBase64
+        }),
       });
+
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || `Ошибка сервера: ${response.status}`);
       }
+
       const parsedData = await response.json();
       setExtracted(parsedData);
       setProgressStatus('Готово!');
