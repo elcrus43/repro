@@ -97,6 +97,7 @@ import { PortfolioSection } from '../../components/PortfolioSection';
 import { BannerGenerator } from '../../components/BannerGenerator';
 import { AdGenerator } from '../../components/AdGenerator';
 import { CmaReport } from '../../components/CmaReport';
+import { EgrnScanModal } from '../../components/EgrnScanModal';
 
 /* ─── MortgageCalculator ─────────────────────────────────────────────────── */
 function MortgageCalculator({ propertyPrice }) {
@@ -685,6 +686,7 @@ export function DetailsPage() {
     const [showPortfolio, setShowPortfolio] = useState(false);
     const [showAdGen, setShowAdGen] = useState(false);
     const [showCma, setShowCma] = useState(false);
+    const [showEgrn, setShowEgrn] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
     const [mapFilter, setMapFilter] = useState('address');
     const [coverSet, setCoverSet] = useState(false);
@@ -997,6 +999,20 @@ export function DetailsPage() {
                             onClick={() => setShowCma(true)}
                         >
                             <TrendingDown size={16} style={{ color: '#10b981' }} /> СМА
+                        </button>
+                        <button
+                            className="card-clickable bordered-action-button"
+                            style={{ 
+                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
+                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                padding: '0 16px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                fontFamily: "'Oswald', sans-serif"
+                            }}
+                            onClick={() => setShowEgrn(true)}
+                        >
+                            <FileText size={16} style={{ color: '#6366f1' }} /> ЕГРН
                         </button>
                     </div>
                 </div>
@@ -1506,6 +1522,37 @@ export function DetailsPage() {
                             dispatch({ 
                                 type: 'PATCH_PROPERTY', 
                                 patch: { id: prop.id, price: newPrice } 
+                            });
+                        }}
+                    />
+                )}
+                {showEgrn && (
+                    <EgrnScanModal
+                        isOpen={showEgrn}
+                        onClose={() => setShowEgrn(false)}
+                        onApplyProperty={(fields) => {
+                            const updates = {};
+                            if (fields.address) updates.address = fields.address;
+                            if (fields.cadastral_number) updates.cadastral_number = fields.cadastral_number;
+                            if (fields.area_total) updates.area_total = fields.area_total;
+                            if (fields.property_type) updates.property_type = fields.property_type;
+                            if (fields.floor) updates.floor = fields.floor;
+                            if (fields.floors_total) updates.floors_total = fields.floors_total;
+                            if (fields.egrnNotes && !prop.notes) updates.notes = fields.egrnNotes;
+                            dispatch({ type: 'UPDATE_PROPERTY', property: { ...prop, ...updates } });
+                        }}
+                        onApplyOwner={(ownerData) => {
+                            // Navigate to new client form with pre-filled data
+                            navigate('/clients/new', {
+                                state: {
+                                    prefill: {
+                                        full_name: ownerData.full_name,
+                                        inn: ownerData.inn,
+                                        passport_details: ownerData.passport_details,
+                                        client_types: ['seller'],
+                                        source_note: ownerData.source_note,
+                                    }
+                                }
                             });
                         }}
                     />

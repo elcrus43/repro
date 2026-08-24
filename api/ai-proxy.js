@@ -81,6 +81,16 @@ export default async function handler(req, res) {
       return res.status(200).json(data);
     }
 
+
+    if (action === 'scanEgrn') {
+      const { fileBase64, mimeType } = req.body;
+      if (!fileBase64) {
+        return res.status(400).json({ error: 'Missing fileBase64 parameter' });
+      }
+      const data = await handleScanEgrn(fileBase64, mimeType || 'application/pdf');
+      return res.status(200).json(data);
+    }
+
     return res.status(400).json({ error: 'Unknown action' });
   } catch (err) {
     console.error('[ai-proxy error]:', err.message);
@@ -885,4 +895,151 @@ async function handleScanPassport(imageBase64, mimeType) {
   }
 
   throw lastError || new Error('Р’СЃРµ vision-РјРѕРґРµР»Рё РЅРµРґРѕСЃС‚СѓРїРЅС‹ РёР»Рё РЅРµ СЃРєРѕРЅС„РёРіСѓСЂРёСЂРѕРІР°РЅС‹.');
+}
+
+/**
+ * Распознавание выписки ЕГРН через AI Vision.
+ * Принимает base64-строку PDF или изображения, возвращает структурированные поля ЕГРН.
+ * Gemini поддерживает PDF нативно (application/pdf inline_data).
+ */
+async function handleScanEgrn(fileBase64, mimeType) {
+  const EGRN_PROMPT = `Ты — точный OCR-ассистент для российских выписок из ЕГРН (Единый государственный реестр недвижимости).
+Внимательно прочитай весь документ и верни ТОЛЬКО JSON без лишнего текста, комментариев и markdown-блоков.
+
+Структура ответа:
+{
+  "cadastral_number": "кадастровый номер объекта, например 77:01:0001001:123",
+  "address": "полный адрес объекта как в выписке",
+  "area_total": 54.3,
+  "property_type": "apartment | house | land | room | commercial",
+  "floor": null,
+  "floors_total": null,
+  "owners": [
+    {
+      "full_name": "ФИО правообладателя прописными буквами",
+      "share": "1/1",
+      "ownership_type": "единоличная | долевая | совместная",
+      "ownership_basis": "основание возникновения права",
+      "registration_date": "ДД.ММ.ГГГГ",
+      "passport_series": "",
+      "passport_number": "",
+      "inn": "",
+      "snils": ""
+    }
+  ],
+  "encumbrances": "Не зарегистрированы",
+  "registration_number": "",
+  "issue_date": "ДД.ММ.ГГГГ",
+  "notes": ""
+}
+
+Если поле не найдено — ставь null или пустую строку. Верни ТОЛЬКО JSON.`;
+
+  let lastError = null;
+
+  // 1. Gemini Vision — поддерживает PDF нативно (application/pdf inline_data)
+  if (GEMINI_API_KEY) {
+    const geminiModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+    for (const modelName of geminiModels) {
+      try {
+        console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for EGRN scan...`);
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GEMINI_API_KEY}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                { inline_data: { mime_type: mimeType, data: fileBase64 } },
+                { text: EGRN_PROMPT }
+              ]
+            }],
+            generationConfig: { temperature: 0.05, maxOutputTokens: 3000 }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          content = content
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```\s*$/, '')
+            .trim();
+          if (content) {
+            const parsed = JSON.parse(content);
+            if (!Array.isArray(parsed.owners)) parsed.owners = [];
+            if (parsed.area_total && typeof parsed.area_total === 'string') {
+              parsed.area_total = parseFloat(parsed.area_total.replace(',', '.')) || null;
+            }
+            return parsed;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[ai-proxy] Gemini Vision (${modelName}) status ${response.status}:`, errText);
+          lastError = new Error(`Gemini Vision ${modelName} failed: ${response.status}`);
+        }
+      } catch (err) {
+        console.warn(`[ai-proxy] Gemini Vision (${modelName}) error:`, err.message);
+        lastError = err;
+      }
+    }
+  }
+
+  // 2. Fallback — Zhipu GLM-4V (только для изображений)
+  if (ZHIPU_API_KEY && mimeType.startsWith('image/')) {
+    const visionModels = ['glm-4v-flash', 'glm-4v', 'glm-4v-plus'];
+    for (const modelName of visionModels) {
+      try {
+        console.log(`[ai-proxy] Trying Zhipu Vision (${modelName}) for EGRN scan...`);
+        const response = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${ZHIPU_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [{
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: { url: `data:${mimeType};base64,${fileBase64}` }
+                },
+                { type: 'text', text: EGRN_PROMPT }
+              ]
+            }],
+            temperature: 0.05,
+            max_tokens: 3000,
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          let content = data?.choices?.[0]?.message?.content?.trim() || '';
+          content = content
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```\s*$/, '')
+            .trim();
+          if (content) {
+            const parsed = JSON.parse(content);
+            if (!Array.isArray(parsed.owners)) parsed.owners = [];
+            if (parsed.area_total && typeof parsed.area_total === 'string') {
+              parsed.area_total = parseFloat(parsed.area_total.replace(',', '.')) || null;
+            }
+            return parsed;
+          }
+        } else {
+          const errText = await response.text();
+          console.warn(`[ai-proxy] Zhipu Vision (${modelName}) status ${response.status}:`, errText);
+          lastError = new Error(`Zhipu Vision ${modelName} failed: ${response.status}`);
+        }
+      } catch (err) {
+        console.warn(`[ai-proxy] Zhipu Vision (${modelName}) error:`, err.message);
+        lastError = err;
+      }
+    }
+  }
+
+  throw lastError || new Error('Все vision-модели недоступны или не сконфигурированы.');
 }

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone } from '../../utils/format';
@@ -23,6 +23,8 @@ export function FormPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const [searchParams] = useSearchParams();
+    const location = useLocation();
+    const prefill = location?.state?.prefill || null;
     const existing = id ? state.clients.find(c => c.id === id) : null;
     
     const formatPhones = (phones) => (phones || []).map(p => formatPhone(p, true));
@@ -37,10 +39,21 @@ export function FormPage() {
         reg_address: existing.reg_address || existing.passport_details?.registration_address || '',
         phones: initialPhones,
         passport_details: existing.passport_details || defaultClient.passport_details
-    } : { ...defaultClient, realtor_id: state.currentUser?.id };
+    } : {
+        ...defaultClient,
+        realtor_id: state.currentUser?.id,
+        // Apply EGRN prefill if navigated from EgrnScanModal
+        ...(prefill ? {
+            full_name: prefill.full_name || '',
+            inn: prefill.inn || '',
+            client_types: prefill.client_types || ['buyer'],
+            passport_details: { ...defaultClient.passport_details, ...(prefill.passport_details || {}) },
+            notes: prefill.source_note || '',
+        } : {}),
+    };
 
     const [form, setForm] = useState(initialForm);
-    const [showPassport, setShowPassport] = useState(!!(form.passport_details?.series || form.inn || form.birth_date));
+    const [showPassport, setShowPassport] = useState(!!(form.passport_details?.series || form.inn || form.birth_date || prefill?.passport_details?.series));
     const [showPassportScan, setShowPassportScan] = useState(false);
     const [showBank, setShowBank] = useState(!!(form.bank_details?.bik || form.bank_details?.account));
     const [bankLoading, setBankLoading] = useState(false);
