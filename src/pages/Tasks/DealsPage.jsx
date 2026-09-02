@@ -59,6 +59,7 @@ export function DealsPage() {
     const [showForm, setShowForm] = useState(false);
     const [showQuickBuyerForm, setShowQuickBuyerForm] = useState(false);
     const [quickBuyer, setQuickBuyer] = useState({ full_name: '', phone: '' });
+    const [quickAgentTarget, setQuickAgentTarget] = useState(null); // 'seller_agent_id' | 'buyer_agent_id' | null
     
     const now = new Date();
     const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -307,22 +308,61 @@ export function DealsPage() {
     function handleCreateQuickBuyer(e) {
         e.preventDefault();
         if (!quickBuyer.full_name) return;
-        
+
+        const isAgentMode = Boolean(quickAgentTarget);
         const newClientId = nanoid();
         const client = {
             ...quickBuyer,
             id: newClientId,
             realtor_id: user?.id,
-            created_at: new Date().toISOString()
+            client_types: [isAgentMode ? 'agent' : 'buyer'],
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
-        
+
         dispatch({ type: 'ADD_CLIENT', client });
-        
-        // Auto-select the new client as a buyer
-        handleFieldChange('buyer_ids', [...(newDeal.buyer_ids || []), newClientId]);
+
+        if (isAgentMode) {
+            handleFieldChange(quickAgentTarget, newClientId);
+            setQuickAgentTarget(null);
+            toast.success('Агент создан и выбран');
+        } else {
+            // Auto-select the new client as a buyer
+            handleFieldChange('buyer_ids', [...(newDeal.buyer_ids || []), newClientId]);
+            toast.success('Покупатель создан и выбран');
+        }
         setQuickBuyer({ full_name: '', phone: '' });
         setShowQuickBuyerForm(false);
-        toast.success('Покупатель создан и выбран');
+    }
+
+    function handleAgentSelectChange(field, value) {
+        if (value === '__create__') {
+            setQuickAgentTarget(field);
+            setQuickBuyer({ full_name: '', phone: '' });
+            setShowQuickBuyerForm(true);
+            return;
+        }
+        handleFieldChange(field, value || null);
+    }
+
+    function handleCreateQuickClient(name, type) {
+        if (!name) return;
+        const newClientId = nanoid();
+        const client = {
+            id: newClientId,
+            full_name: name,
+            phone: '',
+            realtor_id: user?.id,
+            client_types: [type],
+            status: 'active',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        dispatch({ type: 'ADD_CLIENT', client });
+        const field = type === 'seller' ? 'seller_ids' : 'buyer_ids';
+        handleFieldChange(field, [...(newDeal[field] || []), newClientId]);
+        toast.success(type === 'seller' ? 'Продавец создан и выбран' : 'Покупатель создан и выбран');
     }
 
     const addExpense = (payer = 'seller') => {
@@ -622,7 +662,7 @@ export function DealsPage() {
 
                                 <div>
                                     <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Продавцы</label>
-                                    <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." />
+                                    <MultiClientSelector selectedIds={newDeal.seller_ids || []} onChange={ids => handleFieldChange('seller_ids', ids)} clients={state.clients} placeholder="Выбрать продавцов..." onCreate={name => handleCreateQuickClient(name, 'seller')} createLabel="продавца" />
                                 </div>
 
                                 <div>
@@ -631,7 +671,7 @@ export function DealsPage() {
                                         className="form-input" 
                                         style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
                                         value={newDeal.seller_agent_id || ''} 
-                                        onChange={e => handleFieldChange('seller_agent_id', e.target.value || null)}
+                                        onChange={e => handleAgentSelectChange('seller_agent_id', e.target.value)}
                                     >
                                         <option value="">Без агента</option>
                                         {(() => {
@@ -653,6 +693,7 @@ export function DealsPage() {
                                                 );
                                             });
                                         })()}
+                                        <option value="__create__">+ Создать агента…</option>
                                     </select>
                                 </div>
 
@@ -688,7 +729,7 @@ export function DealsPage() {
                                     <label style={{ fontSize: 11, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Покупатели</label>
                                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                                         <div style={{ flex: 1 }}>
-                                            <MultiClientSelector selectedIds={newDeal.buyer_ids || []} onChange={ids => handleFieldChange('buyer_ids', ids)} clients={state.clients} placeholder="Выбрать покупателей..." />
+                                            <MultiClientSelector selectedIds={newDeal.buyer_ids || []} onChange={ids => handleFieldChange('buyer_ids', ids)} clients={state.clients} placeholder="Выбрать покупателей..." onCreate={name => handleCreateQuickClient(name, 'buyer')} createLabel="покупателя" />
                                         </div>
                                         <button 
                                             type="button" 
@@ -713,7 +754,7 @@ export function DealsPage() {
                                         className="form-input" 
                                         style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px', width: '100%', fontSize: 13 }} 
                                         value={newDeal.buyer_agent_id || ''} 
-                                        onChange={e => handleFieldChange('buyer_agent_id', e.target.value || null)}
+                                        onChange={e => handleAgentSelectChange('buyer_agent_id', e.target.value)}
                                     >
                                         <option value="">Без агента</option>
                                         {(() => {
@@ -735,6 +776,7 @@ export function DealsPage() {
                                                 );
                                             });
                                         })()}
+                                        <option value="__create__">+ Создать агента…</option>
                                     </select>
                                 </div>
 
@@ -949,7 +991,7 @@ export function DealsPage() {
                 </div>
             </div>
 
-            {/* Quick Buyer Modal — Premium Open Design */}
+            {/* Quick Buyer/Agent Modal — Premium Open Design */}
             {showQuickBuyerForm && (
                 <div style={{
                     position: 'fixed', inset: 0, zIndex: 1000,
@@ -958,7 +1000,7 @@ export function DealsPage() {
                     padding: 24
                 }}>
                     <div className="card fade-in" style={{ width: '100%', maxWidth: 420, padding: 32, borderRadius: 32, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.2)', background: 'var(--surface)' }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>Новый покупатель</div>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 20, marginBottom: 24, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>{quickAgentTarget ? 'Новый агент' : 'Новый покупатель'}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ФИО</label>
@@ -982,7 +1024,7 @@ export function DealsPage() {
                                 />
                             </div>
                             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
-                                <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300 }} onClick={() => setShowQuickBuyerForm(false)}>Отмена</button>
+                                <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300 }} onClick={() => { setShowQuickBuyerForm(false); setQuickAgentTarget(null); }}>Отмена</button>
                                 <button type="button" className="btn btn-primary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300, background: 'var(--primary)', boxShadow: '0 8px 16px rgba(0,82,255,0.15)' }} onClick={handleCreateQuickBuyer}>Создать</button>
                             </div>
                         </div>

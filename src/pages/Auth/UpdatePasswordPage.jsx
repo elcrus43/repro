@@ -52,8 +52,8 @@ export default function UpdatePasswordPage() {
         setLoading(true);
         setError('');
 
-        if (password.length < 6) {
-            setError('Пароль должен содержать минимум 6 символов');
+        if (password.length < 8) {
+            setError('Пароль должен содержать минимум 8 символов');
             setLoading(false);
             return;
         }

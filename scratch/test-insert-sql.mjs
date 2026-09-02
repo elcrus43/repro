@@ -42,10 +42,10 @@ async function testInsertSql() {
         '7ba78e6f-44e2-4db2-944d-d7904e578c79', 
         'sale', 
         'garden', 
-        'Киров', 
+        'РљРёСЂРѕРІ', 
         500000, 
         v_realtor_id,
-        'Тестовый адрес'
+        'РўРµСЃС‚РѕРІС‹Р№ Р°РґСЂРµСЃ'
       );
       
       -- If successful, delete it immediately
@@ -57,9 +57,9 @@ async function testInsertSql() {
   const { data, error } = await supabase.rpc('exec_sql', { query: sqlQuery });
   
   if (error) {
-    console.error('❌ SQL Insert failed with database error:', error);
+    console.error('вќЊ SQL Insert failed with database error:', error);
   } else {
-    console.log('✅ SQL Insert succeeded! There is no database check constraint blocking garden.');
+    console.log('вњ… SQL Insert succeeded! There is no database check constraint blocking garden.');
   }
 }
 

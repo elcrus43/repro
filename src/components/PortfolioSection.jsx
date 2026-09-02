@@ -12,6 +12,16 @@ import { API_BASE } from '../config';
 import { nanoid } from '../utils/nanoid';
 import { RENOVATION_LABELS, BUILDING_TYPES } from '../data/constants';
 
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 function compressImage(file, maxW = 1200, maxH = 1200) {
     return new Promise((resolve) => {
         if (!file.type.startsWith('image/')) {
@@ -313,9 +323,9 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         const analogRows = analogs.slice(0, 6).map(a => {
             const payment = Math.round(calculatePayment(a.price, marketDownPayment, marketRate, calcTerm));
             return `<tr>
-                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444">${a.district || '—'}</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;color:#444">${escapeHtml(a.district || '—')}</td>
                 <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right">${formatNumber(a.price)} ₽</td>
-                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;color:#666">${a.total_area} м²</td>
+                <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;color:#666">${escapeHtml(a.total_area)} м²</td>
                 <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px;text-align:right;color:#3b82f6">${formatNumber(payment)} ₽/мес</td>
             </tr>`;
         }).join('');
@@ -325,8 +335,8 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
             const color = domainColors[l.domain] || '#666';
             return `<tr>
                 <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:12px">
-                    <span style="background:${color};color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px">${l.domain.toUpperCase()}</span>
-                    <span style="color:#555;word-break:break-all">${l.url}</span>
+                    <span style="background:${color};color:white;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;margin-right:8px">${escapeHtml(l.domain.toUpperCase())}</span>
+                    <span style="color:#555;word-break:break-all">${escapeHtml(l.url)}</span>
                 </td>
             </tr>`;
         }).join('');
@@ -390,7 +400,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                         ${pricePerM2 ? `<div style="font-size:14px;color:rgba(255,255,255,0.8);margin-top:4px">${formatNumber(pricePerM2)} ₽/м²</div>` : ''}
                     </div>
                     <div>
-                        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">${property.address || property.city || ''}</div>
+                        <div style="font-size:15px;font-weight:700;color:#fff;margin-bottom:4px">${escapeHtml(property.address || property.city || '')}</div>
                         <div style="font-size:12px;color:rgba(255,255,255,0.75)">${today}</div>
                     </div>
                 </div>
@@ -409,8 +419,8 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                     ['Санузел', ({combined:'Совм.',separate:'Разд.',two:'2+'} [property.bathroom]) || '—'],
                 ].map(([k,v]) => `
                 <div style="padding:16px 18px;border-right:1px solid #f0f0f0;border-bottom:1px solid #f0f0f0">
-                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">${k}</div>
-                    <div style="font-size:15px;font-weight:700;color:#1a1a1a">${v}</div>
+                    <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px">${escapeHtml(k)}</div>
+                    <div style="font-size:15px;font-weight:700;color:#1a1a1a">${escapeHtml(v)}</div>
                 </div>`).join('')}
             </div>
 
@@ -442,7 +452,7 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                     ${property.notes ? `
                     <div style="margin-top:24px">
                         <div style="font-size:11px;font-weight:700;color:#999;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Описание</div>
-                        <div style="font-size:13px;color:#555;line-height:1.6">${property.notes.substring(0, 400)}${property.notes.length > 400 ? '...' : ''}</div>
+                        <div style="font-size:13px;color:#555;line-height:1.6">${escapeHtml(property.notes.substring(0, 400))}${property.notes.length > 400 ? '...' : ''}</div>
                     </div>` : ''}
                 </div>
             </div>
@@ -453,11 +463,11 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
                 <div style="display:flex;align-items:center;gap:16px">
                     <div style="display:flex;align-items:center;gap:6px">
                         <div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#0052ff,#3b82f6);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:700;flex-shrink:0">
-                            ${(currentUser?.full_name || 'А').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()}
+                            ${escapeHtml((currentUser?.full_name || 'А').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase())}
                         </div>
                         <div>
-                            <div style="font-size:12px;font-weight:700;color:#333">${currentUser?.full_name || 'Агент'}</div>
-                            ${currentUser?.phone ? `<div style="font-size:11px;color:#888">${currentUser.phone}</div>` : ''}
+                            <div style="font-size:12px;font-weight:700;color:#333">${escapeHtml(currentUser?.full_name || 'Агент')}</div>
+                            ${currentUser?.phone ? `<div style="font-size:11px;color:#888">${escapeHtml(currentUser.phone)}</div>` : ''}
                         </div>
                     </div>
                     <div style="font-size:10px;color:#ccc;padding-left:12px;border-left:1px solid #e0e0e0">Конфиденциально</div>

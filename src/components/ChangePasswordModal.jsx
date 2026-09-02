@@ -32,8 +32,8 @@ export function ChangePasswordModal({ isOpen, onClose, userEmail, onSuccess }) {
         setError('');
 
         // Валидация
-        if (newPassword.length < 6) {
-            setError('Пароль должен содержать минимум 6 символов');
+        if (newPassword.length < 8) {
+            setError('Пароль должен содержать минимум 8 символов');
             return;
         }
 

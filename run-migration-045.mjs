@@ -1,8 +1,13 @@
 /**
  * run-migration-045.mjs — adds google_refresh_token column
  */
-const SUPABASE_URL = 'https://hxivaohzugahjyuaahxc.supabase.co';
-const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4aXZhb2h6dWdhaGp5dWFhaHhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUxNzI4MSwiZXhwIjoyMDg4MDkzMjgxfQ.MBQxRxGfzihFn-aK-7-bGSJ80qoP-jjvU_MxlIH5t8k';
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const SERVICE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_URL || !SERVICE_KEY) {
+  console.error('❌ Задайте VITE_SUPABASE_URL и SUPABASE_SERVICE_ROLE_KEY в .env');
+  process.exit(1);
+}
 
 const sql = `ALTER TABLE profiles ADD COLUMN IF NOT EXISTS google_refresh_token TEXT;`;
 

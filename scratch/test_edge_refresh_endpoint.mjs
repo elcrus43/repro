@@ -1,5 +1,5 @@
 const EDGE_FN_URL = 'https://hxivaohzugahjyuaahxc.supabase.co/functions/v1/google-calendar-token/refresh';
-const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4aXZhb2h6dWdhaGp5dWFhaHhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUxNzI4MSwiZXhwIjoyMDg4MDkzMjgxfQ.MBQxRxGfzihFn-aK-7-bGSJ80qoP-jjvU_MxlIH5t8k';
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const USER_ID = 'f31f0301-62bf-4821-a625-d3e7a9a2dd7d';
 
 async function run() {

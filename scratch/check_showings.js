@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://hxivaohzugahjyuaahxc.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4aXZhb2h6dWdhaGp5dWFhaHhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUxNzI4MSwiZXhwIjoyMDg4MDkzMjgxfQ.MBQxRxGfzihFn-aK-7-bGSJ80qoP-jjvU_MxlIH5t8k';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
@@ -22,17 +22,17 @@ async function run() {
     showing_date: new Date().toISOString(),
     event_type: 'showing',
     status: 'planned',
-    title: 'Тестовый показ',
-    description: 'Диагностика',
+    title: 'Р СћР ВµРЎРѓРЎвЂљР С•Р Р†РЎвЂ№Р в„– Р С—Р С•Р С”Р В°Р В·',
+    description: 'Р вЂќР С‘Р В°Р С–Р Р…Р С•РЎРѓРЎвЂљР С‘Р С”Р В°',
     client_id: '843e42aa-fdaf-4ff5-b863-d2b656cd595e', // use an existing profile ID or client ID
   };
 
   console.log('Trying to insert test showing...');
   const { data: inserted, error: insertError } = await supabase.from('showings').insert(testShowing).select();
   if (insertError) {
-    console.error('❌ Insert showing failed:', insertError);
+    console.error('РІСњРЉ Insert showing failed:', insertError);
   } else {
-    console.log('✅ Insert showing succeeded:', inserted);
+    console.log('РІСљвЂ¦ Insert showing succeeded:', inserted);
     // clean up
     await supabase.from('showings').delete().eq('id', testShowing.id);
     console.log('Cleanup done');

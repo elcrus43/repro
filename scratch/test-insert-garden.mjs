@@ -18,7 +18,7 @@ async function testInsert() {
     id: '7ba78e6f-44e2-4db2-944d-d7904e578c78',
     deal_type: 'sale',
     property_type: 'garden',
-    city: 'Киров',
+    city: 'РљРёСЂРѕРІ',
     price: 500000,
     rooms: 1,
     area_total: 20,
@@ -26,7 +26,7 @@ async function testInsert() {
     area_kitchen: 5,
     floor: 1,
     floors_total: 1,
-    address: 'Тестовый адрес',
+    address: 'РўРµСЃС‚РѕРІС‹Р№ Р°РґСЂРµСЃ',
     build_year: 2020,
     realtor_id: 'a0000000-0000-0000-0000-000000000000'
   };
@@ -39,9 +39,9 @@ async function testInsert() {
   console.log('Inserting test property without title:', dummyProperty);
   const { data, error } = await supabase.from('properties').insert(dummyProperty).select();
   if (error) {
-    console.error('❌ Insert failed:', error);
+    console.error('вќЊ Insert failed:', error);
   } else {
-    console.log('✅ Insert succeeded:', data);
+    console.log('вњ… Insert succeeded:', data);
     // Delete it afterwards
     await supabase.from('properties').delete().eq('id', dummyProperty.id);
   }

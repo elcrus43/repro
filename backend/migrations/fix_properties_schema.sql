@@ -86,7 +86,17 @@ ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users can view properties" ON properties;
 CREATE POLICY "Users can view properties" ON properties
     FOR SELECT
-    USING (true);
+    USING (
+        auth.uid()::text = realtor_id
+        OR auth.uid()::text IN (
+            SELECT p2.client_id FROM properties p2 WHERE p2.id = properties.id
+        )
+        OR EXISTS (
+            SELECT 1 FROM profiles prof
+            WHERE prof.id = auth.uid()
+              AND prof.role IN ('admin', 'manager')
+        )
+    );
 
 DROP POLICY IF EXISTS "Users can insert properties" ON properties;
 CREATE POLICY "Users can insert properties" ON properties

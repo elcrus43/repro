@@ -11,16 +11,16 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function check() {
   const { error: taskError } = await supabase.from('tasks').select('google_event_id').limit(1);
   if (taskError) {
-    console.error('❌ tasks.google_event_id does not exist or failed:', taskError.message);
+    console.error('вќЊ tasks.google_event_id does not exist or failed:', taskError.message);
   } else {
-    console.log('✅ tasks.google_event_id exists');
+    console.log('вњ… tasks.google_event_id exists');
   }
 
   const { error: showingError } = await supabase.from('showings').select('google_event_id').limit(1);
   if (showingError) {
-    console.error('❌ showings.google_event_id does not exist or failed:', showingError.message);
+    console.error('вќЊ showings.google_event_id does not exist or failed:', showingError.message);
   } else {
-    console.log('✅ showings.google_event_id exists');
+    console.log('вњ… showings.google_event_id exists');
   }
 }
 

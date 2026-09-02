@@ -25,6 +25,12 @@ export function LoginPage() {
         setLoading(true);
         setError('');
 
+        if (mode === 'register' && password.length < 8) {
+            setError('Пароль должен содержать минимум 8 символов');
+            setLoading(false);
+            return;
+        }
+
         async function tryAuth() {
             if (mode === 'login') {
                 const { error: err } = await authService.signInWithPassword({ email, password });

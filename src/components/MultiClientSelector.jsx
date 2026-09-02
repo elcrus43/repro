@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, X, ChevronDown, Check } from 'lucide-react';
+import { Search, X, ChevronDown, Check, Plus } from 'lucide-react';
 
 /**
  * MultiClientSelector component for selecting multiple clients.
@@ -8,8 +8,17 @@ import { Search, X, ChevronDown, Check } from 'lucide-react';
  * @param {function} onChange - Callback with new list of selected IDs
  * @param {Object[]} clients - List of all available clients
  * @param {string} placeholder - Placeholder text
+ * @param {function} onCreate - Optional callback to create a new client
+ * @param {string} createLabel - Optional label for creating a new client (e.g. "продавца", "покупателя")
  */
-export function MultiClientSelector({ selectedIds = [], onChange, clients = [], placeholder = 'Выберите клиентов...' }) {
+export function MultiClientSelector({ 
+    selectedIds = [], 
+    onChange, 
+    clients = [], 
+    placeholder = 'Выберите клиентов...',
+    onCreate,
+    createLabel = 'клиента'
+}) {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const ref = useRef(null);
@@ -18,6 +27,8 @@ export function MultiClientSelector({ selectedIds = [], onChange, clients = [], 
         c && ((c.full_name || '').toLowerCase().includes(search.toLowerCase()) ||
         (c.phone && String(c.phone).includes(search)))
     );
+
+    const hasExactMatch = filtered.some(c => (c.full_name || '').trim().toLowerCase() === search.trim().toLowerCase());
 
     const selectedClients = (clients || []).filter(c => c && selectedIds.includes(c.id));
 
@@ -96,7 +107,7 @@ export function MultiClientSelector({ selectedIds = [], onChange, clients = [], 
                         />
                     </div>
                     <div style={{ overflowY: 'auto', flex: 1 }}>
-                        {filtered.length === 0 && (
+                        {filtered.length === 0 && !onCreate && (
                             <div style={{ padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                                 Клиенты не найдены
                             </div>
@@ -129,6 +140,21 @@ export function MultiClientSelector({ selectedIds = [], onChange, clients = [], 
                                 </div>
                             );
                         })}
+                        {onCreate && !hasExactMatch && (
+                            <div
+                                onClick={(e) => { e.stopPropagation(); onCreate(search.trim()); }}
+                                style={{
+                                    padding: '12px', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: 10,
+                                    background: 'var(--primary-light)', color: 'var(--primary)',
+                                    fontWeight: 600, fontSize: 13,
+                                    borderTop: '1px solid var(--border-light)'
+                                }}
+                            >
+                                <Plus size={16} />
+                                <span>Создать {createLabel}{search.trim() ? `: «${search.trim()}»` : ''}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

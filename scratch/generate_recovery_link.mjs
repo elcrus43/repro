@@ -24,7 +24,7 @@ async function run() {
   if (error) {
     console.error('Failed to generate link:', error.message);
   } else {
-    console.log('✓ Success!');
+    console.log('вњ“ Success!');
     console.log('Action Link:', data.action_link);
   }
 }

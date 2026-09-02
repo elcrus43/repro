@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = 'https://hxivaohzugahjyuaahxc.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh4aXZhb2h6dWdhaGp5dWFhaHhjIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjUxNzI4MSwiZXhwIjoyMDg4MDkzMjgxfQ.MBQxRxGfzihFn-aK-7-bGSJ80qoP-jjvU_MxlIH5t8k';
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function run() {
@@ -21,8 +21,8 @@ async function run() {
     realtor_id: showing.realtor_id,
     client_id: showing.client_id,
     property_id: showing.property_id,
-    title: `Показ: ${new Date(showing.showing_date).toLocaleDateString('ru-RU')}`,
-    description: `Планируемый показ объекта. Статус: ${showing.status}`,
+    title: `Р СџР С•Р С”Р В°Р В·: ${new Date(showing.showing_date).toLocaleDateString('ru-RU')}`,
+    description: `Р СџР В»Р В°Р Р…Р С‘РЎР‚РЎС“Р ВµР СРЎвЂ№Р в„– Р С—Р С•Р С”Р В°Р В· Р С•Р В±РЎР‰Р ВµР С”РЎвЂљР В°. Р РЋРЎвЂљР В°РЎвЂљРЎС“РЎРѓ: ${showing.status}`,
     due_date: showing.showing_date,
     status: 'pending',
     created_at: new Date().toISOString(),

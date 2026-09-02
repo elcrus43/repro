@@ -21,12 +21,12 @@ async function run() {
     if (error) {
       const { data: data2, error: error2 } = await supabase.rpc('exec_sql', { sql: sql });
       if (error2) throw error2;
-      console.log('✅ Columns migration applied using sql param');
+      console.log('вњ… Columns migration applied using sql param');
     } else {
-      console.log('✅ Columns migration applied using query param');
+      console.log('вњ… Columns migration applied using query param');
     }
   } catch (err) {
-    console.error('❌ Migration failed:', err.message || err);
+    console.error('вќЊ Migration failed:', err.message || err);
   }
 }
 

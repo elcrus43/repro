@@ -1,7 +1,7 @@
 /**
  * test-garden-full.mjs
- * Тест вставки сада с теми же полями, что создаёт FormPage + supabaseSync
- * Запускаем через exec_sql чтобы обойти RLS и получить точную ошибку БД
+ * РўРµСЃС‚ РІСЃС‚Р°РІРєРё СЃР°РґР° СЃ С‚РµРјРё Р¶Рµ РїРѕР»СЏРјРё, С‡С‚Рѕ СЃРѕР·РґР°С‘С‚ FormPage + supabaseSync
+ * Р—Р°РїСѓСЃРєР°РµРј С‡РµСЂРµР· exec_sql С‡С‚РѕР±С‹ РѕР±РѕР№С‚Рё RLS Рё РїРѕР»СѓС‡РёС‚СЊ С‚РѕС‡РЅСѓСЋ РѕС€РёР±РєСѓ Р‘Р”
  */
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
@@ -14,7 +14,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SU
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function test() {
-  // 1. Сначала проверим все колонки
+  // 1. РЎРЅР°С‡Р°Р»Р° РїСЂРѕРІРµСЂРёРј РІСЃРµ РєРѕР»РѕРЅРєРё
   const colQuery = `
     DO $$
     DECLARE v_cols text;
@@ -26,11 +26,11 @@ async function test() {
   `;
   const { error: colError } = await supabase.rpc('exec_sql', { query: colQuery });
   if (colError) {
-    console.log('📋 Все колонки properties:');
+    console.log('рџ“‹ Р’СЃРµ РєРѕР»РѕРЅРєРё properties:');
     console.log(colError.message.replace('COLS: ', '').split(', ').join('\n  - '));
   }
 
-  // 2. Проверяем конкретные поля которые FormPage отправляет
+  // 2. РџСЂРѕРІРµСЂСЏРµРј РєРѕРЅРєСЂРµС‚РЅС‹Рµ РїРѕР»СЏ РєРѕС‚РѕСЂС‹Рµ FormPage РѕС‚РїСЂР°РІР»СЏРµС‚
   const testFieldsQuery = `
     DO $$
     DECLARE
@@ -62,11 +62,11 @@ async function test() {
   `;
   const { error: fieldsError } = await supabase.rpc('exec_sql', { query: testFieldsQuery });
   if (fieldsError) {
-    console.log('\n✅/❌ Статус полей:');
+    console.log('\nвњ…/вќЊ РЎС‚Р°С‚СѓСЃ РїРѕР»РµР№:');
     console.log(fieldsError.message);
   }
 
-  // 3. Вставляем garden с ПОЛНЫМ набором полей как в FormPage + supabaseSync
+  // 3. Р’СЃС‚Р°РІР»СЏРµРј garden СЃ РџРћР›РќР«Рњ РЅР°Р±РѕСЂРѕРј РїРѕР»РµР№ РєР°Рє РІ FormPage + supabaseSync
   const insertQuery = `
     DO $$
     DECLARE v_realtor_id uuid;
@@ -85,7 +85,7 @@ async function test() {
         mortgage_available, matcapital_available, encumbrance, minor_owners,
         docs_ready, furniture
       ) VALUES (
-        gen_random_uuid(), 'sale', 'garden', 'Киров', 500000, v_realtor_id, 'Тест',
+        gen_random_uuid(), 'sale', 'garden', 'РљРёСЂРѕРІ', 500000, v_realtor_id, 'РўРµСЃС‚',
         9, 2020, null, null, null, null, '{}',
         0, '{}', null, '[]',
         1, 20, 0, 0, 1,
@@ -100,9 +100,9 @@ async function test() {
   const { error: insertError } = await supabase.rpc('exec_sql', { query: insertQuery });
   if (insertError) {
     if (insertError.message.includes('SUCCESS')) {
-      console.log('\n✅ Вставка сада с полными полями: УСПЕХ');
+      console.log('\nвњ… Р’СЃС‚Р°РІРєР° СЃР°РґР° СЃ РїРѕР»РЅС‹РјРё РїРѕР»СЏРјРё: РЈРЎРџР•РҐ');
     } else {
-      console.log('\n❌ Вставка сада с полными полями: ОШИБКА');
+      console.log('\nвќЊ Р’СЃС‚Р°РІРєР° СЃР°РґР° СЃ РїРѕР»РЅС‹РјРё РїРѕР»СЏРјРё: РћРЁРР‘РљРђ');
       console.log(insertError.message);
     }
   }
