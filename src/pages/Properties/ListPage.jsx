@@ -631,7 +631,7 @@ export function ListPage() {
                                                             onClick={() => navigate(`/properties/${prop.id}`)}
                                                             style={{ 
                                                                 display: 'flex', gap: 16, padding: '16px', alignItems: 'center', 
-                                                                border: isSelected ? '2px solid var(--primary)' : '1.5px solid rgba(59,130,246,0.18)', 
+                                                                border: '1.5px solid rgba(59,130,246,0.18)', 
                                                                 boxShadow: '0 4px 16px rgba(59,130,246,0.06)',
                                                                 background: 'rgba(239,246,255,0.55)', borderRadius: 24,
                                                                 position: 'relative'
@@ -651,31 +651,6 @@ export function ListPage() {
                                                                         <div style={{ fontSize: 8, fontWeight: 600, marginTop: 4 }}>Нет фото</div>
                                                                     </div>
                                                                 )}
-                                                                {/* Selection Checkbox */}
-                                                                <div 
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleToggleSelect(prop.id);
-                                                                    }}
-                                                                    style={{ 
-                                                                        position: 'absolute', 
-                                                                        bottom: 8, 
-                                                                        right: 8, 
-                                                                        zIndex: 10,
-                                                                        width: 22, 
-                                                                        height: 22, 
-                                                                        borderRadius: 6,
-                                                                        background: isSelected ? 'var(--primary)' : 'rgba(255,255,255,0.8)',
-                                                                        border: '2px solid ' + (isSelected ? 'var(--primary)' : '#9ca3af'),
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        cursor: 'pointer',
-                                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.1)'
-                                                                    }}
-                                                                >
-                                                                    {isSelected && <Check size={14} color="white" strokeWidth={3} />}
-                                                                </div>
                                                             </div>
 
                                                             {/* PHONE ICON */}
