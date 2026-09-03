@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -1103,7 +1103,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             toast.error('Укажите название расхода');
             return;
         }
-        const cleanAmount = Number(quickExpense.amount.replace(/\D/g, '')) || 0;
+        const cleanAmount = Number(String(quickExpense.amount).replace(/\D/g, '')) || 0;
         if (cleanAmount <= 0) {
             toast.error('Укажите корректную сумму');
             return;
@@ -1112,14 +1112,23 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
         const currentExpenses = parseExpenses(deal.expenses);
         const newExp = {
             id: nanoid(),
-            title: finalTitle,
+            title: finalTitle.trim(),
             amount: cleanAmount,
             payer: quickExpense.payer
         };
 
+        const updatedExpenses = [...currentExpenses, newExp];
+        const newCommission = updatedExpenses.reduce((sum, e) => {
+            if (e.title === 'Комиссия') {
+                return sum + (Number(e.amount) || 0);
+            }
+            return sum;
+        }, 0);
+
         const updatedDeal = {
             ...deal,
-            expenses: [...currentExpenses, newExp]
+            expenses: updatedExpenses,
+            ...(newCommission > 0 ? { commission: newCommission } : {})
         };
 
         try {
@@ -1497,6 +1506,151 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         accentBg="rgba(0,82,255,0.04)"
                         label="Покупатель"
                     />
+                </div>
+            )}
+
+            {/* ── Inline Quick Expense Form ── */}
+            {showQuickExpense && (
+                <div style={{
+                    padding: '14px 16px',
+                    borderRadius: 16,
+                    background: quickExpense.payer === 'seller' ? 'rgba(139,92,246,0.07)' : 'rgba(0,82,255,0.06)',
+                    border: `1.5px solid ${quickExpense.payer === 'seller' ? 'rgba(139,92,246,0.3)' : 'rgba(0,82,255,0.3)'}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                    animation: 'fadeIn 0.2s ease'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                background: quickExpense.payer === 'seller' ? '#8b5cf6' : '#0052ff'
+                            }} />
+                            <span style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: quickExpense.payer === 'seller' ? '#8b5cf6' : '#0052ff',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em'
+                            }}>
+                                Расход ({quickExpense.payer === 'seller' ? 'Продавец' : 'Покупатель'})
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowQuickExpense(false);
+                                setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
+                            }}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                cursor: 'pointer',
+                                padding: 2,
+                                display: 'flex',
+                                alignItems: 'center'
+                            }}
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ flex: 2, minWidth: 160, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <select
+                                className="form-input"
+                                style={{
+                                    height: 38,
+                                    fontSize: 13,
+                                    padding: '0 8px',
+                                    borderRadius: 10,
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border-light)'
+                                }}
+                                value={quickExpense.title}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    const selectedItem = (state.pricelist || []).find(p => p.name === val);
+                                    let amt = selectedItem ? selectedItem.price : '';
+                                    if (selectedItem?.name === 'Сделка/СЭР') {
+                                        const dealPrice = Number(deal.price) || 0;
+                                        amt = Math.min(20000, Math.round(dealPrice * 0.003));
+                                    }
+                                    setQuickExpense(prev => ({
+                                        ...prev,
+                                        title: val,
+                                        amount: amt ? formatPriceInput(String(amt)) : prev.amount
+                                    }));
+                                }}
+                            >
+                                <option value="">-- Выберите расход --</option>
+                                {(state.pricelist || []).map(p => (
+                                    <option key={p.id || p.name} value={p.name}>
+                                        {p.name} {p.price ? `(${Number(p.price).toLocaleString()} ₽)` : ''}
+                                    </option>
+                                ))}
+                                <option value="Другое">Другое (свой вариант)</option>
+                            </select>
+
+                            {quickExpense.title === 'Другое' && (
+                                <input
+                                    className="form-input"
+                                    style={{
+                                        height: 38,
+                                        fontSize: 13,
+                                        borderRadius: 10,
+                                        background: 'var(--surface)',
+                                        border: '1px solid var(--border-light)'
+                                    }}
+                                    placeholder="Название расхода..."
+                                    value={quickExpense.customTitle}
+                                    onChange={(e) => setQuickExpense(prev => ({ ...prev, customTitle: e.target.value }))}
+                                />
+                            )}
+                        </div>
+
+                        <div style={{ flex: 1.2, minWidth: 110 }}>
+                            <input
+                                className="form-input"
+                                style={{
+                                    height: 38,
+                                    fontSize: 13,
+                                    borderRadius: 10,
+                                    background: 'var(--surface)',
+                                    border: '1px solid var(--border-light)'
+                                }}
+                                placeholder="Сумма (₽)"
+                                value={quickExpense.amount}
+                                onChange={(e) => setQuickExpense(prev => ({ ...prev, amount: formatPriceInput(e.target.value) }))}
+                            />
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleSaveQuickExpense}
+                            style={{
+                                height: 38,
+                                padding: '0 16px',
+                                borderRadius: 10,
+                                border: 'none',
+                                background: quickExpense.payer === 'seller' ? '#8b5cf6' : 'var(--primary)',
+                                color: '#ffffff',
+                                fontSize: 13,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                flexShrink: 0
+                            }}
+                        >
+                            <Check size={15} /> Сохранить
+                        </button>
+                    </div>
                 </div>
             )}
 
