@@ -150,8 +150,8 @@ export function DetailsPage() {
 
     const matchStatusLabel = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ', showing_done: 'Показ проведён' };
     const matchStatusColor = { new: '#3b82f6', viewed: '#64748b', showing_planned: '#f59e0b', showing_done: '#10b981' };
-    const dealStatusLabel  = { active: 'Активна', closed: 'Закрыта', cancelled: 'Отменена' };
-    const dealStatusColor  = { active: 'var(--primary)', closed: '#10b981', cancelled: 'var(--danger)' };
+    const dealStatusLabel  = { active: 'Активная', closed: 'Закрытая' };
+    const dealStatusColor  = { active: 'var(--primary)', closed: '#10b981' };
 
     const eventTypeLabels = {
         showing: 'Показ',

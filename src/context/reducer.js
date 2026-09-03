@@ -225,14 +225,74 @@ export function reducer(state, action) {
       return { ...state, pricelist: state.pricelist.filter(i => i.id !== action.id) };
 
     /* ── Сделки ─────────────────────────────────────────────────────── */
-    case 'ADD_DEAL':
-      return { ...state, deals: [...state.deals, { ...action.deal, status: action.deal.status || 'active' }] };
+    case 'ADD_DEAL': {
+      const newDeal = { ...action.deal, status: action.deal.status || 'active' };
+      const properties = action.deal.property_id
+        ? state.properties.map(p =>
+            p.id === action.deal.property_id
+              ? { ...p, status: 'deal', updated_at: newDeal.created_at || new Date().toISOString() }
+              : p
+          )
+        : state.properties;
+      return { ...state, deals: [...state.deals, newDeal], properties };
+    }
 
-    case 'UPDATE_DEAL':
-      return { ...state, deals: state.deals.map(d => d.id === action.deal.id ? action.deal : d) };
+    case 'UPDATE_DEAL': {
+      const incoming = action.deal;
+      const prev = state.deals.find(d => d.id === incoming.id);
+      const propertyIdNow = incoming.property_id;
+      const propertyIdPrev = prev ? prev.property_id : null;
+      const propertyChanges = {};
+      const nowTs = incoming.updated_at || new Date().toISOString();
 
-    case 'DELETE_DEAL':
-      return { ...state, deals: state.deals.filter(d => d.id !== action.id) };
+      if (prev && prev.status !== incoming.status) {
+        if (propertyIdNow) propertyChanges[propertyIdNow] = incoming.status === 'closed' ? 'sold' : 'deal';
+      } else if (!prev && propertyIdNow) {
+        propertyChanges[propertyIdNow] = incoming.status === 'closed' ? 'sold' : 'deal';
+      }
+
+      if (propertyIdPrev && propertyIdPrev !== propertyIdNow) {
+        const hasOtherActiveDeal = state.deals.some(
+          d => d.id !== incoming.id && d.property_id === propertyIdPrev && d.status !== 'closed'
+        );
+        if (!hasOtherActiveDeal) propertyChanges[propertyIdPrev] = 'meeting';
+      }
+
+      const properties = Object.keys(propertyChanges).length === 0
+        ? state.properties
+        : state.properties.map(p =>
+            propertyChanges[p.id] ? { ...p, status: propertyChanges[p.id], updated_at: nowTs } : p
+          );
+
+      return {
+        ...state,
+        deals: state.deals.map(d => d.id === incoming.id ? incoming : d),
+        ...(properties === state.properties ? {} : { properties }),
+      };
+    }
+
+    case 'DELETE_DEAL': {
+      const target = state.deals.find(d => d.id === action.id);
+      const targetPropertyId = target ? target.property_id : null;
+      const properties = targetPropertyId
+        ? (() => {
+            const hasOtherActiveDeal = state.deals.some(
+              d => d.id !== action.id && d.property_id === targetPropertyId && d.status !== 'closed'
+            );
+            if (hasOtherActiveDeal) return state.properties;
+            return state.properties.map(p =>
+              p.id === targetPropertyId
+                ? { ...p, status: 'meeting', updated_at: new Date().toISOString() }
+                : p
+            );
+          })()
+        : state.properties;
+      return {
+        ...state,
+        deals: state.deals.filter(d => d.id !== action.id),
+        ...(properties === state.properties ? {} : { properties }),
+      };
+    }
 
     /* ── История цен ──────────────────────────────────────────── */
     case 'ADD_PRICE_HISTORY':

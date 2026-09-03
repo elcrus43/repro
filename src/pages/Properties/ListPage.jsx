@@ -82,9 +82,9 @@ export function ListPage() {
         exportToCSV(filteredProperties, 'properties_export', headers);
     };
 
-    // Closed statuses = deal completed
-    const CLOSED_STATUSES = ['deal'];
-    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit'];
+    // Closed statuses = deal completed (sold)
+    const CLOSED_STATUSES = ['sold'];
+    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit', 'deal'];
 
     const filteredProperties = useMemo(() => {
         return state.properties
@@ -132,8 +132,8 @@ export function ListPage() {
     }, [filteredProperties]);
 
     const statusOrder = useMemo(() => {
-        if (filter === 'closed') return ['deal'];
-        return ['deposit', 'advertising', 'agreement', 'meeting'];
+        if (filter === 'closed') return ['sold'];
+        return ['deal', 'deposit', 'advertising', 'agreement', 'meeting'];
     }, [filter]);
 
     const toggleStatus = (status) => {
@@ -148,7 +148,8 @@ export function ListPage() {
         agreement: '#f59e0b',
         advertising: '#8b5cf6',
         deposit: '#10b981',
-        deal: '#22c55e'
+        deal: '#22c55e',
+        sold: '#16a34a'
     };
 
     const handleToggleSelect = (id) => {

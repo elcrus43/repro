@@ -590,7 +590,21 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         // expenses must be JSON string for Neon jsonb column (raw array breaks)
         if (Array.isArray(dealData.expenses)) dealData.expenses = JSON.stringify(dealData.expenses);
         Object.keys(dealData).forEach(key => { if (dealData[key] === undefined) delete dealData[key]; });
-        result = await neonDb.insert('deals', dealData);
+
+        const isActive = (dealData.status || 'active') !== 'closed';
+        const propStatus = isActive ? 'deal' : 'sold';
+        const propertyIdForStatus = dealData.property_id;
+        const propertyUpdatedAt = dealData.created_at || new Date().toISOString();
+        const dealResult = await neonDb.insert('deals', dealData);
+        if (propertyIdForStatus && !dealResult?.error) {
+          const propResult = await neonDb.update('properties', propertyIdForStatus, {
+            status: propStatus,
+            updated_at: propertyUpdatedAt,
+          });
+          result = propResult?.error ? propResult : dealResult;
+        } else {
+          result = dealResult;
+        }
         break;
       }
 

@@ -265,16 +265,14 @@ export function DealsPage() {
     }, [newDeal.property_id, state.properties, state.clients, user]);
 
     const stats = useMemo(() => {
-        const activeDeals = filteredByPeriod.filter(d => d.status === 'active');
+        const activeDeals = filteredByPeriod.filter(d => d.status === 'active' || !d.status);
         const closedDeals = filteredByPeriod.filter(d => d.status === 'closed');
-        const cancelledDeals = filteredByPeriod.filter(d => d.status === 'cancelled');
         const totalCommission = closedDeals.reduce((sum, d) => sum + (Number(d.commission) || 0), 0);
         const activeVolume = activeDeals.reduce((sum, d) => sum + (Number(d.price) || 0), 0);
         const closedVolume = closedDeals.reduce((sum, d) => sum + (Number(d.price) || 0), 0);
         return { 
             activeCount: activeDeals.length, 
             closedCount: closedDeals.length,
-            cancelledCount: cancelledDeals.length,
             totalCommission, 
             activeVolume,
             closedVolume,
@@ -907,9 +905,8 @@ export function DealsPage() {
                                 value={newDeal.status || 'active'}
                                 onChange={e => handleFieldChange('status', e.target.value)}
                             >
-                                <option value="active">В работе</option>
-                                <option value="closed">Завершена (Успешно)</option>
-                                <option value="cancelled">Отменена</option>
+                                <option value="active">Активная</option>
+                                <option value="closed">Закрытая</option>
                             </select>
                         </div>
 
@@ -1136,9 +1133,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
     };
 
     const statusConfig = {
-        active:    { label: 'В работе', color: 'var(--primary)',    bg: 'var(--primary-light)' },
-        closed:    { label: 'Закрыта',  color: '#10b981',           bg: 'rgba(16,185,129,0.12)' },
-        cancelled: { label: 'Отменена', color: 'var(--danger)',     bg: 'var(--danger-light)' },
+        active: { label: 'Активная', color: 'var(--primary)', bg: 'var(--primary-light)' },
+        closed: { label: 'Закрытая', color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
     };
     const cfg = statusConfig[deal.status] || statusConfig.active;
 
@@ -1384,8 +1380,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                         padding: '8px 12px',
                                         borderRadius: 10,
                                         border: 'none',
-                                        background: deal.status === 'active' ? 'var(--primary-light)' : 'transparent',
-                                        color: deal.status === 'active' ? 'var(--primary)' : 'var(--text)',
+                                        background: (deal.status === 'active' || !deal.status) ? 'var(--primary-light)' : 'transparent',
+                                        color: (deal.status === 'active' || !deal.status) ? 'var(--primary)' : 'var(--text)',
                                         fontSize: 12,
                                         fontWeight: 500,
                                         cursor: 'pointer',
@@ -1393,7 +1389,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                     }}
                                 >
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />
-                                    <span>В работе</span>
+                                    <span>Активная</span>
                                 </button>
 
                                 <button
@@ -1418,32 +1414,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                     }}
                                 >
                                     <CheckCircle size={14} color="#10b981" />
-                                    <span>Завершить (Успешно)</span>
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        updateStatus(deal, 'cancelled');
-                                        setShowStatusMenu(false);
-                                    }}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        padding: '8px 12px',
-                                        borderRadius: 10,
-                                        border: 'none',
-                                        background: deal.status === 'cancelled' ? 'var(--danger-light)' : 'transparent',
-                                        color: deal.status === 'cancelled' ? 'var(--danger)' : 'var(--text)',
-                                        fontSize: 12,
-                                        fontWeight: 500,
-                                        cursor: 'pointer',
-                                        textAlign: 'left'
-                                    }}
-                                >
-                                    <XCircle size={14} color="var(--danger)" />
-                                    <span>Отменить сделку</span>
+                                    <span>Закрытая</span>
                                 </button>
                             </div>
                         )}
