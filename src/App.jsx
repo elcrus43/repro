@@ -4,7 +4,7 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
-import { Building2, Users, Sparkles, FileCheck, UserCircle, History, Bell, ClipboardList } from 'lucide-react';
+import { Building2, Users, Sparkles, FileCheck, UserCircle, History, ClipboardList } from 'lucide-react';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -36,7 +36,6 @@ const ProfilePage = lazy(() => import('./pages/Profile/ProfilePage'));
 const EstimationPage = lazy(() => import('./pages/Properties/EstimationPage'));
 const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
 const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
-const RemindersPage = lazy(() => import('./pages/Tasks/RemindersPage'));
 const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m => ({ default: m.SelectionFormPage })));
 const PublicChatPage = lazy(() => import('./pages/Messaging/PublicChatPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
@@ -51,23 +50,12 @@ function BottomNav() {
   const newMatchCount = state.matches.filter(m => m.realtor_id === state.currentUser?.id && m.status === 'new').length;
   const isAdminUser = state.currentUser?.role === 'admin';
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
-  const overdueTasksCount = state.tasks.filter(t => {
-    const toLocalDateStr = (dateOrStr) => {
-      if (!dateOrStr) return '';
-      const d = new Date(dateOrStr);
-      if (isNaN(d.getTime())) return '';
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
-    const today = toLocalDateStr(new Date());
-    return toLocalDateStr(t.due_date) < today && t.status !== 'done' && t.realtor_id === state.currentUser?.id;
-  }).length;
 
   const tabs = [
     { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
     { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
     { path: '/history', icon: <History size={22} />, label: 'История' },
     { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
-    { path: '/reminders', icon: <Bell size={22} />, label: 'Задачи', badge: overdueTasksCount > 0 },
     { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
   ];
 
@@ -318,7 +306,6 @@ function AppRoutes() {
           <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
           <Route path="/tasks/meeting-owner" element={<RequireAuth><MeetingOwnerFormPage /></RequireAuth>} />
           <Route path="/tasks/call" element={<RequireAuth><CallFormPage /></RequireAuth>} />
-          <Route path="/reminders" element={<RequireAuth><RemindersPage /></RequireAuth>} />
 
           {/* Messaging */}
           <Route path="/templates" element={<RequireAuth><TemplatesPage /></RequireAuth>} />
