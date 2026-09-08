@@ -1,13 +1,14 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { formatNumber } from '../../utils/format';
 import { 
     Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star, Store, GraduationCap, Bus, User, Handshake, Copy, SlidersHorizontal, ExternalLink
+    TrendingDown, Star, User, Handshake, Copy, SlidersHorizontal, ExternalLink, Check
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -682,14 +683,23 @@ function NewBuildsSelection({ currentProp, allProperties, onNavigate }) {
 export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
+    const { toast } = useToastContext();
     const [showBannerGen, setShowBannerGen] = useState(false);
     const [showPortfolio, setShowPortfolio] = useState(false);
     const [showAdGen, setShowAdGen] = useState(false);
     const [showCma, setShowCma] = useState(false);
     const [showEgrn, setShowEgrn] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
-    const [mapFilter, setMapFilter] = useState('address');
     const [coverSet, setCoverSet] = useState(false);
+    const [copiedField, setCopiedField] = useState(null);
+
+    const copyToClipboard = (text, fieldName) => {
+        if (!text) return;
+        navigator.clipboard.writeText(text);
+        setCopiedField(fieldName);
+        if (toast?.success) toast.success('Скопировано в буфер');
+        setTimeout(() => setCopiedField(null), 2000);
+    };
 
     function handleSetCover(index) {
         if (index === 0) return;
@@ -820,76 +830,199 @@ export function DetailsPage() {
             </div>
 
             <div className="page-content" style={{ padding: '24px 20px 120px' }}>
-                {/* Header Card — Premium Open Design */}
-                <div className="card" style={{ padding: '28px', display: 'flex', flexDirection: 'column', gap: 24, border: 'none', boxShadow: '0 12px 40px rgba(0,0,0,0.04)', borderRadius: 36, background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-                        <div className="card-clickable" style={{ width: 130, height: 130, borderRadius: 28, overflow: 'hidden', flexShrink: 0, boxShadow: '0 15px 30px rgba(0,0,0,0.12)', border: '1px solid rgba(0,0,0,0.02)' }} onClick={() => setShowGallery(true)}>
+                {/* Header Card — Modern Redesign */}
+                <div className="card" style={{ 
+                    padding: '24px', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    gap: 20, 
+                    border: 'none', 
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
+                    borderRadius: 32, 
+                    background: 'var(--surface)' 
+                }}>
+                    {/* Top Row: Photo + Main Info */}
+                    <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start' }}>
+                        {/* Photo Thumbnail */}
+                        <div 
+                            className="card-clickable" 
+                            style={{ 
+                                width: 115, 
+                                height: 115, 
+                                borderRadius: 20, 
+                                overflow: 'hidden', 
+                                flexShrink: 0, 
+                                boxShadow: '0 8px 20px rgba(0,0,0,0.08)', 
+                                border: '1px solid rgba(0,0,0,0.04)',
+                                position: 'relative'
+                            }} 
+                            onClick={() => setShowGallery(true)}
+                            title="Открыть галерею фото"
+                        >
                             <img 
-                                src={prop.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=200&q=80'} 
+                                src={prop.images?.[0] || 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=240&q=80'} 
                                 alt="Object" 
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                             />
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <InlinePriceEditor
-                                        prop={prop}
-                                        onSave={(propId, newPrice) =>
-                                            dispatch({ type: 'PATCH_PROPERTY', patch: { id: propId, price: newPrice } })
-                                        }
-                                    />
-                                    {prop.area_total > 0 && (
-                                        <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 200, marginTop: 4, opacity: 0.6 }}>
-                                            {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
-                                        </div>
-                                    )}
+                            {prop.images && prop.images.length > 0 && (
+                                <div style={{
+                                    position: 'absolute',
+                                    bottom: 6,
+                                    right: 6,
+                                    background: 'rgba(0,0,0,0.65)',
+                                    color: '#fff',
+                                    padding: '2px 6px',
+                                    borderRadius: 6,
+                                    fontSize: 10,
+                                    fontWeight: 500,
+                                    backdropFilter: 'blur(4px)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 3
+                                }}>
+                                    <ImageIcon size={10} /> {prop.images.length}
                                 </div>
+                            )}
+                        </div>
+
+                        {/* Price & Address Details */}
+                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {/* Price */}
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                                <InlinePriceEditor
+                                    prop={prop}
+                                    onSave={(propId, newPrice) =>
+                                        dispatch({ type: 'PATCH_PROPERTY', patch: { id: propId, price: newPrice } })
+                                    }
+                                />
+                                {prop.area_total > 0 && (
+                                    <span style={{ 
+                                        fontSize: 12, 
+                                        color: 'var(--text-secondary)', 
+                                        fontWeight: 400,
+                                        background: 'var(--bg-light)',
+                                        padding: '2px 8px',
+                                        borderRadius: 8
+                                    }}>
+                                        {formatNumber(Math.round(prop.price / prop.area_total))} ₽/м²
+                                    </span>
+                                )}
                             </div>
-                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 400, marginTop: 12, color: 'var(--text)', lineHeight: 1.2 }}>
-                                {(prop.address || prop.city || '—').split(', кв.')[0].split(' кв.')[0]}
+
+                            {/* Address */}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+                                <div className="font-oswald" style={{ 
+                                    fontSize: 16, 
+                                    fontWeight: 400, 
+                                    color: 'var(--text)', 
+                                    lineHeight: 1.25,
+                                    wordBreak: 'break-word'
+                                }}>
+                                    {prop.address || prop.city || '—'}
+                                </div>
+                                {prop.address && (
+                                    <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(prop.address, 'address')}
+                                        style={{ 
+                                            background: 'none', 
+                                            border: 'none', 
+                                            cursor: 'pointer', 
+                                            color: copiedField === 'address' ? 'var(--success)' : 'var(--text-muted)', 
+                                            padding: 2, 
+                                            flexShrink: 0 
+                                        }}
+                                        title="Скопировать адрес"
+                                    >
+                                        {copiedField === 'address' ? <Check size={14} /> : <Copy size={14} />}
+                                    </button>
+                                )}
                             </div>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 6, fontWeight: 200, opacity: 0.7 }}>
+
+                            {/* Subtitle location / complex */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                {prop.city && <span>{prop.city}</span>}
+                                {prop.district && <span>· р-н {prop.district}</span>}
+                                {prop.residential_complex && <span>· ЖК «{prop.residential_complex}»</span>}
+                                {prop.address && (
+                                    <a
+                                        href={`https://yandex.ru/maps/?text=${encodeURIComponent((prop.city || '') + ' ' + prop.address)}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 3,
+                                            color: 'var(--primary)',
+                                            textDecoration: 'none',
+                                            fontWeight: 500,
+                                            marginLeft: 'auto'
+                                        }}
+                                        title="Открыть в Яндекс Картах"
+                                    >
+                                        <MapPin size={12} />
+                                        <span>На карте</span>
+                                        <ExternalLink size={10} />
+                                    </a>
+                                )}
+                            </div>
+
+                            {/* Quick specs chips */}
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
                                 {(() => {
                                     const type = prop.property_type;
-                                    const parts = [];
+                                    const specs = [];
                                     if (type === 'apartment') {
-                                        parts.push(prop.rooms === 0 ? 'Студия' : `${prop.rooms}-к. кв.`);
+                                        specs.push(prop.rooms === 0 ? 'Студия' : `${prop.rooms}-комн.`);
                                     } else if (type === 'room') {
-                                        parts.push('Комната');
+                                        specs.push('Комната');
                                     } else if (type === 'house') {
-                                        parts.push(prop.rooms > 0 ? `${prop.rooms}-к. дом` : 'Дом');
+                                        specs.push(prop.rooms > 0 ? `${prop.rooms}-комн. дом` : 'Дом');
                                     }
-                                    
-                                    if (prop.area_total) {
-                                        parts.push(`${prop.area_total} м²`);
-                                    }
-                                    
+                                    if (prop.area_total) specs.push(`${prop.area_total} м²`);
                                     if (['apartment', 'room', 'commercial'].includes(type) && prop.floor) {
-                                        parts.push(`${prop.floor}/${prop.floors_total || '—'} эт.`);
+                                        specs.push(`${prop.floor}/${prop.floors_total || '—'} эт.`);
                                     } else if (type === 'house' && prop.floors_total) {
-                                        parts.push(`${prop.floors_total} эт.`);
+                                        specs.push(`${prop.floors_total} эт.`);
                                     }
-                                    
-                                    parts.push(PROPERTY_TYPES[type] || 'Объект');
-                                    return parts.join(' · ');
+                                    if (PROPERTY_TYPES[type]) specs.push(PROPERTY_TYPES[type]);
+
+                                    return specs.map((spec, i) => (
+                                        <span key={i} style={{
+                                            fontSize: 11,
+                                            fontWeight: 500,
+                                            color: 'var(--text-secondary)',
+                                            background: 'var(--bg-light)',
+                                            padding: '2px 8px',
+                                            borderRadius: 8
+                                        }}>
+                                            {spec}
+                                        </span>
+                                    ));
                                 })()}
                             </div>
                         </div>
                     </div>
 
-                    {/* Quick Stage Switcher */}
+                    {/* Quick Stage Switcher — sleek modern segmented pills */}
                     {(() => {
                         const STAGES = [
-                            { id: 'meeting',     label: '\u0412\u0441\u0442\u0440\u0435\u0447\u0430',    color: '#3b82f6' },
-                            { id: 'agreement',   label: '\u0410\u0414',         color: '#f59e0b' },
-                            { id: 'advertising', label: '\u0420\u0435\u043a\u043b\u0430\u043c\u0430',   color: '#8b5cf6' },
-                            { id: 'deposit',     label: '\u0417\u0430\u0434\u0430\u0442\u043e\u043a',   color: '#10b981' },
-                            { id: 'deal',        label: '\u0421\u0434\u0435\u043b\u043a\u0430',     color: '#22c55e' },
+                            { id: 'meeting',     label: 'Встреча',    color: '#3b82f6' },
+                            { id: 'agreement',   label: 'АД',         color: '#f59e0b' },
+                            { id: 'advertising', label: 'Реклама',   color: '#8b5cf6' },
+                            { id: 'deposit',     label: 'Задаток',   color: '#10b981' },
+                            { id: 'deal',        label: 'Сделка',     color: '#22c55e' },
                         ];
                         const cur = prop.status;
                         return (
-                            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', scrollbarWidth: 'none' }}>
+                            <div style={{ 
+                                display: 'flex', 
+                                gap: 6, 
+                                overflowX: 'auto', 
+                                scrollbarWidth: 'none',
+                                padding: '2px 0',
+                                alignItems: 'center'
+                            }}>
                                 {STAGES.map((s, idx) => {
                                     const isActive = cur === s.id;
                                     const isPast = STAGES.findIndex(x => x.id === cur) > idx;
@@ -901,15 +1034,18 @@ export function DetailsPage() {
                                                 property: { ...prop, status: s.id }
                                             })}
                                             style={{
-                                                padding: '2px 14px', borderRadius: 20,
-                                                border: '1px solid #000000',
+                                                padding: '4px 12px',
+                                                borderRadius: 12,
+                                                border: isActive ? `1.5px solid ${s.color}` : '1px solid var(--border)',
                                                 fontSize: 12,
-                                                fontFamily: "'Oswald', sans-serif", fontWeight: isActive ? 600 : 300,
-                                                background: isActive ? `${s.color}44` : isPast ? `${s.color}15` : 'var(--bg-light)',
-                                                color: '#000000',
-                                                boxShadow: isActive ? `0 4px 12px ${s.color}22` : 'none',
-                                                opacity: isActive ? 1 : 0.75,
-                                                cursor: 'pointer'
+                                                fontFamily: "'Oswald', sans-serif",
+                                                fontWeight: isActive ? 500 : 300,
+                                                background: isActive ? `${s.color}18` : isPast ? `${s.color}08` : 'var(--surface)',
+                                                color: isActive ? s.color : 'var(--text-secondary)',
+                                                boxShadow: isActive ? `0 2px 8px ${s.color}25` : 'none',
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                                transition: 'all 0.15s ease'
                                             }}
                                         >
                                             {s.label}
@@ -920,100 +1056,244 @@ export function DetailsPage() {
                         );
                     })()}
 
-                    <button
-                        className="card-clickable"
-                        style={{ 
-                            height: 48, borderRadius: 14, border: '1.5px solid #000000',
-                            background: 'var(--primary)', color: 'white', fontWeight: 500, fontSize: 15,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            padding: '0 16px',
-                            width: '100%',
-                            maxWidth: 360,
-                            fontFamily: "'Oswald', sans-serif"
-                        }}
-                        onClick={handleCreateDeal}
-                    >
-                        <Handshake size={18} /> Создать сделку
-                    </button>
+                    {/* Action Controls: Modern & Refined */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <button
+                            className="card-clickable"
+                            style={{ 
+                                height: 42, 
+                                borderRadius: 12, 
+                                border: 'none',
+                                background: 'var(--primary)', 
+                                color: '#ffffff', 
+                                fontWeight: 500, 
+                                fontSize: 14,
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                gap: 8,
+                                padding: '0 20px',
+                                width: '100%',
+                                boxShadow: '0 4px 14px rgba(0, 82, 255, 0.25)',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                                fontFamily: "'Oswald', sans-serif",
+                                letterSpacing: '0.02em'
+                            }}
+                            onClick={handleCreateDeal}
+                        >
+                            <Handshake size={17} />
+                            <span>Создать сделку</span>
+                        </button>
 
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(2, 1fr)',
-                        gap: '8px 12px',
-                        justifyContent: 'start',
-                        width: '100%',
-                        maxWidth: 360
-                    }}>
+                        {/* Marketing & Presentation Tools */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(4, 1fr)',
+                            gap: 8,
+                            width: '100%'
+                        }}>
+                            <button
+                                className="card-clickable"
+                                style={{ 
+                                    height: 38, 
+                                    borderRadius: 10, 
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)', 
+                                    color: 'var(--text)', 
+                                    fontWeight: 400, 
+                                    fontSize: 12,
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    gap: 6,
+                                    padding: '0 8px',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setShowAdGen(true)}
+                                title="Генератор текста объявления"
+                            >
+                                <Sparkles size={14} style={{ color: 'var(--primary)' }} />
+                                <span>Объявление</span>
+                            </button>
+
+                            <button
+                                className="card-clickable"
+                                style={{ 
+                                    height: 38, 
+                                    borderRadius: 10, 
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)', 
+                                    color: 'var(--text)', 
+                                    fontWeight: 400, 
+                                    fontSize: 12,
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    gap: 6,
+                                    padding: '0 8px',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setShowBannerGen(true)}
+                                title="Создать баннер для соцсетей"
+                            >
+                                <ImageIcon size={14} style={{ color: '#f59e0b' }} />
+                                <span>Баннер</span>
+                            </button>
+
+                            <button
+                                className="card-clickable"
+                                style={{ 
+                                    height: 38, 
+                                    borderRadius: 10, 
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)', 
+                                    color: 'var(--text)', 
+                                    fontWeight: 400, 
+                                    fontSize: 12,
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    gap: 6,
+                                    padding: '0 8px',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setShowPortfolio(true)}
+                                title="Портфолио и презентация объекта"
+                            >
+                                <Briefcase size={14} style={{ color: '#8b5cf6' }} />
+                                <span>Портфолио</span>
+                            </button>
+
+                            <button
+                                className="card-clickable"
+                                style={{ 
+                                    height: 38, 
+                                    borderRadius: 10, 
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)', 
+                                    color: 'var(--text)', 
+                                    fontWeight: 400, 
+                                    fontSize: 12,
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    gap: 6,
+                                    padding: '0 8px',
+                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease'
+                                }}
+                                onClick={() => setShowCma(true)}
+                                title="Сравнительный маркетинговый анализ (СМА)"
+                            >
+                                <TrendingDown size={14} style={{ color: '#10b981' }} />
+                                <span>СМА</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ── ДОКУМЕНТЫ И СКАНЕР ЕГРН (ОТДЕЛЬНЫЙ БЛОК) ── */}
+                <div className="card" style={{ 
+                    padding: '20px 24px', 
+                    border: '1px solid rgba(99, 102, 241, 0.15)', 
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
+                    borderRadius: 28, 
+                    background: 'linear-gradient(135deg, var(--surface) 0%, rgba(99, 102, 241, 0.04) 100%)' 
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ 
+                                width: 40, height: 40, borderRadius: 12, 
+                                background: 'rgba(99, 102, 241, 0.12)', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#6366f1' 
+                            }}>
+                                <FileText size={20} />
+                            </div>
+                            <div>
+                                <div className="font-oswald" style={{ fontWeight: 400, fontSize: 17, letterSpacing: '0.01em', color: 'var(--text)' }}>
+                                    Выписка ЕГРН и кадастр
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                    Распознавание параметров и сверка собственников
+                                </div>
+                            </div>
+                        </div>
+
                         <button
-                            className="card-clickable bordered-action-button"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
-                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
-                            onClick={() => setShowBannerGen(true)}
-                        >
-                            <ImageIcon size={18} /> Баннер
-                        </button>
-                        <button
-                            className="card-clickable bordered-action-button"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
-                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
-                            onClick={() => setShowPortfolio(true)}
-                        >
-                            <Briefcase size={16} /> Портфолио
-                        </button>
-                        <button
-                            className="card-clickable bordered-action-button"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
-                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
-                            onClick={() => setShowAdGen(true)}
-                        >
-                            <Sparkles size={16} style={{ color: 'var(--primary)' }} /> Объявление
-                        </button>
-                        <button
-                            className="card-clickable bordered-action-button"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
-                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
-                            onClick={() => setShowCma(true)}
-                        >
-                            <TrendingDown size={16} style={{ color: '#10b981' }} /> СМА
-                        </button>
-                        <button
-                            className="card-clickable bordered-action-button"
-                            style={{ 
-                                height: 48, borderRadius: 14, border: '1.5px solid #000000',
-                                background: 'var(--surface)', color: 'var(--text)', fontWeight: 400, fontSize: 15,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                                padding: '0 16px',
-                                boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
-                                fontFamily: "'Oswald', sans-serif"
-                            }}
                             onClick={() => setShowEgrn(true)}
+                            className="card-clickable"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '8px 16px',
+                                borderRadius: 12,
+                                border: 'none',
+                                background: '#6366f1',
+                                color: '#ffffff',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                                transition: 'all 0.15s ease'
+                            }}
                         >
-                            <FileText size={16} style={{ color: '#6366f1' }} /> ЕГРН
+                            <Sparkles size={14} />
+                            <span>Сканер ЕГРН</span>
                         </button>
+                    </div>
+
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+                        gap: 10, 
+                        padding: '12px 14px', 
+                        background: 'var(--bg-light)', 
+                        borderRadius: 16 
+                    }}>
+                        <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Кадастровый номер</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: prop.cadastral_number ? 'var(--text)' : 'var(--text-muted)' }}>
+                                    {prop.cadastral_number || 'Не указан'}
+                                </span>
+                                {prop.cadastral_number && (
+                                    <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(prop.cadastral_number, 'cadastral')}
+                                        style={{ 
+                                            border: 'none', 
+                                            background: 'transparent', 
+                                            cursor: 'pointer', 
+                                            color: copiedField === 'cadastral' ? 'var(--success)' : 'var(--primary)', 
+                                            padding: 0,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}
+                                        title="Скопировать кадастровый номер"
+                                    >
+                                        {copiedField === 'cadastral' ? <Check size={14} /> : <Copy size={13} />}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Статус проверки</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: prop.cadastral_number ? '#10b981' : '#f59e0b' }}>
+                                {prop.cadastral_number ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                                <span>{prop.cadastral_number ? 'Кадастр подтвержден' : 'Требуется скан выписки'}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1317,74 +1597,7 @@ export function DetailsPage() {
                     </div>
                 </div>
 
-                {/* ── РАСПОЛОЖЕНИЕ — Map Section ── */}
-                {prop.address && (
-                    <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-                            <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <MapPin size={22} />
-                            </div>
-                            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em' }}>Расположение</div>
-                        </div>
 
-                        {/* Map Category Filters */}
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 16, overflowX: 'auto', paddingBottom: 4 }}>
-                            {[
-                                { id: 'address', label: 'Адрес', icon: <MapPin size={14} /> },
-                                { id: 'shops', label: 'Магазины', icon: <Store size={14} /> },
-                                { id: 'schools', label: 'Школы', icon: <GraduationCap size={14} /> },
-                                { id: 'transport', label: 'Транспорт', icon: <Bus size={14} /> }
-                            ].map(btn => (
-                                <button
-                                    key={btn.id}
-                                    onClick={() => setMapFilter(btn.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        padding: '8px 16px',
-                                        borderRadius: '16px',
-                                        border: '1px solid ' + (mapFilter === btn.id ? 'var(--primary)' : 'var(--border-light)'),
-                                        background: mapFilter === btn.id ? 'var(--primary)' : 'var(--surface)',
-                                        color: mapFilter === btn.id ? '#fff' : 'var(--text)',
-                                        fontSize: '13px',
-                                        fontWeight: 500,
-                                        cursor: 'pointer',
-                                        whiteSpace: 'nowrap',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: mapFilter === btn.id ? '0 4px 12px rgba(99, 102, 241, 0.2)' : 'none'
-                                    }}
-                                >
-                                    {btn.icon}
-                                    {btn.label}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div style={{ borderRadius: 20, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.02)', border: '1px solid var(--border-light)' }}>
-                            <iframe 
-                                src={(() => {
-                                    const cleanAddress = (prop.city || '') + ', ' + (prop.address || '').split(/,\s*(?:кв|кв\.|квартира|оф|оф\.|офис|пом|пом\.|помещение|каб|каб\.|кабинет)\s*\d+/i)[0].trim();
-                                    if (mapFilter === 'address') {
-                                        return (prop.latitude && prop.longitude)
-                                            ? `https://yandex.ru/map-widget/v1/?ll=${prop.longitude},${prop.latitude}&z=16&pt=${prop.longitude},${prop.latitude},pm2rdm`
-                                            : `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent(cleanAddress)}&z=16`;
-                                    } else if (mapFilter === 'shops') {
-                                        return `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent('Магазины рядом с ' + cleanAddress)}&z=15`;
-                                    } else if (mapFilter === 'schools') {
-                                        return `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent('Школы и детские сады рядом с ' + cleanAddress)}&z=15`;
-                                    } else if (mapFilter === 'transport') {
-                                        return `https://yandex.ru/map-widget/v1/?mode=search&text=${encodeURIComponent('Остановки транспорта рядом с ' + cleanAddress)}&z=15`;
-                                    }
-                                })()} 
-                                width="100%" 
-                                height="260" 
-                                style={{ display: 'block', border: 'none' }}
-                                allowFullScreen
-                            />
-                        </div>
-                    </div>
-                )}
 
                 {/* ── ИСТОРИЯ ЦЕН ── */}
                 {priceHistory.length > 0 && (
