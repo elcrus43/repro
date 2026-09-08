@@ -1504,6 +1504,7 @@ export function DetailsPage() {
                     <BannerGenerator 
                         property={prop}
                         currentUser={state.currentUser}
+                        agent={agent}
                         onClose={() => setShowBannerGen(false)} 
                     />
                 )}
@@ -1511,6 +1512,7 @@ export function DetailsPage() {
                     <AdGenerator 
                         property={prop}
                         currentUser={state.currentUser}
+                        agent={agent}
                         onClose={() => setShowAdGen(false)} 
                     />
                 )}

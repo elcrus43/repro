@@ -1,6 +1,7 @@
 import React from 'react';
 import { X, Loader } from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
+import { useApp } from '../context/AppContext';
 
 
 
@@ -37,7 +38,35 @@ function getWrappedLines(ctx, text, maxWidth) {
     return lines;
 }
 
-export function BannerGenerator({ property, currentUser, onClose }) {
+export function BannerGenerator({ property, currentUser, agent: propAgent, onClose }) {
+    let appContext = null;
+    try {
+        appContext = useApp();
+    } catch {
+        // Safe fallback if rendered without AppProvider
+    }
+    const state = appContext?.state;
+    const assignedAgent = propAgent || (property?.agent_id && state?.clients ? state.clients.find(c => c.id === property.agent_id) : null);
+
+    const defaultPhone = React.useMemo(() => {
+        const raw = assignedAgent?.phone || 
+                    assignedAgent?.phone_2 || 
+                    property?.contact_phone || 
+                    currentUser?.phone || 
+                    currentUser?.phone_number || 
+                    property?.realtor_phone || 
+                    '';
+        return raw ? (formatPhone(raw) || raw) : '';
+    }, [assignedAgent, property, currentUser]);
+
+    const [phone, setPhone] = React.useState(defaultPhone);
+
+    React.useEffect(() => {
+        if (defaultPhone) {
+            setPhone(defaultPhone);
+        }
+    }, [defaultPhone]);
+
     const canvasRef = React.useRef(null);
     const [format,   setFormat]   = React.useState('story');
     const design = 'photo';
@@ -291,8 +320,7 @@ export function BannerGenerator({ property, currentUser, onClose }) {
             parts.push(property.floor + '/' + (property.floors_total || '?') + ' эт.');
         }
 
-        const rawPhone = currentUser?.phone || currentUser?.phone_number || property.realtor_phone || '+7 (999) 000-00-00';
-        const phone = formatPhone(rawPhone) || rawPhone;
+        const activePhone = phone?.trim() ? (formatPhone(phone) || phone) : '+7 (999) 000-00-00';
 
         // Category label (spaced out)
         const roomsCount = property.rooms;
@@ -373,7 +401,7 @@ export function BannerGenerator({ property, currentUser, onClose }) {
         // 2. Draw actual phone number in bold
         ctx.font = `700 ${phoneSize}px Oswald,sans-serif`;
         ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
-        ctx.fillText(phone, px0 + ctaWidth, phy);
+        ctx.fillText(activePhone, px0 + ctaWidth, phy);
 
         /* ── LAYOUT IMAGE ───────────────────────────────────────────── */
         if (loadedLayoutImg) {
@@ -437,7 +465,7 @@ export function BannerGenerator({ property, currentUser, onClose }) {
         }
 
         setLoading(false);
-    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages, accentColor, layoutImage]);
+    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages, accentColor, layoutImage, phone]);
 
     React.useEffect(() => {
         draw();
@@ -471,6 +499,81 @@ export function BannerGenerator({ property, currentUser, onClose }) {
                             {[['story', 'Story 9:16'], ['post', 'Post 1:1']].map(([f, l]) => (
                                 <Chip key={f} active={format === f} color={activeColor} onClick={() => setFormat(f)}>{l}</Chip>
                             ))}
+                        </div>
+                    </Section>
+
+                    {/* Phone Number */}
+                    <Section label="НОМЕР ТЕЛЕФОНА">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <input 
+                                type="tel" 
+                                value={phone} 
+                                onChange={e => setPhone(formatPhone(e.target.value, true))} 
+                                placeholder="+7 (___) ___-__-__"
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '7px 10px', 
+                                    borderRadius: 8, 
+                                    border: '1px solid var(--border)', 
+                                    background: 'var(--bg)', 
+                                    color: 'var(--text)', 
+                                    fontSize: 13, 
+                                    fontFamily: 'Oswald', 
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                            {(() => {
+                                const options = [];
+                                if (assignedAgent?.phone) {
+                                    options.push({
+                                        label: `Агент: ${assignedAgent.full_name ? assignedAgent.full_name.split(' ')[0] : 'Агент'}`,
+                                        val: formatPhone(assignedAgent.phone) || assignedAgent.phone
+                                    });
+                                }
+                                if (currentUser?.phone) {
+                                    const myFormatted = formatPhone(currentUser.phone) || currentUser.phone;
+                                    if (!options.some(o => o.val === myFormatted)) {
+                                        options.push({ label: 'Мой телефон', val: myFormatted });
+                                    }
+                                }
+                                if (property?.contact_phone) {
+                                    const contactFormatted = formatPhone(property.contact_phone) || property.contact_phone;
+                                    if (!options.some(o => o.val === contactFormatted)) {
+                                        options.push({ label: 'Контакт объекта', val: contactFormatted });
+                                    }
+                                }
+                                if (options.length > 1) {
+                                    return (
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                            {options.map((opt, idx) => {
+                                                const isActive = phone === opt.val;
+                                                return (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => setPhone(opt.val)}
+                                                        style={{
+                                                            padding: '2px 8px',
+                                                            borderRadius: 6,
+                                                            border: `1px solid ${isActive ? activeColor : 'var(--border)'}`,
+                                                            background: isActive ? 'var(--primary-light, rgba(0, 82, 255, 0.1))' : 'transparent',
+                                                            color: isActive ? activeColor : 'var(--text-muted)',
+                                                            fontSize: 11,
+                                                            fontFamily: 'Oswald',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                    >
+                                                        {opt.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
                     </Section>
 

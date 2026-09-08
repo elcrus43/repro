@@ -3,7 +3,7 @@ import { X, Loader, Copy, RefreshCw, Check, Sparkles } from 'lucide-react';
 import { generateAdFromAI } from '../utils/adGenerator';
 import { useToastContext } from './Toast';
 
-export function AdGenerator({ property, currentUser, onClose }) {
+export function AdGenerator({ property, currentUser, agent, onClose }) {
     const { toast } = useToastContext();
     const [status, setStatus] = useState('loading');
     const [includeContacts, setIncludeContacts] = useState(true);
@@ -13,13 +13,14 @@ export function AdGenerator({ property, currentUser, onClose }) {
     const [copied, setCopied] = useState(false);
     
     const isMobile = window.innerWidth < 768;
+    const contactPerson = agent || currentUser;
 
     const handleGenerate = useCallback(async () => {
         setLoading(true);
         setError(null);
         setStatus('loading');
         try {
-            const result = await generateAdFromAI(property, 'professional', includeContacts, currentUser, (s) => {
+            const result = await generateAdFromAI(property, 'professional', includeContacts, contactPerson, (s) => {
                 setStatus(s);
             });
             setText(result);
@@ -29,7 +30,7 @@ export function AdGenerator({ property, currentUser, onClose }) {
         } finally {
             setLoading(false);
         }
-    }, [property, includeContacts, currentUser]);
+    }, [property, includeContacts, contactPerson]);
 
     // Generate automatically on mount
     useEffect(() => {
@@ -148,7 +149,7 @@ export function AdGenerator({ property, currentUser, onClose }) {
                     </div>
 
                     {/* Checkbox Contacts */}
-                    {currentUser && (
+                    {contactPerson && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 0' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
                                 <input
@@ -162,7 +163,7 @@ export function AdGenerator({ property, currentUser, onClose }) {
                                         cursor: 'pointer'
                                     }}
                                 />
-                                Контакты риелтора
+                                Контакты риелтора {contactPerson.full_name ? `(${contactPerson.full_name})` : ''}
                             </label>
                         </div>
                     )}
