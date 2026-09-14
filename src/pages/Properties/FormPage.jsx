@@ -1522,14 +1522,8 @@ export function FormPage() {
                     </div>
                 </div>
 
-                <div style={{ marginTop: 40, marginBottom: 60 }}>
-                    <button type="submit" className="btn btn-primary card-clickable" style={{ 
-                        width: '100%', height: 60, borderRadius: 20, fontSize: 16, fontWeight: 300,
-                        boxShadow: '0 12px 24px rgba(0,82,255,0.25)',
-                        fontFamily: "'Oswald', sans-serif",
-                        background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)',
-                        border: 'none', textTransform: 'uppercase', letterSpacing: '0.05em'
-                    }}>
+                <div className="form-submit-container">
+                    <button type="submit" className="form-submit-btn btn-primary card-clickable">
                         {id ? 'Сохранить изменения' : 'Опубликовать объект'}
                     </button>
                 </div>

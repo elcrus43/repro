@@ -1082,29 +1082,9 @@ export function DetailsPage() {
                     })()}
 
                     {/* Action Controls: Modern & Refined */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="prop-action-controls">
                         <button
-                            className="card-clickable"
-                            style={{ 
-                                height: 42, 
-                                borderRadius: 12, 
-                                border: 'none',
-                                background: 'var(--primary)', 
-                                color: '#ffffff', 
-                                fontWeight: 500, 
-                                fontSize: 14,
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                gap: 8,
-                                padding: '0 20px',
-                                width: '100%',
-                                boxShadow: '0 4px 14px rgba(0, 82, 255, 0.25)',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                                fontFamily: "'Oswald', sans-serif",
-                                letterSpacing: '0.02em'
-                            }}
+                            className="prop-deal-btn card-clickable"
                             onClick={handleCreateDeal}
                         >
                             <Handshake size={17} />
@@ -1112,31 +1092,9 @@ export function DetailsPage() {
                         </button>
 
                         {/* Marketing & Presentation Tools */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: 8,
-                            width: '100%'
-                        }}>
+                        <div className="prop-tools-grid">
                             <button
-                                className="card-clickable"
-                                style={{ 
-                                    height: 38, 
-                                    borderRadius: 10, 
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--surface)', 
-                                    color: 'var(--text)', 
-                                    fontWeight: 400, 
-                                    fontSize: 12,
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    gap: 6,
-                                    padding: '0 8px',
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease'
-                                }}
+                                className="prop-tool-btn card-clickable"
                                 onClick={() => setShowAdGen(true)}
                                 title="Генератор текста объявления"
                             >
@@ -1145,24 +1103,7 @@ export function DetailsPage() {
                             </button>
 
                             <button
-                                className="card-clickable"
-                                style={{ 
-                                    height: 38, 
-                                    borderRadius: 10, 
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--surface)', 
-                                    color: 'var(--text)', 
-                                    fontWeight: 400, 
-                                    fontSize: 12,
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    gap: 6,
-                                    padding: '0 8px',
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease'
-                                }}
+                                className="prop-tool-btn card-clickable"
                                 onClick={() => setShowBannerGen(true)}
                                 title="Создать баннер для соцсетей"
                             >
@@ -1171,24 +1112,7 @@ export function DetailsPage() {
                             </button>
 
                             <button
-                                className="card-clickable"
-                                style={{ 
-                                    height: 38, 
-                                    borderRadius: 10, 
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--surface)', 
-                                    color: 'var(--text)', 
-                                    fontWeight: 400, 
-                                    fontSize: 12,
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    gap: 6,
-                                    padding: '0 8px',
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease'
-                                }}
+                                className="prop-tool-btn card-clickable"
                                 onClick={() => setShowPortfolio(true)}
                                 title="Портфолио и презентация объекта"
                             >
@@ -1197,24 +1121,7 @@ export function DetailsPage() {
                             </button>
 
                             <button
-                                className="card-clickable"
-                                style={{ 
-                                    height: 38, 
-                                    borderRadius: 10, 
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--surface)', 
-                                    color: 'var(--text)', 
-                                    fontWeight: 400, 
-                                    fontSize: 12,
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center', 
-                                    gap: 6,
-                                    padding: '0 8px',
-                                    boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease'
-                                }}
+                                className="prop-tool-btn card-clickable"
                                 onClick={() => setShowCma(true)}
                                 title="Сравнительный маркетинговый анализ (СМА)"
                             >
