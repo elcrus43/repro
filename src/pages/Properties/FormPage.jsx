@@ -117,6 +117,47 @@ function ChipGroup({ options, value, onChange }) {
     );
 }
 
+/* ─── Группа множественного выбора (Multi-Chips) ─────────────── */
+function MultiChipGroup({ options, value = [], onChange }) {
+    const currentValues = Array.isArray(value) ? value : (value ? [value] : []);
+    const toggle = (val) => {
+        if (currentValues.includes(val)) {
+            onChange(currentValues.filter(v => v !== val));
+        } else {
+            onChange([...currentValues, val]);
+        }
+    };
+
+    return (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            {options.map(opt => {
+                const selected = currentValues.includes(opt.val);
+                return (
+                    <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => toggle(opt.val)}
+                        style={{
+                            padding: '10px 18px', borderRadius: 14, fontSize: 13,
+                            border: 'none',
+                            background: 'transparent',
+                            color: selected ? 'var(--primary)' : 'var(--text-secondary)',
+                            cursor: 'pointer', fontFamily: "'Oswald', sans-serif", fontWeight: 300,
+                            transition: 'color 0.15s',
+                            textDecoration: selected ? 'underline' : 'none',
+                            textUnderlineOffset: '3px',
+                            display: 'inline-flex', alignItems: 'center', gap: 6
+                        }}
+                    >
+                        {opt.label}
+                        {selected && <Check size={14} strokeWidth={3} />}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
 /* ─── Карточка секции (Premium Open Design) ───────────────────── */
 function FormCard({ title, icon, children, description }) {
     return (
@@ -1034,11 +1075,11 @@ export function FormPage() {
                                          <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Материал стен</label>
                                          <ChipGroup
                                              options={[
-                                                 { val: 'wood', label: '🌲 Дерево' },
-                                                 { val: 'timber', label: '🪵 Брус' },
-                                                 { val: 'brick', label: '🧱 Кирпич' },
-                                                 { val: 'frame', label: '🏗 Каркас' },
-                                                 { val: 'block', label: '⬜ Блок' },
+                                                 { val: 'wood', label: 'Дерево' },
+                                                 { val: 'timber', label: 'Брус' },
+                                                 { val: 'brick', label: 'Кирпич' },
+                                                 { val: 'frame', label: 'Каркас' },
+                                                 { val: 'block', label: 'Блок' },
                                              ]}
                                              value={form.house_material}
                                              onChange={val => setF('house_material', val)}
@@ -1048,14 +1089,39 @@ export function FormPage() {
                                          <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Состояние дома</label>
                                          <ChipGroup
                                              options={[
-                                                 { val: 'new', label: '🆕 Новый' },
-                                                 { val: 'good', label: '✅ Хорошее' },
-                                                 { val: 'normal', label: '🔧 Среднее' },
-                                                 { val: 'renovation', label: '🏚 Требует ремонта' },
+                                                 { val: 'new', label: 'Новый' },
+                                                 { val: 'good', label: 'Хорошее' },
+                                                 { val: 'normal', label: 'Среднее' },
+                                                 { val: 'renovation', label: 'Требует ремонта' },
                                              ]}
                                              value={form.house_condition}
                                              onChange={val => setF('house_condition', val)}
                                          />
+                                     </div>
+
+                                     {/* Кадастровый учёт жилого дома */}
+                                     <div style={{ paddingTop: 6, borderTop: '1px solid var(--border-light)' }}>
+                                         <ToggleChip 
+                                             label="Стоит на кадастровом учёте" 
+                                             value={form.house_has_cadastre} 
+                                             onChange={v => {
+                                                 setF('house_has_cadastre', v);
+                                                 if (!v) setF('house_cadastral_number', '');
+                                             }} 
+                                         />
+                                         {form.house_has_cadastre && (
+                                             <div className="form-group" style={{ marginTop: 8 }}>
+                                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Кадастровый номер дома</label>
+                                                 <input 
+                                                     type="text" 
+                                                     className="form-input" 
+                                                     value={form.house_cadastral_number || ''} 
+                                                     onChange={e => setF('house_cadastral_number', e.target.value)} 
+                                                     placeholder="43:40:000000:00" 
+                                                     style={{ borderRadius: 12 }} 
+                                                 />
+                                             </div>
+                                         )}
                                      </div>
                                  </div>
                              )}
@@ -1065,10 +1131,10 @@ export function FormPage() {
                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                              <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Коммуникации</div>
                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                 <ToggleChip label="⚡ Электричество" value={form.has_electricity} onChange={v => setF('has_electricity', v)} />
-                                 <ToggleChip label="💧 Водоснабжение" value={form.has_water} onChange={v => setF('has_water', v)} />
-                                 <ToggleChip label="🔥 Газ" value={form.has_gas} onChange={v => setF('has_gas', v)} />
-                                 <ToggleChip label="🚽 Канализация" value={form.has_sewage} onChange={v => setF('has_sewage', v)} />
+                                 <ToggleChip label="Электричество" value={form.has_electricity} onChange={v => setF('has_electricity', v)} />
+                                 <ToggleChip label="Водоснабжение" value={form.has_water} onChange={v => setF('has_water', v)} />
+                                 <ToggleChip label="Газ" value={form.has_gas} onChange={v => setF('has_gas', v)} />
+                                 <ToggleChip label="Канализация" value={form.has_sewage} onChange={v => setF('has_sewage', v)} />
                              </div>
                              {form.has_electricity && (
                                  <div className="form-group">
@@ -1078,15 +1144,19 @@ export function FormPage() {
                              )}
                              {form.has_water && (
                                  <div className="form-group">
-                                     <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Тип водоснабжения</label>
-                                     <ChipGroup
+                                     <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Тип водоснабжения (можно выбрать несколько)</label>
+                                     <MultiChipGroup
                                          options={[
                                              { val: 'central', label: 'Центральное' },
                                              { val: 'well', label: 'Скважина' },
                                              { val: 'pit', label: 'Колодец' },
+                                             { val: 'summer', label: 'Летний водопровод' },
                                          ]}
-                                         value={form.water_type}
-                                         onChange={val => setF('water_type', val)}
+                                         value={form.water_types || (form.water_type ? [form.water_type] : [])}
+                                         onChange={val => {
+                                             setF('water_types', val);
+                                             setF('water_type', val[0] || '');
+                                         }}
                                      />
                                  </div>
                              )}
@@ -1123,12 +1193,13 @@ export function FormPage() {
                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                              <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Постройки и удобства</div>
                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                 <ToggleChip label="🛁 Баня" value={form.has_bathhouse} onChange={v => setF('has_bathhouse', v)} />
-                                 <ToggleChip label="🚗 Гараж" value={form.has_garage} onChange={v => setF('has_garage', v)} />
-                                 <ToggleChip label="🌿 Теплица" value={form.has_greenhouse} onChange={v => setF('has_greenhouse', v)} />
-                                 <ToggleChip label="🪣 Скважина/Колодец" value={form.has_well} onChange={v => setF('has_well', v)} />
-                                 <ToggleChip label="🏡 Летняя кухня" value={form.has_summer_kitchen} onChange={v => setF('has_summer_kitchen', v)} />
-                                 <ToggleChip label="🌊 Водоём/Пруд" value={form.has_pond} onChange={v => setF('has_pond', v)} />
+                                 <ToggleChip label="Баня" value={form.has_bathhouse} onChange={v => setF('has_bathhouse', v)} />
+                                 <ToggleChip label="Гараж" value={form.has_garage} onChange={v => setF('has_garage', v)} />
+                                 <ToggleChip label="Беседка" value={form.has_gazebo} onChange={v => setF('has_gazebo', v)} />
+                                 <ToggleChip label="Теплица" value={form.has_greenhouse} onChange={v => setF('has_greenhouse', v)} />
+                                 <ToggleChip label="Скважина/Колодец" value={form.has_well} onChange={v => setF('has_well', v)} />
+                                 <ToggleChip label="Летняя кухня" value={form.has_summer_kitchen} onChange={v => setF('has_summer_kitchen', v)} />
+                                 <ToggleChip label="Водоём/Пруд" value={form.has_pond} onChange={v => setF('has_pond', v)} />
                              </div>
                              {form.has_garage && (
                                  <div className="form-group">

@@ -1652,69 +1652,99 @@ export function DetailsPage() {
                             ) : null}
                         </div>
 
+                        {/* Подъезд */}
+                        {prop.road_access ? (
+                            <div style={{ padding: '8px 12px', background: 'var(--bg-light)', borderRadius: 12, marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Подъездная дорога</span>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                    {{ asphalt: 'Асфальт', gravel: 'Гравий/щебень', dirt: 'Грунтовка', none: 'Нет дороги' }[prop.road_access] || prop.road_access}
+                                </span>
+                            </div>
+                        ) : null}
+
                         {/* Дом детали (если есть) */}
-                        {prop.has_house && (prop.house_material || prop.house_condition || prop.house_build_year) && (
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 14, marginBottom: 12 }}>
-                                {prop.house_material && (
-                                    <div>
-                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Материал</div>
-                                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>
-                                            {{ wood: 'Дерево', timber: 'Брус', brick: 'Кирпич', frame: 'Каркас', block: 'Блок' }[prop.house_material] || prop.house_material}
+                        {prop.has_house && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px', background: 'var(--bg-light)', borderRadius: 14, marginBottom: 12 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8 }}>
+                                    {prop.house_material && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Материал стен</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>
+                                                {{ wood: 'Дерево', timber: 'Брус', brick: 'Кирпич', frame: 'Каркас', block: 'Блок' }[prop.house_material] || prop.house_material}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                {prop.house_condition && (
-                                    <div>
-                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Состояние</div>
-                                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>
-                                            {{ new: 'Новый', good: 'Хорошее', normal: 'Среднее', renovation: 'Ремонт' }[prop.house_condition] || prop.house_condition}
+                                    )}
+                                    {prop.house_condition && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Состояние</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>
+                                                {{ new: 'Новый', good: 'Хорошее', normal: 'Среднее', renovation: 'Требует ремонта' }[prop.house_condition] || prop.house_condition}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                {prop.house_build_year && (
-                                    <div>
-                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Построен</div>
-                                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>{prop.house_build_year} г.</div>
+                                    )}
+                                    {prop.house_build_year && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>Год постройки</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 2 }}>{prop.house_build_year} г.</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Кадастровый статус дома */}
+                                {prop.house_has_cadastre !== undefined && (
+                                    <div style={{ paddingTop: 8, marginTop: 4, borderTop: '1px solid var(--border-light)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+                                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Кадастровый учёт дома:</span>
+                                        <span style={{ fontSize: 12, fontWeight: 500, color: prop.house_has_cadastre ? 'var(--success)' : 'var(--text-secondary)' }}>
+                                            {prop.house_has_cadastre ? `Стоит на учёте${prop.house_cadastral_number ? `: ${prop.house_cadastral_number}` : ''}` : 'Не оформлен'}
+                                        </span>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Коммуникации (компактные бейджи) */}
+                        {/* Коммуникации (компактные бейджи без смайликов) */}
                         {(prop.has_electricity || prop.has_water || prop.has_gas || prop.has_sewage) && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
                                 {prop.has_electricity && (
                                     <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(245,158,11,0.12)', color: '#b45309' }}>
-                                        ⚡ Свет{prop.electricity_kw ? ` (${prop.electricity_kw} кВт)` : ''}
+                                        Электричество{prop.electricity_kw ? ` (${prop.electricity_kw} кВт)` : ''}
                                     </span>
                                 )}
                                 {prop.has_water && (
                                     <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(59,130,246,0.1)', color: '#1d4ed8' }}>
-                                        💧 Вода{prop.water_type ? ` (${{ central: 'центр.', well: 'скважина', pit: 'колодец' }[prop.water_type] || prop.water_type})` : ''}
+                                        {(() => {
+                                            const types = Array.isArray(prop.water_types) && prop.water_types.length > 0 
+                                                ? prop.water_types 
+                                                : (prop.water_type ? [prop.water_type] : []);
+                                            const labels = { central: 'центральное', well: 'скважина', pit: 'колодец', summer: 'летний водопровод' };
+                                            if (types.length === 0) return 'Водоснабжение';
+                                            return `Вода (${types.map(t => labels[t] || t).join(', ')})`;
+                                        })()}
                                     </span>
                                 )}
                                 {prop.has_gas && (
                                     <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(239,68,68,0.08)', color: '#b91c1c' }}>
-                                        🔥 Газ{prop.gas_type ? ` (${prop.gas_type === 'main' ? 'магистр.' : 'баллон'})` : ''}
+                                        Газ{prop.gas_type ? ` (${prop.gas_type === 'main' ? 'магистральный' : 'баллон'})` : ''}
                                     </span>
                                 )}
                                 {prop.has_sewage && (
                                     <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(16,185,129,0.08)', color: '#047857' }}>
-                                        🚽 Канализация{prop.sewage_type ? ` (${{ central: 'центр.', septic: 'септик', pit: 'яма' }[prop.sewage_type] || prop.sewage_type})` : ''}
+                                        Канализация{prop.sewage_type ? ` (${{ central: 'центральная', septic: 'септик', pit: 'выгребная яма' }[prop.sewage_type] || prop.sewage_type})` : ''}
                                     </span>
                                 )}
                             </div>
                         )}
 
                         {/* Постройки и забор */}
-                        {(prop.has_bathhouse || prop.has_garage || prop.has_greenhouse || prop.has_well || prop.has_summer_kitchen || prop.has_pond || (prop.fence_type && prop.fence_type !== 'none')) && (
+                        {(prop.has_bathhouse || prop.has_garage || prop.has_gazebo || prop.has_greenhouse || prop.has_well || prop.has_summer_kitchen || prop.has_pond || (prop.fence_type && prop.fence_type !== 'none')) && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: prop.garden_notes ? 12 : 0 }}>
-                                {prop.has_bathhouse && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>🛁 Баня</span>}
-                                {prop.has_garage && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>🚗 Гараж{prop.garage_area ? ` ${prop.garage_area}м²` : ''}</span>}
-                                {prop.has_greenhouse && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>🌿 Теплица</span>}
-                                {prop.has_well && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>🪣 Скважина/Колодец</span>}
-                                {prop.has_summer_kitchen && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>🏡 Летняя кухня</span>}
-                                {prop.has_pond && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>🌊 Водоём</span>}
+                                {prop.has_bathhouse && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Баня</span>}
+                                {prop.has_garage && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Гараж{prop.garage_area ? ` ${prop.garage_area}м²` : ''}</span>}
+                                {prop.has_gazebo && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Беседка</span>}
+                                {prop.has_greenhouse && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Теплица</span>}
+                                {prop.has_well && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Скважина/Колодец</span>}
+                                {prop.has_summer_kitchen && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Летняя кухня</span>}
+                                {prop.has_pond && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Водоём</span>}
                                 {prop.fence_type && prop.fence_type !== 'none' && (
                                     <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>
                                         Забор: {{ partial: 'частичный', full_metal: 'металл', full_wood: 'дерево', full_brick: 'кирпич', full_proflist: 'профлист' }[prop.fence_type] || prop.fence_type}
