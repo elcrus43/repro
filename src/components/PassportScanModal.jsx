@@ -18,6 +18,38 @@ function fileToBase64(file) {
   });
 }
 
+function compressImageFile(file, maxDim = 1600, quality = 0.8) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve({
+        base64: dataUrl.split(',')[1],
+        mimeType: 'image/jpeg'
+      });
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 export function PassportScanModal({ isOpen, onClose, onExtracted }) {
   const { toast } = useToastContext();
   const fileInputRef = useRef(null);
@@ -47,12 +79,20 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
     if (!image) return;
     setIsProcessing(true);
     setError(null);
-    setProgressStatus('Подготовка изображения...');
+    setProgressStatus('Оптимизация изображения...');
 
     try {
-      // Конвертируем в base64
-      const imageBase64 = await fileToBase64(image);
-      const mimeType = image.type || 'image/jpeg';
+      let imageBase64 = '';
+      let mimeType = 'image/jpeg';
+      try {
+        const compressed = await compressImageFile(image);
+        imageBase64 = compressed.base64;
+        mimeType = compressed.mimeType;
+      } catch (cErr) {
+        console.warn('Image compression fallback:', cErr);
+        imageBase64 = await fileToBase64(image);
+        mimeType = image.type || 'image/jpeg';
+      }
 
       setProgressStatus('Распознавание паспорта через ИИ...');
 
@@ -70,6 +110,9 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
       });
 
       if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('Файл слишком большой. Сделайте фото ближе или меньшего разрешения.');
+        }
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || `Ошибка сервера: ${response.status}`);
       }

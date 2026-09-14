@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, User, Home, ChevronRight } from 'lucide-react';
 import { useToastContext } from './Toast';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -24,6 +24,38 @@ function fileToBase64(file) {
   });
 }
 
+function compressImageFile(file, maxDim = 1600, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      resolve({
+        base64: dataUrl.split(',')[1],
+        mimeType: 'image/jpeg'
+      });
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 async function renderPdfPagesToBase64(file, maxPages = 4) {
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
@@ -33,14 +65,18 @@ async function renderPdfPagesToBase64(file, maxPages = 4) {
 
   for (let i = 1; i <= numPages; i++) {
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 1.5 });
+    const unscaled = page.getViewport({ scale: 1.0 });
+    const maxDim = Math.max(unscaled.width, unscaled.height);
+    // Scale to max 1500px dimension for sharp OCR with small payload
+    const scale = Math.min(1.5, Math.max(1.0, 1500 / maxDim));
+    const viewport = page.getViewport({ scale });
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     canvas.width = viewport.width;
     canvas.height = viewport.height;
 
     await page.render({ canvasContext: context, viewport }).promise;
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
     const base64 = dataUrl.split(',')[1];
     pages.push({ data: base64, mime: 'image/jpeg' });
   }
@@ -81,9 +117,9 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
     try {
       let pagesBase64 = [];
       let fileBase64 = '';
-      const mimeType = file.type || 'application/pdf';
+      let sendMimeType = file.type || 'application/pdf';
 
-      if (mimeType === 'application/pdf') {
+      if (sendMimeType === 'application/pdf') {
         setProgressStatus('Рендеринг страниц выписки...');
         try {
           pagesBase64 = await renderPdfPagesToBase64(file, 4);
@@ -92,7 +128,22 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
         }
       }
 
-      fileBase64 = await fileToBase64(file);
+      // If PDF pages were rendered, do NOT send raw fileBase64 (avoids 413 payload limit)
+      if (pagesBase64.length === 0) {
+        if (sendMimeType.startsWith('image/')) {
+          setProgressStatus('Оптимизация изображения...');
+          try {
+            const compressed = await compressImageFile(file);
+            fileBase64 = compressed.base64;
+            sendMimeType = compressed.mimeType;
+          } catch (imgErr) {
+            console.warn('Image compression fallback:', imgErr);
+            fileBase64 = await fileToBase64(file);
+          }
+        } else {
+          fileBase64 = await fileToBase64(file);
+        }
+      }
 
       setProgressStatus('Распознавание выписки ЕГРН через ИИ...');
       const isCapacitor = typeof window !== 'undefined' && (
@@ -106,12 +157,15 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
         body: JSON.stringify({
           action: 'scanEgrn',
           fileBase64,
-          mimeType,
+          mimeType: sendMimeType,
           pagesBase64
         }),
       });
 
       if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error('Файл слишком большой для распознавания. Попробуйте выписку меньшего размера или первые 3 страницы.');
+        }
         const errData = await response.json().catch(() => ({}));
         throw new Error(errData.error || `Ошибка сервера: ${response.status}`);
       }
