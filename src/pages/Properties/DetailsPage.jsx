@@ -998,6 +998,9 @@ export function DetailsPage() {
                                     } else if (type === 'garden') {
                                         if (prop.land_area) specs.push(`${prop.land_area} сот.`);
                                         if (prop.snt_name) specs.push(`СНТ ${prop.snt_name}`);
+                                        if (prop.snt_number) specs.push(`уч. №${prop.snt_number}`);
+                                        if (prop.land_category) specs.push({ snt: 'СНТ', dnt: 'ДНТ', izhs: 'ИЖС', lph: 'ЛПХ', other: 'Другое' }[prop.land_category] || prop.land_category);
+                                        if (prop.distance_to_city) specs.push(`${prop.distance_to_city} км от города`);
                                         if (prop.has_house && prop.house_area) specs.push(`Дом ${prop.house_area} м²`);
                                     }
                                     if (type !== 'garden' && prop.area_total) specs.push(`${prop.area_total} м²`);
@@ -1352,32 +1355,31 @@ export function DetailsPage() {
                 </div>
                 )}
 
-                {/* ── О САДЕ / ДАЧЕ — Компактная карточка объекта ── */}
-                {prop.property_type === 'garden' && (
-                    <div className="card" style={{ padding: '20px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', flexShrink: 0 }}>
-                                    <Home size={18} />
-                                </div>
-                                <div>
-                                    <div className="font-oswald" style={{ fontWeight: 400, fontSize: 17, letterSpacing: '0.02em', color: 'var(--text)' }}>
-                                        {prop.snt_name ? `СНТ «${prop.snt_name}»` : 'Садовый участок'}
-                                        {prop.snt_number && <span style={{ color: 'var(--text-secondary)', marginLeft: 6, fontWeight: 300 }}>уч. №{prop.snt_number}</span>}
-                                    </div>
-                                    {(prop.microdistrict || prop.district || prop.land_category || prop.distance_to_city) && (
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                            {[
-                                                prop.microdistrict ? `мкр. ${prop.microdistrict}` : null,
-                                                prop.district ? (prop.district.startsWith('р-н') ? prop.district : `р-н ${prop.district}`) : null,
-                                                prop.land_category ? ({ snt: 'СНТ', dnt: 'ДНТ', izhs: 'ИЖС', lph: 'ЛПХ', other: 'Другое' }[prop.land_category] || prop.land_category) : null,
-                                                prop.distance_to_city ? `${prop.distance_to_city} км от города` : null
-                                            ].filter(Boolean).join(' · ')}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                {/* ── О САДЕ / ДАЧЕ — Характеристики объекта ── */}
+                {prop.property_type === 'garden' && (() => {
+                    const hasGardenData = Boolean(
+                        prop.land_area || 
+                        prop.has_house || 
+                        prop.road_access || 
+                        prop.has_electricity || 
+                        prop.has_water || 
+                        prop.has_gas || 
+                        prop.has_sewage || 
+                        prop.has_bathhouse || 
+                        prop.has_garage || 
+                        prop.has_gazebo || 
+                        prop.has_greenhouse || 
+                        prop.has_well || 
+                        prop.has_summer_kitchen || 
+                        prop.has_pond || 
+                        (prop.fence_type && prop.fence_type !== 'none') || 
+                        prop.garden_notes
+                    );
+
+                    if (!hasGardenData) return null;
+
+                    return (
+                        <div className="card" style={{ padding: '20px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
 
                         {/* Главные показатели (плитки) */}
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(85px, 1fr))', gap: 8, marginBottom: 14 }}>
@@ -1514,8 +1516,9 @@ export function DetailsPage() {
                                 {prop.garden_notes}
                             </div>
                         )}
-                    </div>
-                )}
+                        </div>
+                    );
+                })()}
 
 
 
