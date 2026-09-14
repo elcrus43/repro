@@ -67,16 +67,7 @@ function BottomNav() {
   };
 
   return (
-    <nav className="bottom-nav" style={{ 
-        position: 'fixed', bottom: 0, left: '50%', transform: 'translateX(-50%)',
-        width: '100%', maxWidth: 430,
-        height: 'calc(76px + env(safe-area-inset-bottom))', 
-        background: 'var(--nav-bg)', backdropFilter: 'blur(24px) saturate(180%)',
-        borderTop: '1px solid var(--nav-border)',
-        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
-        padding: `0 4px calc(12px + env(safe-area-inset-bottom))`, zIndex: 1000,
-        boxShadow: '0 -10px 40px rgba(0,0,0,0.05)'
-    }}>
+    <nav className="bottom-nav">
       {tabs.map(tab => (
         <button
           key={tab.path}

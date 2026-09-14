@@ -644,6 +644,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         if (Array.isArray(updateData.expenses)) updateData.expenses = JSON.stringify(updateData.expenses);
         Object.keys(updateData).forEach(key => { if (updateData[key] === undefined) delete updateData[key]; });
         result = await neonDb.update('deals', dId, updateData);
+
+        // Sync linked property status when deal status changes or deal is updated
+        if (updateData.property_id && updateData.status) {
+          const propStatus = updateData.status === 'closed' ? 'sold' : 'deal';
+          await neonDb.update('properties', updateData.property_id, {
+            status: propStatus,
+            updated_at: updateData.updated_at || new Date().toISOString()
+          });
+        }
         break;
       }
 

@@ -136,11 +136,14 @@ export function ListPage() {
         return ['deal', 'deposit', 'advertising', 'agreement', 'meeting'];
     }, [filter]);
 
-    const toggleStatus = (status) => {
-        setCollapsedStatuses(prev => ({
-            ...prev,
-            [status]: !prev[status]
-        }));
+    const toggleStatus = (status, defaultCollapsed = false) => {
+        setCollapsedStatuses(prev => {
+            const current = prev[status] !== undefined ? prev[status] : defaultCollapsed;
+            return {
+                ...prev,
+                [status]: !current
+            };
+        });
     };
 
     const statusSolidColors = {
@@ -213,14 +216,16 @@ export function ListPage() {
         agreement: 'АД',
         advertising: 'В рекламе',
         deposit: 'Задаток',
-        deal: 'Сделка'
+        deal: 'Сделка',
+        sold: 'Продано'
     };
     const statusColors = {
         meeting: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
         agreement: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
         advertising: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
         deposit: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
-        deal: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)'
+        deal: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)',
+        sold: 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)'
     };
 
     return (
@@ -548,13 +553,16 @@ export function ListPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                         {statusOrder.map(status => {
                             const items = groupedProperties[status] || [];
-                            const isCollapsed = !!collapsedStatuses[status];
+                            const defaultCollapsed = items.length === 0;
+                            const isCollapsed = collapsedStatuses[status] !== undefined
+                                ? collapsedStatuses[status]
+                                : defaultCollapsed;
 
                             return (
                                 <div key={status} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {/* Group Header */}
                                     <div 
-                                        onClick={() => toggleStatus(status)}
+                                        onClick={() => toggleStatus(status, defaultCollapsed)}
                                         className="card-clickable"
                                         style={{
                                             display: 'flex',
@@ -694,7 +702,19 @@ export function ListPage() {
                                                                             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                                                         </>
                                                                     )}
-                                                                    <span>{prop.area_total} м²</span>
+                                                                    {prop.property_type === 'garden' ? (
+                                                                        <>
+                                                                            {prop.land_area ? <span>{prop.land_area} сот.</span> : null}
+                                                                            {prop.has_house && prop.house_area ? (
+                                                                                <>
+                                                                                    <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                                    <span>Дом {prop.house_area} м²</span>
+                                                                                </>
+                                                                            ) : null}
+                                                                        </>
+                                                                    ) : (
+                                                                        prop.area_total ? <span>{prop.area_total} м²</span> : null
+                                                                    )}
                                                                     {prop.floor || prop.floors_total ? (
                                                                         <>
                                                                             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
@@ -761,10 +781,10 @@ export function ListPage() {
                                                                     })()}
                                                                     <span style={{
                                                                         fontSize: 10, fontWeight: 400, flexShrink: 0,
-                                                                        color: status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
-                                                                        background: status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
+                                                                        color: status === 'sold' ? '#16a34a' : status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
+                                                                        background: status === 'sold' ? 'rgba(22,163,74,0.08)' : status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
                                                                         padding: '3px 8px', borderRadius: 20,
-                                                                        border: `1px solid ${status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
+                                                                        border: `1px solid ${status === 'sold' ? 'rgba(22,163,74,0.2)' : status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
                                                                     }}>
                                                                         {statusLabels[status] || status}
                                                                     </span>

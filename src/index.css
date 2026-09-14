@@ -273,11 +273,18 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  max-width: 430px;
+  width: 100%;
+  max-width: 100%;
   margin: 0 auto;
   position: relative;
   background: var(--bg);
-  box-shadow: 0 0 100px rgba(0, 0, 0, 0.03);
+}
+
+@media (max-width: 768px) {
+  #root {
+    max-width: 480px;
+    box-shadow: 0 0 100px rgba(0, 0, 0, 0.03);
+  }
 }
 
 a {
@@ -1969,4 +1976,101 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   border: 2px solid var(--surface);
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
+}
+
+/* ==========================================================================
+   Responsive Architecture: Mobile & Laptop / Desktop
+   ========================================================================== */
+
+/* Mobile Bottom Navigation (default) */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  height: calc(76px + env(safe-area-inset-bottom));
+  background: var(--nav-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-top: 1px solid var(--nav-border);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 0 4px calc(12px + env(safe-area-inset-bottom));
+  z-index: 1000;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
+}
+
+/* Base Page Content Container */
+.page-content {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+/* Laptop & Desktop Enhancements (>= 769px) */
+@media (min-width: 769px) {
+  :root {
+    --nav-h: 70px;
+  }
+
+  /* Desktop Top/Floating Navigation or Centered Bar */
+  .bottom-nav {
+    max-width: 640px;
+    bottom: 20px;
+    border-radius: 24px;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
+    height: 64px;
+    padding: 0 16px;
+  }
+
+  .page {
+    padding-bottom: 120px;
+  }
+
+  /* Centered containers on laptop screen for optimal reading ergonomics */
+  .page-content {
+    max-width: 960px;
+    padding: 24px 28px 120px;
+    gap: 16px;
+  }
+
+  .topbar {
+    max-width: 960px;
+    margin: 0 auto;
+    width: 100%;
+    border-radius: 0 0 20px 20px;
+  }
+
+  /* Dual column layout in cards on laptop */
+  .laptop-grid-2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 16px !important;
+  }
+
+  .laptop-grid-3 {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 16px !important;
+  }
+}
+
+/* Wide Laptop & Large Desktop Monitors (>= 1200px) */
+@media (min-width: 1200px) {
+  .page-content {
+    max-width: 1120px;
+  }
+
+  .topbar {
+    max-width: 1120px;
+  }
+
+  .bottom-nav {
+    max-width: 720px;
+  }
+}
+
