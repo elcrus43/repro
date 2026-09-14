@@ -701,6 +701,88 @@ export function FormPage() {
                     </div>
                 </FormCard>
 
+                {/* Владельцы (Позиция №2) */}
+                <FormCard title="Владельцы и Агент" icon={<Users size={22} />} description="Выберите собственников и привязанного агента">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 6, display: 'block' }}>Собственники</label>
+                            <MultiClientSelector 
+                                selectedIds={form.client_ids || []}
+                                onChange={ids => setF('client_ids', ids)}
+                                clients={state.clients || []}
+                            />
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 8 }}
+                                onClick={() => setShowQuickOwnerForm(true)}
+                            >
+                                + Создать нового собственника
+                            </button>
+                            {form.client_ids && form.client_ids.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px', background: 'var(--bg-light)', borderRadius: 14 }}>
+                                    <label className="form-label" style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Доли в праве собственности:</label>
+                                    {form.client_ids.map(clientId => {
+                                        const client = state.clients.find(c => c.id === clientId);
+                                        if (!client) return null;
+                                        return (
+                                            <div key={clientId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <span style={{ fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 300 }}>{client.full_name}</span>
+                                                <input 
+                                                    type="text" 
+                                                    className="form-input" 
+                                                    style={{ width: 120, height: 34, borderRadius: 10, fontSize: 12, padding: '0 8px', border: '1px solid rgba(0,0,0,0.08)' }} 
+                                                    placeholder="Доля (напр. 1/2)" 
+                                                    value={form.client_shares?.[clientId] || ''} 
+                                                    onChange={e => {
+                                                        const newShares = { ...(form.client_shares || {}) };
+                                                        newShares[clientId] = e.target.value;
+                                                        setF('client_shares', newShares);
+                                                    }} 
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 2, display: 'block' }}>Агент объекта</label>
+                            <select 
+                                className="form-select" 
+                                value={form.agent_id || ''} 
+                                onChange={e => setF('agent_id', e.target.value || null)} 
+                                style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
+                            >
+                                <option value="">Без агента</option>
+                                {(() => {
+                                    const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
+                                    const seenNames = new Set();
+                                    const uniqueAgents = [];
+                                    for (const a of agents) {
+                                        const nameKey = (a.full_name || '').trim().toLowerCase();
+                                        if (nameKey && seenNames.has(nameKey)) continue;
+                                        if (nameKey) seenNames.add(nameKey);
+                                        uniqueAgents.push(a);
+                                    }
+                                    return uniqueAgents.map(a => (
+                                        <option key={a.id} value={a.id}>{a.full_name}</option>
+                                    ));
+                                })()}
+                            </select>
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 4 }}
+                                onClick={() => setShowQuickAgentForm(true)}
+                            >
+                                + Создать нового агента
+                            </button>
+                        </div>
+                    </div>
+                </FormCard>
+
                 {/* Локация */}
                 <FormCard title="Локация" icon={<MapPin size={22} />}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
@@ -855,69 +937,73 @@ export function FormPage() {
                         />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                        <button
-                            type="button"
-                            onClick={handleParseHouse}
-                            disabled={parsing || (!form.address && !form.city)}
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                                width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
-                                border: '2px dashed var(--primary)',
-                                background: 'var(--primary-light)', color: 'var(--primary)',
-                                cursor: parsing ? 'wait' : 'pointer',
-                                fontFamily: 'inherit', fontWeight: 300,
-                                transition: 'all 0.2s',
-                                opacity: (!form.address && !form.city) ? 0.5 : 1
-                            }}
-                        >
-                            {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
-                        </button>
-                        <button
-                            type="button"
-                            title="Открыть dom.mingkh.ru"
-                            onClick={() => {
-                                const url = getMingkhSearchUrl(form.address, form.city);
-                                window.open(url, '_blank', 'noopener');
-                            }}
-                            disabled={!form.address && !form.city}
-                            style={{
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                padding: '14px 16px', borderRadius: 16, fontSize: 13,
-                                border: '2px dashed var(--border-light)',
-                                background: 'var(--bg-card)', color: 'var(--text-secondary)',
-                                cursor: 'pointer', fontFamily: 'inherit', fontWeight: 300,
-                                transition: 'all 0.2s', whiteSpace: 'nowrap',
-                                opacity: (!form.address && !form.city) ? 0.5 : 1
-                            }}
-                        >
-                            🏠 МинЖКХ
-                        </button>
-                    </div>
-                    {parsedFields && (
-                        <div style={{
-                            background: parsedFields.length > 0 ? 'var(--success-light)' : 'var(--warning-light)',
-                            border: `1px solid ${parsedFields.length > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                            borderRadius: 16, padding: '14px',
-                        }}>
-                            <div style={{ fontSize: 12, fontWeight: 300, color: parsedFields.length > 0 ? 'var(--success)' : 'var(--warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                {parsedFields.length > 0 ? <Check size={14} /> : <Info size={14} />}
-                                {parsedFields.length > 0 ? `Найдено ${parsedFields.length} характеристик:` : 'Данные не найдены'}
+                    {form.property_type !== 'garden' && form.property_type !== 'land' && (
+                        <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                                <button
+                                    type="button"
+                                    onClick={handleParseHouse}
+                                    disabled={parsing || (!form.address && !form.city)}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                        width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
+                                        border: '2px dashed var(--primary)',
+                                        background: 'var(--primary-light)', color: 'var(--primary)',
+                                        cursor: parsing ? 'wait' : 'pointer',
+                                        fontFamily: 'inherit', fontWeight: 300,
+                                        transition: 'all 0.2s',
+                                        opacity: (!form.address && !form.city) ? 0.5 : 1
+                                    }}
+                                >
+                                    {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
+                                </button>
+                                <button
+                                    type="button"
+                                    title="Открыть dom.mingkh.ru"
+                                    onClick={() => {
+                                        const url = getMingkhSearchUrl(form.address, form.city);
+                                        window.open(url, '_blank', 'noopener');
+                                    }}
+                                    disabled={!form.address && !form.city}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                        padding: '14px 16px', borderRadius: 16, fontSize: 13,
+                                        border: '2px dashed var(--border-light)',
+                                        background: 'var(--bg-card)', color: 'var(--text-secondary)',
+                                        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 300,
+                                        transition: 'all 0.2s', whiteSpace: 'nowrap',
+                                        opacity: (!form.address && !form.city) ? 0.5 : 1
+                                    }}
+                                >
+                                    🏠 МинЖКХ
+                                </button>
                             </div>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {parsedFields.map(({ label, value }) => (
-                                    <span key={label} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 10, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontWeight: 300 }}>
-                                        {label}: <span style={{ color: 'var(--primary)' }}>{value}</span>
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                            {parsedFields && (
+                                <div style={{
+                                    background: parsedFields.length > 0 ? 'var(--success-light)' : 'var(--warning-light)',
+                                    border: `1px solid ${parsedFields.length > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                                    borderRadius: 16, padding: '14px',
+                                }}>
+                                    <div style={{ fontSize: 12, fontWeight: 300, color: parsedFields.length > 0 ? 'var(--success)' : 'var(--warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {parsedFields.length > 0 ? <Check size={14} /> : <Info size={14} />}
+                                        {parsedFields.length > 0 ? `Найдено ${parsedFields.length} характеристик:` : 'Данные не найдены'}
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                        {parsedFields.map(({ label, value }) => (
+                                            <span key={label} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 10, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontWeight: 300 }}>
+                                                {label}: <span style={{ color: 'var(--primary)' }}>{value}</span>
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Жилой комплекс / ЖК</label>
-                        <input className="form-input" value={form.residential_complex || ''} onChange={e => setF('residential_complex', e.target.value)} placeholder="Название ЖК" style={{ borderRadius: 14 }} />
-                    </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Жилой комплекс / ЖК</label>
+                                <input className="form-input" value={form.residential_complex || ''} onChange={e => setF('residential_complex', e.target.value)} placeholder="Название ЖК" style={{ borderRadius: 14 }} />
+                            </div>
+                        </>
+                    )}
                 </FormCard>
 
                 {/* Параметры объекта (для квартир, комнат, коммерции, домов) */}
@@ -1329,88 +1415,6 @@ export function FormPage() {
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Заметки риэлтора</label>
                         <textarea className="form-textarea" rows={3} value={form.notes ?? ''} onChange={e => setF('notes', e.target.value)} placeholder="Нюансы сделки..." style={{ borderRadius: 16, resize: 'none' }} />
-                    </div>
-                </FormCard>
-
-                {/* Владельцы */}
-                <FormCard title="Владельцы и Агент" icon={<Users size={22} />} description="Выберите собственников и привязанного агента">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 6, display: 'block' }}>Собственники</label>
-                            <MultiClientSelector 
-                                selectedIds={form.client_ids || []}
-                                onChange={ids => setF('client_ids', ids)}
-                                clients={state.clients || []}
-                            />
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 8 }}
-                                onClick={() => setShowQuickOwnerForm(true)}
-                            >
-                                + Создать нового собственника
-                            </button>
-                            {form.client_ids && form.client_ids.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px', background: 'var(--bg-light)', borderRadius: 14 }}>
-                                    <label className="form-label" style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Доли в праве собственности:</label>
-                                    {form.client_ids.map(clientId => {
-                                        const client = state.clients.find(c => c.id === clientId);
-                                        if (!client) return null;
-                                        return (
-                                            <div key={clientId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <span style={{ fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 300 }}>{client.full_name}</span>
-                                                <input 
-                                                    type="text" 
-                                                    className="form-input" 
-                                                    style={{ width: 120, height: 34, borderRadius: 10, fontSize: 12, padding: '0 8px', border: '1px solid rgba(0,0,0,0.08)' }} 
-                                                    placeholder="Доля (напр. 1/2)" 
-                                                    value={form.client_shares?.[clientId] || ''} 
-                                                    onChange={e => {
-                                                        const newShares = { ...(form.client_shares || {}) };
-                                                        newShares[clientId] = e.target.value;
-                                                        setF('client_shares', newShares);
-                                                    }} 
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 2, display: 'block' }}>Агент объекта</label>
-                            <select 
-                                className="form-select" 
-                                value={form.agent_id || ''} 
-                                onChange={e => setF('agent_id', e.target.value || null)} 
-                                style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
-                            >
-                                <option value="">Без агента</option>
-                                {(() => {
-                                    const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
-                                    const seenNames = new Set();
-                                    const uniqueAgents = [];
-                                    for (const a of agents) {
-                                        const nameKey = (a.full_name || '').trim().toLowerCase();
-                                        if (nameKey && seenNames.has(nameKey)) continue;
-                                        if (nameKey) seenNames.add(nameKey);
-                                        uniqueAgents.push(a);
-                                    }
-                                    return uniqueAgents.map(a => (
-                                        <option key={a.id} value={a.id}>{a.full_name}</option>
-                                    ));
-                                })()}
-                            </select>
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 4 }}
-                                onClick={() => setShowQuickAgentForm(true)}
-                            >
-                                + Создать нового агента
-                            </button>
-                        </div>
                     </div>
                 </FormCard>
 
