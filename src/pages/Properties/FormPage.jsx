@@ -1,9 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS } from '../../data/constants';
-import { CITIES, KIROV_DISTRICTS } from '../../data/location';
+import { CITIES, KIROV_DISTRICTS, getAllMicrodistricts, saveCustomMicrodistrict } from '../../data/location';
 import { parseHouseFromAddress, describeParsedFields, getMingkhSearchUrl } from '../../utils/houseParser';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
@@ -333,6 +333,26 @@ export function FormPage() {
     const [quickAgent, setQuickAgent] = useState({ full_name: '', phone: '' });
     const [showQuickOwnerForm, setShowQuickOwnerForm] = useState(false);
     const [quickOwner, setQuickOwner] = useState({ full_name: '', phone: '' });
+    const [showAddMicro, setShowAddMicro] = useState(false);
+    const [newMicroName, setNewMicroName] = useState('');
+
+    const availableMicrodistricts = useMemo(() => {
+        const list = getAllMicrodistricts(form.district, state.properties);
+        if (form.microdistrict && !list.some(m => m.toLowerCase() === form.microdistrict.toLowerCase())) {
+            return [form.microdistrict, ...list];
+        }
+        return list;
+    }, [form.district, form.microdistrict, state.properties]);
+
+    const handleSaveCustomMicro = () => {
+        const trimmed = newMicroName.trim();
+        if (!trimmed) return;
+        const saved = saveCustomMicrodistrict(trimmed, form.district);
+        setF('microdistrict', saved || trimmed);
+        setNewMicroName('');
+        setShowAddMicro(false);
+        toast.success(`Микрорайон «${saved || trimmed}» сохранен`);
+    };
 
     const handleUrlImport = () => {
         if (!importUrl) {
@@ -563,6 +583,9 @@ export function FormPage() {
             ...form,
             client_id: form.client_ids && form.client_ids.length > 0 ? form.client_ids[0] : (form.client_id || null)
         };
+        if (finalForm.microdistrict) {
+            saveCustomMicrodistrict(finalForm.microdistrict, finalForm.district);
+        }
         if (id) {
             dispatch({ type: 'UPDATE_PROPERTY', property: finalForm });
             // Track price change
@@ -680,24 +703,116 @@ export function FormPage() {
 
                 {/* Локация */}
                 <FormCard title="Локация" icon={<MapPin size={22} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
                         <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Город</label>
                             <select className="form-select" value={form.city} onChange={e => setF('city', e.target.value)} style={{ borderRadius: 14 }}>
                                 {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
+
+                        {form.city === 'Киров' ? (
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Район города</label>
+                                <select 
+                                    className="form-select" 
+                                    value={form.district || ''} 
+                                    onChange={e => setF('district', e.target.value)} 
+                                    style={{ borderRadius: 14 }}
+                                >
+                                    <option value="">— Любой район / не выбран —</option>
+                                    {KIROV_DISTRICTS.map(d => (
+                                        <option key={d.name} value={d.name}>{d.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Район / Округ</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={form.district || ''}
+                                    onChange={e => setF('district', e.target.value)}
+                                    placeholder="Например: Центральный"
+                                    style={{ borderRadius: 14 }}
+                                />
+                            </div>
+                        )}
                     </div>
                     
-                    {form.city === 'Киров' && form.district && (
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Микрорайон</label>
-                            <select className="form-select" value={form.microdistrict || ''} onChange={e => setF('microdistrict', e.target.value)} style={{ borderRadius: 14 }}>
-                                <option value="">— Выбрать —</option>
-                                {KIROV_DISTRICTS.find(d => d.name === form.district)?.microdistricts.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
+                    <div className="form-group">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 0 }}>Микрорайон</label>
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={() => setShowAddMicro(v => !v)}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'var(--primary)',
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '2px 6px',
+                                    borderRadius: 6,
+                                    fontWeight: 500
+                                }}
+                            >
+                                {showAddMicro ? '✕ Отмена' : '+ Добавить свой вариант'}
+                            </button>
                         </div>
-                    )}
+
+                        {showAddMicro && (
+                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, background: 'var(--bg-light)', padding: '8px 12px', borderRadius: 14 }}>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Название нового микрорайона..."
+                                    value={newMicroName}
+                                    onChange={e => setNewMicroName(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleSaveCustomMicro();
+                                        }
+                                    }}
+                                    style={{ borderRadius: 10, flex: 1, height: 38 }}
+                                    autoFocus
+                                />
+                                <button
+                                    type="button"
+                                    className="btn btn-primary card-clickable"
+                                    onClick={handleSaveCustomMicro}
+                                    style={{ height: 38, padding: '0 16px', borderRadius: 10, fontSize: 12, whiteSpace: 'nowrap' }}
+                                >
+                                    Сохранить
+                                </button>
+                            </div>
+                        )}
+
+                        <select 
+                            className="form-select" 
+                            value={form.microdistrict || ''} 
+                            onChange={e => {
+                                if (e.target.value === '__NEW__') {
+                                    setShowAddMicro(true);
+                                } else {
+                                    setF('microdistrict', e.target.value);
+                                }
+                            }} 
+                            style={{ borderRadius: 14 }}
+                        >
+                            <option value="">— Выбрать микрорайон —</option>
+                            {availableMicrodistricts.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
+                            <option value="__NEW__">+ Свой вариант (добавить в базу)...</option>
+                        </select>
+                    </div>
 
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Адрес</label>

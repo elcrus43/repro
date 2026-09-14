@@ -945,7 +945,21 @@ export function DetailsPage() {
                             {/* Subtitle location / complex */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-secondary)' }}>
                                 {prop.city && <span>{prop.city}</span>}
-                                {prop.district && <span>· р-н {prop.district}</span>}
+                                {prop.district && <span>· {prop.district.startsWith('р-н') ? prop.district : `р-н ${prop.district}`}</span>}
+                                {prop.microdistrict && (
+                                    <span style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 3,
+                                        background: 'rgba(0,82,255,0.08)',
+                                        color: 'var(--primary)',
+                                        padding: '2px 8px',
+                                        borderRadius: 6,
+                                        fontWeight: 500
+                                    }}>
+                                        <MapPin size={11} /> мкр. {prop.microdistrict}
+                                    </span>
+                                )}
                                 {prop.residential_complex && <span>· ЖК «{prop.residential_complex}»</span>}
                                 {prop.address && (
                                     <a
@@ -987,6 +1001,7 @@ export function DetailsPage() {
                                         if (prop.has_house && prop.house_area) specs.push(`Дом ${prop.house_area} м²`);
                                     }
                                     if (type !== 'garden' && prop.area_total) specs.push(`${prop.area_total} м²`);
+                                    if (prop.microdistrict) specs.push(`мкр. ${prop.microdistrict}`);
                                     if (['apartment', 'room', 'commercial'].includes(type) && prop.floor) {
                                         specs.push(`${prop.floor}/${prop.floors_total || '—'} эт.`);
                                     } else if (type === 'house' && prop.floors_total) {
@@ -1246,6 +1261,18 @@ export function DetailsPage() {
                                     </span>
                                 </div>
                             )}
+                            {prop.district && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Район</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.district}</span>
+                                </div>
+                            )}
+                            {prop.microdistrict && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Микрорайон</span>
+                                    <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--text)' }}>{prop.microdistrict}</span>
+                                </div>
+                            )}
                             {prop.management_company && (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, letterSpacing: '0.02em' }}>Управляющая компания</span>
@@ -1338,10 +1365,14 @@ export function DetailsPage() {
                                         {prop.snt_name ? `СНТ «${prop.snt_name}»` : 'Садовый участок'}
                                         {prop.snt_number && <span style={{ color: 'var(--text-secondary)', marginLeft: 6, fontWeight: 300 }}>уч. №{prop.snt_number}</span>}
                                     </div>
-                                    {(prop.land_category || prop.distance_to_city) && (
+                                    {(prop.microdistrict || prop.district || prop.land_category || prop.distance_to_city) && (
                                         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                            {prop.land_category && ({ snt: 'СНТ', dnt: 'ДНТ', izhs: 'ИЖС', lph: 'ЛПХ', other: 'Другое' }[prop.land_category] || prop.land_category)}
-                                            {prop.distance_to_city ? ` · ${prop.distance_to_city} км от города` : ''}
+                                            {[
+                                                prop.microdistrict ? `мкр. ${prop.microdistrict}` : null,
+                                                prop.district ? (prop.district.startsWith('р-н') ? prop.district : `р-н ${prop.district}`) : null,
+                                                prop.land_category ? ({ snt: 'СНТ', dnt: 'ДНТ', izhs: 'ИЖС', lph: 'ЛПХ', other: 'Другое' }[prop.land_category] || prop.land_category) : null,
+                                                prop.distance_to_city ? `${prop.distance_to_city} км от города` : null
+                                            ].filter(Boolean).join(' · ')}
                                         </div>
                                     )}
                                 </div>

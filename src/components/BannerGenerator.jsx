@@ -61,11 +61,32 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
 
     const [phone, setPhone] = React.useState(defaultPhone);
 
+    const defaultLocation = React.useMemo(() => {
+        if (property?.microdistrict) {
+            return `мкр. ${property.microdistrict}`;
+        }
+        if (property?.district) {
+            return property.district;
+        }
+        if (property?.residential_complex) {
+            return `ЖК «${property.residential_complex}»`;
+        }
+        return '';
+    }, [property?.microdistrict, property?.district, property?.residential_complex]);
+
+    const [locationText, setLocationText] = React.useState(defaultLocation);
+
     React.useEffect(() => {
         if (defaultPhone) {
             setPhone(defaultPhone);
         }
     }, [defaultPhone]);
+
+    React.useEffect(() => {
+        if (defaultLocation) {
+            setLocationText(defaultLocation);
+        }
+    }, [defaultLocation]);
 
     const canvasRef = React.useRef(null);
     const [format,   setFormat]   = React.useState('story');
@@ -169,7 +190,11 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         const isPhoto = design === 'photo';
 
         const px0 = IS ? 80 : 60;
-        const addr  = (property.address || property.city || '').replace(/,?\s*кв\.?\s*\d+/i, '').trim();
+        const rawAddr = (property.address || property.city || '').replace(/,?\s*кв\.?\s*\d+/i, '').trim();
+        const loc = (locationText || '').trim();
+        const addr = loc 
+            ? (rawAddr && !rawAddr.toLowerCase().includes(loc.toLowerCase()) ? `${loc} · ${rawAddr}` : (rawAddr || loc))
+            : rawAddr;
         const addrSize = IS ? 60 : 48;
         const maxWidth = w - 2 * px0;
 
@@ -465,7 +490,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         }
 
         setLoading(false);
-    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages, accentColor, layoutImage, phone]);
+    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages, accentColor, layoutImage, phone, locationText]);
 
     React.useEffect(() => {
         draw();
@@ -569,6 +594,90 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                                     </button>
                                                 );
                                             })}
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+                        </div>
+                    </Section>
+
+                    {/* Location */}
+                    <Section label="ЛОКАЦИЯ НА БАННЕРЕ">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <input 
+                                type="text" 
+                                value={locationText} 
+                                onChange={e => setLocationText(e.target.value)} 
+                                placeholder="Микрорайон, район или ЖК"
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '7px 10px', 
+                                    borderRadius: 8, 
+                                    border: '1px solid var(--border)', 
+                                    background: 'var(--bg)', 
+                                    color: 'var(--text)', 
+                                    fontSize: 13, 
+                                    fontFamily: 'Oswald', 
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                            {(() => {
+                                const quickLocs = [];
+                                if (property?.microdistrict) {
+                                    quickLocs.push({ label: `мкр. ${property.microdistrict}`, val: `мкр. ${property.microdistrict}` });
+                                }
+                                if (property?.district) {
+                                    quickLocs.push({ label: property.district, val: property.district });
+                                }
+                                if (property?.residential_complex) {
+                                    quickLocs.push({ label: `ЖК «${property.residential_complex}»`, val: `ЖК «${property.residential_complex}»` });
+                                }
+                                if (quickLocs.length > 0) {
+                                    return (
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                            {quickLocs.map((loc, idx) => {
+                                                const isActive = locationText === loc.val;
+                                                return (
+                                                    <button
+                                                        key={idx}
+                                                        type="button"
+                                                        onClick={() => setLocationText(loc.val)}
+                                                        style={{
+                                                            padding: '2px 8px',
+                                                            borderRadius: 6,
+                                                            border: `1px solid ${isActive ? activeColor : 'var(--border)'}`,
+                                                            background: isActive ? 'var(--primary-light, rgba(0, 82, 255, 0.1))' : 'transparent',
+                                                            color: isActive ? activeColor : 'var(--text-muted)',
+                                                            fontSize: 11,
+                                                            fontFamily: 'Oswald',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s'
+                                                        }}
+                                                    >
+                                                        {loc.label}
+                                                    </button>
+                                                );
+                                            })}
+                                            {locationText && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLocationText('')}
+                                                    style={{
+                                                        padding: '2px 6px',
+                                                        borderRadius: 6,
+                                                        border: '1px dashed var(--border)',
+                                                        background: 'transparent',
+                                                        color: 'var(--text-muted)',
+                                                        fontSize: 10,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Убрать локацию с баннера"
+                                                >
+                                                    ✕ без
+                                                </button>
+                                            )}
                                         </div>
                                     );
                                 }

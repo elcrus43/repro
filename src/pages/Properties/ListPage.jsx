@@ -735,13 +735,28 @@ export function ListPage() {
                                                                 {/* Адрес */}
                                                                 <div style={{ 
                                                                     fontSize: 13, color: 'var(--text)',
-                                                                    display: 'flex', alignItems: 'center', gap: 4,
-                                                                    fontWeight: 450
+                                                                    display: 'flex', alignItems: 'center', gap: 6,
+                                                                    fontWeight: 450, flexWrap: 'wrap'
                                                                 }}>
-                                                                    <MapPin size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
-                                                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                                        {prop.city ? (prop.address ? `${prop.city}, ${prop.address}` : prop.city) : (prop.address || '—')}
-                                                                    </span>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
+                                                                        <MapPin size={13} style={{ flexShrink: 0, color: 'var(--primary)' }} />
+                                                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                            {prop.city ? (prop.address ? `${prop.city}, ${prop.address}` : prop.city) : (prop.address || '—')}
+                                                                        </span>
+                                                                    </div>
+                                                                    {prop.microdistrict && (
+                                                                        <span style={{
+                                                                            fontSize: 10,
+                                                                            fontWeight: 500,
+                                                                            color: 'var(--primary)',
+                                                                            background: 'rgba(0, 82, 255, 0.08)',
+                                                                            padding: '1px 6px',
+                                                                            borderRadius: 6,
+                                                                            whiteSpace: 'nowrap'
+                                                                        }}>
+                                                                            мкр. {prop.microdistrict}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
 
                                                                 {/* Цена */}
