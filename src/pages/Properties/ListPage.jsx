@@ -397,7 +397,7 @@ export function ListPage() {
                                     <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <User size={16} /> {group.clientName}
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div className="property-cards-grid">
                                         {group.items.map(item => (
                                             <div key={item.id} className="card" style={{ 
                                                 display: 'flex', gap: 16, padding: '16px 60px 16px 16px', alignItems: 'center', 
@@ -615,7 +615,7 @@ export function ListPage() {
 
                                     {/* Group Content */}
                                     {!isCollapsed && (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        <div className="property-cards-grid">
                                             {items.length === 0 ? (
                                                 <div style={{
                                                     padding: '24px 20px',
@@ -625,7 +625,8 @@ export function ListPage() {
                                                     color: 'var(--text-secondary)',
                                                     fontSize: 13,
                                                     opacity: 0.6,
-                                                    background: 'rgba(0, 0, 0, 0.01)'
+                                                    background: 'rgba(0, 0, 0, 0.01)',
+                                                    gridColumn: '1 / -1'
                                                 }}>
                                                     Нет объектов
                                                 </div>

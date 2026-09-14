@@ -615,8 +615,11 @@ export function FormPage() {
                 <div style={{ width: 44 }}></div>
             </div>
 
-             <form onSubmit={handleSubmit} className="page-form" style={{ padding: '20px', maxWidth: 840, width: '100%', margin: '0 auto' }}>
+             <form onSubmit={handleSubmit} className="page-form" style={{ padding: '20px', width: '100%', margin: '0 auto' }}>
                 
+                <div className="form-cards-layout">
+                    {/* ── ЛЕВАЯ КОЛОНКА (Тип, Адрес, Параметры) ── */}
+                    <div className="form-col-main">
                 {/* Импорт по ссылке */}
                 <FormCard title="Импорт по ссылке" icon={<Sparkles size={22} />} description="Автоматическое заполнение формы данными с Циан, Авито и др.">
                     <div style={{ display: 'flex', gap: 10 }}>
@@ -637,88 +640,6 @@ export function FormPage() {
                         >
                             {importing ? 'Импорт...' : 'Заполнить'}
                         </button>
-                    </div>
-                </FormCard>
-
-                {/* Владельцы */}
-                <FormCard title="Владельцы и Агент" icon={<Users size={22} />} description="Выберите собственников и привязанного агента">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 6, display: 'block' }}>Собственники</label>
-                            <MultiClientSelector 
-                                selectedIds={form.client_ids || []}
-                                onChange={ids => setF('client_ids', ids)}
-                                clients={state.clients || []}
-                            />
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 8 }}
-                                onClick={() => setShowQuickOwnerForm(true)}
-                            >
-                                + Создать нового собственника
-                            </button>
-                            {form.client_ids && form.client_ids.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px', background: 'var(--bg-light)', borderRadius: 14 }}>
-                                    <label className="form-label" style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Доли в праве собственности:</label>
-                                    {form.client_ids.map(clientId => {
-                                        const client = state.clients.find(c => c.id === clientId);
-                                        if (!client) return null;
-                                        return (
-                                            <div key={clientId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <span style={{ fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 300 }}>{client.full_name}</span>
-                                                <input 
-                                                    type="text" 
-                                                    className="form-input" 
-                                                    style={{ width: 120, height: 34, borderRadius: 10, fontSize: 12, padding: '0 8px', border: '1px solid rgba(0,0,0,0.08)' }} 
-                                                    placeholder="Доля (напр. 1/2)" 
-                                                    value={form.client_shares?.[clientId] || ''} 
-                                                    onChange={e => {
-                                                        const newShares = { ...(form.client_shares || {}) };
-                                                        newShares[clientId] = e.target.value;
-                                                        setF('client_shares', newShares);
-                                                    }} 
-                                                />
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 2, display: 'block' }}>Агент объекта</label>
-                            <select 
-                                className="form-select" 
-                                value={form.agent_id || ''} 
-                                onChange={e => setF('agent_id', e.target.value || null)} 
-                                style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
-                            >
-                                <option value="">Без агента</option>
-                                {(() => {
-                                    const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
-                                    const seenNames = new Set();
-                                    const uniqueAgents = [];
-                                    for (const a of agents) {
-                                        const nameKey = (a.full_name || '').trim().toLowerCase();
-                                        if (nameKey && seenNames.has(nameKey)) continue;
-                                        if (nameKey) seenNames.add(nameKey);
-                                        uniqueAgents.push(a);
-                                    }
-                                    return uniqueAgents.map(a => (
-                                        <option key={a.id} value={a.id}>{a.full_name}</option>
-                                    ));
-                                })()}
-                            </select>
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 4 }}
-                                onClick={() => setShowQuickAgentForm(true)}
-                            >
-                                + Создать нового агента
-                            </button>
-                        </div>
                     </div>
                 </FormCard>
 
@@ -754,49 +675,6 @@ export function FormPage() {
                                 <option value="deal">Сделка</option>
                             </select>
                         </div>
-                    </div>
-                </FormCard>
-
-                {/* Цена */}
-                <FormCard title="Цена и комиссия" icon={<DollarSign size={22} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Цена (₽)</span>
-                                {form.price > 0 && form.area_total > 0 && (
-                                    <span style={{ color: 'var(--primary)', fontWeight: 800 }}>
-                                        {Math.round(form.price / form.area_total).toLocaleString()} ₽/м²
-                                    </span>
-                                )}
-                            </label>
-                            <input
-                                className="form-input"
-                                style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', borderRadius: 14 }}
-                                value={form.price ? form.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                                onChange={e => setF('price', Number(e.target.value.replace(/\D/g, '')))}
-                                placeholder="0"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Минимальная цена (₽)</label>
-                            <input
-                                className="form-input"
-                                style={{ color: 'var(--text-muted)', borderRadius: 14 }}
-                                value={form.price_min ? form.price_min.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                                onChange={e => setF('price_min', Number(e.target.value.replace(/\D/g, '')))}
-                                placeholder="Торг"
-                            />
-                        </div>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Ваша комиссия (₽)</label>
-                        <input
-                            className="form-input"
-                            style={{ borderRadius: 14 }}
-                            value={form.commission ? form.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                            onChange={e => setF('commission', Number(e.target.value.replace(/\D/g, '')) || 0)}
-                            placeholder="0"
-                        />
                     </div>
                 </FormCard>
 
@@ -1275,6 +1153,53 @@ export function FormPage() {
                 </FormCard>
                 )}
 
+                    </div>
+
+                    {/* ── ПРАВАЯ КОЛОНКА (Условия, Владельцы, Фото) ── */}
+                    <div className="form-col-side">
+                {/* Цена */}
+                <FormCard title="Цена и комиссия" icon={<DollarSign size={22} />}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 700, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
+                                <span>Цена (₽)</span>
+                                {form.price > 0 && form.area_total > 0 && (
+                                    <span style={{ color: 'var(--primary)', fontWeight: 800 }}>
+                                        {Math.round(form.price / form.area_total).toLocaleString()} ₽/м²
+                                    </span>
+                                )}
+                            </label>
+                            <input
+                                className="form-input"
+                                style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', borderRadius: 14 }}
+                                value={form.price ? form.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                                onChange={e => setF('price', Number(e.target.value.replace(/\D/g, '')))}
+                                placeholder="0"
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Минимальная цена (₽)</label>
+                            <input
+                                className="form-input"
+                                style={{ color: 'var(--text-muted)', borderRadius: 14 }}
+                                value={form.price_min ? form.price_min.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                                onChange={e => setF('price_min', Number(e.target.value.replace(/\D/g, '')))}
+                                placeholder="Торг"
+                            />
+                        </div>
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Ваша комиссия (₽)</label>
+                        <input
+                            className="form-input"
+                            style={{ borderRadius: 14 }}
+                            value={form.commission ? form.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                            onChange={e => setF('commission', Number(e.target.value.replace(/\D/g, '')) || 0)}
+                            placeholder="0"
+                        />
+                    </div>
+                </FormCard>
+
                 {/* Условия сделки */}
                 <FormCard title="Условия сделки" icon={<Briefcase size={22} />}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
@@ -1289,6 +1214,88 @@ export function FormPage() {
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Заметки риэлтора</label>
                         <textarea className="form-textarea" rows={3} value={form.notes ?? ''} onChange={e => setF('notes', e.target.value)} placeholder="Нюансы сделки..." style={{ borderRadius: 16, resize: 'none' }} />
+                    </div>
+                </FormCard>
+
+                {/* Владельцы */}
+                <FormCard title="Владельцы и Агент" icon={<Users size={22} />} description="Выберите собственников и привязанного агента">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 6, display: 'block' }}>Собственники</label>
+                            <MultiClientSelector 
+                                selectedIds={form.client_ids || []}
+                                onChange={ids => setF('client_ids', ids)}
+                                clients={state.clients || []}
+                            />
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 8 }}
+                                onClick={() => setShowQuickOwnerForm(true)}
+                            >
+                                + Создать нового собственника
+                            </button>
+                            {form.client_ids && form.client_ids.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px', background: 'var(--bg-light)', borderRadius: 14 }}>
+                                    <label className="form-label" style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Доли в праве собственности:</label>
+                                    {form.client_ids.map(clientId => {
+                                        const client = state.clients.find(c => c.id === clientId);
+                                        if (!client) return null;
+                                        return (
+                                            <div key={clientId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                <span style={{ fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 300 }}>{client.full_name}</span>
+                                                <input 
+                                                    type="text" 
+                                                    className="form-input" 
+                                                    style={{ width: 120, height: 34, borderRadius: 10, fontSize: 12, padding: '0 8px', border: '1px solid rgba(0,0,0,0.08)' }} 
+                                                    placeholder="Доля (напр. 1/2)" 
+                                                    value={form.client_shares?.[clientId] || ''} 
+                                                    onChange={e => {
+                                                        const newShares = { ...(form.client_shares || {}) };
+                                                        newShares[clientId] = e.target.value;
+                                                        setF('client_shares', newShares);
+                                                    }} 
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 2, display: 'block' }}>Агент объекта</label>
+                            <select 
+                                className="form-select" 
+                                value={form.agent_id || ''} 
+                                onChange={e => setF('agent_id', e.target.value || null)} 
+                                style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
+                            >
+                                <option value="">Без агента</option>
+                                {(() => {
+                                    const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
+                                    const seenNames = new Set();
+                                    const uniqueAgents = [];
+                                    for (const a of agents) {
+                                        const nameKey = (a.full_name || '').trim().toLowerCase();
+                                        if (nameKey && seenNames.has(nameKey)) continue;
+                                        if (nameKey) seenNames.add(nameKey);
+                                        uniqueAgents.push(a);
+                                    }
+                                    return uniqueAgents.map(a => (
+                                        <option key={a.id} value={a.id}>{a.full_name}</option>
+                                    ));
+                                })()}
+                            </select>
+                            <button 
+                                type="button" 
+                                className="btn btn-secondary" 
+                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 4 }}
+                                onClick={() => setShowQuickAgentForm(true)}
+                            >
+                                + Создать нового агента
+                            </button>
+                        </div>
                     </div>
                 </FormCard>
 
@@ -1392,6 +1399,9 @@ export function FormPage() {
                         </label>
                     </div>
                 </FormCard>
+
+                    </div>
+                </div>
 
                 <div style={{ marginTop: 40, marginBottom: 60 }}>
                     <button type="submit" className="btn btn-primary card-clickable" style={{ 

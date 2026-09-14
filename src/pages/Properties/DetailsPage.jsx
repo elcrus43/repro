@@ -830,6 +830,9 @@ export function DetailsPage() {
             </div>
 
             <div className="page-content" style={{ padding: '24px 20px 120px' }}>
+                <div className="details-dashboard-grid">
+                    {/* ── ОСНОВНАЯ КОЛОНКА (Слева на лаптопе) ── */}
+                    <div className="details-col-main">
                 {/* Header Card — Modern Redesign */}
                 <div className="card" style={{ 
                     padding: '24px', 
@@ -1204,285 +1207,6 @@ export function DetailsPage() {
                     </div>
                 </div>
 
-                {/* ── ДОКУМЕНТЫ И СКАНЕР ЕГРН (ОТДЕЛЬНЫЙ БЛОК) ── */}
-                <div className="card" style={{ 
-                    padding: '20px 24px', 
-                    border: '1px solid rgba(99, 102, 241, 0.15)', 
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
-                    borderRadius: 28, 
-                    background: 'linear-gradient(135deg, var(--surface) 0%, rgba(99, 102, 241, 0.04) 100%)' 
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{ 
-                                width: 40, height: 40, borderRadius: 12, 
-                                background: 'rgba(99, 102, 241, 0.12)', 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: '#6366f1' 
-                            }}>
-                                <FileText size={20} />
-                            </div>
-                            <div>
-                                <div className="font-oswald" style={{ fontWeight: 400, fontSize: 17, letterSpacing: '0.01em', color: 'var(--text)' }}>
-                                    Выписка ЕГРН и кадастр
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                                    Распознавание параметров и сверка собственников
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setShowEgrn(true)}
-                            className="card-clickable"
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                padding: '8px 16px',
-                                borderRadius: 12,
-                                border: 'none',
-                                background: '#6366f1',
-                                color: '#ffffff',
-                                fontSize: 13,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
-                                transition: 'all 0.15s ease'
-                            }}
-                        >
-                            <Sparkles size={14} />
-                            <span>Сканер ЕГРН</span>
-                        </button>
-                    </div>
-
-                    <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-                        gap: 10, 
-                        padding: '12px 14px', 
-                        background: 'var(--bg-light)', 
-                        borderRadius: 16 
-                    }}>
-                        <div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Кадастровый номер</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <span style={{ fontSize: 13, fontWeight: 500, color: prop.cadastral_number ? 'var(--text)' : 'var(--text-muted)' }}>
-                                    {prop.cadastral_number || 'Не указан'}
-                                </span>
-                                {prop.cadastral_number && (
-                                    <button
-                                        type="button"
-                                        onClick={() => copyToClipboard(prop.cadastral_number, 'cadastral')}
-                                        style={{ 
-                                            border: 'none', 
-                                            background: 'transparent', 
-                                            cursor: 'pointer', 
-                                            color: copiedField === 'cadastral' ? 'var(--success)' : 'var(--primary)', 
-                                            padding: 0,
-                                            display: 'flex',
-                                            alignItems: 'center'
-                                        }}
-                                        title="Скопировать кадастровый номер"
-                                    >
-                                        {copiedField === 'cadastral' ? <Check size={14} /> : <Copy size={13} />}
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-
-                        <div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Статус проверки</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: prop.cadastral_number ? '#10b981' : '#f59e0b' }}>
-                                {prop.cadastral_number ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                                <span>{prop.cadastral_number ? 'Кадастр подтвержден' : 'Требуется скан выписки'}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Mortgage Calculator */}
-                <MortgageCalculator propertyPrice={prop.price} />
-
-                {/* New Construction Collection (Temporarily removed per user request) */}
-                {/* <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} /> */}
-
-                {/* ГАЛЕРЕЯ ФОТО */}
-                {prop.images && prop.images.length > 0 && (
-                    <div className="card">
-                        <div 
-                            className="section-title" 
-                            style={{ marginBottom: showGallery ? 12 : 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                            onClick={() => setShowGallery(!showGallery)}
-                        >
-                            <span>Фотографии ({prop.images.length})</span>
-                            <div style={{ color: 'var(--primary)' }}>
-                                {showGallery ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-                            </div>
-                        </div>
-                        {showGallery && (
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                {prop.images.map((url, index) => (
-                                    <div key={index} style={{ 
-                                        width: 'calc(50% - 4px)', aspectRatio: '1', 
-                                        borderRadius: 8,
-                                        border: index === 0 ? '2px solid var(--primary)' : '1px solid var(--border-light)',
-                                        position: 'relative'
-                                    }}>
-                                        <img 
-                                            src={url} 
-                                            alt={`Фото ${index + 1}`} 
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', borderRadius: 6 }} 
-                                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} 
-                                        />
-                                        {/* Обложка — иконка звезды */}
-                                        {index === 0 ? (
-                                            <div style={{
-                                                position: 'absolute', top: 6, left: 6,
-                                                background: 'var(--primary)', borderRadius: 6,
-                                                padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 3,
-                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Oswald',
-                                                pointerEvents: 'none'
-                                            }}>
-                                                <Star size={10} fill="#fff" /> Обложка
-                                            </div>
-                                        ) : (
-                                            <button
-                                                onClick={e => { e.stopPropagation(); handleSetCover(index); }}
-                                                style={{
-                                                    position: 'absolute', top: 6, right: 6,
-                                                    width: 32, height: 32, borderRadius: 8,
-                                                    background: 'rgba(0,0,0,0.5)', border: 'none',
-                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                    color: '#fff', cursor: 'pointer',
-                                                    backdropFilter: 'blur(4px)',
-                                                    zIndex: 2
-                                                }}
-                                                title="Сделать обложкой"
-                                            >
-                                                <Star size={15} />
-                                            </button>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        {coverSet && (
-                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)', fontWeight: 300 }}>✓ Обложка обновлена</div>
-                        )}
-                    </div>
-                )}
-
-                {/* ПЛАНИРОВКА */}
-                {prop.floorplan_images && prop.floorplan_images.length > 0 && (
-                    <div className="card">
-                        <div className="section-title" style={{ marginBottom: 12 }}>
-                            Планировка ({prop.floorplan_images.length})
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {prop.floorplan_images.map((url, index) => (
-                                <div key={index} style={{
-                                    width: 'calc(50% - 4px)', aspectRatio: '1',
-                                    borderRadius: 8, border: '1px solid var(--border-light)',
-                                    background: 'var(--bg-light)', overflow: 'hidden'
-                                }}>
-                                    <img
-                                        src={url}
-                                        alt={`Планировка ${index + 1}`}
-                                        style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
-                                        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Clients */}
-                {clients.length > 0 && (
-                    <div className="card">
-                        <div className="section-title">{clients.length > 1 ? 'Собственники' : 'Собственник'}</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-                            {clients.map(c => (
-                                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                                    <div style={{
-                                        width: 40, height: 40, borderRadius: '50%',
-                                        background: 'var(--bg-light)', color: 'var(--text-secondary)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 15, fontWeight: 300, flexShrink: 0, letterSpacing: 0.5,
-                                    }}>
-                                        {initials(c.full_name)}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 400, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>{c.full_name}</span>
-                                            {prop.client_shares?.[c.id] && (
-                                                <span style={{ fontSize: 12, background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: 6, fontWeight: 500 }}>Доля: {prop.client_shares[c.id]}</span>
-                                            )}
-                                        </div>
-                                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
-                                    </div>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Agent */}
-                {agent && (
-                    <div className="card">
-                        <div className="section-title">Агент объекта</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
-                            <div onClick={() => navigate(`/clients/${agent.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
-                                <div style={{
-                                    width: 40, height: 40, borderRadius: '50%',
-                                    background: 'var(--primary-light)', color: 'var(--primary)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    fontSize: 15, fontWeight: 600, flexShrink: 0, letterSpacing: 0.5,
-                                }}>
-                                    {initials(agent.full_name)}
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: 400 }}>{agent.full_name}</div>
-                                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{agent.phone}</div>
-                                </div>
-                                <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Контактное лицо */}
-                {(prop.contact_name || prop.contact_phone) && (
-                    <div className="card">
-                        <div className="section-title">Контактное лицо</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                            <div style={{
-                                width: 40, height: 40, borderRadius: '50%',
-                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                flexShrink: 0
-                            }}>
-                                <User size={18} />
-                            </div>
-                            <div style={{ flex: 1 }}>
-                                {prop.contact_name && (
-                                    <div style={{ fontWeight: 400 }}>{prop.contact_name}</div>
-                                )}
-                                {prop.contact_phone && (
-                                    <a
-                                        href={`tel:+${prop.contact_phone.replace(/\D/g, '')}`}
-                                        style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}
-                                    >
-                                        {prop.contact_phone}
-                                    </a>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
                 {/* ── О ДОМЕ / ЗДАНИИ — Premium Section ── */}
                 {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && (
                     <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
@@ -1764,6 +1488,104 @@ export function DetailsPage() {
 
 
 
+                {prop.notes && (
+                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
+                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 16 }}>Описание</div>
+                        <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{prop.notes}</div>
+                    </div>
+                )}
+                
+                {/* ГАЛЕРЕЯ ФОТО */}
+                {prop.images && prop.images.length > 0 && (
+                    <div className="card">
+                        <div 
+                            className="section-title" 
+                            style={{ marginBottom: showGallery ? 12 : 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                            onClick={() => setShowGallery(!showGallery)}
+                        >
+                            <span>Фотографии ({prop.images.length})</span>
+                            <div style={{ color: 'var(--primary)' }}>
+                                {showGallery ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                            </div>
+                        </div>
+                        {showGallery && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                {prop.images.map((url, index) => (
+                                    <div key={index} style={{ 
+                                        width: 'calc(50% - 4px)', aspectRatio: '1', 
+                                        borderRadius: 8,
+                                        border: index === 0 ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+                                        position: 'relative'
+                                    }}>
+                                        <img 
+                                            src={url} 
+                                            alt={`Фото ${index + 1}`} 
+                                            style={{ width: '100%', height: '100%', objectFit: 'cover', cursor: 'pointer', borderRadius: 6 }} 
+                                            onClick={() => window.open(url, '_blank', 'noopener,noreferrer')} 
+                                        />
+                                        {/* Обложка — иконка звезды */}
+                                        {index === 0 ? (
+                                            <div style={{
+                                                position: 'absolute', top: 6, left: 6,
+                                                background: 'var(--primary)', borderRadius: 6,
+                                                padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 3,
+                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Oswald',
+                                                pointerEvents: 'none'
+                                            }}>
+                                                <Star size={10} fill="#fff" /> Обложка
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={e => { e.stopPropagation(); handleSetCover(index); }}
+                                                style={{
+                                                    position: 'absolute', top: 6, right: 6,
+                                                    width: 32, height: 32, borderRadius: 8,
+                                                    background: 'rgba(0,0,0,0.5)', border: 'none',
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    color: '#fff', cursor: 'pointer',
+                                                    backdropFilter: 'blur(4px)',
+                                                    zIndex: 2
+                                                }}
+                                                title="Сделать обложкой"
+                                            >
+                                                <Star size={15} />
+                                            </button>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {coverSet && (
+                            <div style={{ marginTop: 8, fontSize: 12, color: 'var(--success)', fontWeight: 300 }}>✓ Обложка обновлена</div>
+                        )}
+                    </div>
+                )}
+
+                {/* ПЛАНИРОВКА */}
+                {prop.floorplan_images && prop.floorplan_images.length > 0 && (
+                    <div className="card">
+                        <div className="section-title" style={{ marginBottom: 12 }}>
+                            Планировка ({prop.floorplan_images.length})
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {prop.floorplan_images.map((url, index) => (
+                                <div key={index} style={{
+                                    width: 'calc(50% - 4px)', aspectRatio: '1',
+                                    borderRadius: 8, border: '1px solid var(--border-light)',
+                                    background: 'var(--bg-light)', overflow: 'hidden'
+                                }}>
+                                    <img
+                                        src={url}
+                                        alt={`Планировка ${index + 1}`}
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain', cursor: 'pointer' }}
+                                        onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {/* ── ИСТОРИЯ ЦЕН ── */}
                 {priceHistory.length > 0 && (
                     <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
@@ -1858,13 +1680,201 @@ export function DetailsPage() {
                     )}
                 </div>
 
-                {prop.notes && (
-                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 16 }}>Описание</div>
-                        <div style={{ fontSize: 15, lineHeight: 1.7, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{prop.notes}</div>
+                    </div>
+
+                    {/* ── БОКОВАЯ КОЛОНКА (Справа на лаптопе) ── */}
+                    <div className="details-col-sidebar">
+                {/* ── ДОКУМЕНТЫ И СКАНЕР ЕГРН (ОТДЕЛЬНЫЙ БЛОК) ── */}
+                <div className="card" style={{ 
+                    padding: '20px 24px', 
+                    border: '1px solid rgba(99, 102, 241, 0.15)', 
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
+                    borderRadius: 28, 
+                    background: 'linear-gradient(135deg, var(--surface) 0%, rgba(99, 102, 241, 0.04) 100%)' 
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ 
+                                width: 40, height: 40, borderRadius: 12, 
+                                background: 'rgba(99, 102, 241, 0.12)', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#6366f1' 
+                            }}>
+                                <FileText size={20} />
+                            </div>
+                            <div>
+                                <div className="font-oswald" style={{ fontWeight: 400, fontSize: 17, letterSpacing: '0.01em', color: 'var(--text)' }}>
+                                    Выписка ЕГРН и кадастр
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                    Распознавание параметров и сверка собственников
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => setShowEgrn(true)}
+                            className="card-clickable"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '8px 16px',
+                                borderRadius: 12,
+                                border: 'none',
+                                background: '#6366f1',
+                                color: '#ffffff',
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.25)',
+                                transition: 'all 0.15s ease'
+                            }}
+                        >
+                            <Sparkles size={14} />
+                            <span>Сканер ЕГРН</span>
+                        </button>
+                    </div>
+
+                    <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+                        gap: 10, 
+                        padding: '12px 14px', 
+                        background: 'var(--bg-light)', 
+                        borderRadius: 16 
+                    }}>
+                        <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Кадастровый номер</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: prop.cadastral_number ? 'var(--text)' : 'var(--text-muted)' }}>
+                                    {prop.cadastral_number || 'Не указан'}
+                                </span>
+                                {prop.cadastral_number && (
+                                    <button
+                                        type="button"
+                                        onClick={() => copyToClipboard(prop.cadastral_number, 'cadastral')}
+                                        style={{ 
+                                            border: 'none', 
+                                            background: 'transparent', 
+                                            cursor: 'pointer', 
+                                            color: copiedField === 'cadastral' ? 'var(--success)' : 'var(--primary)', 
+                                            padding: 0,
+                                            display: 'flex',
+                                            alignItems: 'center'
+                                        }}
+                                        title="Скопировать кадастровый номер"
+                                    >
+                                        {copiedField === 'cadastral' ? <Check size={14} /> : <Copy size={13} />}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Статус проверки</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500, color: prop.cadastral_number ? '#10b981' : '#f59e0b' }}>
+                                {prop.cadastral_number ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                                <span>{prop.cadastral_number ? 'Кадастр подтвержден' : 'Требуется скан выписки'}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Clients */}
+                {clients.length > 0 && (
+                    <div className="card">
+                        <div className="section-title">{clients.length > 1 ? 'Собственники' : 'Собственник'}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                            {clients.map(c => (
+                                <div key={c.id} onClick={() => navigate(`/clients/${c.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                                    <div style={{
+                                        width: 40, height: 40, borderRadius: '50%',
+                                        background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        fontSize: 15, fontWeight: 300, flexShrink: 0, letterSpacing: 0.5,
+                                    }}>
+                                        {initials(c.full_name)}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: 400, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span>{c.full_name}</span>
+                                            {prop.client_shares?.[c.id] && (
+                                                <span style={{ fontSize: 12, background: 'var(--primary-light)', color: 'var(--primary)', padding: '2px 8px', borderRadius: 6, fontWeight: 500 }}>Доля: {prop.client_shares[c.id]}</span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{c.phone}</div>
+                                    </div>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
-                
+
+                {/* Agent */}
+                {agent && (
+                    <div className="card">
+                        <div className="section-title">Агент объекта</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+                            <div onClick={() => navigate(`/clients/${agent.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                                <div style={{
+                                    width: 40, height: 40, borderRadius: '50%',
+                                    background: 'var(--primary-light)', color: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 15, fontWeight: 600, flexShrink: 0, letterSpacing: 0.5,
+                                }}>
+                                    {initials(agent.full_name)}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: 400 }}>{agent.full_name}</div>
+                                    <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{agent.phone}</div>
+                                </div>
+                                <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>›</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Контактное лицо */}
+                {(prop.contact_name || prop.contact_phone) && (
+                    <div className="card">
+                        <div className="section-title">Контактное лицо</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
+                            <div style={{
+                                width: 40, height: 40, borderRadius: '50%',
+                                background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                <User size={18} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                {prop.contact_name && (
+                                    <div style={{ fontWeight: 400 }}>{prop.contact_name}</div>
+                                )}
+                                {prop.contact_phone && (
+                                    <a
+                                        href={`tel:+${prop.contact_phone.replace(/\D/g, '')}`}
+                                        style={{ fontSize: 13, color: 'var(--primary)', textDecoration: 'none' }}
+                                    >
+                                        {prop.contact_phone}
+                                    </a>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Mortgage Calculator */}
+                <MortgageCalculator propertyPrice={prop.price} />
+
+                {/* New Construction Collection (Temporarily removed per user request) */}
+                {/* <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} /> */}
+
+                    </div>
+                </div>
+
                 {showPortfolio && (
                     <PortfolioSection 
                         property={prop}

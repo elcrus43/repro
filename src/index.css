@@ -2033,13 +2033,13 @@ input[type="range"]::-moz-range-thumb {
 
   /* Centered containers on laptop screen for optimal reading ergonomics */
   .page-content {
-    max-width: 960px;
+    max-width: 1140px;
     padding: 24px 28px 120px;
     gap: 16px;
   }
 
   .topbar {
-    max-width: 960px;
+    max-width: 1140px;
     margin: 0 auto;
     width: 100%;
     border-radius: 0 0 20px 20px;
@@ -2059,14 +2059,106 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+/* Multi-column grid for Property Cards in lists */
+.property-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 769px) {
+  .property-cards-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
+}
+
+@media (min-width: 1280px) {
+  .property-cards-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 18px !important;
+  }
+}
+
+/* Multi-column dashboard layout for Property Details Page */
+.details-dashboard-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.details-col-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  width: 100%;
+}
+
+.details-col-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 960px) {
+  .details-dashboard-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.28fr) minmax(0, 0.88fr) !important;
+    gap: 24px !important;
+    align-items: start !important;
+  }
+
+  .details-col-sidebar {
+    position: sticky !important;
+    top: 92px !important;
+  }
+}
+
+/* Multi-column layout for Property Form Page */
+.form-cards-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.form-col-main,
+.form-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+  width: 100%;
+}
+
+@media (min-width: 960px) {
+  .form-cards-layout {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr) !important;
+    gap: 24px !important;
+    align-items: start !important;
+  }
+
+  .form-col-side {
+    position: sticky !important;
+    top: 92px !important;
+  }
+}
+
 /* Wide Laptop & Large Desktop Monitors (>= 1200px) */
 @media (min-width: 1200px) {
   .page-content {
-    max-width: 1120px;
+    max-width: 1260px;
   }
 
   .topbar {
-    max-width: 1120px;
+    max-width: 1260px;
   }
 
   .bottom-nav {
