@@ -16,7 +16,7 @@
 
 import { useCallback, useRef, useLayoutEffect } from 'react';
 import { nanoid } from '../utils/nanoid';
-import { runMatchingForProperty, runMatchingForRequest } from '../utils/matching';
+import { runMatchingForProperty, runMatchingForRequest, hasPassedDealStage } from '../utils/matching';
 import { syncAction, loadUserData } from './dbSync';
 import { syncAction as syncLocalStorageAction } from './localStorageSync';
 import { syncWithCalendar, deleteCalendarEvent } from './calendarSync';
@@ -415,6 +415,9 @@ export function useDbDispatch(state, dispatch, onError) {
 /* ─── Private helpers ──────────────────────────────────────────────────────── */
 
 function _buildPropertyMatches(prop, state, now) {
+  if (hasPassedDealStage(prop, state?.deals)) {
+    return [];
+  }
   const requests = state?.requests || [];
   const matches  = state?.matches || [];
   return runMatchingForProperty(prop, requests).map(m => {
@@ -436,7 +439,7 @@ function _buildPropertyMatches(prop, state, now) {
 }
 
 function _buildRequestMatches(req, state, now) {
-  const properties = state?.properties || [];
+  const properties = (state?.properties || []).filter(p => !hasPassedDealStage(p, state?.deals));
   const matches    = state?.matches || [];
   return runMatchingForRequest(req, properties).map(m => {
     const existing = matches.find(

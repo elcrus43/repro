@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { Sparkles, TrendingUp, Users, Home, Search, Target, ArrowRight, Cake } from 'lucide-react';
+import { hasPassedDealStage } from '../../utils/matching';
 
 export function DashboardPage() {
     const { state } = useApp();
@@ -24,12 +25,17 @@ export function DashboardPage() {
     );
 
     const myMatches = useMemo(() => {
-        if (state.currentUser?.role === 'admin') return state.matches;
-        return state.matches.filter(m => {
-            const req = state.requests.find(r => r.id === m.request_id);
-            return req?.realtor_id === state.currentUser?.id;
+        const base = state.currentUser?.role === 'admin'
+            ? state.matches
+            : state.matches.filter(m => {
+                const req = state.requests.find(r => r.id === m.request_id);
+                return req?.realtor_id === state.currentUser?.id;
+            });
+        return base.filter(m => {
+            const prop = state.properties.find(p => p.id === m.property_id);
+            return prop && !hasPassedDealStage(prop, state.deals);
         });
-    }, [state.matches, state.requests, state.currentUser?.role, state.currentUser?.id]);
+    }, [state.matches, state.requests, state.properties, state.deals, state.currentUser?.role, state.currentUser?.id]);
 
     const newMatches = useMemo(() =>
         myMatches

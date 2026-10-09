@@ -243,7 +243,7 @@ export function ListPage() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                         <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Объекты</span>
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Портфель недвижимости</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.75, letterSpacing: '0.02em' }}>Портфель недвижимости</span>
                     </div>
                     <div style={{ display: 'flex', gap: 10 }}>
                         <GlobalSearch />
@@ -252,7 +252,7 @@ export function ListPage() {
                                 className="card-clickable"
                                 onClick={() => setViewMode(prev => prev === 'list' ? 'pipeline' : 'list')}
                                 style={{
-                                    width: 44, height: 44, borderRadius: 14, border: 'none',
+                                    width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)',
                                     background: 'var(--surface)', color: 'var(--text)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     cursor: 'pointer'
@@ -265,13 +265,13 @@ export function ListPage() {
                             className="card-clickable" 
                             onClick={() => navigate(filter === 'selection' ? '/selection/new' : '/properties/new')} 
                             style={{ 
-                                width: 44, height: 44, borderRadius: 14, border: 'none',
-                                background: 'var(--surface)', color: 'var(--text)',
+                                width: 44, height: 44, borderRadius: 12, border: 'none',
+                                background: 'var(--primary)', color: '#ffffff',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                cursor: 'pointer'
+                                cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)'
                             }}
                         >
-                            <Plus size={24} />
+                            <Plus size={22} />
                         </button>
                     </div>
                 </div>
@@ -282,26 +282,26 @@ export function ListPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
                     {filter !== 'selection' && (
-                        <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
+                        <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4 }}>
                             <button 
-                                className="card-clickable font-oswald" 
+                                className="card-clickable" 
                                 style={{ 
-                                    flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
+                                    flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 500, 
                                     background: scope === 'all' ? 'var(--surface)' : 'transparent', 
-                                    boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                                    boxShadow: scope === 'all' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', 
                                     color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)', 
-                                    textTransform: 'uppercase', letterSpacing: '0.05em' 
+                                    cursor: 'pointer', transition: 'all 0.2s ease'
                                 }} 
                                 onClick={() => setScope('all')}
                             >Все объекты</button>
                             <button 
-                                className="card-clickable font-oswald" 
+                                className="card-clickable" 
                                 style={{ 
-                                    flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 14, fontWeight: 400, 
+                                    flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 500, 
                                     background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
-                                    boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                                    boxShadow: scope === 'mine' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', 
                                     color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)', 
-                                    textTransform: 'uppercase', letterSpacing: '0.05em' 
+                                    cursor: 'pointer', transition: 'all 0.2s ease'
                                 }} 
                                 onClick={() => setScope('mine')}
                             >Мои объекты</button>

@@ -7,6 +7,8 @@
  *  - уменьшения размера God Object
  */
 
+import { hasPassedDealStage } from '../utils/matching';
+
 export const EMPTY_STATE = {
   currentUser:  null,
   clients:      [],
@@ -93,31 +95,42 @@ export function reducer(state, action) {
       return { ...state, clients: state.clients.filter(c => c.id !== action.id) };
 
     /* ── Объекты ────────────────────────────────────────────────────────── */
-    case 'ADD_PROPERTY':
+    case 'ADD_PROPERTY': {
+      const isPassedDeal = hasPassedDealStage(action.property);
       return {
         ...state,
         properties: [...state.properties, action.property],
-        matches:    [...state.matches, ...(action.matches || [])],
+        matches:    isPassedDeal ? state.matches : [...state.matches, ...(action.matches || [])],
       };
+    }
 
-    case 'UPDATE_PROPERTY':
+    case 'UPDATE_PROPERTY': {
+      const isPassedDeal = hasPassedDealStage(action.property);
       return {
         ...state,
         properties: state.properties.map(p => p.id === action.property.id ? action.property : p),
-        matches: [
-          ...state.matches.filter(m => m.property_id !== action.property.id || m.status !== 'new'),
-          ...(action.matches || []),
-        ],
+        matches: isPassedDeal
+          ? state.matches.filter(m => m.property_id !== action.property.id)
+          : [
+              ...state.matches.filter(m => m.property_id !== action.property.id || m.status !== 'new'),
+              ...(action.matches || []),
+            ],
       };
+    }
 
     // Lightweight patch — merges only specified fields without replacing the whole object
-    case 'PATCH_PROPERTY':
+    case 'PATCH_PROPERTY': {
+      const existing = state.properties.find(p => p.id === action.patch.id);
+      const patched = { ...(existing || {}), ...action.patch };
+      const isPassedDeal = hasPassedDealStage(patched);
       return {
         ...state,
         properties: state.properties.map(p =>
-          p.id === action.patch.id ? { ...p, ...action.patch } : p
+          p.id === action.patch.id ? patched : p
         ),
+        ...(isPassedDeal ? { matches: state.matches.filter(m => m.property_id !== action.patch.id) } : {}),
       };
+    }
 
     case 'DELETE_PROPERTY':
       return { ...state, properties: state.properties.filter(p => p.id !== action.id) };
@@ -227,14 +240,18 @@ export function reducer(state, action) {
     /* ── Сделки ─────────────────────────────────────────────────────── */
     case 'ADD_DEAL': {
       const newDeal = { ...action.deal, status: action.deal.status || 'active' };
-      const properties = action.deal.property_id
+      const propId = action.deal.property_id;
+      const properties = propId
         ? state.properties.map(p =>
-            p.id === action.deal.property_id
+            p.id === propId
               ? { ...p, status: 'deal', updated_at: newDeal.created_at || new Date().toISOString() }
               : p
           )
         : state.properties;
-      return { ...state, deals: [...state.deals, newDeal], properties };
+      const matches = propId
+        ? state.matches.filter(m => m.property_id !== propId)
+        : state.matches;
+      return { ...state, deals: [...state.deals, newDeal], properties, matches };
     }
 
     case 'UPDATE_DEAL': {
@@ -264,10 +281,18 @@ export function reducer(state, action) {
             propertyChanges[p.id] ? { ...p, status: propertyChanges[p.id], updated_at: nowTs } : p
           );
 
+      const affectedPassedPropIds = Object.keys(propertyChanges).filter(
+        id => propertyChanges[id] === 'deal' || propertyChanges[id] === 'sold'
+      );
+      const matches = affectedPassedPropIds.length > 0
+        ? state.matches.filter(m => !affectedPassedPropIds.includes(m.property_id))
+        : state.matches;
+
       return {
         ...state,
         deals: state.deals.map(d => d.id === incoming.id ? incoming : d),
         ...(properties === state.properties ? {} : { properties }),
+        ...(matches === state.matches ? {} : { matches }),
       };
     }
 

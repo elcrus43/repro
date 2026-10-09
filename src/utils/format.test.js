@@ -137,6 +137,21 @@ describe('formatPhone', () => {
     expect(formatPhone(null)).toBe('')
     expect(formatPhone(undefined)).toBe('')
   })
+
+  it('handles inputMode typing with 8, 7, 9', () => {
+    expect(formatPhone('8', true)).toBe('+7 (')
+    expect(formatPhone('7', true)).toBe('+7 (')
+    expect(formatPhone('+7', true)).toBe('+7 (')
+    expect(formatPhone('9', true)).toBe('+7 (9')
+    expect(formatPhone('+7 (9', true)).toBe('+7 (9')
+    expect(formatPhone('+7 (912', true)).toBe('+7 (912')
+    expect(formatPhone('+7 (9123', true)).toBe('+7 (912) 3')
+  })
+
+  it('handles backspacing in inputMode cleanly without getting stuck', () => {
+    expect(formatPhone('+7 (', true)).toBe('')
+    expect(formatPhone('+7 ', true)).toBe('')
+  })
 })
 
 describe('stripPhone', () => {

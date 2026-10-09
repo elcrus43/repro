@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { Pencil, Trash, Sparkles, User, MapPin, Building2, Wallet, ChevronRight, TrendingUp, ChevronLeft } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
+import { hasPassedDealStage } from '../../utils/matching';
 
 export function DetailsPage() {
     const { id } = useParams();
@@ -11,7 +12,11 @@ export function DetailsPage() {
     const navigate = useNavigate();
     const req = state.requests.find(r => r.id === id);
     const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
-    const matches = state.matches.filter(m => m.request_id === id);
+    const matches = state.matches.filter(m => {
+        if (m.request_id !== id) return false;
+        const prop = state.properties.find(p => p.id === m.property_id);
+        return prop && !hasPassedDealStage(prop, state.deals);
+    });
 
     if (!req) return (
         <div className="page fade-in">

@@ -13,6 +13,7 @@
 
 import { useMemo } from 'react';
 import { useApp } from './AppContext';
+import { hasPassedDealStage } from '../utils/matching';
 
 /* ── Базовые селекторы ──────────────────────────────────────────────── */
 
@@ -82,35 +83,48 @@ export function useSelectMatchesByRequest(requestId) {
   const { state } = useApp();
   return useMemo(() =>
     state.matches
-      .filter(m => m.request_id === requestId)
+      .filter(m => {
+        if (m.request_id !== requestId) return false;
+        const prop = state.properties.find(p => p.id === m.property_id);
+        return prop && !hasPassedDealStage(prop, state.deals);
+      })
       .sort((a, b) => b.score - a.score),
-    [state.matches, requestId]
+    [state.matches, state.properties, state.deals, requestId]
   );
 }
 
 export function useSelectMatchesByProperty(propertyId) {
   const { state } = useApp();
-  return useMemo(() =>
-    state.matches
+  return useMemo(() => {
+    const prop = state.properties.find(p => p.id === propertyId);
+    if (!prop || hasPassedDealStage(prop, state.deals)) return [];
+    return state.matches
       .filter(m => m.property_id === propertyId)
-      .sort((a, b) => b.score - a.score),
-    [state.matches, propertyId]
-  );
+      .sort((a, b) => b.score - a.score);
+  }, [state.matches, state.properties, state.deals, propertyId]);
 }
 
 export function useSelectPendingMatches() {
   const { state } = useApp();
   return useMemo(() =>
-    state.matches.filter(m => m.status === 'new'),
-    [state.matches]
+    state.matches.filter(m => {
+      if (m.status !== 'new') return false;
+      const prop = state.properties.find(p => p.id === m.property_id);
+      return prop && !hasPassedDealStage(prop, state.deals);
+    }),
+    [state.matches, state.properties, state.deals]
   );
 }
 
 export function useSelectNewMatchesCount() {
   const { state } = useApp();
   return useMemo(() =>
-    state.matches.filter(m => m.status === 'new').length,
-    [state.matches]
+    state.matches.filter(m => {
+      if (m.status !== 'new') return false;
+      const prop = state.properties.find(p => p.id === m.property_id);
+      return prop && !hasPassedDealStage(prop, state.deals);
+    }).length,
+    [state.matches, state.properties, state.deals]
   );
 }
 

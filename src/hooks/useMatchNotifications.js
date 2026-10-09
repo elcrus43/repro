@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
+import { hasPassedDealStage } from '../utils/matching';
 
 export function useMatchNotifications() {
     const { state } = useApp();
@@ -29,11 +30,13 @@ export function useMatchNotifications() {
         }
 
         // Check for new matches belonging to the current user
-        const newMatches = state.matches.filter(m =>
-            m.realtor_id === user.id &&
-            m.status === 'new' &&
-            !notifiedMatchesRef.current.has(m.id)
-        );
+        const newMatches = state.matches.filter(m => {
+            if (m.realtor_id !== user.id || m.status !== 'new' || notifiedMatchesRef.current.has(m.id)) {
+                return false;
+            }
+            const prop = state.properties.find(p => p.id === m.property_id);
+            return prop && !hasPassedDealStage(prop, state.deals);
+        });
 
         if (newMatches.length > 0) {
             if ('Notification' in window && Notification.permission === 'granted') {

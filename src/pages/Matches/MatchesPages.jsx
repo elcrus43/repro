@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPrice, getLevelLabel } from '../../utils/matching';
+import { formatPrice, getLevelLabel, hasPassedDealStage } from '../../utils/matching';
 import { formatNumber, parseLocalDateTime, stripPhone } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp, Briefcase } from 'lucide-react';
@@ -26,6 +26,11 @@ export function MatchesPage() {
         })
         .filter(m => !propFilter || m.property_id === propFilter)
         .filter(m => !reqFilter || m.request_id === reqFilter)
+        .filter(m => {
+            const prop = state.properties.find(p => p.id === m.property_id);
+            if (!prop || hasPassedDealStage(prop, state.deals)) return false;
+            return true;
+        })
         .filter(m => {
             if (filter === 'all') return m.status !== 'rejected';
             if (filter === 'new') return m.status === 'new';
@@ -189,6 +194,7 @@ export function MatchDetailPage() {
     const buyer = req ? state.clients.find(c => c.id === req.client_id) : null;
     const seller = prop ? state.clients.find(c => c.id === prop.client_id) : null;
     const lvl = getLevelLabel(match.match_level);
+    const isPassedDeal = hasPassedDealStage(prop, state.deals);
 
     const statusLabels = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ', showing_done: 'Показ проведён', rejected: 'Отклонён', deal: 'Сделка' };
     const statusColors = { new: '#3b82f6', viewed: '#64748b', showing_planned: '#f59e0b', showing_done: '#10b981', rejected: '#ef4444', deal: '#8b5cf6' };
@@ -200,6 +206,7 @@ export function MatchDetailPage() {
     }
 
     function handleDeal() {
+        if (isPassedDeal) return;
         // Определяем продавцов из объекта (поддерживаем оба поля)
         const sellerIds = prop?.client_ids?.length
             ? prop.client_ids
@@ -227,7 +234,7 @@ export function MatchDetailPage() {
     }
 
     function handleScheduleShowing() {
-        if (!showingDate) return;
+        if (isPassedDeal || !showingDate) return;
         dispatch({
             type: 'ADD_SHOWING',
             showing: { match_id: matchId, property_id: match.property_id, client_id: req?.client_id, realtor_id: match.realtor_id, showing_date: parseLocalDateTime(showingDate)?.toISOString(), status: 'planned' }
@@ -273,6 +280,22 @@ export function MatchDetailPage() {
             </div>
 
             <div className="page-content" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {isPassedDeal && (
+                    <div style={{
+                        padding: '14px 18px',
+                        borderRadius: 18,
+                        background: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.2)',
+                        color: 'var(--danger)',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10
+                    }}>
+                        <span>⚠️ Этот объект уже прошёл этап сделки ({prop?.status === 'sold' ? 'продан' : 'в сделке'}) и не должен участвовать в матчинге.</span>
+                    </div>
+                )}
                 
                 {/* Score Summary Card */}
                 <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>

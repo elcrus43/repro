@@ -7,6 +7,7 @@
 
 import {
   calculateMatch,
+  hasPassedDealStage,
   runMatchingForProperty,
   runMatchingForRequest,
   getLevelLabel,
@@ -286,7 +287,33 @@ describe('calculateMatch — match levels', () => {
   })
 })
 
-// ─── Batch Matching ─────────────────────────────────────────────────────────
+// ─── Deal Stage Exclusion & Batch Matching ─────────────────────────────────
+
+describe('hasPassedDealStage', () => {
+  it('returns true for property with status "deal"', () => {
+    expect(hasPassedDealStage({ id: 'p1', status: 'deal' })).toBe(true)
+  })
+
+  it('returns true for property with status "sold"', () => {
+    expect(hasPassedDealStage({ id: 'p1', status: 'sold' })).toBe(true)
+  })
+
+  it('returns true when property has active or closed deal in deals list', () => {
+    const deals = [{ id: 'd1', property_id: 'p1', status: 'active' }]
+    expect(hasPassedDealStage({ id: 'p1', status: 'meeting' }, deals)).toBe(true)
+  })
+
+  it('returns false for property with status "active" or "advertising"', () => {
+    expect(hasPassedDealStage({ id: 'p1', status: 'active' })).toBe(false)
+    expect(hasPassedDealStage({ id: 'p1', status: 'advertising' })).toBe(false)
+    expect(hasPassedDealStage({ id: 'p1', status: 'meeting' })).toBe(false)
+  })
+
+  it('returns false for null/undefined', () => {
+    expect(hasPassedDealStage(null)).toBe(false)
+    expect(hasPassedDealStage(undefined)).toBe(false)
+  })
+})
 
 describe('runMatchingForProperty', () => {
   it('skips inactive requests', () => {
@@ -309,6 +336,24 @@ describe('runMatchingForProperty', () => {
     const results = runMatchingForProperty(prop, requests)
     expect(results).toHaveLength(2)
   })
+
+  it('skips property that has reached deal stage (status: "deal")', () => {
+    const prop = makeProperty({ status: 'deal' })
+    const requests = [
+      makeRequest({ id: 'req-1', status: 'active' }),
+    ]
+    const results = runMatchingForProperty(prop, requests)
+    expect(results).toHaveLength(0)
+  })
+
+  it('skips property that has passed deal stage (status: "sold")', () => {
+    const prop = makeProperty({ status: 'sold' })
+    const requests = [
+      makeRequest({ id: 'req-1', status: 'active' }),
+    ]
+    const results = runMatchingForProperty(prop, requests)
+    expect(results).toHaveLength(0)
+  })
 })
 
 describe('runMatchingForRequest', () => {
@@ -317,6 +362,17 @@ describe('runMatchingForRequest', () => {
     const properties = [
       makeProperty({ id: 'prop-1', status: 'active' }),
       makeProperty({ id: 'prop-2', status: 'sold' }),
+    ]
+    const results = runMatchingForRequest(req, properties)
+    expect(results).toHaveLength(1)
+    expect(results[0].property_id).toBe('prop-1')
+  })
+
+  it('skips properties in deal stage (status: "deal")', () => {
+    const req = makeRequest()
+    const properties = [
+      makeProperty({ id: 'prop-1', status: 'active' }),
+      makeProperty({ id: 'prop-2', status: 'deal' }),
     ]
     const results = runMatchingForRequest(req, properties)
     expect(results).toHaveLength(1)

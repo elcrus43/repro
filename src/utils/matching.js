@@ -255,12 +255,30 @@ function fmt(n) {
 }
 
 /**
+ * Checks whether a property has reached or passed the deal stage.
+ * Properties with status 'deal' or 'sold' (or having an active/closed deal) must not participate in matching.
+ * @param {Property | object} property
+ * @param {Array} [deals]
+ * @returns {boolean}
+ */
+export function hasPassedDealStage(property, deals) {
+  if (!property) return false;
+  if (property.status === 'deal' || property.status === 'sold') return true;
+  if (Array.isArray(deals) && deals.some(d => d.property_id === property.id && d.status !== 'cancelled')) {
+    return true;
+  }
+  return false;
+}
+
+/**
  * @param {Property} property
  * @param {Request[]} requests
  * @returns {MatchWithIds[]}
  */
 export function runMatchingForProperty(property, requests) {
   const results = [];
+  if (hasPassedDealStage(property)) return results;
+
   for (const req of requests) {
     if (req.status !== 'active') continue;
 
@@ -280,6 +298,7 @@ export function runMatchingForProperty(property, requests) {
 export function runMatchingForRequest(request, properties) {
   const results = [];
   for (const prop of properties) {
+    if (hasPassedDealStage(prop)) continue;
     if (prop.status !== 'active' && prop.status !== 'advertising') continue;
 
     const result = calculateMatch(prop, request);

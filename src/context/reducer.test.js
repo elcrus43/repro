@@ -134,6 +134,38 @@ describe('reducer — properties', () => {
     expect(next.matches.some(m => m.id === 'm3')).toBe(true)
   })
 
+  it('UPDATE_PROPERTY with status "deal" removes all matches for that property', () => {
+    const state = makeState({
+      properties: [{ id: 'p1', price: 5_000_000, status: 'advertising' }],
+      matches: [
+        { id: 'm1', property_id: 'p1', status: 'new' },
+        { id: 'm2', property_id: 'p1', status: 'viewed' },
+        { id: 'm3', property_id: 'p2', status: 'new' },
+      ],
+    })
+    const next = reducer(state, {
+      type: 'UPDATE_PROPERTY',
+      property: { id: 'p1', price: 5_000_000, status: 'deal' },
+    })
+    expect(next.matches.some(m => m.property_id === 'p1')).toBe(false)
+    expect(next.matches.some(m => m.id === 'm3')).toBe(true)
+  })
+
+  it('UPDATE_PROPERTY with status "sold" removes all matches for that property', () => {
+    const state = makeState({
+      properties: [{ id: 'p1', price: 5_000_000, status: 'advertising' }],
+      matches: [
+        { id: 'm1', property_id: 'p1', status: 'new' },
+        { id: 'm2', property_id: 'p1', status: 'viewed' },
+      ],
+    })
+    const next = reducer(state, {
+      type: 'UPDATE_PROPERTY',
+      property: { id: 'p1', price: 5_000_000, status: 'sold' },
+    })
+    expect(next.matches.some(m => m.property_id === 'p1')).toBe(false)
+  })
+
   it('DELETE_PROPERTY removes by id', () => {
     const state = makeState({
       properties: [{ id: 'p1' }, { id: 'p2' }],

@@ -171,8 +171,8 @@ export function ListPage() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Клиенты</span>
-                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 200, opacity: 0.6, letterSpacing: '0.05em' }}>База контактов</span>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Клиенты</span>
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.75, letterSpacing: '0.02em' }}>База контактов</span>
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
@@ -180,7 +180,7 @@ export function ListPage() {
                             className="card-clickable"
                             onClick={() => setViewMode(prev => prev === 'list' ? 'pipeline' : 'list')}
                             style={{
-                                width: 44, height: 44, borderRadius: 14, border: 'none',
+                                width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)',
                                 background: 'var(--surface)', color: 'var(--text)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: 'pointer'
@@ -189,11 +189,11 @@ export function ListPage() {
                             {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
                         </button>
                         <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
-                            width: 44, height: 44, borderRadius: 14, border: 'none', 
-                            background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer'
+                            width: 44, height: 44, borderRadius: 12, border: 'none', 
+                            background: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)'
                         }}>
-                            <Plus size={24} />
+                            <Plus size={22} />
                         </button>
                     </div>
                 </div>
@@ -202,20 +202,20 @@ export function ListPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
                 {/* Modern Search & Filters */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 16, gap: 4 }}>
+                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4 }}>
                         <button style={{ 
-                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
+                            flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 500,
                             background: scope === 'all' ? 'var(--surface)' : 'transparent', 
-                            boxShadow: scope === 'all' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                            boxShadow: scope === 'all' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', 
                             color: scope === 'all' ? 'var(--text)' : 'var(--text-secondary)',
-                            transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
+                            transition: 'all 0.2s ease', cursor: 'pointer'
                         }} onClick={() => setScope('all')}>Общая база</button>
                         <button style={{ 
-                            flex: 1, padding: '10px', borderRadius: 12, border: 'none', fontSize: 13, fontWeight: 300,
+                            flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 500,
                             background: scope === 'mine' ? 'var(--surface)' : 'transparent', 
-                            boxShadow: scope === 'mine' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none', 
+                            boxShadow: scope === 'mine' ? '0 2px 8px rgba(0,0,0,0.06)' : 'none', 
                             color: scope === 'mine' ? 'var(--text)' : 'var(--text-secondary)',
-                            transition: 'all 0.2s ease', fontFamily: "'Oswald', sans-serif"
+                            transition: 'all 0.2s ease', cursor: 'pointer'
                         }} onClick={() => setScope('mine')}>Мои клиенты</button>
                     </div>
 
@@ -228,11 +228,13 @@ export function ListPage() {
                                 className={`tab-filter ${filter === val ? 'active' : ''}`} 
                                 onClick={() => setFilter(val)}
                                 style={{ 
-                                    whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 12, border: 'none',
+                                    whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 10, border: '1px solid',
+                                    borderColor: filter === val ? 'var(--primary)' : 'var(--border)',
                                     background: filter === val ? 'var(--primary)' : 'var(--surface)',
-                                    color: filter === val ? 'white' : 'var(--text-secondary)',
-                                    fontSize: 13, fontWeight: 300,
-                                    fontFamily: "'Oswald', sans-serif", boxShadow: filter === val ? '0 4px 12px rgba(0, 82, 255, 0.2)' : 'none'
+                                    color: filter === val ? '#ffffff' : 'var(--text-secondary)',
+                                    fontSize: 13, fontWeight: 500,
+                                    boxShadow: filter === val ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
+                                    cursor: 'pointer', transition: 'all 0.18s ease'
                                 }}
                             >
                                 {label}

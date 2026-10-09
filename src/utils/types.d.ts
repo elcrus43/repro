@@ -120,6 +120,14 @@
 export function calculateMatch(property, request) {}
 
 /**
+ * Проверяет, находится ли объект на этапе сделки или прошел его (статус 'deal' или 'sold').
+ * @param {Property} property
+ * @param {Array} [deals]
+ * @returns {boolean}
+ */
+export function hasPassedDealStage(property, deals) {}
+
+/**
  * Запускает matching для одного объекта против всех запросов.
  * @param {Property} property
  * @param {Request[]} requests

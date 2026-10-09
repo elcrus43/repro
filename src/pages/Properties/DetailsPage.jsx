@@ -797,6 +797,25 @@ export function DetailsPage() {
         });
     }
 
+    function handleCreateDocument() {
+        let propClientIds = prop?.client_ids || [];
+        if (typeof propClientIds === 'string') {
+            propClientIds = propClientIds.replace(/{|}/g, '').split(',').filter(Boolean);
+        }
+        const sellers = propClientIds.length > 0 ? propClientIds : (prop?.client_id ? [prop.client_id] : []);
+        const isRent = prop?.deal_type === 'rent';
+
+        navigate('/documents', {
+            state: {
+                docPrefill: {
+                    propertyId: prop.id,
+                    sellerId: sellers[0] || '',
+                    template: isRent ? 'rent' : 'sale'
+                }
+            }
+        });
+    }
+
     // Initials helper
     const initials = (name) => name ? name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
 
@@ -817,6 +836,9 @@ export function DetailsPage() {
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="icon-btn-calendar" onClick={handleCreateDocument} title="Создать договор / документ" style={{ color: 'var(--primary)' }}>
+                        <FileText size={18} />
+                    </button>
                     <button className="icon-btn-calendar" onClick={() => navigate(`/history/new?property_id=${id}`)} title="Создать новое событие">
                         <Calendar size={18} />
                     </button>

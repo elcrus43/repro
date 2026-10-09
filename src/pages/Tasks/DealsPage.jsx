@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert, Check, X } from 'lucide-react';
+import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert, Check, X, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -1428,6 +1428,35 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             </div>
                         )}
                     </div>
+
+                    <button
+                        type="button"
+                        className="icon-btn-edit"
+                        style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 10,
+                            border: 'none',
+                            background: 'rgba(0,82,255,0.07)',
+                            color: 'var(--primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onClick={() => navigate('/documents', {
+                            state: {
+                                docPrefill: {
+                                    dealId: deal.id,
+                                    template: 'sale',
+                                }
+                            }
+                        })}
+                        title="Создать документ по сделке"
+                    >
+                        <FileText size={16} />
+                    </button>
 
                     <button
                         type="button"

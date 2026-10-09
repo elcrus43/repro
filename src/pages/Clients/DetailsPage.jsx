@@ -7,8 +7,9 @@ import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronL
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
+import { hasPassedDealStage } from '../../utils/matching';
 
-const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed'];
+const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed', 'deal'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
 
 export function DetailsPage() {
@@ -47,15 +48,18 @@ export function DetailsPage() {
         r.client_id === id || (r.client_ids || []).includes(id)
     );
 
-    // Матчи — все кроме deal / rejected
-    const propMatches = state.matches.filter(m =>
-        !EXCLUDED_MATCH_STATUSES.includes(m.status) &&
-        state.properties.find(p => p.id === m.property_id && (p.client_id === id || (p.client_ids || []).includes(id)))
-    );
-    const reqMatches = state.matches.filter(m =>
-        !EXCLUDED_MATCH_STATUSES.includes(m.status) &&
-        state.requests.find(r => r.id === m.request_id && (r.client_id === id || (r.client_ids || []).includes(id)))
-    );
+    // Матчи — все кроме deal / rejected, и объект не должен пройти этап сделки
+    const propMatches = state.matches.filter(m => {
+        if (EXCLUDED_MATCH_STATUSES.includes(m.status)) return false;
+        const prop = state.properties.find(p => p.id === m.property_id && (p.client_id === id || (p.client_ids || []).includes(id)));
+        return prop && !hasPassedDealStage(prop, state.deals);
+    });
+    const reqMatches = state.matches.filter(m => {
+        if (EXCLUDED_MATCH_STATUSES.includes(m.status)) return false;
+        const prop = state.properties.find(p => p.id === m.property_id);
+        if (!prop || hasPassedDealStage(prop, state.deals)) return false;
+        return state.requests.find(r => r.id === m.request_id && (r.client_id === id || (r.client_ids || []).includes(id)));
+    });
     const allMatches = [...new Map([...propMatches, ...reqMatches].map(m => [m.id, m])).values()];
 
     // Сделки клиента (продавец, покупатель, агент или юрист)
@@ -299,6 +303,22 @@ export function DetailsPage() {
         }
     }
 
+    function handleCreateDocument() {
+        // Определяем роль клиента для подстановки в документ
+        const isSeller = client.client_types?.some(t => ['seller', 'landlord'].includes(t));
+        const clientProp = myProperties[0];
+        navigate('/documents', {
+            state: {
+                docPrefill: {
+                    sellerId: isSeller ? id : '',
+                    buyerId: isSeller ? '' : id,
+                    propertyId: clientProp?.id || '',
+                    template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'sale') : 'yuss_buy_1',
+                }
+            }
+        });
+    }
+
     const initial  = client.full_name?.charAt(0).toUpperCase() || '?';
     const colors   = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
     const avatarBg = colors[initial.charCodeAt(0) % colors.length];
@@ -325,6 +345,18 @@ export function DetailsPage() {
                     <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Управление</span>
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button 
+                        className="card-clickable" 
+                        onClick={handleCreateDocument}
+                        title="Создать документ"
+                        style={{
+                            width: 44, height: 44, borderRadius: 14, border: 'none',
+                            background: 'var(--surface)', color: 'var(--primary)', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', cursor: 'pointer'
+                        }}
+                    >
+                        <FileText size={18} />
+                    </button>
                     <button 
                         className="card-clickable" 
                         onClick={() => navigate(`/clients/${id}/edit`)} 

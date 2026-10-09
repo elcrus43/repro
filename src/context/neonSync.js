@@ -11,6 +11,7 @@
 
 import { neonDb } from '../lib/neon';
 import { DEMO_CLIENTS, DEMO_PROPERTIES, DEMO_REQUESTS, DEMO_SHOWINGS, DEMO_TASKS } from '../data/seed';
+import { hasPassedDealStage } from '../utils/matching';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
@@ -407,7 +408,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
         result = await neonDb.update('properties', pId, normalizedData);
 
-        if (!result?.error && action.matches?.length > 0) {
+        if (hasPassedDealStage(normalizedData)) {
+          await neonDb.query(
+            `UPDATE matches SET status = 'rejected', updated_at = NOW() WHERE property_id = $1 AND status != 'rejected'`,
+            [pId]
+          );
+        } else if (!result?.error && action.matches?.length > 0) {
           for (const m of action.matches) {
             const mRes = await neonDb.upsert('matches', m);
             if (mRes?.error) console.error('[neonSync Match Upsert Error]', mRes.error);
@@ -601,6 +607,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             status: propStatus,
             updated_at: propertyUpdatedAt,
           });
+          await neonDb.query(
+            `UPDATE matches SET status = 'rejected', updated_at = NOW() WHERE property_id = $1 AND status != 'rejected'`,
+            [propertyIdForStatus]
+          );
           result = propResult?.error ? propResult : dealResult;
         } else {
           result = dealResult;
@@ -652,6 +662,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             status: propStatus,
             updated_at: updateData.updated_at || new Date().toISOString()
           });
+          await neonDb.query(
+            `UPDATE matches SET status = 'rejected', updated_at = NOW() WHERE property_id = $1 AND status != 'rejected'`,
+            [updateData.property_id]
+          );
         }
         break;
       }

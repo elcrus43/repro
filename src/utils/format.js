@@ -6,23 +6,34 @@
  */
 export function formatPhone(phone, inputMode = false) {
     if (!phone) return '';
+    const raw = String(phone);
+    const trimmed = raw.trim();
+    if (!trimmed) return '';
 
-    // Extract only digits
-    let clean = phone.replace(/\D/g, '');
-
-    // Strip leading country code (7 or 8) ONLY if there are more digits after it.
-    // Without this guard, typing '7' as first digit makes it vanish (bug).
-    if (clean.length > 1 && (clean.startsWith('8') || clean.startsWith('7'))) {
-        clean = clean.substring(1);
+    // In inputMode, backspacing from +7 (9 gives '+7 (', or from +7 ( gives '+7 ' -> clear completely
+    if (inputMode && (raw === '+7 ' || trimmed === '+7 (' || raw === '+7 (')) {
+        return '';
     }
 
-    // Limit to 10 local digits
+    // Typing country code or plus into empty input
+    if (inputMode && (trimmed === '+' || trimmed === '7' || trimmed === '8' || trimmed === '+7' || trimmed === '+8')) {
+        return '+7 (';
+    }
+
+    let clean = trimmed.replace(/\D/g, '');
+    if (!clean) return '';
+
+    // Strip leading country code (7 or 8) if present in full or multi-digit input
+    if (clean.length > 1 && (clean.startsWith('8') || clean.startsWith('7'))) {
+        clean = clean.substring(1);
+    } else if (clean.length === 1 && (clean === '7' || clean === '8') && !inputMode) {
+        return '';
+    }
+
     const d = clean.substring(0, 10);
     const len = d.length;
-
     if (len === 0) return '';
 
-    // Build formatted string progressively so partial input looks nice
     let result = '+7 ';
     result += `(${d.substring(0, Math.min(3, len))}`;
     if (len > 3) result += `) ${d.substring(3, Math.min(6, len))}`;
