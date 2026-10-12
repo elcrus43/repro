@@ -11,7 +11,9 @@
     "*://*.avito.ru/*",
     "*://*.cian.ru/*",
     "*://localhost/*",
-    "*://*.vercel.app/*"
+    "*://127.0.0.1/*",
+    "*://*.vercel.app/*",
+    "*://*.reacrm.ru/*"
   ],
   "action": {
     "default_popup": "popup.html",

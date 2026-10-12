@@ -2,7 +2,7 @@ async function getCrmBaseUrl() {
     try {
         // Find if user already has CRM open in any tab
         const tabs = await chrome.tabs.query({});
-        const crmTab = tabs.find(t => t.url && (t.url.includes('vercel.app') || t.url.includes('localhost') || t.url.includes('127.0.0.1')));
+        const crmTab = tabs.find(t => t.url && (t.url.includes('reacrm.ru') || t.url.includes('vercel.app') || t.url.includes('localhost') || t.url.includes('127.0.0.1')));
         if (crmTab) {
             const urlObj = new URL(crmTab.url);
             return `${urlObj.origin}/`;
@@ -10,7 +10,7 @@ async function getCrmBaseUrl() {
     } catch (e) {
         console.warn('Could not query active tabs:', e);
     }
-    return 'https://realtor-match.vercel.app/';
+    return 'https://reacrm.ru/';
 }
 
 async function runImport(targetRoute) {

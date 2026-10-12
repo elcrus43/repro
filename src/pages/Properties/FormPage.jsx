@@ -10,6 +10,7 @@ import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { nanoid } from '../../utils/nanoid';
 import { decodeImportData } from '../../utils/importDecoder';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
+import { ExtensionInstallModal } from '../../components/ExtensionInstallModal';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
@@ -354,51 +355,20 @@ export function FormPage() {
         toast.success(`Микрорайон «${saved || trimmed}» сохранен`);
     };
 
+    const [showExtensionModal, setShowExtensionModal] = useState(false);
+
     const handleUrlImport = () => {
         if (!importUrl) {
             toast.error('Введите ссылку для импорта');
             return;
         }
-        setImporting(true);
-        setTimeout(() => {
-            const urlLower = importUrl.toLowerCase();
-            if (urlLower.includes('cian.ru')) {
-                setForm(f => ({
-                    ...f,
-                    address: 'Новый Арбат, д. 15',
-                    price: 150000000,
-                    area_total: 120,
-                    rooms: 5,
-                    floor: 10,
-                    notes: 'Элитные апартаменты в самом центре Москвы. Качественный ремонт, охрана, подземный паркинг.'
-                }));
-                toast.success('Объект успешно импортирован из cian.ru');
-            } else if (urlLower.includes('avito.ru')) {
-                setForm(f => ({
-                    ...f,
-                    address: 'Московская область, Одинцовский городской округ, д. Барвиха, д. 10',
-                    price: 80000000,
-                    area_total: 250,
-                    rooms: 6,
-                    floors_total: 2,
-                    property_type: 'house',
-                    notes: 'Уютный коттедж в охраняемом поселке Барвиха. Ухоженный участок, все коммуникации, готов к заселению.'
-                }));
-                toast.success('Объект успешно импортирован из avito.ru');
-            } else {
-                setForm(f => ({
-                    ...f,
-                    address: 'ул. Парковая, д. 23',
-                    price: 12000000,
-                    area_total: 45,
-                    rooms: 1,
-                    floor: 3,
-                    notes: 'Светлая квартира в спальном районе. Рядом школа, детский сад, парк для прогулок.'
-                }));
-                toast.success('Объект успешно импортирован');
-            }
-            setImporting(false);
-        }, 1200);
+        setShowExtensionModal(true);
+        const urlLower = importUrl.toLowerCase();
+        if (urlLower.includes('avito.ru') || urlLower.includes('cian.ru')) {
+            toast.info('Для Авито и Циан используйте расширение Chrome — прямые ссылки блокируются защитой сайтов');
+        } else {
+            toast.info('Импорт объявлений выполняется через официальное расширение Chrome');
+        }
     };
 
     const setF = (key, val) => setForm(f => ({ ...f, [key]: val }));
@@ -644,25 +614,63 @@ export function FormPage() {
                     {/* ── ЛЕВАЯ КОЛОНКА (Тип, Адрес, Параметры) ── */}
                     <div className="form-col-main">
                 {/* Импорт по ссылке */}
-                <FormCard title="Импорт по ссылке" icon={<Sparkles size={22} />} description="Автоматическое заполнение формы данными с Циан, Авито и др.">
-                    <div style={{ display: 'flex', gap: 10 }}>
-                        <input
-                            type="text"
-                            className="form-input"
-                            style={{ flex: 1, borderRadius: 14 }}
-                            value={importUrl}
-                            onChange={e => setImportUrl(e.target.value)}
-                            placeholder="https://www.cian.ru/sale/flat/..."
-                        />
-                        <button
-                            type="button"
-                            className="btn btn-primary"
-                            onClick={handleUrlImport}
-                            disabled={importing}
-                            style={{ borderRadius: 14, height: 46, padding: '0 20px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
-                        >
-                            {importing ? 'Импорт...' : 'Заполнить'}
-                        </button>
+                <FormCard 
+                    title="Импорт по ссылке (Авито / ЦИАН)" 
+                    icon={<Sparkles size={22} />} 
+                    description="Импортируйте объект со всеми фото и параметрами в 1 клик через расширение Chrome"
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{
+                            background: 'rgba(37, 99, 235, 0.06)',
+                            border: '1px solid rgba(37, 99, 235, 0.18)',
+                            borderRadius: 14,
+                            padding: '12px 16px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: 10
+                        }}>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                                <span>Сайты Авито и ЦИАН защищены от роботов — импорт работает через <strong>расширение Chrome</strong></span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setShowExtensionModal(true)}
+                                style={{
+                                    padding: '7px 14px',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    borderRadius: 10,
+                                    background: 'var(--primary)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Инструкция по расширению
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 10 }}>
+                            <input
+                                type="text"
+                                className="form-input"
+                                style={{ flex: 1, borderRadius: 14 }}
+                                value={importUrl}
+                                onChange={e => setImportUrl(e.target.value)}
+                                placeholder="https://www.avito.ru/... или https://www.cian.ru/..."
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={handleUrlImport}
+                                style={{ borderRadius: 14, height: 46, padding: '0 20px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+                            >
+                                <Sparkles size={16} /> Импорт
+                            </button>
+                        </div>
                     </div>
                 </FormCard>
 
@@ -1680,6 +1688,11 @@ export function FormPage() {
                     </div>
                 );
             })()}
+
+            <ExtensionInstallModal 
+                isOpen={showExtensionModal} 
+                onClose={() => setShowExtensionModal(false)} 
+            />
         </div>
     );
 }

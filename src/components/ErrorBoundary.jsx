@@ -1,4 +1,5 @@
 import React from 'react';
+import { logError } from '../utils/logger';
 
 /**
  * ErrorBoundary — перехватывает ошибки рендера любого дочернего компонента.
@@ -28,12 +29,10 @@ export class ErrorBoundary extends React.Component {
     this.setState({ errorInfo });
     console.error('[ErrorBoundary] Caught error:', error, errorInfo);
     // Log error to Supabase via logger
-    import('../utils/logger').then(({ logError }) => {
-      logError(error, {
-        type: 'ErrorBoundary',
-        componentStack: errorInfo?.componentStack
-      });
-    }).catch(err => console.error('Failed to log error from ErrorBoundary:', err));
+    logError(error, {
+      type: 'ErrorBoundary',
+      componentStack: errorInfo?.componentStack
+    });
   }
 
   handleReset = () => {

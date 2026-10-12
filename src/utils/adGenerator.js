@@ -156,7 +156,7 @@ ${contactsPrompt}
 - Текст должен быть готов к публикации, без каких-либо вводных фраз от тебя (например, без "Вот ваше объявление:").`;
 
     const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
-    const proxyUrl = isCapacitor ? `https://realtor-match.vercel.app/api/ai-proxy` : `/api/ai-proxy`;
+    const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
 
     try {
         const response = await fetch(proxyUrl, {

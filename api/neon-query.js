@@ -119,12 +119,28 @@ export default async function handler(req, res) {
     }
   }
 
-  // ─── Базовая защита SQL ───────────────────────────────────────
-  // Проверяем что запрос не содержит DROP/TRUNCATE/ALTER
-  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE\s+USER|GRANT|REVOKE)\b/i;
+  // ─── Защита SQL ───────────────────────────────────────────────
+  // 1. Блокировка multi-statement инъекций (разделение запросов через ;)
+  if (/;\s*\S+/i.test(query.trim())) {
+    console.warn('[neon-query] Chained query blocked:', query.slice(0, 100));
+    return res.status(403).json({ data: null, error: 'Query not allowed: multiple statements forbidden' });
+  }
+
+  // 2. Блокировка DDL, системных каталогов PostgreSQL и опасных команд
+  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|pg_|information_schema|current_setting|set_config|lo_import|lo_export|dblink)\b/i;
   if (dangerousPattern.test(query)) {
     console.warn('[neon-query] Dangerous query blocked:', query.slice(0, 100));
-    return res.status(403).json({ data: null, error: 'Query not allowed' });
+    return res.status(403).json({ data: null, error: 'Query not allowed: forbidden keyword or catalog access' });
+  }
+
+  // 3. Валидация таблиц по whitelist ALLOWED_TABLES
+  const tableMatches = [...query.matchAll(/\b(?:FROM|JOIN|INTO|UPDATE)\s+["']?([a-zA-Z0-9_]+)["']?/gi)];
+  for (const match of tableMatches) {
+    const table = match[1]?.toLowerCase();
+    if (table && !ALLOWED_TABLES.has(table)) {
+      console.warn('[neon-query] Unauthorized table access attempted:', table);
+      return res.status(403).json({ data: null, error: `Access denied to table: ${table}` });
+    }
   }
 
   // ─── Выполнение запроса ───────────────────────────────────────

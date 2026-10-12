@@ -6,7 +6,8 @@ const getApiBase = () => {
       hostname && 
       hostname !== 'localhost' && 
       hostname !== '127.0.0.1' && 
-      !hostname.endsWith('.vercel.app')
+      !hostname.endsWith('.vercel.app') &&
+      !hostname.endsWith('reacrm.ru')
     ) {
       return `http://${hostname}:8080`;
     }

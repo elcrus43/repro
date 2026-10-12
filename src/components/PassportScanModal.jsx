@@ -97,7 +97,7 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
       setProgressStatus('Распознавание паспорта через ИИ...');
 
       const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
-      const proxyUrl = isCapacitor ? `https://realtor-match.vercel.app/api/ai-proxy` : `/api/ai-proxy`;
+      const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
 
       const response = await fetch(proxyUrl, {
         method: 'POST',

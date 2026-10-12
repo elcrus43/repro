@@ -1,19 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, User, Home, ChevronRight } from 'lucide-react';
 import { useToastContext } from './Toast';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Safe worker initialization
-if (typeof window !== 'undefined') {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.mjs',
-      import.meta.url
-    ).toString();
-  } catch {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
-  }
-}
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -57,6 +44,18 @@ function compressImageFile(file, maxDim = 1600, quality = 0.75) {
 }
 
 async function renderPdfPagesToBase64(file, maxPages = 4) {
+  const pdfjsLib = await import('pdfjs-dist');
+  if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions?.workerSrc) {
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/build/pdf.worker.mjs',
+        import.meta.url
+      ).toString();
+    } catch {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs`;
+    }
+  }
+
   const arrayBuffer = await file.arrayBuffer();
   const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
   const pdf = await loadingTask.promise;
@@ -149,7 +148,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
       const isCapacitor = typeof window !== 'undefined' && (
         window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === ''
       );
-      const proxyUrl = isCapacitor ? 'https://realtor-match.vercel.app/api/ai-proxy' : '/api/ai-proxy';
+      const proxyUrl = isCapacitor ? 'https://reacrm.ru/api/ai-proxy' : '/api/ai-proxy';
       
       const response = await fetch(proxyUrl, {
         method: 'POST',
