@@ -10,92 +10,8 @@ export const DEMO_USER = {
     is_active: true,
 };
 
-export const DEMO_CLIENTS = [
-    {
-        id: 'c1',
-        realtor_id: 'user-1',
-        full_name: 'Иванов Пётр Сергеевич',
-        phone: '+7-999-123-4567',
-        phone_2: '',
-        email: 'ivanov@mail.ru',
-        messenger: 'WhatsApp',
-        client_type: 'buyer',
-        source: 'Авито',
-        status: 'active',
-        notes: 'Торопится, переезжает из другого города до марта',
-        created_at: '2025-01-15T10:00:00Z',
-        updated_at: '2025-01-15T10:00:00Z',
-    },
-    {
-        id: 'c2',
-        realtor_id: 'user-1',
-        full_name: 'Сидорова Мария Александровна',
-        phone: '+7-999-765-4321',
-        email: '',
-        messenger: 'Telegram',
-        client_type: 'seller',
-        source: 'рекомендация',
-        status: 'active',
-        notes: 'Продаёт в связи с переездом в другой город',
-        created_at: '2024-12-01T10:00:00Z',
-        updated_at: '2025-01-10T10:00:00Z',
-    },
-    {
-        id: 'c3',
-        realtor_id: 'user-1',
-        full_name: 'Козлов Андрей Николаевич',
-        phone: '+7-999-111-2233',
-        email: 'kozlov@gmail.com',
-        messenger: 'Viber',
-        client_type: 'seller',
-        source: 'ЦИАН',
-        status: 'active',
-        notes: 'Продаёт однокомнатную квартиру',
-        created_at: '2025-01-05T10:00:00Z',
-        updated_at: '2025-01-05T10:00:00Z',
-    },
-    {
-        id: 'c4',
-        realtor_id: 'user-1',
-        full_name: 'Петрова Анна Дмитриевна',
-        phone: '+7-999-444-5566',
-        email: 'petrova@yandex.ru',
-        messenger: 'Telegram',
-        client_type: 'buyer',
-        source: 'соцсети',
-        status: 'active',
-        notes: 'Ищет квартиру для сдачи в аренду',
-        created_at: '2025-01-18T10:00:00Z',
-        updated_at: '2025-01-18T10:00:00Z',
-    },
-    {
-        id: 'c5',
-        realtor_id: 'user-1',
-        full_name: 'Смирнов Дмитрий Олегович',
-        phone: '+7-999-777-8899',
-        email: '',
-        messenger: 'WhatsApp',
-        client_type: 'both',
-        source: 'звонок',
-        status: 'paused',
-        notes: 'Хочет продать двушку и купить трёшку',
-        created_at: '2024-11-20T10:00:00Z',
-        updated_at: '2025-01-01T10:00:00Z',
-    },
-    {
-        id: 'c9999999-0000-4000-8000-000000000099',
-        realtor_id: 'user-1',
-        full_name: 'Шумейко Татьяна',
-        phone: '+7-999-333-4455',
-        email: 'shumeyko.tatyana@law.ru',
-        client_type: 'lawyer',
-        client_types: ['lawyer'],
-        status: 'active',
-        notes: 'Юрист по недвижимости',
-        created_at: '2025-01-01T10:00:00Z',
-        updated_at: '2025-01-01T10:00:00Z',
-    },
-];
+export const DEMO_CLIENTS = [];
+
 
 export const DEMO_PROPERTIES = [
     {
@@ -248,56 +164,7 @@ export const DEMO_REQUESTS = [
     },
 ];
 
-export const DEMO_TASKS = [
-    {
-        id: 't1',
-        realtor_id: 'user-1',
-        client_id: 'c1',
-        property_id: 'p1',
-        title: 'Показ — Иванов, 14:00',
-        description: 'ул. Ленина, 42',
-        due_date: new Date().toISOString().slice(0, 10) + 'T14:00:00Z',
-        priority: 'high',
-        status: 'pending',
-        created_at: '2025-01-15T10:00:00Z',
-    },
-    {
-        id: 't2',
-        realtor_id: 'user-1',
-        client_id: 'c4',
-        property_id: null,
-        title: 'Позвонить Петровой',
-        description: 'Обратная связь по просмотру',
-        due_date: new Date().toISOString().slice(0, 10) + 'T16:00:00Z',
-        priority: 'medium',
-        status: 'pending',
-        created_at: '2025-01-18T10:00:00Z',
-    },
-    {
-        id: 't3',
-        realtor_id: 'user-1',
-        client_id: 'c2',
-        property_id: null,
-        title: 'Подготовить документы',
-        description: 'Справки для Сидоровой',
-        due_date: new Date(Date.now() + 86400000).toISOString().slice(0, 10) + 'T10:00:00Z',
-        priority: 'medium',
-        status: 'pending',
-        created_at: '2025-01-10T10:00:00Z',
-    },
-];
+export const DEMO_TASKS = [];
 
-export const DEMO_SHOWINGS = [
-    {
-        id: 'sh1',
-        match_id: 'm1',
-        property_id: 'p1',
-        client_id: 'c1',
-        realtor_id: 'user-1',
-        showing_date: new Date().toISOString().slice(0, 10) + 'T14:00:00Z',
-        status: 'planned',
-        client_feedback: null,
-        feedback_comment: '',
-        created_at: '2025-01-15T10:00:00Z',
-    },
-];
+export const DEMO_SHOWINGS = [];
+

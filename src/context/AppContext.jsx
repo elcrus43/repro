@@ -22,6 +22,12 @@ import { neonDb } from '../lib/neon';
 const CACHE_KEY = (userId) => `rm_cache_${userId}`;
 const CACHE_TTL = 12 * 60 * 60 * 1000; // 12 часов
 
+const DEMO_IDS = new Set([
+  'c1', 'c2', 'c3', 'c4', 'c5', 'c9999999-0000-4000-8000-000000000099',
+  'sh1', 't1', 't2', 't3',
+  'bb9ece69-0b37-4f7f-8af2-36cba13f28ba', '30620d8f-65f4-4f7d-baa7-879079ac30e8'
+]);
+
 function getCachedData(userId) {
   try {
     const raw = localStorage.getItem(CACHE_KEY(userId));
@@ -30,6 +36,17 @@ function getCachedData(userId) {
     if (Date.now() - ts > CACHE_TTL) {
       localStorage.removeItem(CACHE_KEY(userId));
       return null;
+    }
+    if (data) {
+      if (Array.isArray(data.clients)) {
+        data.clients = data.clients.filter(c => !DEMO_IDS.has(c.id));
+      }
+      if (Array.isArray(data.showings)) {
+        data.showings = data.showings.filter(s => !DEMO_IDS.has(s.id));
+      }
+      if (Array.isArray(data.tasks)) {
+        data.tasks = data.tasks.filter(t => !DEMO_IDS.has(t.id));
+      }
     }
     return data;
   } catch {
@@ -99,17 +116,10 @@ export function AppProvider({ children }) {
       toast.error('Частичная ошибка загрузки: ' + data.error);
     }
 
-    // 3. Обновляем UI свежими данными и сохраняем в кеш (с защитой от перезаписи меньшим кол-вом)
+    // 3. Обновляем UI свежими данными и сохраняем в кеш
     console.log('[Data Load] Done. showings:', data.showings?.length, 'properties:', data.properties?.length);
     dispatch({ type: 'SET_ALL', data });
-
-    const freshShowings = data.showings?.length || 0;
-    const cachedShowings = cached?.showings?.length || 0;
-    if (freshShowings >= cachedShowings || forceRefresh) {
-      setCachedData(sessionUser.id, data);
-    } else {
-      console.warn('[Cache] Fresh data has FEWER showings than cache, not overwriting. fresh:', freshShowings, 'cached:', cachedShowings);
-    }
+    setCachedData(sessionUser.id, data);
 
     if (!silent && !cached) {
       const pCnt = data.properties?.length || 0;

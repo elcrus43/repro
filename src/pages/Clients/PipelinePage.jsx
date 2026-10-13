@@ -1,19 +1,39 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, formatNumber } from '../../utils/format';
+import { Phone, User, Home, Tag } from 'lucide-react';
 
-const PIPELINE_COLUMNS = [
-  { id: 'new',        label: 'Не отработан', color: '#6b7280' },
-  { id: 'selection',  label: 'Подбор',       color: '#3b82f6' },
-  { id: 'active',     label: 'В работе',     color: '#10b981' },
-  { id: 'refused',    label: 'Отказ',        color: '#ef4444' },
+const EXCLUDED_TYPES = ['developer', 'agent', 'lawyer'];
+const DEAL_TYPES = ['buyer', 'seller', 'landlord', 'tenant'];
+
+const CLIENT_TYPE_INFO = {
+  buyer:    { label: 'Покупатель',   color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.10)', border: 'rgba(59, 130, 246, 0.25)' },
+  seller:   { label: 'Продавец',     color: '#10b981', bg: 'rgba(16, 185, 129, 0.10)', border: 'rgba(16, 185, 129, 0.25)' },
+  landlord: { label: 'Арендодатель', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
+  tenant:   { label: 'Арендатор',    color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
+};
+
+const SEGMENTS = [
+  { id: 'all',    label: 'Все клиенты' },
+  { id: 'buyer',  label: 'Покупатели' },
+  { id: 'seller', label: 'Продавцы' },
+  { id: 'rent',   label: 'Аренда' },
 ];
 
-export function PipelinePage() {
+export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
   const { state, dispatch } = useApp();
   const navigate = useNavigate();
   const isAdmin = state.currentUser?.role === 'admin';
+
+  // Normalize initial segment
+  const defaultSegment = ['buyer', 'seller'].includes(initialSegment)
+    ? initialSegment
+    : ['landlord', 'tenant'].includes(initialSegment)
+      ? 'rent'
+      : 'all';
+
+  const [activeSegment, setActiveSegment] = useState(defaultSegment);
 
   // Helper status mapping
   const mapStatus = (status) => {
@@ -27,25 +47,87 @@ export function PipelinePage() {
     }
   };
 
-  // Only show clients who are buyers (Покупатели)
-  const buyerClients = useMemo(() => {
-    return state.clients
-      .filter(c => c.client_types?.includes('buyer'))
-      .filter(c => isAdmin ? true : c.realtor_id === state.currentUser?.id);
-  }, [state.clients, isAdmin, state.currentUser?.id]);
+  // Base client pool: ONLY clients of deal types, STRICTLY excluding developers, agents, lawyers
+  const dealClients = useMemo(() => {
+    return (state.clients || []).filter(c => {
+      const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+
+      // Strict exclusion: developers, agents, lawyers must NEVER be in pipeline
+      const hasExcluded = types.some(t => EXCLUDED_TYPES.includes(t));
+      if (hasExcluded) return false;
+
+      // Must be a deal-related client
+      const hasDealType = types.some(t => DEAL_TYPES.includes(t));
+      if (!hasDealType) return false;
+
+      // Scope check: my clients or all
+      if (scope === 'mine' && !isAdmin) {
+        return c.realtor_id === state.currentUser?.id;
+      }
+      return true;
+    });
+  }, [state.clients, scope, isAdmin, state.currentUser?.id]);
+
+  // Counts per segment
+  const segmentCounts = useMemo(() => {
+    const counts = { all: dealClients.length, buyer: 0, seller: 0, rent: 0 };
+    dealClients.forEach(c => {
+      const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+      if (types.includes('buyer')) counts.buyer++;
+      if (types.includes('seller')) counts.seller++;
+      if (types.includes('landlord') || types.includes('tenant')) counts.rent++;
+    });
+    return counts;
+  }, [dealClients]);
+
+  // Filtered by active segment
+  const filteredClients = useMemo(() => {
+    if (activeSegment === 'all') return dealClients;
+    if (activeSegment === 'buyer') {
+      return dealClients.filter(c => {
+        const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+        return types.includes('buyer');
+      });
+    }
+    if (activeSegment === 'seller') {
+      return dealClients.filter(c => {
+        const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+        return types.includes('seller');
+      });
+    }
+    if (activeSegment === 'rent') {
+      return dealClients.filter(c => {
+        const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+        return types.includes('landlord') || types.includes('tenant');
+      });
+    }
+    return dealClients;
+  }, [dealClients, activeSegment]);
+
+  // Pipeline columns tailored to segment
+  const pipelineColumns = useMemo(() => [
+    { id: 'new',       label: 'Новый контакт',     color: '#6b7280' },
+    {
+      id: 'selection',
+      label: activeSegment === 'seller' ? 'Оценка / Маркетинг' : activeSegment === 'buyer' ? 'Подбор объектов' : 'Подбор / Оценка',
+      color: '#3b82f6'
+    },
+    { id: 'active',    label: 'В работе',          color: '#10b981' },
+    { id: 'refused',   label: 'Отказ / Архив',     color: '#ef4444' },
+  ], [activeSegment]);
 
   const columnMap = useMemo(() => {
     const map = {};
-    PIPELINE_COLUMNS.forEach(col => {
-      map[col.id] = buyerClients.filter(c => mapStatus(c.status) === col.id);
+    pipelineColumns.forEach(col => {
+      map[col.id] = filteredClients.filter(c => mapStatus(c.status) === col.id);
     });
     return map;
-  }, [buyerClients]);
+  }, [filteredClients, pipelineColumns]);
 
   const handleDrop = (e, columnId) => {
     e.preventDefault();
     const clientId = e.dataTransfer.getData('clientId');
-    const client = buyerClients.find(c => c.id === clientId);
+    const client = filteredClients.find(c => c.id === clientId);
     if (client && mapStatus(client.status) !== columnId) {
       dispatch({ type: 'UPDATE_CLIENT', client: { ...client, status: columnId } });
     }
@@ -55,134 +137,293 @@ export function PipelinePage() {
     e.preventDefault();
   };
 
+  // Helper to get client's budget or request info
+  const getClientMeta = (client) => {
+    const types = Array.isArray(client.client_types) ? client.client_types : (client.client_type ? [client.client_type] : []);
+    
+    // For buyers / tenants: look for request budget
+    if (types.includes('buyer') || types.includes('tenant')) {
+      const req = (state.requests || []).find(r => r.client_id === client.id || r.client_ids?.includes(client.id));
+      if (req?.budget_max) {
+        return { type: 'budget', text: `до ${formatNumber(req.budget_max)} ₽` };
+      }
+      if (client.budget_max) {
+        return { type: 'budget', text: `до ${formatNumber(client.budget_max)} ₽` };
+      }
+    }
+
+    // For sellers / landlords: look for property count
+    if (types.includes('seller') || types.includes('landlord')) {
+      const count = (state.properties || []).filter(p => p.owner_id === client.id || p.client_id === client.id).length;
+      if (count > 0) {
+        return { type: 'property', text: `Объектов: ${count}` };
+      }
+    }
+
+    return null;
+  };
+
   return (
-    <div className="pipeline-scrollbar" style={{
-      overflowX: 'auto',
-      scrollbarWidth: 'none',
-      display: 'flex',
-      gap: 12,
-      padding: '16px 20px 24px',
-      margin: '0 -20px',
-      width: 'calc(100% + 40px)',
-      boxSizing: 'border-box',
-      minHeight: 400,
-    }}>
-      <style>{`
-        .pipeline-scrollbar::-webkit-scrollbar { display: none; }
-      `}</style>
-
-      {PIPELINE_COLUMNS.map(column => {
-        const cards = columnMap[column.id] || [];
-        return (
-          <div
-            key={column.id}
-            onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, column.id)}
-            style={{
-              minWidth: 220,
-              flex: '0 0 220px',
-              background: 'var(--bg-light)',
-              borderRadius: 20,
-              padding: 16,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 10,
-            }}
-          >
-            {/* Column Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <div style={{
-                width: 10, height: 10, borderRadius: '50%',
-                background: column.color, flexShrink: 0
-              }} />
-              <span className="font-oswald" style={{
-                fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1
-              }}>
-                {column.label}
-              </span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* ── СЕГМЕНТЫ ВОРОНКИ ── */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        paddingBottom: 4
+      }}>
+        {SEGMENTS.map(seg => {
+          const isActive = activeSegment === seg.id;
+          const count = segmentCounts[seg.id] || 0;
+          return (
+            <button
+              key={seg.id}
+              onClick={() => setActiveSegment(seg.id)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 14px',
+                borderRadius: 12,
+                border: isActive ? '1px solid var(--primary)' : '1px solid var(--border)',
+                background: isActive ? 'var(--primary)' : 'var(--surface)',
+                color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 400,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.18s ease',
+                boxShadow: isActive ? '0 2px 8px rgba(0, 82, 255, 0.22)' : 'none'
+              }}
+            >
+              <span>{seg.label}</span>
               <span style={{
-                fontSize: 11, fontWeight: 700, color: column.color,
-                background: `${column.color}18`, borderRadius: 8,
-                padding: '2px 8px'
+                fontSize: 11,
+                fontWeight: 700,
+                background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg-light)',
+                color: isActive ? '#ffffff' : 'var(--text)',
+                padding: '1px 6px',
+                borderRadius: 8
               }}>
-                {cards.length}
+                {count}
               </span>
-            </div>
+            </button>
+          );
+        })}
+      </div>
 
-            {/* Cards */}
-            {cards.length === 0 && (
-              <div style={{
-                border: `2px dashed ${column.color}33`,
-                borderRadius: 14,
-                padding: '20px 12px',
-                textAlign: 'center',
-                color: 'var(--text-secondary)',
-                fontSize: 12,
-                opacity: 0.6
-              }}>
-                Нет клиентов
+      {/* ── КАНБАН ДОСКА ВОРОНКИ ── */}
+      <div className="pipeline-scrollbar" style={{
+        overflowX: 'auto',
+        scrollbarWidth: 'none',
+        display: 'flex',
+        gap: 12,
+        padding: '4px 0 24px',
+        width: '100%',
+        boxSizing: 'border-box',
+        minHeight: 460,
+      }}>
+        <style>{`
+          .pipeline-scrollbar::-webkit-scrollbar { display: none; }
+        `}</style>
+
+        {pipelineColumns.map(column => {
+          const cards = columnMap[column.id] || [];
+          return (
+            <div
+              key={column.id}
+              onDragOver={handleDragOver}
+              onDrop={(e) => handleDrop(e, column.id)}
+              style={{
+                minWidth: 260,
+                maxWidth: 320,
+                flex: '1 0 260px',
+                background: 'var(--bg-light)',
+                borderRadius: 20,
+                padding: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              {/* Column Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 4px', marginBottom: 2 }}>
+                <div style={{
+                  width: 10, height: 10, borderRadius: '50%',
+                  background: column.color, flexShrink: 0
+                }} />
+                <span className="font-oswald" style={{
+                  fontSize: 13, fontWeight: 500, color: 'var(--text)',
+                  textTransform: 'uppercase', letterSpacing: '0.04em', flex: 1
+                }}>
+                  {column.label}
+                </span>
+                <span style={{
+                  fontSize: 11, fontWeight: 700, color: column.color,
+                  background: `${column.color}18`, borderRadius: 8,
+                  padding: '2px 8px'
+                }}>
+                  {cards.length}
+                </span>
               </div>
-            )}
 
-            {cards.map(client => {
-              return (
-                <div
-                  key={client.id}
-                  draggable
-                  onDragStart={(e) => e.dataTransfer.setData('clientId', client.id)}
-                  className="card-clickable"
-                  onClick={() => navigate(`/clients/${client.id}`)}
-                  style={{
-                    background: 'var(--surface)',
-                    borderRadius: 16,
-                    padding: 14,
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
-                    cursor: 'grab',
-                    border: '1px solid var(--border-light)',
-                    userSelect: 'none',
-                    transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.06)';
-                  }}
-                >
-                  <div style={{
-                    fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                    marginBottom: 6,
-                    overflow: 'hidden', textOverflow: 'ellipsis',
-                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
-                  }}>
-                    {client.full_name}
-                  </div>
-
-                  <div style={{
-                    fontSize: 11, color: 'var(--primary)', fontWeight: 400,
-                    marginBottom: 4
-                  }}>
-                    {formatPhone(client.phone)}
-                  </div>
-
-                  {client.source && (
-                    <div style={{
-                      fontSize: 10, color: 'var(--text-secondary)',
-                      background: 'var(--bg-light)', padding: '2px 6px', borderRadius: 4,
-                      width: 'fit-content'
-                    }}>
-                      Источник: {client.source}
-                    </div>
-                  )}
+              {/* Empty Column Placeholder */}
+              {cards.length === 0 && (
+                <div style={{
+                  border: `2px dashed ${column.color}33`,
+                  borderRadius: 14,
+                  padding: '28px 12px',
+                  textAlign: 'center',
+                  color: 'var(--text-secondary)',
+                  fontSize: 12,
+                  opacity: 0.65
+                }}>
+                  Нет клиентов на этом этапе
                 </div>
-              );
-            })}
-          </div>
-        );
-      })}
+              )}
+
+              {/* Client Cards */}
+              {cards.map(client => {
+                const types = Array.isArray(client.client_types) ? client.client_types : (client.client_type ? [client.client_type] : []);
+                const validDealTypes = types.filter(t => DEAL_TYPES.includes(t));
+                const meta = getClientMeta(client);
+                const assignedRealtor = (state.users || []).find(u => u.id === client.realtor_id);
+
+                return (
+                  <div
+                    key={client.id}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData('clientId', client.id)}
+                    className="card-clickable"
+                    onClick={() => navigate(`/clients/${client.id}`)}
+                    style={{
+                      background: 'var(--surface)',
+                      borderRadius: 16,
+                      padding: 14,
+                      boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
+                      cursor: 'grab',
+                      border: '1px solid var(--border-light)',
+                      userSelect: 'none',
+                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.09)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.05)';
+                    }}
+                  >
+                    {/* Top Row: Full Name + Badges */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{
+                        fontSize: 13, fontWeight: 600, color: 'var(--text)',
+                        lineHeight: 1.3,
+                        overflow: 'hidden', textOverflow: 'ellipsis',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
+                      }}>
+                        {client.full_name}
+                      </div>
+
+                      {/* Type Badges */}
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                        {validDealTypes.map(t => {
+                          const conf = CLIENT_TYPE_INFO[t] || { label: t, color: 'var(--text-secondary)', bg: 'var(--bg-light)', border: 'transparent' };
+                          return (
+                            <span
+                              key={t}
+                              style={{
+                                fontSize: 10,
+                                fontWeight: 600,
+                                color: conf.color,
+                                background: conf.bg,
+                                border: `1px solid ${conf.border}`,
+                                borderRadius: 6,
+                                padding: '1px 6px'
+                              }}
+                            >
+                              {conf.label}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Middle Row: Phone & Budget/Property */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
+                      {client.phone && (
+                        <a
+                          href={`tel:+${client.phone.replace(/\D/g, '')}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            color: 'var(--primary)',
+                            textDecoration: 'none',
+                            fontWeight: 500
+                          }}
+                        >
+                          <Phone size={11} />
+                          <span>{formatPhone(client.phone)}</span>
+                        </a>
+                      )}
+
+                      {meta && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: meta.type === 'budget' ? 'var(--primary)' : 'var(--text)',
+                          background: 'var(--bg-light)',
+                          padding: '2px 6px',
+                          borderRadius: 6,
+                          marginLeft: 'auto'
+                        }}>
+                          {meta.text}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Bottom Row: Source & Realtor (if relevant) */}
+                    {(client.source || (scope === 'all' && assignedRealtor)) && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 6,
+                        borderTop: '1px solid var(--border-light)',
+                        paddingTop: 6,
+                        fontSize: 10,
+                        color: 'var(--text-secondary)'
+                      }}>
+                        {client.source ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Tag size={10} />
+                            <span>{client.source}</span>
+                          </span>
+                        ) : <span />}
+
+                        {scope === 'all' && assignedRealtor && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500, color: 'var(--text-muted)' }}>
+                            <User size={10} />
+                            <span>{assignedRealtor.name || assignedRealtor.full_name}</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

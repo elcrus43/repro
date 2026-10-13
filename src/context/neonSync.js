@@ -10,7 +10,7 @@
  */
 
 import { neonDb } from '../lib/neon';
-import { DEMO_CLIENTS, DEMO_PROPERTIES, DEMO_REQUESTS, DEMO_SHOWINGS, DEMO_TASKS } from '../data/seed';
+import { DEMO_PROPERTIES, DEMO_REQUESTS } from '../data/seed';
 import { hasPassedDealStage } from '../utils/matching';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
@@ -160,10 +160,25 @@ export async function loadUserData(userId, role) {
     console.error('[neonSync loadUserData] Error:', error);
   }
 
+  const DEMO_IDS = new Set([
+    'c1', 'c2', 'c3', 'c4', 'c5', 'c9999999-0000-4000-8000-000000000099',
+    'sh1', 't1', 't2', 't3',
+    'bb9ece69-0b37-4f7f-8af2-36cba13f28ba', '30620d8f-65f4-4f7d-baa7-879079ac30e8'
+  ]);
+
   const getLocal = (key) => {
     try {
       const d = localStorage.getItem(`repro_${key}`);
-      return d ? JSON.parse(d) : [];
+      if (!d) return [];
+      const parsed = JSON.parse(d);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter(item => item && item.id && !DEMO_IDS.has(item.id));
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(`repro_${key}`, JSON.stringify(cleaned));
+        }
+        return cleaned;
+      }
+      return [];
     } catch {
       return [];
     }
@@ -171,9 +186,9 @@ export async function loadUserData(userId, role) {
 
   const mergeUnique = (fetchedList, localList, defaultList = []) => {
     const map = new Map();
-    (defaultList || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
-    (localList || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
-    (fetchedList || []).forEach(item => { if (item && item.id) map.set(item.id, item); });
+    (defaultList || []).forEach(item => { if (item && item.id && !DEMO_IDS.has(item.id)) map.set(item.id, item); });
+    (localList || []).forEach(item => { if (item && item.id && !DEMO_IDS.has(item.id)) map.set(item.id, item); });
+    (fetchedList || []).forEach(item => { if (item && item.id && !DEMO_IDS.has(item.id)) map.set(item.id, item); });
     return Array.from(map.values());
   };
 
@@ -182,10 +197,10 @@ export async function loadUserData(userId, role) {
     ? profiles.filter(p => ['pending', 'rejected'].includes(p.status))
     : [];
 
-  const rawShowings = mergeUnique(fetchedData.showings, getLocal('showings'), DEMO_SHOWINGS);
+  const rawShowings = mergeUnique(fetchedData.showings, getLocal('showings'), []);
   const processedShowings = rawShowings.map(mapShowingFromDb);
 
-  const rawClients = mergeUnique(fetchedData.clients, getLocal('clients'), DEMO_CLIENTS);
+  const rawClients = mergeUnique(fetchedData.clients, getLocal('clients'), []);
   const clients = rawClients.map(c => {
     let addContacts = c.additional_contacts;
     if (typeof addContacts === 'string') {
@@ -204,7 +219,7 @@ export async function loadUserData(userId, role) {
   const properties = mergeUnique(fetchedData.properties, getLocal('properties'), DEMO_PROPERTIES);
   const requests = mergeUnique(fetchedData.requests, getLocal('requests'), DEMO_REQUESTS);
   const matches = mergeUnique(fetchedData.matches, getLocal('matches'), []);
-  const tasks = mergeUnique(fetchedData.tasks, getLocal('tasks'), DEMO_TASKS);
+  const tasks = mergeUnique(fetchedData.tasks, getLocal('tasks'), []);
   const deals = mergeUnique(fetchedData.deals, getLocal('deals'), []);
   const rawSelection = mergeUnique(fetchedData.selection_items, getLocal('selectionItems'), []);
 

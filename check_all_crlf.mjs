@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 // Check all modified JS files for CRLF
 const modifiedFiles = [
   'src/context/AppContext.jsx',
-  'src/context/supabaseSync.js',
+  'src/context/neonSync.js',
   'src/context/useDbDispatch.js',
   'src/pages/History/DetailsPage.jsx',
   'src/pages/History/ListPage.jsx',

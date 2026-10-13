@@ -19,9 +19,9 @@ export function ListPage() {
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
     const [viewMode, setViewMode] = useState('list');
 
-    // Auto-revert to list mode if filter is changed away from buyer
+    // Auto-revert to list mode if filter is changed to counterparty types without deal pipeline
     useEffect(() => {
-        if (filter !== 'buyer') {
+        if (['developer', 'agent', 'lawyer'].includes(filter)) {
             setViewMode('list');
         }
     }, [filter]);
@@ -176,18 +176,30 @@ export function ListPage() {
                     </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <GlobalSearch />
-                        <button
-                            className="card-clickable"
-                            onClick={() => setViewMode(prev => prev === 'list' ? 'pipeline' : 'list')}
-                            style={{
-                                width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)',
-                                background: 'var(--surface)', color: 'var(--text)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
-                        </button>
+                        {(() => {
+                            const isPipelineAllowed = !['developer', 'agent', 'lawyer'].includes(filter);
+                            return (
+                                <button
+                                    className="card-clickable"
+                                    onClick={() => {
+                                        if (isPipelineAllowed) {
+                                            setViewMode(prev => prev === 'list' ? 'pipeline' : 'list');
+                                        }
+                                    }}
+                                    disabled={!isPipelineAllowed}
+                                    title={isPipelineAllowed ? (viewMode === 'list' ? 'Воронка клиентов' : 'Список контактов') : 'Воронка доступна для покупателей, продавцов и аренды'}
+                                    style={{
+                                        width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)',
+                                        background: 'var(--surface)', color: 'var(--text)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: isPipelineAllowed ? 'pointer' : 'not-allowed',
+                                        opacity: isPipelineAllowed ? 1 : 0.4
+                                    }}
+                                >
+                                    {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                                </button>
+                            );
+                        })()}
                         <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
                             width: 44, height: 44, borderRadius: 12, border: 'none', 
                             background: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -243,7 +255,7 @@ export function ListPage() {
                     </div>
                 </div>
 
-                {viewMode === 'pipeline' && <PipelinePage />}
+                {viewMode === 'pipeline' && <PipelinePage initialSegment={filter} scope={scope} />}
 
                 {viewMode === 'list' && filteredClients.length === 0 && (
                     <div className="empty-state" style={{ background: 'var(--surface)', borderRadius: 28, padding: '60px 40px', boxShadow: '0 8px 32px rgba(0,0,0,0.03)' }}>

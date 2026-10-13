@@ -102,7 +102,7 @@ export function TasksPage() {
     const prefillClientId = searchParams.get('client');
 
     const [filter, setFilter] = useState('today');
-    const [showForm, setShowForm] = useState(false);
+    const [showForm, setShowForm] = useState(searchParams.get('new') === 'true' || false);
     const [newTask, setNewTask] = useState({
         id: '',
         title: searchParams.get('title') || '',

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'fs';
 
 const files = [
   'src/context/AppContext.jsx',
-  'src/context/supabaseSync.js',
+  'src/context/neonSync.js',
   'src/context/useDbDispatch.js',
   'src/pages/History/DetailsPage.jsx',
   'src/pages/History/ListPage.jsx',

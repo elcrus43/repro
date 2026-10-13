@@ -4,9 +4,8 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
-import { Building2, Users, Sparkles, FileCheck, UserCircle, History, ClipboardList } from 'lucide-react';
+import { Building2, Users, FileCheck, UserCircle, History, ClipboardList } from 'lucide-react';
 import { DesktopSidebar } from './components/DesktopSidebar';
-import { hasPassedDealStage } from './utils/matching';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -49,11 +48,6 @@ function BottomNav() {
   const { pathname } = useLocation();
   const { state } = useApp();
 
-  const newMatchCount = state.matches.filter(m => {
-    if (m.realtor_id !== state.currentUser?.id || m.status !== 'new') return false;
-    const prop = state.properties.find(p => p.id === m.property_id);
-    return prop && !hasPassedDealStage(prop, state.deals);
-  }).length;
   const isAdminUser = state.currentUser?.role === 'admin';
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
 

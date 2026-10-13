@@ -1,9 +1,9 @@
-# 📚 Re-Pro Wiki — Индекс знаний
+# 📚 REA crm Wiki — Индекс знаний
 
 ## 🏛 Дворец проекта (MemPalace)
 
 ### Крылья (Wings)
-- **wing_project** — проект Re-Pro (realtor-match)
+- **wing_project** — проект REA crm (realtor-match)
   - **hall_facts** → [facts/](facts/) — базовые факты о проекте
     - [tech-stack.md](facts/tech-stack.md) — полный обзор всех сущностей
     - [clients.md](facts/clients.md) — клиенты (типы, статусы, связи)
@@ -63,7 +63,7 @@
 
 ## 🏷 Методанные
 
-- **Проект**: Re-Pro (realtor-match)
+- **Проект**: REA crm (realtor-match)
 - **Стек**: React 19 + Vite 7.3 + Supabase
 - **Создано**: 2026-04-14
 - **Обновлено**: 2026-04-14

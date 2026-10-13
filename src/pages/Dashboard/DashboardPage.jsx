@@ -1,13 +1,20 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatNumber } from '../../utils/format';
-import { Sparkles, TrendingUp, Users, Home, Search, Target, ArrowRight, Cake } from 'lucide-react';
+import { useToastContext } from '../../components/Toast';
+import {
+    Sparkles, Users, Home, Search, Target, ArrowRight, Cake,
+    Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight
+} from 'lucide-react';
 import { hasPassedDealStage } from '../../utils/matching';
 
 export function DashboardPage() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
+    const { toast } = useToastContext();
     const navigate = useNavigate();
+
+    const [plannerFilter, setPlannerFilter] = useState('today'); // 'today' | 'week' | 'overdue' | 'selectedDay'
+    const [selectedDayStr, setSelectedDayStr] = useState(null);
 
     const myProperties = useMemo(() =>
         state.properties.filter(p => state.currentUser?.role === 'admin' || p.realtor_id === state.currentUser?.id),
@@ -45,6 +52,240 @@ export function DashboardPage() {
         [myMatches]
     );
 
+    // Хелпер даты YYYY-MM-DD
+    const toLocalDateStr = (dateOrStr) => {
+        if (!dateOrStr) return '';
+        const d = new Date(dateOrStr);
+        if (isNaN(d.getTime())) return '';
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const todayStr = useMemo(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }, []);
+
+    // 7 дней текущей недели (Пн – Вс)
+    const weekDays = useMemo(() => {
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 - Вс, 1 - Пн ... 6 - Сб
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distanceToMonday);
+
+        const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+        const days = [];
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            days.push({
+                date: d,
+                dateStr,
+                dayName: DAY_NAMES[d.getDay()],
+                dayNumber: d.getDate(),
+                isToday: dateStr === todayStr,
+            });
+        }
+        return days;
+    }, [todayStr]);
+
+    const weekStartStr = weekDays[0]?.dateStr;
+    const weekEndStr = weekDays[6]?.dateStr;
+
+    const weekRangeLabel = useMemo(() => {
+        if (!weekDays.length) return '';
+        const start = weekDays[0].date;
+        const end = weekDays[6].date;
+        const startMonth = start.toLocaleDateString('ru-RU', { month: 'short' });
+        const endMonth = end.toLocaleDateString('ru-RU', { month: 'short' });
+        if (startMonth === endMonth) {
+            return `${start.getDate()}–${end.getDate()} ${endMonth}`;
+        }
+        return `${start.getDate()} ${startMonth} – ${end.getDate()} ${endMonth}`;
+    }, [weekDays]);
+
+    // Все задачи и события для планировщика
+    const plannerItems = useMemo(() => {
+        const isAdmin = state.currentUser?.role === 'admin';
+        const userId = state.currentUser?.id;
+
+        const rawTasks = (state.tasks || []).filter(t => isAdmin || t.realtor_id === userId);
+        const rawShowings = (state.showings || []).filter(s => {
+            if (isAdmin) return true;
+            if (s.realtor_id === userId) return true;
+            const prop = state.properties.find(p => p.id === s.property_id);
+            return prop?.realtor_id === userId;
+        });
+
+        const toDateStr = (val) => {
+            if (!val) return '';
+            const d = new Date(val);
+            if (isNaN(d.getTime())) return '';
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        };
+
+        const taskItems = rawTasks.map(t => {
+            const dateStr = toDateStr(t.due_date);
+            return {
+                id: t.id,
+                isShowing: false,
+                title: t.title || t.notes || (t.task_type || 'Задача'),
+                description: t.description || '',
+                dateStr,
+                rawDate: t.due_date,
+                status: t.status || 'pending',
+                isDone: t.status === 'done',
+                type: t.task_type || t.type || 'task',
+                client_id: t.client_id,
+                property_id: t.property_id,
+                raw: t,
+            };
+        });
+
+        const showingItems = rawShowings
+            .filter(s => !rawTasks.some(t => t.id === s.id || (toDateStr(t.due_date) === toDateStr(s.showing_date) && t.property_id === s.property_id)))
+            .map(s => {
+                const dateStr = toDateStr(s.showing_date);
+                return {
+                    id: s.id,
+                    isShowing: true,
+                    title: s.notes || 'Показ объекта',
+                    description: '',
+                    dateStr,
+                    rawDate: s.showing_date,
+                    status: s.status || 'scheduled',
+                    isDone: s.status === 'completed',
+                    type: 'showing',
+                    client_id: s.client_id,
+                    property_id: s.property_id,
+                    raw: s,
+                };
+            });
+
+        return [...taskItems, ...showingItems];
+    }, [state.tasks, state.showings, state.properties, state.currentUser?.role, state.currentUser?.id]);
+
+    const dayTaskCounts = useMemo(() => {
+        const counts = {};
+        weekDays.forEach(wd => {
+            counts[wd.dateStr] = { total: 0, pending: 0, done: 0 };
+        });
+        plannerItems.forEach(item => {
+            if (counts[item.dateStr]) {
+                counts[item.dateStr].total++;
+                if (item.isDone) {
+                    counts[item.dateStr].done++;
+                } else {
+                    counts[item.dateStr].pending++;
+                }
+            }
+        });
+        return counts;
+    }, [plannerItems, weekDays]);
+
+    const overdueCount = useMemo(() => {
+        return plannerItems.filter(i => i.dateStr && i.dateStr < todayStr && !i.isDone).length;
+    }, [plannerItems, todayStr]);
+
+    const weekTotal = useMemo(() => {
+        return plannerItems.filter(i => i.dateStr >= weekStartStr && i.dateStr <= weekEndStr).length;
+    }, [plannerItems, weekStartStr, weekEndStr]);
+
+    const weekDone = useMemo(() => {
+        return plannerItems.filter(i => i.dateStr >= weekStartStr && i.dateStr <= weekEndStr && i.isDone).length;
+    }, [plannerItems, weekStartStr, weekEndStr]);
+
+    const todayPending = useMemo(() => {
+        return plannerItems.filter(i => i.dateStr === todayStr && !i.isDone).length;
+    }, [plannerItems, todayStr]);
+
+    const displayedItems = useMemo(() => {
+        let list = [];
+        if (plannerFilter === 'selectedDay' && selectedDayStr) {
+            list = plannerItems.filter(i => i.dateStr === selectedDayStr);
+        } else if (plannerFilter === 'today') {
+            list = plannerItems.filter(i => i.dateStr === todayStr);
+        } else if (plannerFilter === 'overdue') {
+            list = plannerItems.filter(i => i.dateStr && i.dateStr < todayStr && !i.isDone);
+        } else {
+            // 'week'
+            list = plannerItems.filter(i => i.dateStr >= weekStartStr && i.dateStr <= weekEndStr);
+        }
+        return list.sort((a, b) => {
+            if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
+            return (a.dateStr || '').localeCompare(b.dateStr || '');
+        });
+    }, [plannerItems, plannerFilter, selectedDayStr, todayStr, weekStartStr, weekEndStr]);
+
+    // Выполнение задачи в 1 клик
+    const handleToggleTask = (item, e) => {
+        e?.stopPropagation();
+        if (item.isShowing) {
+            const nextStatus = item.isDone ? 'scheduled' : 'completed';
+            dispatch({
+                type: 'UPDATE_SHOWING',
+                showing: { ...item.raw, status: nextStatus },
+            });
+            if (nextStatus === 'completed') {
+                toast.success('✓ Показ завершен');
+            } else {
+                toast.info('Показ возвращен в план');
+            }
+        } else {
+            const nextStatus = item.isDone ? 'pending' : 'done';
+            dispatch({
+                type: 'UPDATE_TASK',
+                task: { ...item.raw, status: nextStatus },
+            });
+            if (nextStatus === 'done') {
+                toast.success('✓ Задача выполнена!');
+            } else {
+                toast.info('Задача возвращена в работу');
+            }
+        }
+    };
+
+    const getItemIconAndColor = (type, isShowing) => {
+        if (isShowing || type === 'showing' || type === 'Показ') {
+            return { icon: <Home size={13} />, label: 'Показ', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' };
+        }
+        switch (type) {
+            case 'call':
+            case 'Позвонить':
+                return { icon: <Phone size={13} />, label: 'Звонок', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+            case 'meeting':
+            case 'Встреча':
+                return { icon: <Users size={13} />, label: 'Встреча', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
+            case 'Задаток':
+            case 'Сделка':
+                return { icon: <Target size={13} />, label: type, color: '#d97706', bg: 'rgba(245, 158, 11, 0.1)' };
+            case 'document':
+            case 'Документы':
+                return { icon: <Clock size={13} />, label: 'Документы', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' };
+            default:
+                return { icon: <Calendar size={13} />, label: type || 'Дело', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' };
+        }
+    };
+
+    const formatItemDateLabel = (dateStr, rawDate) => {
+        if (!dateStr) return '';
+        let time = '';
+        if (rawDate && rawDate.includes('T')) {
+            const d = new Date(rawDate);
+            if (!isNaN(d.getTime())) {
+                const h = d.getHours();
+                const m = d.getMinutes();
+                if (h !== 0 || m !== 0) {
+                    time = ` в ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                }
+            }
+        }
+        if (dateStr === todayStr) return `Сегодня${time}`;
+        const d = new Date(dateStr + 'T00:00:00');
+        if (isNaN(d.getTime())) return dateStr;
+        const DAY_SHORT = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+        return `${DAY_SHORT[d.getDay()]}, ${d.getDate()} ${d.toLocaleDateString('ru-RU', { month: 'short' })}${time}`;
+    };
+
     // Дни рождения клиентов (сегодня + ближайшие 7 дней)
     const birthdayClients = useMemo(() => {
         const today = new Date();
@@ -71,35 +312,7 @@ export function DashboardPage() {
             .sort((a, b) => a._daysLeft - b._daysLeft);
     }, [myClients]);
 
-    const analyticsData = useMemo(() => {
-        const total = myProperties.length;
-        const sold = myProperties.filter(p => p.status === 'deal_closed' || p.status === 'sold').length;
-        const conversion = total > 0 ? Math.round((sold / total) * 100) : 0;
 
-        const closedProps = myProperties.filter(p => p.updated_at && (p.status === 'deal_closed' || p.status === 'sold'));
-        const avgDays = closedProps.length > 0
-            ? Math.round(closedProps.reduce((sum, p) => {
-                const diff = (new Date(p.updated_at) - new Date(p.created_at)) / (1000 * 60 * 60 * 24);
-                return sum + diff;
-            }, 0) / closedProps.length)
-            : 0;
-
-        const now = new Date();
-        const weeks = Array.from({ length: 7 }, (_, i) => {
-            const weekStart = new Date(now);
-            weekStart.setDate(now.getDate() - (6 - i) * 7);
-            const weekEnd = new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate() + 7);
-            return myProperties.filter(p => {
-                const d = new Date(p.created_at);
-                return d >= weekStart && d < weekEnd;
-            }).length;
-        });
-        const maxWeek = Math.max(...weeks, 1);
-        const weekPercents = weeks.map(w => Math.round((w / maxWeek) * 100));
-
-        return { conversion, avgDays, weekPercents };
-    }, [myProperties]);
 
     const user = state.currentUser;
     if (!user) return null;
@@ -148,82 +361,547 @@ export function DashboardPage() {
                 </div>
             </div>
 
-            <div className="page-content" style={{ gap: 20, padding: '16px 16px', paddingBottom: 120 }}>
-                {/* Stats Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <div className="card card-clickable" onClick={() => navigate('/clients')} style={{ padding: '16px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ background: 'var(--bg-light)', padding: 8, borderRadius: 10, color: 'var(--primary)' }}>
-                                <Users size={18} />
-                            </div>
-                            <ArrowRight size={12} color="var(--text-muted)" />
+            <div className="page-content" style={{ gap: 14, padding: '12px 16px', paddingBottom: 110 }}>
+                {/* Unified CRM Stats Ribbon */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    background: 'var(--surface)',
+                    borderRadius: 16,
+                    border: '1px solid var(--border-light)',
+                    padding: '8px 4px',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                }}>
+                    {/* Клиенты */}
+                    <div
+                        onClick={() => navigate('/clients')}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRight: '1px solid var(--border-light)',
+                        }}
+                    >
+                        <div style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            background: 'rgba(37, 99, 235, 0.08)',
+                            color: '#2563eb',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 4,
+                        }}>
+                            <Users size={14} />
                         </div>
-                        <div style={{ marginTop: 12 }}>
-                            <div className="font-oswald" style={{ fontSize: 28, fontWeight: 300, color: 'var(--text)' }}>{myClients.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Клиенты</div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                            {myClients.length}
                         </div>
-                    </div>
-                    <div className="card card-clickable" onClick={() => navigate('/properties')} style={{ padding: '16px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ background: 'var(--bg-light)', padding: 8, borderRadius: 10, color: 'var(--primary)' }}>
-                                <Home size={18} />
-                            </div>
-                            <ArrowRight size={12} color="var(--text-muted)" />
-                        </div>
-                        <div style={{ marginTop: 12 }}>
-                            <div className="font-oswald" style={{ fontSize: 28, fontWeight: 300, color: 'var(--text)' }}>{myProperties.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Объекты</div>
-                        </div>
-                    </div>
-                    <div className="card card-clickable" onClick={() => navigate('/requests')} style={{ padding: '16px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ background: 'var(--bg-light)', padding: 8, borderRadius: 10, color: 'var(--primary)' }}>
-                                <Search size={18} />
-                            </div>
-                            <ArrowRight size={12} color="var(--text-muted)" />
-                        </div>
-                        <div style={{ marginTop: 12 }}>
-                            <div className="font-oswald" style={{ fontSize: 28, fontWeight: 300, color: 'var(--text)' }}>{myRequests.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Запросы</div>
-                        </div>
-                    </div>
-                    <div className="card card-clickable" onClick={() => navigate('/matches')} style={{ padding: '16px 20px', borderRadius: 20, border: 'none', boxShadow: '0 12px 32px rgba(212, 212, 43, 0.15)', background: 'linear-gradient(135deg, var(--accent) 0%, #b8b825 100%)', color: 'white' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                            <div style={{ background: 'rgba(255,255,255,0.95)', padding: 8, borderRadius: 10, color: '#858518' }}>
-                                <Sparkles size={18} />
-                            </div>
-                            <ArrowRight size={12} color="white" />
-                        </div>
-                        <div style={{ marginTop: 12 }}>
-                            <div className="font-oswald" style={{ fontSize: 28, fontWeight: 300 }}>{myMatches.length}</div>
-                            <div className="font-oswald" style={{ fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: 400, letterSpacing: '0.05em', marginTop: 4 }}>Совпадения</div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+                            Клиенты
                         </div>
                     </div>
+
+                    {/* Объекты */}
+                    <div
+                        onClick={() => navigate('/properties')}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRight: '1px solid var(--border-light)',
+                        }}
+                    >
+                        <div style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            background: 'rgba(5, 150, 105, 0.08)',
+                            color: '#059669',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 4,
+                        }}>
+                            <Home size={14} />
+                        </div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                            {myProperties.length}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+                            Объекты
+                        </div>
+                    </div>
+
+                    {/* Запросы */}
+                    <div
+                        onClick={() => navigate('/requests')}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: '4px',
+                            borderRight: '1px solid var(--border-light)',
+                        }}
+                    >
+                        <div style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            background: 'rgba(124, 58, 237, 0.08)',
+                            color: '#7c3aed',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 4,
+                        }}>
+                            <Search size={14} />
+                        </div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                            {myRequests.length}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+                            Запросы
+                        </div>
+                    </div>
+
+                    {/* Совпадения */}
+                    <div
+                        onClick={() => navigate('/matches')}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: '4px',
+                        }}
+                    >
+                        <div style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            background: myMatches.length > 0 ? 'rgba(217, 119, 6, 0.15)' : 'var(--bg-light)',
+                            color: myMatches.length > 0 ? '#d97706' : 'var(--text-muted)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 4,
+                        }}>
+                            <Sparkles size={14} />
+                        </div>
+                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: myMatches.length > 0 ? '#d97706' : 'var(--text)', lineHeight: 1 }}>
+                            {myMatches.length}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+                            Матчи
+                        </div>
+                    </div>
+                </div>
+
+                {/* Elevated Weekly Planner Card */}
+                <div style={{
+                    background: 'var(--surface)',
+                    borderRadius: 20,
+                    border: '1px solid var(--border-light)',
+                    padding: '14px 14px',
+                    boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 10,
+                }}>
+                    {/* Header: Title + Week Range + Tabs + Add Button */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{
+                                width: 30, height: 30, borderRadius: 9,
+                                background: 'var(--primary-light)', color: 'var(--primary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                                <Calendar size={16} />
+                            </div>
+                            <div>
+                                <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', lineHeight: 1.1 }}>
+                                    Планы на неделю
+                                </div>
+                                <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 1 }}>
+                                    {weekRangeLabel}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Tabs + Add Button */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 2, borderRadius: 8, gap: 2 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => { setPlannerFilter('today'); setSelectedDayStr(null); }}
+                                    style={{
+                                        padding: '4px 8px',
+                                        borderRadius: 6,
+                                        border: 'none',
+                                        background: (plannerFilter === 'today' && !selectedDayStr) ? 'var(--surface)' : 'transparent',
+                                        color: (plannerFilter === 'today' && !selectedDayStr) ? 'var(--primary)' : 'var(--text-muted)',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        boxShadow: (plannerFilter === 'today' && !selectedDayStr) ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    }}
+                                >
+                                    Сегодня {todayPending > 0 ? `(${todayPending})` : ''}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setPlannerFilter('week'); setSelectedDayStr(null); }}
+                                    style={{
+                                        padding: '4px 8px',
+                                        borderRadius: 6,
+                                        border: 'none',
+                                        background: (plannerFilter === 'week' && !selectedDayStr) ? 'var(--surface)' : 'transparent',
+                                        color: (plannerFilter === 'week' && !selectedDayStr) ? 'var(--primary)' : 'var(--text-muted)',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        boxShadow: (plannerFilter === 'week' && !selectedDayStr) ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    }}
+                                >
+                                    Неделя
+                                </button>
+                                {overdueCount > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => { setPlannerFilter('overdue'); setSelectedDayStr(null); }}
+                                        style={{
+                                            padding: '4px 7px',
+                                            borderRadius: 6,
+                                            border: 'none',
+                                            background: plannerFilter === 'overdue' ? 'var(--danger)' : '#fee2e2',
+                                            color: plannerFilter === 'overdue' ? 'white' : 'var(--danger)',
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        Долги ({overdueCount})
+                                    </button>
+                                )}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => navigate('/tasks?new=true')}
+                                className="btn btn-primary"
+                                style={{
+                                    padding: '5px 8px',
+                                    height: 'auto',
+                                    borderRadius: 8,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 3,
+                                }}
+                                title="Новая задача"
+                            >
+                                <Plus size={13} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Week Strip (Пн - Вс) with Calendar track */}
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(7, 1fr)',
+                        gap: 4,
+                        padding: '6px 4px',
+                        background: 'var(--bg-light)',
+                        borderRadius: 12,
+                    }}>
+                        {weekDays.map(d => {
+                            const isSelected = selectedDayStr === d.dateStr || (plannerFilter === 'today' && d.isToday && !selectedDayStr);
+                            const dayCounts = dayTaskCounts[d.dateStr] || { total: 0, pending: 0, done: 0 };
+                            return (
+                                <button
+                                    key={d.dateStr}
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedDayStr === d.dateStr) {
+                                            setSelectedDayStr(null);
+                                            setPlannerFilter('week');
+                                        } else {
+                                            setSelectedDayStr(d.dateStr);
+                                            setPlannerFilter('selectedDay');
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: '6px 2px',
+                                        borderRadius: 8,
+                                        border: isSelected
+                                            ? 'none'
+                                            : d.isToday
+                                                ? '1.5px solid var(--primary)'
+                                                : '1px solid transparent',
+                                        background: isSelected
+                                            ? 'var(--primary)'
+                                            : d.isToday
+                                                ? 'var(--surface)'
+                                                : 'transparent',
+                                        color: isSelected
+                                            ? 'white'
+                                            : d.isToday
+                                                ? 'var(--primary)'
+                                                : 'var(--text)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease',
+                                        minWidth: 0,
+                                        boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
+                                    }}
+                                >
+                                    <span style={{
+                                        fontSize: 9,
+                                        fontWeight: 600,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.02em',
+                                        opacity: isSelected ? 0.9 : 0.6,
+                                    }}>
+                                        {d.dayName}
+                                    </span>
+                                    <span className="font-oswald" style={{
+                                        fontSize: 14,
+                                        fontWeight: isSelected || d.isToday ? 600 : 400,
+                                        marginTop: 1,
+                                        lineHeight: 1.1,
+                                    }}>
+                                        {d.dayNumber}
+                                    </span>
+                                    <div style={{ height: 4, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        {dayCounts.pending > 0 ? (
+                                            <span style={{
+                                                width: 4,
+                                                height: 4,
+                                                borderRadius: '50%',
+                                                background: isSelected ? 'white' : 'var(--primary)',
+                                            }} />
+                                        ) : dayCounts.done > 0 ? (
+                                            <span style={{
+                                                width: 4,
+                                                height: 4,
+                                                borderRadius: '50%',
+                                                background: isSelected ? 'white' : '#10b981',
+                                                opacity: 0.8,
+                                            }} />
+                                        ) : null}
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Task list inside the card */}
+                    {displayedItems.length === 0 ? (
+                        <div style={{
+                            padding: '16px 12px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 12,
+                            textAlign: 'center',
+                        }}>
+                            <CheckCircle2 size={20} color="#10b981" style={{ margin: '0 auto 4px', opacity: 0.8 }} />
+                            <div className="font-oswald" style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)' }}>
+                                {plannerFilter === 'overdue' ? 'Нет просроченных задач' : 'На этот день задач нет'}
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {displayedItems.map((item) => {
+                                const client = state.clients.find(c => c.id === item.client_id);
+                                const property = state.properties.find(p => p.id === item.property_id);
+                                const typeConf = getItemIconAndColor(item.type, item.isShowing);
+
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className="card-clickable"
+                                        onClick={() => navigate('/tasks')}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 10,
+                                            padding: '9px 11px',
+                                            background: item.isDone ? 'var(--bg-light)' : 'var(--bg)',
+                                            borderRadius: 12,
+                                            border: item.isDone ? '1px dashed var(--border)' : '1px solid var(--border-light)',
+                                            opacity: item.isDone ? 0.65 : 1,
+                                            transition: 'all 0.15s ease',
+                                        }}
+                                    >
+                                        {/* 1-Click Complete Button */}
+                                        <button
+                                            type="button"
+                                            onClick={(e) => handleToggleTask(item, e)}
+                                            title={item.isDone ? "Вернуть в работу" : "Выполнить в 1 клик"}
+                                            style={{
+                                                width: 26,
+                                                height: 26,
+                                                borderRadius: 7,
+                                                border: item.isDone ? 'none' : '2px solid var(--border)',
+                                                background: item.isDone
+                                                    ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                                                    : 'var(--surface)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                flexShrink: 0,
+                                                color: 'white',
+                                                boxShadow: item.isDone ? '0 2px 6px rgba(16, 185, 129, 0.25)' : 'none',
+                                                transition: 'all 0.15s ease',
+                                            }}
+                                        >
+                                            {item.isDone ? <Check size={15} strokeWidth={3} /> : null}
+                                        </button>
+
+                                        {/* Task Details */}
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                marginBottom: 2,
+                                                flexWrap: 'wrap',
+                                            }}>
+                                                <span style={{
+                                                    fontSize: 9,
+                                                    fontWeight: 600,
+                                                    color: typeConf.color,
+                                                    background: typeConf.bg,
+                                                    padding: '1px 5px',
+                                                    borderRadius: 5,
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 3,
+                                                }}>
+                                                    {typeConf.icon}
+                                                    {typeConf.label}
+                                                </span>
+
+                                                {item.dateStr && (
+                                                    <span style={{
+                                                        fontSize: 10,
+                                                        color: item.dateStr < todayStr && !item.isDone ? 'var(--danger)' : 'var(--text-muted)',
+                                                        fontWeight: item.dateStr < todayStr && !item.isDone ? 600 : 400,
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 3,
+                                                    }}>
+                                                        <Clock size={10} />
+                                                        {formatItemDateLabel(item.dateStr, item.rawDate)}
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            <div style={{
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                color: item.isDone ? 'var(--text-muted)' : 'var(--text)',
+                                                textDecoration: item.isDone ? 'line-through' : 'none',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {item.title}
+                                            </div>
+
+                                            {/* Client and Property tags */}
+                                            {(client || property) && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                                                    {client && (
+                                                        <span
+                                                            onClick={(e) => { e.stopPropagation(); navigate(`/clients/${client.id}`); }}
+                                                            style={{
+                                                                fontSize: 10,
+                                                                color: 'var(--primary)',
+                                                                background: 'var(--primary-light)',
+                                                                padding: '1px 5px',
+                                                                borderRadius: 5,
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            {client.full_name?.split(' ')[0]}
+                                                        </span>
+                                                    )}
+                                                    {property && (
+                                                        <span
+                                                            onClick={(e) => { e.stopPropagation(); navigate(`/properties/${property.id}`); }}
+                                                            style={{
+                                                                fontSize: 10,
+                                                                color: 'var(--text-secondary)',
+                                                                background: 'var(--bg-light)',
+                                                                padding: '1px 5px',
+                                                                borderRadius: 5,
+                                                                cursor: 'pointer',
+                                                                maxWidth: 160,
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap',
+                                                            }}
+                                                        >
+                                                            {property.address}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <ChevronRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Week Progress summary */}
+                    {weekTotal > 0 && (
+                        <div style={{
+                            padding: '6px 10px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            fontSize: 10,
+                            color: 'var(--text-secondary)',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <CheckCircle2 size={12} color="#10b981" />
+                                <span>План недели: {weekDone} из {weekTotal} выполнено</span>
+                            </div>
+                            <div style={{ fontWeight: 600, color: 'var(--text)' }}>
+                                {Math.round((weekDone / weekTotal) * 100)}%
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* New Matches Feed */}
                 {newMatches.length > 0 && (
                     <div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                            <span className="font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.05em' }}>Новые совпадения</span>
-                            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--primary)' }} onClick={() => navigate('/matches')}>Все →</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <span className="font-oswald" style={{ fontSize: 16, fontWeight: 300, letterSpacing: '0.03em' }}>Новые совпадения</span>
+                            <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--primary)', cursor: 'pointer' }} onClick={() => navigate('/matches')}>Все ({myMatches.length}) →</span>
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {newMatches.map(m => {
                                 const prop = state.properties.find(p => p.id === m.property_id);
                                 const req = state.requests.find(r => r.id === m.request_id);
                                 const client = req ? state.clients.find(c => c.id === req.client_id) : null;
                                 return (
-                                    <div key={m.id} className="card card-clickable" onClick={() => navigate(`/matches/${m.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 20px', borderRadius: 24, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.02)', background: 'var(--surface)' }}>
-                                        <div style={{ width: 48, height: 48, borderRadius: 16, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 300, fontSize: 15, fontFamily: "'Oswald', sans-serif" }}>
+                                    <div key={m.id} className="card card-clickable" onClick={() => navigate(`/matches/${m.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 16, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', background: 'var(--surface)' }}>
+                                        <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 400, fontSize: 13, fontFamily: "'Oswald', sans-serif" }}>
                                             {m.score}%
                                         </div>
-                                        <div style={{ flex: 1 }}>
-                                            <div className="font-oswald" style={{ fontWeight: 400, fontSize: 15, color: 'var(--text)' }}>{client?.full_name?.split(' ')[0]}</div>
-                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{prop?.address || 'Объект без адреса'}</div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div className="font-oswald" style={{ fontWeight: 400, fontSize: 14, color: 'var(--text)' }}>{client?.full_name?.split(' ')[0]}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180 }}>{prop?.address || 'Объект без адреса'}</div>
                                         </div>
                                         <div style={{ 
-                                            padding: '4px 8px', borderRadius: 6, fontSize: 9, fontWeight: 400, 
+                                            padding: '2px 6px', borderRadius: 6, fontSize: 9, fontWeight: 500, 
                                             background: m.match_level === 'perfect' ? 'var(--success-light)' : 'var(--warning-light)',
                                             color: m.match_level === 'perfect' ? 'var(--success)' : 'var(--warning)'
                                         }}>
@@ -235,57 +913,6 @@ export function DashboardPage() {
                         </div>
                     </div>
                 )}
-
-                {/* Today's Tasks Widget */}
-                {(() => {
-                    const toLocalDateStr = (dateOrStr) => {
-                        if (!dateOrStr) return '';
-                        const d = new Date(dateOrStr);
-                        if (isNaN(d.getTime())) return '';
-                        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                    };
-                    const today = toLocalDateStr(new Date());
-                    const todayTasks = (state.tasks || []).filter(t => toLocalDateStr(t.due_date) === today);
-                    const todayShowings = (state.showings || []).filter(s => toLocalDateStr(s.showing_date) === today);
-                    const todayItems = [...todayTasks, ...todayShowings].slice(0, 5);
-                    if (todayItems.length === 0) return null;
-                    return (
-                        <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                <span className="font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.05em' }}>На сегодня</span>
-                                <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 400 }}>{todayItems.length} событий</span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                {todayItems.map((item, i) => {
-                                    const client = state.clients.find(c => c.id === item.client_id);
-                                    const property = state.properties.find(p => p.id === item.property_id);
-                                    return (
-                                        <div key={item.id || i} style={{ 
-                                            display: 'flex', alignItems: 'center', gap: 12,
-                                            padding: '12px 16px', background: 'var(--surface)',
-                                            borderRadius: 16, border: '1px solid var(--border-light)'
-                                        }}>
-                                            <div style={{ 
-                                                width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                                                background: item.type === 'call' ? '#3b82f6' : item.type === 'meeting' ? '#10b981' : 'var(--primary)'
-                                            }} />
-                                            <div style={{ flex: 1, minWidth: 0 }}>
-                                                <div style={{ fontSize: 13, fontWeight: 400, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {item.notes || item.title || (item.type === 'call' ? 'Звонок' : 'Встреча')}
-                                                </div>
-                                                {(client || property) && (
-                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                                        {client?.full_name?.split(' ')[0] || property?.address}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    );
-                })()}
 
                 {/* Дни рождения */}
                 {birthdayClients.length > 0 && (
@@ -348,60 +975,18 @@ export function DashboardPage() {
                     </div>
                 )}
 
-                {/* Analytics Widget */}
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <span className="font-oswald" style={{ fontSize: 16, fontWeight: 300, letterSpacing: '0.05em' }}>Эффективность</span>
-                        <TrendingUp size={16} color="var(--primary)" />
-                    </div>
-                    <div className="card" style={{ 
-                        padding: '16px 20px', 
-                        background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
-                        color: 'white', 
-                        border: 'none',
-                        borderRadius: 20,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        boxShadow: '0 8px 24px rgba(0, 82, 255, 0.15)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, position: 'relative', zIndex: 1 }}>
-                            <div>
-                                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', fontWeight: 400 }}>Конверсия</div>
-                                <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, marginTop: 2, display: 'flex', alignItems: 'baseline' }}>
-                                    {analyticsData.conversion}<span style={{ fontSize: 14, opacity: 0.6, marginLeft: 2 }}>%</span>
-                                </div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.1em', fontWeight: 400 }}>Цикл сделки</div>
-                                <div className="font-oswald" style={{ fontSize: 32, fontWeight: 300, marginTop: 2, display: 'flex', alignItems: 'baseline' }}>
-                                    {analyticsData.avgDays > 0 ? analyticsData.avgDays : '—'}<span style={{ fontSize: 14, opacity: 0.6, marginLeft: 2 }}>дн</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 48, position: 'relative', zIndex: 1 }}>
-                            {analyticsData.weekPercents.map((h, i) => {
-                                const maxIdx = analyticsData.weekPercents.indexOf(Math.max(...analyticsData.weekPercents));
-                                return (
-                                    <div key={i} style={{
-                                        flex: 1,
-                                        height: `${h}%`,
-                                        background: i === maxIdx ? 'var(--accent)' : 'rgba(255,255,255,0.2)',
-                                        borderRadius: '4px 4px 2px 2px',
-                                        boxShadow: i === maxIdx ? '0 0 10px rgba(212, 212, 43, 0.4)' : 'none'
-                                    }} />
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
+
 
                 {/* Quick actions */}
-                <div className="dashboard-quick-actions">
-                    <button className="btn btn-primary" style={{ borderRadius: 20, height: 56, fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/properties/new')}>
+                <div className="dashboard-quick-actions" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                    <button className="btn btn-primary" style={{ borderRadius: 16, height: 52, fontSize: 13, fontWeight: 300, letterSpacing: '0.03em', padding: '0 8px' }} onClick={() => navigate('/properties/new')}>
                         + Объект
                     </button>
-                    <button className="btn btn-secondary" style={{ borderRadius: 20, height: 56, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/clients/new')}>
+                    <button className="btn btn-secondary" style={{ borderRadius: 16, height: 52, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 13, fontWeight: 300, letterSpacing: '0.03em', padding: '0 8px' }} onClick={() => navigate('/clients/new')}>
                         + Клиент
+                    </button>
+                    <button className="btn btn-secondary" style={{ borderRadius: 16, height: 52, background: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary-light)', fontSize: 13, fontWeight: 500, letterSpacing: '0.03em', padding: '0 8px' }} onClick={() => navigate('/tasks?new=true')}>
+                        + Задача
                     </button>
                 </div>
             </div>

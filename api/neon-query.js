@@ -134,9 +134,11 @@ export default async function handler(req, res) {
   }
 
   // 3. Валидация таблиц по whitelist ALLOWED_TABLES
-  const tableMatches = [...query.matchAll(/\b(?:FROM|JOIN|INTO|UPDATE)\s+["']?([a-zA-Z0-9_]+)["']?/gi)];
+  const tableMatches = [...query.matchAll(/(?:\bFROM|\bJOIN|\bINTO|(?<!\bDO\s+)\bUPDATE)\s+["']?([a-zA-Z0-9_]+)["']?/gi)];
   for (const match of tableMatches) {
     const table = match[1]?.toLowerCase();
+    // Игнорируем SQL-служебные слова (например SET после ON CONFLICT ... DO UPDATE SET)
+    if (table === 'set') continue;
     if (table && !ALLOWED_TABLES.has(table)) {
       console.warn('[neon-query] Unauthorized table access attempted:', table);
       return res.status(403).json({ data: null, error: `Access denied to table: ${table}` });

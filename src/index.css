@@ -2568,7 +2568,12 @@ input[type="range"]::-moz-range-thumb {
   width: 100%;
 }
 
-.client-delete-btn,
+.client-delete-btn {
+  width: auto;
+  max-width: 260px;
+  align-self: center;
+}
+
 .profile-logout-btn {
   width: 100%;
 }
@@ -2642,7 +2647,13 @@ input[type="range"]::-moz-range-thumb {
     width: 100% !important;
   }
 
-  .client-delete-btn,
+  .client-delete-btn {
+    max-width: 260px !important;
+    width: auto !important;
+    align-self: center !important;
+    margin: 16px auto 0 !important;
+  }
+
   .profile-logout-btn {
     max-width: 340px !important;
     width: auto !important;

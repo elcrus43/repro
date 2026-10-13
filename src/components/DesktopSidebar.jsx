@@ -8,7 +8,6 @@ import {
   UserCircle, 
   History, 
   LayoutDashboard, 
-  Sparkles, 
   ClipboardList, 
   Sun, 
   Moon,
@@ -48,7 +47,6 @@ export function DesktopSidebar() {
 
   const isAdminUser = user?.role === 'admin';
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
-  const newMatchCount = state.matches.filter(m => m.realtor_id === user?.id && m.status === 'new').length;
 
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Дашборд' },
@@ -57,7 +55,6 @@ export function DesktopSidebar() {
     { path: '/clients', icon: Users, label: 'Клиенты' },
     { path: '/tasks', icon: FileCheck, label: 'Сделки' },
     { path: '/history', icon: History, label: 'История' },
-    { path: '/matches', icon: Sparkles, label: 'Матчинг', badge: newMatchCount > 0 ? newMatchCount : null },
     { path: '/documents', icon: ClipboardList, label: 'Документы' },
     { path: '/profile', icon: UserCircle, label: 'Профиль', badge: pendingUsersCount > 0 ? pendingUsersCount : null },
   ];
@@ -85,7 +82,7 @@ export function DesktopSidebar() {
           <Building2 size={22} color="#ffffff" />
         </div>
         <div className="sidebar-brand-text">
-          <span className="sidebar-title">Re-Pro</span>
+          <span className="sidebar-title">REA crm</span>
           <span className="sidebar-subtitle">CRM Платформа</span>
         </div>
       </div>

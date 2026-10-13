@@ -1,8 +1,8 @@
 @echo off
-title Re-Pro CRM - Local Server
+title REA crm - Local Server
 cd /d "%~dp0"
 echo ======================================================
-echo           Re-Pro CRM - Local Server
+echo           REA crm - Local Server
 echo ======================================================
 echo.
 echo Starting Vite and API server...
