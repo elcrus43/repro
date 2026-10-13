@@ -94,9 +94,11 @@ export function EstimationPage() {
                             <input type="number" value={params.total_floors} onChange={e => setParams({ ...params, total_floors: parseInt(e.target.value) })} />
                         </div>
                     </div>
-                    <button className="btn btn-primary" style={{ width: '100%', marginTop: 12 }} onClick={calculate} disabled={loading}>
-                        {loading ? 'Расчёт...' : <><Calculator size={18} /> Оценить</>}
-                    </button>
+                    <div className="form-submit-container" style={{ marginTop: 12, marginBottom: 0 }}>
+                        <button className="form-submit-btn btn btn-primary card-clickable" onClick={calculate} disabled={loading}>
+                            {loading ? 'Расчёт...' : <><Calculator size={18} /> Оценить</>}
+                        </button>
+                    </div>
                 </div>
 
                 {error && <div className="notif-banner badge-danger" style={{ marginTop: 16 }}>{error}</div>}

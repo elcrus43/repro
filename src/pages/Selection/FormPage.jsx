@@ -463,20 +463,22 @@ export function FormPage() {
 
 
                 {/* Кнопка отправки */}
-                <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={isSaving}
-                    style={{ 
-                        height: 52, borderRadius: 16, fontSize: 15, fontWeight: 300, letterSpacing: '0.05em',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        boxShadow: '0 8px 24px rgba(0, 82, 255, 0.25)', marginTop: 8,
-                        opacity: isSaving ? 0.7 : 1,
-                        cursor: isSaving ? 'not-allowed' : 'pointer'
-                    }}
-                >
-                    <Check size={18} strokeWidth={3} /> {isSaving ? 'Сохранение...' : (id ? 'Сохранить изменения' : 'Добавить в подбор')}
-                </button>
+                <div className="form-submit-container">
+                    <button
+                        type="submit"
+                        className="form-submit-btn btn btn-primary card-clickable"
+                        disabled={isSaving}
+                        style={{ 
+                            height: 52, borderRadius: 16, fontSize: 15, fontWeight: 300, letterSpacing: '0.05em',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            boxShadow: '0 8px 24px rgba(0, 82, 255, 0.25)', marginTop: 8,
+                            opacity: isSaving ? 0.7 : 1,
+                            cursor: isSaving ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        <Check size={18} strokeWidth={3} /> {isSaving ? 'Сохранение...' : (id ? 'Сохранить изменения' : 'Добавить в подбор')}
+                    </button>
+                </div>
             </form>
         </div>
     );

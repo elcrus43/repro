@@ -202,7 +202,7 @@ export function ListPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
                 {/* Modern Search & Filters */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4 }}>
+                    <div className="list-scope-switcher" style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4 }}>
                         <button style={{ 
                             flex: 1, padding: '9px 12px', borderRadius: 10, border: 'none', fontSize: 13, fontWeight: 500,
                             background: scope === 'all' ? 'var(--surface)' : 'transparent', 
@@ -280,11 +280,11 @@ export function ListPage() {
                                     }} 
                                     onClick={() => navigate(`/clients/${client.id}`)}
                                 >
-                                    {/* Left: Avatar, Name & Phone in 1 Line */}
+                                    {/* Left: Avatar + Contact (Name & Phone in 2 lines) */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: 1 }}>
                                         <div style={{ 
-                                            width: 32, 
-                                            height: 32, 
+                                            width: 38, 
+                                            height: 38, 
                                             borderRadius: '50%', 
                                             background: avatarBg, 
                                             color: '#fff', 
@@ -292,36 +292,40 @@ export function ListPage() {
                                             alignItems: 'center', 
                                             justifyContent: 'center', 
                                             fontWeight: 600, 
-                                            fontSize: 13,
+                                            fontSize: 14, 
                                             flexShrink: 0 
                                         }}>
                                             {initial}
                                         </div>
-                                        <div style={{ 
-                                            fontWeight: 600, 
-                                            fontSize: 14, 
-                                            color: 'var(--text)', 
-                                            whiteSpace: 'nowrap', 
-                                            overflow: 'hidden', 
-                                            textOverflow: 'ellipsis' 
-                                        }}>
-                                            {client.full_name}
-                                        </div>
-                                        {client.phone && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+                                            <div style={{ 
+                                                fontWeight: 600, 
+                                                fontSize: 14, 
+                                                color: 'var(--text)', 
+                                                whiteSpace: 'nowrap', 
+                                                overflow: 'hidden', 
+                                                textOverflow: 'ellipsis',
+                                                lineHeight: 1.3
+                                            }}>
+                                                {client.full_name}
+                                            </div>
                                             <div style={{ 
                                                 fontSize: 13, 
                                                 color: 'var(--text-secondary)', 
                                                 fontWeight: 400, 
-                                                whiteSpace: 'nowrap',
-                                                flexShrink: 0
+                                                whiteSpace: 'nowrap', 
+                                                overflow: 'hidden', 
+                                                textOverflow: 'ellipsis',
+                                                lineHeight: 1.3
                                             }}>
-                                                {formatPhone(client.phone)}
+                                                {client.phone ? formatPhone(client.phone) : (client.phone_2 ? formatPhone(client.phone_2) : (client.email || 'Нет телефона'))}
+                                                {client.phone && client.phone_2 ? ` · ${formatPhone(client.phone_2)}` : ''}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
 
                                     {/* Right: Role Badges */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '42%' }}>
                                         {client.client_types?.map(t => {
                                             const isAgent = t === 'agent';
                                             return (
@@ -330,10 +334,10 @@ export function ListPage() {
                                                     color: isAgent ? '#059669' : 'var(--text-secondary)', 
                                                     fontWeight: isAgent ? 600 : 400, 
                                                     background: isAgent ? '#ecfdf5' : 'var(--bg-light)', 
-                                                    border: isAgent ? '1px solid #10b981' : '1px solid transparent',
+                                                    border: isAgent ? '1px solid #10b981' : '1px solid transparent', 
                                                     padding: '3px 8px', 
-                                                    borderRadius: 6,
-                                                    whiteSpace: 'nowrap'
+                                                    borderRadius: 6, 
+                                                    whiteSpace: 'nowrap' 
                                                 }}>
                                                     {typeLabels[t] || t}
                                                 </span>

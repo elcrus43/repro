@@ -400,7 +400,7 @@ export function MatchDetailPage() {
 
                 {/* Actions Section */}
                 {match.status !== 'rejected' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
+                    <div className="match-actions-section" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
                         {!showShowingForm && (
                             <button className="btn btn-primary btn-full" style={{ height: 56, borderRadius: 18, fontSize: 15, fontWeight: 300 }} onClick={() => setShowShowingForm(true)}>Назначить показ</button>
                         )}

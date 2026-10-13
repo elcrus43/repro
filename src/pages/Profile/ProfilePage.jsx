@@ -576,8 +576,8 @@ export function ProfilePage() {
                 )}
 
                 {/* Logout */}
-                <button onClick={handleLogout} style={{
-                    display: 'flex', alignItems: 'center', gap: 16, width: '100%', padding: '20px',
+                <button onClick={handleLogout} className="profile-logout-btn" style={{
+                    display: 'flex', alignItems: 'center', gap: 16, padding: '20px 24px',
                     border: 'none', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 28, cursor: 'pointer',
                     textAlign: 'left', color: 'var(--danger)', transition: 'all 0.2s'
                 }}>

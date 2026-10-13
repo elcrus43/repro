@@ -282,7 +282,7 @@ export function ListPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
 
                     {filter !== 'selection' && (
-                        <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4 }}>
+                        <div className="list-scope-switcher" style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4 }}>
                             <button 
                                 className="card-clickable" 
                                 style={{ 
@@ -308,7 +308,7 @@ export function ListPage() {
                         </div>
                     )}
 
-                    <div style={{ display: 'flex', gap: 8, background: 'var(--bg-light)', padding: 4, borderRadius: 16 }}>
+                    <div className="list-filter-switcher" style={{ display: 'flex', gap: 8, background: 'var(--bg-light)', padding: 4, borderRadius: 16 }}>
                         {[
                             ['active', 'Активные'], ['closed', 'Закрытые'], ['selection', 'Подбор']
                         ].map(([val, label]) => (

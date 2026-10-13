@@ -182,10 +182,12 @@ export function CallFormPage() {
                         <textarea className="form-textarea" style={{ borderRadius: 16, background: 'var(--surface)', border: '1.5px solid rgba(0,0,0,0.05)', padding: 16 }} rows={3} value={form.description || ''} onChange={e => setF('description', e.target.value)} placeholder="Тема звонка, что обсудить..." />
                     </div>
 
-                    <button type="submit" className="card-clickable" style={{ marginTop: 12, height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                        <Phone size={20} />
-                        {editId ? 'Сохранить изменения' : 'Запланировать звонок'}
-                    </button>
+                    <div className="form-submit-container" style={{ marginTop: 12 }}>
+                        <button type="submit" className="form-submit-btn card-clickable" style={{ height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                            <Phone size={20} />
+                            {editId ? 'Сохранить изменения' : 'Запланировать звонок'}
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>

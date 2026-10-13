@@ -396,7 +396,7 @@ export function DashboardPage() {
                 </div>
 
                 {/* Quick actions */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="dashboard-quick-actions">
                     <button className="btn btn-primary" style={{ borderRadius: 20, height: 56, fontSize: 14, fontWeight: 300, letterSpacing: '0.05em' }} onClick={() => navigate('/properties/new')}>
                         + Объект
                     </button>

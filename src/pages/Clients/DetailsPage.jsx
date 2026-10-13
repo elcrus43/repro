@@ -1016,10 +1016,9 @@ export function DetailsPage() {
                 {/* ── Кнопка удаления клиента ── */}
                 <button
                     onClick={handleDeleteClient}
-                    className="card-clickable"
+                    className="card-clickable client-delete-btn"
                     style={{
-                        width: '100%',
-                        padding: '16px',
+                        padding: '16px 24px',
                         borderRadius: 20,
                         border: '1px solid rgba(239, 68, 68, 0.2)',
                         background: 'rgba(239, 68, 68, 0.05)',

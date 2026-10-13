@@ -158,7 +158,9 @@ export function FormPage() {
                     </div>
                 </div>
 
-                <button type="submit" className="btn btn-primary btn-full shadow-lg">{id ? 'Сохранить изменения' : 'Создать запрос'}</button>
+                <div className="form-submit-container">
+                    <button type="submit" className="form-submit-btn btn btn-primary card-clickable shadow-lg">{id ? 'Сохранить изменения' : 'Создать запрос'}</button>
+                </div>
             </form>
         </div>
     );

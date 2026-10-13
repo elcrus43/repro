@@ -269,8 +269,8 @@ export function FormPage() {
             </div>
 
             <form className="page-content" style={{ padding: '0 0 120px', display: 'flex', flexDirection: 'column', gap: 16 }} onSubmit={handleSubmit}>
-                <div style={{ padding: '20px 20px 4px' }}>
-                    <button type="submit" className="btn btn-primary btn-full" style={{ 
+                <div className="form-submit-container" style={{ padding: '20px 20px 4px', margin: 0 }}>
+                    <button type="submit" className="form-submit-btn btn btn-primary card-clickable" style={{ 
                         height: 56, borderRadius: 18, fontSize: 16, 
                         textTransform: 'uppercase', letterSpacing: '0.05em',
                         boxShadow: '0 8px 24px rgba(0, 82, 255, 0.15)'
@@ -285,9 +285,10 @@ export function FormPage() {
                         <button
                             type="button"
                             onClick={() => setShowPassportScan(true)}
+                            className="form-scan-btn card-clickable"
                             style={{
-                                width: '100%', marginBottom: 16,
-                                padding: '14px 0', borderRadius: 16, border: 'none',
+                                marginBottom: 16,
+                                padding: '14px 20px', borderRadius: 16, border: 'none',
                                 background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
                                 color: '#ffffff', fontSize: 14, fontWeight: 700,
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
@@ -326,7 +327,7 @@ export function FormPage() {
                                     )}
                                 </div>
                             ))}
-                            <button type="button" className="btn btn-secondary btn-full" style={{ height: 44, borderRadius: 14, fontSize: 13, borderStyle: 'dashed' }} onClick={() => {
+                            <button type="button" className="form-add-btn btn btn-secondary card-clickable" style={{ height: 44, borderRadius: 14, fontSize: 13, borderStyle: 'dashed' }} onClick={() => {
                                 const phones = form.phones || [form.phone || ''];
                                 setF('phones', [...phones, '']);
                             }}><Plus size={16} /> Добавить телефон</button>

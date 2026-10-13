@@ -677,12 +677,12 @@ export function FormPage() {
                     </FormCard>
 
                     {(!editId || form.realtor_id === state.currentUser?.id) && (
-                        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div className="form-submit-container" style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
                             <button 
                                 type="submit" 
-                                className="card-clickable" 
+                                className="form-submit-btn card-clickable" 
                                 style={{ 
-                                    width: '100%', height: 56, borderRadius: 16, border: 'none', 
+                                    height: 56, borderRadius: 16, border: 'none', 
                                     background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14,
                                     fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
@@ -696,10 +696,10 @@ export function FormPage() {
                             {editId && (
                                 <button
                                     type="button"
-                                    className="card-clickable"
+                                    className="form-submit-btn card-clickable"
                                     onClick={handleDelete}
                                     style={{
-                                        width: '100%', height: 48, borderRadius: 16, border: '1.5px solid #fca5a5',
+                                        height: 48, borderRadius: 16, border: '1.5px solid #fca5a5',
                                         background: 'transparent', color: '#dc2626', fontWeight: 700, fontSize: 13,
                                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
                                     }}

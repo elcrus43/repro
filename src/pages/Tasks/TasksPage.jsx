@@ -213,7 +213,7 @@ export function TasksPage() {
             <div className="page-content" style={{ padding: '20px 20px 120px', gap: 16 }}>
                 
                 {/* Quick Actions Grid */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="tasks-quick-actions">
                     <button className="card-clickable" onClick={() => navigate('/tasks/meeting-owner')} style={{ padding: '16px', borderRadius: 24, background: 'var(--surface)', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
                         <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><User size={20} /></div>
                         <span className="font-oswald" style={{ fontSize: 14, fontWeight: 300, letterSpacing: '0.02em' }}>Встреча</span>
@@ -246,7 +246,9 @@ export function TasksPage() {
                                 <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, marginBottom: 8 }} placeholder="Название задачи" value={newTask.title} required onChange={e => handleFieldChange('title', e.target.value)} />
                                 <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} type="datetime-local" value={newTask.due_date ? toLocalISOString(newTask.due_date) : ''} onChange={e => handleFieldChange('due_date', e.target.value)} />
                             </div>
-                            <button type="submit" className="btn btn-primary" style={{ height: 50, borderRadius: 16, fontWeight: 300, marginTop: 8 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
+                            <div className="form-submit-container" style={{ marginTop: 8, marginBottom: 0 }}>
+                                <button type="submit" className="form-submit-btn btn btn-primary card-clickable" style={{ height: 48, borderRadius: 16, fontWeight: 300 }}>{newTask.id ? 'Сохранить' : 'Добавить'}</button>
+                            </div>
                         </form>
                     </FormCard>
                 )}
