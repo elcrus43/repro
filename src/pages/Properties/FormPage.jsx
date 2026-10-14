@@ -10,6 +10,7 @@ import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { nanoid } from '../../utils/nanoid';
 import { decodeImportData } from '../../utils/importDecoder';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
+import { formatPhone, stripPhone } from '../../utils/format';
 import { ExtensionInstallModal } from '../../components/ExtensionInstallModal';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
@@ -488,16 +489,12 @@ export function FormPage() {
             return;
         }
 
-        const dups = findDuplicateClients(state.clients, quickAgent);
-        if (dups.phoneMatches.length > 0) {
-            toast.warn(`Контакт с таким номером (${quickAgent.phone}) уже есть в базе!`);
-        }
-        
+        const cleanPhone = stripPhone(quickAgent.phone) || quickAgent.phone?.trim() || '';
         const newAgentId = nanoid();
         const client = {
             id: newAgentId,
             full_name: quickAgent.full_name.trim(),
-            phone: quickAgent.phone?.trim() || '',
+            phone: cleanPhone,
             realtor_id: state.currentUser?.id,
             client_types: ['agent'],
             status: 'active',
@@ -512,6 +509,22 @@ export function FormPage() {
         toast.success('Агент создан и выбран');
     };
 
+    const handleReplaceQuickAgent = (existing) => {
+        const cleanPhone = stripPhone(quickAgent.phone) || quickAgent.phone?.trim() || existing.phone;
+        const updated = {
+            ...existing,
+            full_name: quickAgent.full_name.trim() || existing.full_name,
+            phone: cleanPhone,
+            client_types: Array.from(new Set([...(existing.client_types || []), 'agent'])),
+            updated_at: new Date().toISOString()
+        };
+        dispatch({ type: 'UPDATE_CLIENT', client: updated });
+        setF('agent_id', existing.id);
+        setQuickAgent({ full_name: '', phone: '' });
+        setShowQuickAgentForm(false);
+        toast.success(`Данные агента «${existing.full_name}» заменены на новые`);
+    };
+
     const handleCreateQuickOwner = (e) => {
         if (e) e.preventDefault();
         if (!quickOwner.full_name?.trim()) {
@@ -519,16 +532,12 @@ export function FormPage() {
             return;
         }
 
-        const dups = findDuplicateClients(state.clients, quickOwner);
-        if (dups.phoneMatches.length > 0) {
-            toast.warn(`Контакт с таким номером (${quickOwner.phone}) уже есть в базе!`);
-        }
-        
+        const cleanPhone = stripPhone(quickOwner.phone) || quickOwner.phone?.trim() || '';
         const newOwnerId = nanoid();
         const client = {
             id: newOwnerId,
             full_name: quickOwner.full_name.trim(),
-            phone: quickOwner.phone?.trim() || '',
+            phone: cleanPhone,
             realtor_id: state.currentUser?.id,
             client_types: ['seller'],
             status: 'active',
@@ -541,6 +550,24 @@ export function FormPage() {
         setQuickOwner({ full_name: '', phone: '' });
         setShowQuickOwnerForm(false);
         toast.success('Собственник создан и добавлен к объекту');
+    };
+
+    const handleReplaceQuickOwner = (existing) => {
+        const cleanPhone = stripPhone(quickOwner.phone) || quickOwner.phone?.trim() || existing.phone;
+        const updated = {
+            ...existing,
+            full_name: quickOwner.full_name.trim() || existing.full_name,
+            phone: cleanPhone,
+            client_types: Array.from(new Set([...(existing.client_types || []), 'seller'])),
+            updated_at: new Date().toISOString()
+        };
+        dispatch({ type: 'UPDATE_CLIENT', client: updated });
+        if (!form.client_ids?.includes(existing.id)) {
+            setF('client_ids', [...(form.client_ids || []), existing.id]);
+        }
+        setQuickOwner({ full_name: '', phone: '' });
+        setShowQuickOwnerForm(false);
+        toast.success(`Данные собственника «${existing.full_name}» заменены на новые`);
     };
 
     const handleSubmit = (e) => {
@@ -1565,9 +1592,11 @@ export function FormPage() {
                                 <div className="form-group">
                                     <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
                                     <input 
+                                        type="tel"
+                                        inputMode="tel"
                                         className="form-input" 
                                         value={quickAgent.phone} 
-                                        onChange={e => setQuickAgent({ ...quickAgent, phone: e.target.value })} 
+                                        onChange={e => setQuickAgent({ ...quickAgent, phone: formatPhone(e.target.value, true) })} 
                                         placeholder="+7 (___) ___-__-__"
                                         style={{ height: 52, borderRadius: 14 }}
                                     />
@@ -1579,24 +1608,34 @@ export function FormPage() {
                                             <AlertTriangle size={16} /> Найдено совпадение в базе ({matches.length}):
                                         </div>
                                         {matches.slice(0, 3).map(m => (
-                                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, padding: '8px 10px', background: 'white', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13 }}>{m.full_name || 'Без имени'}</div>
+                                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, padding: '8px 10px', background: 'white', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
+                                                <div style={{ minWidth: 0, flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || 'Без имени'}</div>
                                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.phone || 'Без телефона'}</div>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary card-clickable"
-                                                    style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap' }}
-                                                    onClick={() => {
-                                                        setF('agent_id', m.id);
-                                                        setShowQuickAgentForm(false);
-                                                        setQuickAgent({ full_name: '', phone: '' });
-                                                        toast.info(`Выбран агент ${m.full_name}`);
-                                                    }}
-                                                >
-                                                    Выбрать
-                                                </button>
+                                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary card-clickable"
+                                                        style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap', background: 'var(--primary)', color: 'white' }}
+                                                        onClick={() => handleReplaceQuickAgent(m)}
+                                                    >
+                                                        Заменить на новый
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary card-clickable"
+                                                        style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap' }}
+                                                        onClick={() => {
+                                                            setF('agent_id', m.id);
+                                                            setShowQuickAgentForm(false);
+                                                            setQuickAgent({ full_name: '', phone: '' });
+                                                            toast.info(`Выбран агент ${m.full_name}`);
+                                                        }}
+                                                    >
+                                                        Выбрать
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -1640,9 +1679,11 @@ export function FormPage() {
                                 <div className="form-group">
                                     <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
                                     <input 
+                                        type="tel"
+                                        inputMode="tel"
                                         className="form-input" 
                                         value={quickOwner.phone} 
-                                        onChange={e => setQuickOwner({ ...quickOwner, phone: e.target.value })} 
+                                        onChange={e => setQuickOwner({ ...quickOwner, phone: formatPhone(e.target.value, true) })} 
                                         placeholder="+7 (___) ___-__-__"
                                         style={{ height: 52, borderRadius: 14 }}
                                     />
@@ -1654,26 +1695,36 @@ export function FormPage() {
                                             <AlertTriangle size={16} /> Найдено совпадение в базе ({matches.length}):
                                         </div>
                                         {matches.slice(0, 3).map(m => (
-                                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, padding: '8px 10px', background: 'white', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
-                                                <div>
-                                                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13 }}>{m.full_name || 'Без имени'}</div>
+                                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, padding: '8px 10px', background: 'white', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
+                                                <div style={{ minWidth: 0, flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || 'Без имени'}</div>
                                                     <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.phone || 'Без телефона'}</div>
                                                 </div>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-secondary card-clickable"
-                                                    style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap' }}
-                                                    onClick={() => {
-                                                        if (!form.client_ids?.includes(m.id)) {
-                                                            setF('client_ids', [...(form.client_ids || []), m.id]);
-                                                        }
-                                                        setShowQuickOwnerForm(false);
-                                                        setQuickOwner({ full_name: '', phone: '' });
-                                                        toast.info(`Добавлен собственник ${m.full_name}`);
-                                                    }}
-                                                >
-                                                    Выбрать
-                                                </button>
+                                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary card-clickable"
+                                                        style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap', background: 'var(--primary)', color: 'white' }}
+                                                        onClick={() => handleReplaceQuickOwner(m)}
+                                                    >
+                                                        Заменить на новый
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary card-clickable"
+                                                        style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap' }}
+                                                        onClick={() => {
+                                                            if (!form.client_ids?.includes(m.id)) {
+                                                                setF('client_ids', [...(form.client_ids || []), m.id]);
+                                                            }
+                                                            setShowQuickOwnerForm(false);
+                                                            setQuickOwner({ full_name: '', phone: '' });
+                                                            toast.info(`Добавлен собственник ${m.full_name}`);
+                                                        }}
+                                                    >
+                                                        Выбрать
+                                                    </button>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

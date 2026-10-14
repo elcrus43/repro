@@ -58,6 +58,7 @@ export function FormPage() {
     const [showBank, setShowBank] = useState(!!(form.bank_details?.bik || form.bank_details?.account));
     const [bankLoading, setBankLoading] = useState(false);
     const [bankFound, setBankFound] = useState(false);
+    const [duplicateModalMatch, setDuplicateModalMatch] = useState(null);
     const bikTimerRef = useRef(null);
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
@@ -187,8 +188,7 @@ export function FormPage() {
         setBank('kpp', raw.replace(/\D/g, '').slice(0, 9));
     }
 
-    async function handleSubmit(e) {
-        e.preventDefault();
+    function buildClientPayload(targetId = id) {
         const phones = (form.phones || [form.phone || '']).map(p => stripPhone(p)).filter(Boolean);
         
         // Синхронизация верхнеуровневых полей с паспортом для госреестров
@@ -200,8 +200,9 @@ export function FormPage() {
         const innStr = form.inn || pDetails.inn || '';
         const regAddressStr = form.reg_address || pDetails.registration_address || '';
 
-        const client = {
+        return {
             ...form,
+            id: targetId || undefined,
             phone: phones[0] || '',
             phones: phones.length > 1 ? phones : undefined,
             inn: innStr,
@@ -219,20 +220,54 @@ export function FormPage() {
                 phone: stripPhone(c.phone)
             }))
         };
+    }
+
+    async function handleReplaceExisting(targetClient) {
+        const clientPayload = buildClientPayload(targetClient.id);
+        const merged = {
+            ...targetClient,
+            ...clientPayload,
+            id: targetClient.id,
+            updated_at: new Date().toISOString()
+        };
+        const ok = await dispatch({ type: 'UPDATE_CLIENT', client: merged });
+        if (ok !== false) {
+            toast.success(`Данные контакта «${targetClient.full_name || 'Без имени'}» заменены на новые`);
+            navigate(`/clients/${targetClient.id}`);
+        }
+    }
+
+    async function saveNewClient() {
+        const client = buildClientPayload();
+        const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
+        if (ok !== false) {
+            toast.success('Клиент создан');
+            const returnTo = searchParams.get('returnTo');
+            if (returnTo) navigate(returnTo);
+            else navigate('/clients');
+        }
+    }
+
+    async function handleSubmit(e) {
+        e.preventDefault();
         if (id) {
+            const client = buildClientPayload(id);
             const ok = await dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
             if (ok !== false) {
                 toast.success('Клиент сохранён');
                 navigate(`/clients/${id}`);
             }
         } else {
-            const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
-            if (ok !== false) {
-                toast.success('Клиент создан');
-                const returnTo = searchParams.get('returnTo');
-                if (returnTo) navigate(returnTo);
-                else navigate('/clients');
+            // Check for phone duplicate before creating
+            const dups = findDuplicateClients(
+                (state.clients || []).filter(c => c.id !== id),
+                { full_name: form.full_name, phone: form.phone, phones: form.phones }
+            );
+            if (dups.phoneMatches.length > 0) {
+                setDuplicateModalMatch(dups.phoneMatches[0]);
+                return;
             }
+            await saveNewClient();
         }
     }
 
@@ -312,13 +347,21 @@ export function FormPage() {
                             {(form.phones || [form.phone || '']).map((p, idx) => (
                                 <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, position: 'relative' }}>
                                     <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', zIndex: 1 }}><Phone size={18} /></span>
-                                    <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={p || ''} onChange={e => {
-                                        const raw = e.target.value;
-                                        const formatted = formatPhone(raw, true);
-                                        const phones = [...(form.phones || [form.phone || ''])];
-                                        phones[idx] = formatted;
-                                        setF('phones', phones);
-                                    }} placeholder="+7 (912) 000-00-00" />
+                                    <input 
+                                        type="tel"
+                                        inputMode="tel"
+                                        className="form-input" 
+                                        style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} 
+                                        value={p || ''} 
+                                        onChange={e => {
+                                            const raw = e.target.value;
+                                            const formatted = formatPhone(raw, true);
+                                            const phones = [...(form.phones || [form.phone || ''])];
+                                            phones[idx] = formatted;
+                                            setF('phones', phones);
+                                        }} 
+                                        placeholder="+7 (___) ___-__-__" 
+                                    />
                                     {idx > 0 && (
                                         <button type="button" className="card-clickable" style={{ width: 54, height: 54, borderRadius: 16, background: 'var(--danger-light)', color: 'var(--danger)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => {
                                             const phones = (form.phones || [form.phone || '']).filter((_, i) => i !== idx);
@@ -336,7 +379,7 @@ export function FormPage() {
                         {(() => {
                             const dups = !id ? findDuplicateClients(
                                 (state.clients || []).filter(c => c.id !== id),
-                                { full_name: form.full_name, phone: form.phones?.[0] || form.phone }
+                                { full_name: form.full_name, phone: form.phone, phones: form.phones }
                             ) : { phoneMatches: [], nameMatches: [] };
                             const matches = [...dups.phoneMatches, ...dups.nameMatches];
 
@@ -347,19 +390,30 @@ export function FormPage() {
                                         <AlertTriangle size={18} /> Найдено совпадение в базе ({matches.length}):
                                     </div>
                                     {matches.slice(0, 3).map(m => (
-                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '10px 12px', background: 'white', borderRadius: 12, border: '1px solid rgba(0,0,0,0.06)' }}>
-                                            <div>
-                                                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14 }}>{m.full_name || 'Без имени'}</div>
+                                        <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 8, padding: '10px 12px', background: 'white', borderRadius: 12, border: '1px solid rgba(0,0,0,0.06)' }}>
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || 'Без имени'}</div>
                                                 <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{m.phone || 'Без телефона'}</div>
                                             </div>
-                                            <button
-                                                type="button"
-                                                className="btn btn-secondary card-clickable"
-                                                style={{ fontSize: 12, padding: '6px 12px', height: 36, borderRadius: 10 }}
-                                                onClick={() => navigate(`/clients/${m.id}`)}
-                                            >
-                                                Открыть
-                                            </button>
+                                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-primary card-clickable"
+                                                    style={{ fontSize: 12, padding: '6px 12px', height: 36, borderRadius: 10, background: 'var(--primary)', color: 'white', whiteSpace: 'nowrap' }}
+                                                    onClick={() => handleReplaceExisting(m)}
+                                                    title="Заменить данные этого контакта на введенные в форме"
+                                                >
+                                                    Заменить на новый
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-secondary card-clickable"
+                                                    style={{ fontSize: 12, padding: '6px 12px', height: 36, borderRadius: 10, whiteSpace: 'nowrap' }}
+                                                    onClick={() => navigate(`/clients/${m.id}`)}
+                                                >
+                                                    Открыть
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -694,6 +748,83 @@ export function FormPage() {
                 onClose={() => setShowPassportScan(false)}
                 onExtracted={handlePassportExtracted}
             />
+
+            {/* Модальное окно при совпадении контакта */}
+            {duplicateModalMatch && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1100,
+                    background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(10px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 20
+                }}>
+                    <div className="card fade-in" style={{
+                        maxWidth: 440, width: '100%', padding: 28, borderRadius: 28,
+                        background: 'var(--surface)', border: '1px solid var(--border)',
+                        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                            <div style={{ width: 44, height: 44, borderRadius: 14, background: '#FEF3C7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#D97706', flexShrink: 0 }}>
+                                <AlertTriangle size={24} />
+                            </div>
+                            <div>
+                                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>
+                                    Контакт уже существует
+                                </h3>
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                    Обнаружено совпадение по номеру
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ padding: '12px 14px', background: 'var(--bg-light)', borderRadius: 14, marginBottom: 18 }}>
+                            <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)' }}>
+                                {duplicateModalMatch.full_name || 'Без имени'}
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                {duplicateModalMatch.phone || 'Без телефона'}
+                            </div>
+                        </div>
+
+                        <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5, margin: '0 0 20px' }}>
+                            В базе уже зарегистрирован контакт с таким номером. Хотите заменить данные существующего контакта на новые или всё равно создать отдельную запись?
+                        </p>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <button
+                                type="button"
+                                className="btn btn-primary card-clickable"
+                                style={{ height: 48, borderRadius: 14, fontWeight: 600, fontSize: 14, background: 'var(--primary)', color: 'white' }}
+                                onClick={() => {
+                                    const m = duplicateModalMatch;
+                                    setDuplicateModalMatch(null);
+                                    handleReplaceExisting(m);
+                                }}
+                            >
+                                Заменить на новый
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-secondary card-clickable"
+                                style={{ height: 44, borderRadius: 14, fontSize: 13 }}
+                                onClick={() => {
+                                    setDuplicateModalMatch(null);
+                                    saveNewClient();
+                                }}
+                            >
+                                Всё равно создать дубликат
+                            </button>
+                            <button
+                                type="button"
+                                className="btn btn-secondary card-clickable"
+                                style={{ height: 40, borderRadius: 14, fontSize: 13, opacity: 0.7 }}
+                                onClick={() => setDuplicateModalMatch(null)}
+                            >
+                                Отмена
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
             <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
         </div>
     );

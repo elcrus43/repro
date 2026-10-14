@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, toLocalISOString, parseLocalDateTime } from '../../utils/format';
+import { formatPhone, toLocalISOString, parseLocalDateTime, stripPhone } from '../../utils/format';
 import { Calendar, User, Phone, UserPlus, X, ChevronLeft, Save, Clock } from 'lucide-react';
 import { nanoid } from '../../utils/nanoid';
 
@@ -44,18 +44,38 @@ export function CallFormPage() {
 
     function handleCreateClient() {
         if (!newClientName.trim()) { toast.error('Введите имя клиента'); return; }
-        const client = {
-            id: nanoid(),
-            realtor_id: state.currentUser?.id,
-            full_name: newClientName.trim(),
-            phone: newClientPhone.trim(),
-            client_types: [],
-            status: 'active',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        };
-        dispatch({ type: 'ADD_CLIENT', client });
-        setF('client_id', client.id);
+        const cleanPhone = stripPhone(newClientPhone);
+        const existingClient = cleanPhone ? state.clients.find(c => {
+            const cp = stripPhone(c.phone);
+            const cps = (c.phones || []).map(p => stripPhone(p));
+            return cp === cleanPhone || cps.includes(cleanPhone);
+        }) : null;
+
+        if (existingClient) {
+            const updated = {
+                ...existingClient,
+                full_name: newClientName.trim() || existingClient.full_name,
+                phone: cleanPhone || existingClient.phone,
+                updated_at: new Date().toISOString()
+            };
+            dispatch({ type: 'UPDATE_CLIENT', client: updated });
+            setF('client_id', existingClient.id);
+            toast.info(`Контакт «${existingClient.full_name}» обновлён и выбран`);
+        } else {
+            const client = {
+                id: nanoid(),
+                realtor_id: state.currentUser?.id,
+                full_name: newClientName.trim(),
+                phone: cleanPhone,
+                client_types: [],
+                status: 'active',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            dispatch({ type: 'ADD_CLIENT', client });
+            setF('client_id', client.id);
+            toast.success('Клиент создан и выбран');
+        }
         setShowNewClient(false);
     }
 
@@ -134,6 +154,7 @@ export function CallFormPage() {
                                     placeholder="+7 (___) ___-__-__"
                                     value={newClientPhone}
                                     type="tel"
+                                    inputMode="tel"
                                     onChange={e => setNewClientPhone(formatPhone(e.target.value, true))}
                                 />
                                 <button type="button" className="card-clickable" style={{ height: 40, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12, textTransform: 'uppercase' }} onClick={handleCreateClient}>Создать</button>

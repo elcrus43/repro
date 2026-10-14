@@ -26,4 +26,10 @@ describe('findDuplicateClients', () => {
         expect(result.phoneMatches).toHaveLength(0);
         expect(result.nameMatches).toHaveLength(0);
     });
+
+    it('finds match when passing phones array', () => {
+        const result = findDuplicateClients(clients, { phones: ['+7 (999) 765-43-21'] });
+        expect(result.phoneMatches).toHaveLength(1);
+        expect(result.phoneMatches[0].id).toBe('2');
+    });
 });

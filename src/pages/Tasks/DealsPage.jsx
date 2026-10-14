@@ -10,7 +10,8 @@ import { ClientVerificationModal } from '../../components/ClientVerificationModa
 import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
 import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
-import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
+import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone } from '../../utils/format';
+import { findDuplicateClients } from '../../utils/clientDuplicate';
 
 function parsePgArray(arr) {
     if (!arr) return [];
@@ -304,14 +305,16 @@ export function DealsPage() {
     }
 
     function handleCreateQuickBuyer(e) {
-        e.preventDefault();
+        if (e) e.preventDefault();
         if (!quickBuyer.full_name) return;
 
         const isAgentMode = Boolean(quickAgentTarget);
+        const cleanPhone = stripPhone(quickBuyer.phone) || quickBuyer.phone?.trim() || '';
         const newClientId = nanoid();
         const client = {
             ...quickBuyer,
             id: newClientId,
+            phone: cleanPhone,
             realtor_id: user?.id,
             client_types: [isAgentMode ? 'agent' : 'buyer'],
             status: 'active',
@@ -329,6 +332,32 @@ export function DealsPage() {
             // Auto-select the new client as a buyer
             handleFieldChange('buyer_ids', [...(newDeal.buyer_ids || []), newClientId]);
             toast.success('Покупатель создан и выбран');
+        }
+        setQuickBuyer({ full_name: '', phone: '' });
+        setShowQuickBuyerForm(false);
+    }
+
+    function handleReplaceQuickBuyer(existing) {
+        const isAgentMode = Boolean(quickAgentTarget);
+        const targetType = isAgentMode ? 'agent' : 'buyer';
+        const cleanPhone = stripPhone(quickBuyer.phone) || quickBuyer.phone?.trim() || existing.phone;
+        const updated = {
+            ...existing,
+            full_name: quickBuyer.full_name.trim() || existing.full_name,
+            phone: cleanPhone,
+            client_types: Array.from(new Set([...(existing.client_types || []), targetType])),
+            updated_at: new Date().toISOString()
+        };
+
+        dispatch({ type: 'UPDATE_CLIENT', client: updated });
+
+        if (isAgentMode) {
+            handleFieldChange(quickAgentTarget, existing.id);
+            setQuickAgentTarget(null);
+            toast.success(`Данные агента «${existing.full_name}» заменены на новые`);
+        } else {
+            handleFieldChange('buyer_ids', Array.from(new Set([...(newDeal.buyer_ids || []), existing.id])));
+            toast.success(`Данные покупателя «${existing.full_name}» заменены на новые`);
         }
         setQuickBuyer({ full_name: '', phone: '' });
         setShowQuickBuyerForm(false);
@@ -1013,13 +1042,66 @@ export function DealsPage() {
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', marginBottom: 8, display: 'block', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Телефон</label>
                                 <input 
+                                    type="tel"
+                                    inputMode="tel"
                                     className="form-input" 
                                     value={quickBuyer.phone} 
-                                    onChange={e => setQuickBuyer({ ...quickBuyer, phone: e.target.value })} 
+                                    onChange={e => setQuickBuyer({ ...quickBuyer, phone: formatPhone(e.target.value, true) })} 
                                     placeholder="+7 (___) ___-__-__"
                                     style={{ height: 52, borderRadius: 14 }}
                                 />
                             </div>
+
+                            {(() => {
+                                const dups = findDuplicateClients(state.clients, quickBuyer);
+                                const matches = [...dups.phoneMatches, ...dups.nameMatches];
+                                if (matches.length === 0) return null;
+                                return (
+                                    <div style={{ padding: 12, borderRadius: 14, background: '#FFFBEB', border: '1px solid #F59E0B', fontSize: 13 }}>
+                                        <div style={{ fontWeight: 600, color: '#B45309', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <AlertTriangle size={16} /> Найдено совпадение в базе ({matches.length}):
+                                        </div>
+                                        {matches.slice(0, 3).map(m => (
+                                            <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6, padding: '8px 10px', background: 'white', borderRadius: 10, border: '1px solid rgba(0,0,0,0.05)' }}>
+                                                <div style={{ minWidth: 0, flex: 1 }}>
+                                                    <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name || 'Без имени'}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{m.phone || 'Без телефона'}</div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary card-clickable"
+                                                        style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap', background: 'var(--primary)', color: 'white' }}
+                                                        onClick={() => handleReplaceQuickBuyer(m)}
+                                                    >
+                                                        Заменить на новый
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary card-clickable"
+                                                        style={{ fontSize: 11, padding: '4px 10px', height: 32, borderRadius: 8, whiteSpace: 'nowrap' }}
+                                                        onClick={() => {
+                                                            if (quickAgentTarget) {
+                                                                handleFieldChange(quickAgentTarget, m.id);
+                                                                setQuickAgentTarget(null);
+                                                                toast.info(`Выбран агент ${m.full_name}`);
+                                                            } else {
+                                                                handleFieldChange('buyer_ids', Array.from(new Set([...(newDeal.buyer_ids || []), m.id])));
+                                                                toast.info(`Выбран покупатель ${m.full_name}`);
+                                                            }
+                                                            setQuickBuyer({ full_name: '', phone: '' });
+                                                            setShowQuickBuyerForm(false);
+                                                        }}
+                                                    >
+                                                        Выбрать
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+
                             <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
                                 <button type="button" className="btn btn-secondary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300 }} onClick={() => { setShowQuickBuyerForm(false); setQuickAgentTarget(null); }}>Отмена</button>
                                 <button type="button" className="btn btn-primary card-clickable" style={{ flex: 1, height: 52, borderRadius: 14, fontWeight: 300, background: 'var(--primary)', boxShadow: '0 8px 16px rgba(0,82,255,0.15)' }} onClick={handleCreateQuickBuyer}>Создать</button>

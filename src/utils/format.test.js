@@ -141,7 +141,6 @@ describe('formatPhone', () => {
   it('handles inputMode typing with 8, 7, 9', () => {
     expect(formatPhone('8', true)).toBe('+7 (')
     expect(formatPhone('7', true)).toBe('+7 (')
-    expect(formatPhone('+7', true)).toBe('+7 (')
     expect(formatPhone('9', true)).toBe('+7 (9')
     expect(formatPhone('+7 (9', true)).toBe('+7 (9')
     expect(formatPhone('+7 (912', true)).toBe('+7 (912')
@@ -151,6 +150,16 @@ describe('formatPhone', () => {
   it('handles backspacing in inputMode cleanly without getting stuck', () => {
     expect(formatPhone('+7 (', true)).toBe('')
     expect(formatPhone('+7 ', true)).toBe('')
+    expect(formatPhone('+7', true)).toBe('')
+    expect(formatPhone('+', true)).toBe('')
+  })
+
+  it('handles pasting formatted and raw numbers into inputMode without corruption', () => {
+    expect(formatPhone('89123456789', true)).toBe('+7 (912) 345-67-89')
+    expect(formatPhone('+79123456789', true)).toBe('+7 (912) 345-67-89')
+    expect(formatPhone('+7 (89123456789', true)).toBe('+7 (912) 345-67-89')
+    expect(formatPhone('+7 (+79123456789', true)).toBe('+7 (912) 345-67-89')
+    expect(formatPhone('8121234567', true)).toBe('+7 (812) 123-45-67')
   })
 })
 
@@ -161,6 +170,10 @@ describe('stripPhone', () => {
 
   it('converts 8 prefix to 7', () => {
     expect(stripPhone('89991234567')).toBe('79991234567')
+  })
+
+  it('handles double prefix from paste into +7 (', () => {
+    expect(stripPhone('+7 (89123456789')).toBe('79123456789')
   })
 
   it('returns empty for null/undefined', () => {

@@ -349,12 +349,13 @@ export function FormPage() {
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Телефон</label>
                         <input
-                            type="text"
+                            type="tel"
+                            inputMode="tel"
                             className="form-input"
                             style={{ borderRadius: 14 }}
                             value={form.contact_phone}
                             onChange={e => setF('contact_phone', formatPhone(e.target.value, true))}
-                            placeholder="+7 (999) 999-99-99"
+                            placeholder="+7 (___) ___-__-__"
                         />
                     </div>
 

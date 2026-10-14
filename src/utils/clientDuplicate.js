@@ -7,11 +7,12 @@ import { stripPhone } from './format';
  * @param {Object} input - { full_name, phone }
  * @returns {Object} { phoneMatches: Array, nameMatches: Array }
  */
-export function findDuplicateClients(clients = [], { full_name = '', phone = '' } = {}) {
-    const cleanPhone = stripPhone(phone);
+export function findDuplicateClients(clients = [], { full_name = '', phone = '', phones = [] } = {}) {
+    const rawPhones = [phone, ...(Array.isArray(phones) ? phones : [])].filter(Boolean);
+    const cleanPhones = rawPhones.map(p => stripPhone(p)).filter(p => p && p.length >= 6);
     const cleanName = (full_name || '').trim().toLowerCase();
     
-    if (!cleanPhone && cleanName.length < 3) {
+    if (cleanPhones.length === 0 && cleanName.length < 3) {
         return { phoneMatches: [], nameMatches: [] };
     }
 
@@ -22,12 +23,14 @@ export function findDuplicateClients(clients = [], { full_name = '', phone = '' 
         if (!c) return;
         
         // 1. Check Phone
-        if (cleanPhone && cleanPhone.length >= 6) {
+        if (cleanPhones.length > 0) {
             const mainPhone = stripPhone(c.phone);
             const altPhones = (c.phones || []).map(p => stripPhone(p));
             const extraPhones = (c.additional_contacts || []).map(ac => stripPhone(ac.phone));
+            const allTargetPhones = [mainPhone, ...altPhones, ...extraPhones].filter(Boolean);
 
-            if (mainPhone === cleanPhone || altPhones.includes(cleanPhone) || extraPhones.includes(cleanPhone)) {
+            const hasPhoneMatch = cleanPhones.some(cp => allTargetPhones.includes(cp));
+            if (hasPhoneMatch) {
                 phoneMatches.push(c);
                 return; // Avoid duplicating in nameMatches
             }

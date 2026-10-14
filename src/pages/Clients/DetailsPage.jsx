@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
-import { Pencil, Phone, Mail, Calendar, TrendingUp, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck, Copy, Check, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Pencil, Phone, Mail, Calendar, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck, Copy, Check, AlertTriangle, ExternalLink } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';

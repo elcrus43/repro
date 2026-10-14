@@ -320,6 +320,7 @@ function QuickClientModal({ isOpen, onClose, initialName = '', role = 'buyer', o
                         </label>
                         <input
                             type="tel"
+                            inputMode="tel"
                             className="form-input"
                             value={phone}
                             onChange={e => setPhone(formatPhone(e.target.value, true))}
@@ -1137,6 +1138,8 @@ export function DocumentsPage() {
                                 </div>
                                 <input
                                     id="doc-input-phone"
+                                    type="tel"
+                                    inputMode="tel"
                                     className="form-input"
                                     value={clientDraft.phone}
                                     onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}

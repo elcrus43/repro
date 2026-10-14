@@ -10,29 +10,35 @@ export function formatPhone(phone, inputMode = false) {
     const trimmed = raw.trim();
     if (!trimmed) return '';
 
-    // In inputMode, backspacing from +7 (9 gives '+7 (', or from +7 ( gives '+7 ' -> clear completely
-    if (inputMode && (raw === '+7 ' || trimmed === '+7 (' || raw === '+7 (')) {
+    // In inputMode, backspacing to '+7 ', '+7 (', '+7', or '+' clears completely
+    if (inputMode) {
+        if (raw === '+7 ' || raw === '+7 (' || raw === '+7' || raw === '+' || trimmed === '+7 (' || trimmed === '+7 ' || trimmed === '+7' || trimmed === '+') {
+            return '';
+        }
+        // Typing country code or plus into empty input initializes mask
+        if (trimmed === '7' || trimmed === '8' || trimmed === '+8') {
+            return '+7 (';
+        }
+    }
+
+    let digits = trimmed.replace(/\D/g, '');
+    if (!digits) return '';
+
+    // Handle double country code that occurs when pasting into existing "+7 ("
+    // e.g. "+7 (8912..." -> digits: "78912..." (12 digits) or "+7 (+7912..." -> "77912..."
+    if (digits.length >= 11 && (digits.startsWith('77') || digits.startsWith('78'))) {
+        digits = digits.slice(2);
+    } else if (digits.length >= 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
+        digits = digits.slice(1);
+    } else if (digits.length > 1 && (trimmed.startsWith('+7') || trimmed.startsWith('+8') || trimmed.startsWith('+ 7'))) {
+        digits = digits.slice(1);
+    } else if (digits.length === 1 && (digits === '7' || digits === '8') && !inputMode) {
         return '';
     }
 
-    // Typing country code or plus into empty input
-    if (inputMode && (trimmed === '+' || trimmed === '7' || trimmed === '8' || trimmed === '+7' || trimmed === '+8')) {
-        return '+7 (';
-    }
-
-    let clean = trimmed.replace(/\D/g, '');
-    if (!clean) return '';
-
-    // Strip leading country code (7 or 8) if present in full or multi-digit input
-    if (clean.length > 1 && (clean.startsWith('8') || clean.startsWith('7'))) {
-        clean = clean.substring(1);
-    } else if (clean.length === 1 && (clean === '7' || clean === '8') && !inputMode) {
-        return '';
-    }
-
-    const d = clean.substring(0, 10);
+    const d = digits.slice(0, 10);
     const len = d.length;
-    if (len === 0) return '';
+    if (len === 0) return inputMode ? '+7 (' : '';
 
     let result = '+7 ';
     result += `(${d.substring(0, Math.min(3, len))}`;
@@ -48,7 +54,11 @@ export function formatPhone(phone, inputMode = false) {
  */
 export function stripPhone(phone) {
     if (!phone) return '';
-    const clean = phone.replace(/\D/g, '');
+    let clean = String(phone).replace(/\D/g, '');
+    if (!clean) return '';
+    if (clean.length >= 12 && (clean.startsWith('77') || clean.startsWith('78'))) {
+        clean = clean.substring(1);
+    }
     if (clean.length === 10) return '7' + clean;
     if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) return '7' + clean.substring(1);
     return clean;

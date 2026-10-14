@@ -532,6 +532,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <input 
                                 type="tel" 
+                                inputMode="tel"
                                 value={phone} 
                                 onChange={e => setPhone(formatPhone(e.target.value, true))} 
                                 placeholder="+7 (___) ___-__-__"

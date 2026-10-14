@@ -6,6 +6,7 @@ import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString,
 import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2, Plus, Ruler, Image, Building2 } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
+import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { compressImage, readClipboardAndCompress } from '../../utils/image';
@@ -198,24 +199,48 @@ export function FormPage() {
 
     function handleCreateClient() {
         if (!newClientName.trim()) { toast.error('Введите имя клиента'); return; }
-        const client = {
-            id: nanoid(),
-            realtor_id: state.currentUser?.id,
-            full_name: newClientName.trim(),
-            phone: newClientPhone.trim(),
-            client_types: ['buyer'],
-            status: 'active',
-            additional_contacts: [],
-            notes: '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-        };
-        dispatch({ type: 'ADD_CLIENT', client });
-        setForm(f => ({ 
-            ...f, 
-            client_id: client.id,
-            client_ids: [...(f.client_ids || []), client.id]
-        }));
+        const cleanPhone = stripPhone(newClientPhone);
+        const existing = cleanPhone ? state.clients.find(c => {
+            const cPhone = stripPhone(c.phone);
+            const cPhones = (c.phones || []).map(p => stripPhone(p));
+            return cPhone === cleanPhone || cPhones.includes(cleanPhone);
+        }) : null;
+
+        if (existing) {
+            const updated = {
+                ...existing,
+                full_name: newClientName.trim() || existing.full_name,
+                phone: cleanPhone || existing.phone,
+                updated_at: new Date().toISOString()
+            };
+            dispatch({ type: 'UPDATE_CLIENT', client: updated });
+            setForm(f => ({ 
+                ...f, 
+                client_id: existing.id,
+                client_ids: Array.from(new Set([...(f.client_ids || []), existing.id]))
+            }));
+            toast.info(`Контакт «${existing.full_name}» обновлён и добавлен к событию`);
+        } else {
+            const client = {
+                id: nanoid(),
+                realtor_id: state.currentUser?.id,
+                full_name: newClientName.trim(),
+                phone: cleanPhone,
+                client_types: ['buyer'],
+                status: 'active',
+                additional_contacts: [],
+                notes: '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            dispatch({ type: 'ADD_CLIENT', client });
+            setForm(f => ({ 
+                ...f, 
+                client_id: client.id,
+                client_ids: [...(f.client_ids || []), client.id]
+            }));
+            toast.success('Клиент создан и добавлен к событию');
+        }
         setShowNewClient(false);
         setNewClientName('');
         setNewClientPhone('');
@@ -552,9 +577,11 @@ export function FormPage() {
                                     />
 
                                     <input
+                                        type="tel"
+                                        inputMode="tel"
                                         className="form-input"
                                         style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
-                                        placeholder="Телефон"
+                                        placeholder="+7 (___) ___-__-__"
                                         value={newSelContactPhone}
                                         onChange={e => setNewSelContactPhone(formatPhone(e.target.value, true))}
                                     />
@@ -622,6 +649,7 @@ export function FormPage() {
                                         placeholder="+7 (___) ___-__-__"
                                         value={newClientPhone}
                                         type="tel"
+                                        inputMode="tel"
                                         onChange={e => setNewClientPhone(formatPhone(e.target.value, true))}
                                     />
                                     <button type="button" className="card-clickable" style={{ height: 44, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12 }} onClick={handleCreateClient}>

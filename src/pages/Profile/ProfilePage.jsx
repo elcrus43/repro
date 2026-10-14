@@ -361,6 +361,7 @@ export function ProfilePage() {
                                 style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
                                 value={editData.phone || ''}
                                 type="tel"
+                                inputMode="tel"
                                 onChange={e => setEditData({ ...editData, phone: formatPhone(e.target.value, true) })}
                                 placeholder="+7 (___) ___-__-__"
                             />
