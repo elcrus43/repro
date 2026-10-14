@@ -14,7 +14,8 @@ import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.b
 /* ─── Иконки шаблонов ─────────────────────────────────────────────────────── */
 const TEMPLATE_ICONS = {
     yuss_buy_1: <Briefcase size={16} />,
-    sale: <Building2 size={16} />,
+    agency_sale_1: <Building2 size={16} />,
+    sale: <FileText size={16} />,
     rent: <FileText size={16} />,
     act: <FileText size={16} />,
 };
@@ -468,18 +469,22 @@ export function DocumentsPage() {
     const agencyName = realtor?.agency_name;
 
     /* ── Выбранный клиент для редактирования реквизитов ────────────────────── */
+    const isAgencySale = selectedTemplate === 'agency_sale_1';
+    const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1';
+
     const activeClient = useMemo(() => {
         if (sourceMode === 'deal' && selectedDealId) {
             const d = state.deals.find(deal => deal.id === selectedDealId);
             if (d) {
                 const buyerIds = d.buyer_ids || (d.buyer_id ? [d.buyer_id] : []);
                 const sellerIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
-                const cId = buyerIds[0] || sellerIds[0];
+                const cId = isAgencySale ? (sellerIds[0] || buyerIds[0]) : (buyerIds[0] || sellerIds[0]);
                 return state.clients.find(c => c.id === cId) || null;
             }
         }
-        return state.clients.find(c => c.id === (buyerId || sellerId)) || null;
-    }, [sourceMode, selectedDealId, buyerId, sellerId, state.deals, state.clients]);
+        const targetId = isAgencySale ? (sellerId || buyerId) : (buyerId || sellerId);
+        return state.clients.find(c => c.id === targetId) || null;
+    }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, state.deals, state.clients]);
 
     /* ── Черновик реквизитов клиента ──────────────────────────────────────── */
     const [clientDraft, setClientDraft] = useState({
@@ -771,9 +776,9 @@ export function DocumentsPage() {
                     #doc-print-area {
                         position: absolute; left: 0; top: 0; width: 100%;
                         padding: 24px; color: #000 !important; background: #fff !important;
-                        font-family: ${selectedTemplate === 'yuss_buy_1' ? 'Arial, sans-serif' : "'Times New Roman', Times, serif"} !important;
-                        font-size: ${selectedTemplate === 'yuss_buy_1' ? '9pt' : '13pt'} !important;
-                        line-height: ${selectedTemplate === 'yuss_buy_1' ? '1.25' : '1.4'} !important;
+                        font-family: ${isAgencyContract ? 'Arial, sans-serif' : "'Times New Roman', Times, serif"} !important;
+                        font-size: ${isAgencyContract ? '9pt' : '13pt'} !important;
+                        line-height: ${isAgencyContract ? '1.25' : '1.4'} !important;
                     }
                     .no-print { display: none !important; }
                     .doc-slot, .doc-slot-filled, .doc-slot-empty {
@@ -906,7 +911,40 @@ export function DocumentsPage() {
                     {/* Режим — вручную */}
                     {sourceMode === 'manual' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {selectedTemplate === 'yuss_buy_1' ? (
+                            {selectedTemplate === 'agency_sale_1' ? (
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            Принципал (Продавец / Собственник)
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: '' })}
+                                            style={{
+                                                background: 'none', border: 'none', color: 'var(--primary)',
+                                                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                                            }}
+                                        >
+                                            <Plus size={13} /> Создать клиента
+                                        </button>
+                                    </div>
+                                    <ClientSearch
+                                        clients={state.clients}
+                                        value={sellerId || buyerId}
+                                        onChange={(val) => {
+                                            setSellerId(val);
+                                            setBuyerId(val);
+                                            if (val) {
+                                                const found = state.properties.find(p => p.client_id === val || (Array.isArray(p.client_ids) && p.client_ids.includes(val)));
+                                                if (found) setPropertyId(found.id);
+                                            }
+                                        }}
+                                        placeholder="Выберите клиента-принципала (продавца)"
+                                        onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: searchQuery || '' })}
+                                        addLabel="Новый принципал"
+                                    />
+                                </div>
+                            ) : selectedTemplate === 'yuss_buy_1' ? (
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -1279,6 +1317,161 @@ export function DocumentsPage() {
                     </div>
                 )}
 
+                {/* Интерактивное заполнение и подсветка характеристик объекта недвижимости */}
+                {activeProperty && (
+                    <div className="no-print" style={{
+                        background: 'var(--surface)', borderRadius: 20, padding: 20,
+                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Building2 size={16} style={{ color: 'var(--primary)' }} />
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                    Характеристики объекта (карточка CRM)
+                                </span>
+                            </div>
+                            {(() => {
+                                const missing = [
+                                    !propDraft.address?.trim(),
+                                    !propDraft.cadastral_number?.trim(),
+                                    !propDraft.price,
+                                ].filter(Boolean).length;
+
+                                if (missing > 0) {
+                                    return (
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                            <AlertCircle size={13} />
+                                            <span>Не заполнено: {missing}</span>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                        <CheckCircle2 size={13} />
+                                        <span>Все характеристики заполнены</span>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            Адрес, кадастровый номер и ориентировочная стоимость подставляются в п. 1.1 и таблицу договора. Сохранение синхронизирует их с CRM.
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                            {/* Адрес */}
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Адрес (местоположение) объекта</span>
+                                    {!propDraft.address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                </div>
+                                <input
+                                    id="doc-input-prop-address"
+                                    className="form-input"
+                                    value={propDraft.address}
+                                    onChange={e => handlePropDraftChange('address', e.target.value)}
+                                    placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                        border: !propDraft.address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !propDraft.address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Кадастровый номер */}
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Кадастровый номер</span>
+                                    {!propDraft.cadastral_number?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                </div>
+                                <input
+                                    id="doc-input-prop-cadastral"
+                                    className="form-input"
+                                    value={propDraft.cadastral_number}
+                                    onChange={e => handlePropDraftChange('cadastral_number', e.target.value)}
+                                    placeholder="43:40:000000:000"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                        border: !propDraft.cadastral_number?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !propDraft.cadastral_number?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Площадь */}
+                            <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Общая площадь (кв. м)</span>
+                                    {!propDraft.area_total ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                </div>
+                                <input
+                                    id="doc-input-prop-area"
+                                    className="form-input"
+                                    value={propDraft.area_total}
+                                    onChange={e => handlePropDraftChange('area_total', e.target.value.replace(/[^\d.]/g, ''))}
+                                    placeholder="54.2"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                        border: !propDraft.area_total ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !propDraft.area_total ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                            </div>
+
+                            {/* Стоимость объекта */}
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Ориентировочная стоимость объекта (₽) — п. 1.1.1</span>
+                                    {!propDraft.price ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                </div>
+                                <input
+                                    id="doc-input-prop-price"
+                                    className="form-input"
+                                    value={propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')).toLocaleString('ru-RU') : ''}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        handlePropDraftChange('price', digits);
+                                    }}
+                                    placeholder="4 500 000"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
+                                        border: !propDraft.price ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !propDraft.price ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                                {propDraft.price && Number(String(propDraft.price).replace(/\D/g, '')) > 0 && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8, marginTop: 4 }}>
+                                        Прописью: <strong>{numberToWordsRu(Number(String(propDraft.price).replace(/\D/g, '')))}</strong> рублей
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Кнопка сохранения в CRM */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={handleSaveToCrm}
+                                disabled={isSavingToCrm}
+                                style={{
+                                    height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
+                                    background: isSavedToCrm ? '#10b981' : 'var(--primary)',
+                                    color: 'white', fontWeight: 600, fontSize: 13,
+                                    boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
+                                    display: 'flex', alignItems: 'center', gap: 8, cursor: isSavingToCrm ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    opacity: isSavingToCrm ? 0.7 : 1,
+                                }}
+                            >
+                                {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <Save size={16} />)}
+                                {isSavingToCrm ? 'Сохранение в CRM...' : (isSavedToCrm ? 'Данные сохранены в CRM' : 'Сохранить характеристики в CRM')}
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Отдельный блок: Условия договора и вознаграждение агента */}
                 <div className="no-print" style={{
                     background: 'var(--surface)', borderRadius: 20, padding: 20,
@@ -1443,7 +1636,7 @@ export function DocumentsPage() {
                     initialName={quickModalConfig.initialName}
                     role={quickModalConfig.role}
                     onCreated={(newClient) => {
-                        if (selectedTemplate === 'yuss_buy_1') {
+                        if (selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1') {
                             setBuyerId(newClient.id);
                             setSellerId(newClient.id);
                         } else if (quickModalConfig.role === 'seller') {
@@ -1463,21 +1656,30 @@ export function DocumentsPage() {
                         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             Данные для документа
                         </span>
-                        {selectedTemplate === 'yuss_buy_1' ? (
+                        {isAgencyContract ? (
                             <>
                                 <DataPreview label="Агент" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
                                 {(buyer || seller) && (
                                     <>
-                                        <DataPreview label="Принципал" value={(buyer || seller).full_name} />
+                                        <DataPreview label="Принципал" value={(seller || buyer).full_name} />
                                         {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
                                         <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
                                         <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
                                     </>
                                 )}
-                                {(deal?.commission || property?.commission) && (
-                                    <DataPreview label="Вознаграждение" value={`${Number(String(deal?.commission || property?.commission).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
+                                {property && (
+                                    <>
+                                        <DataPreview label="Объект" value={property.address || property.city} />
+                                        {property.cadastral_number && <DataPreview label="Кадастровый №" value={property.cadastral_number} />}
+                                        {(deal?.price || property.price) && <DataPreview label="Ориентир. стоимость" value={`${Number(String(deal?.price || property.price).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />}
+                                    </>
                                 )}
-                                {property && <DataPreview label="Объект" value={property.address || property.city} />}
+                                {(deal?.commission || property?.commission || commission) && (
+                                    <DataPreview label="Вознаграждение" value={`${Number(String(deal?.commission || property?.commission || commission).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
+                                )}
+                                {contractEndDate && (
+                                    <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
+                                )}
                             </>
                         ) : (
                             <>
@@ -1607,9 +1809,9 @@ export function DocumentsPage() {
                         padding: '44px 40px',
                         border: '1px solid var(--border)',
                         boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                        fontFamily: selectedTemplate === 'yuss_buy_1' ? 'Arial, Helvetica, sans-serif' : 'Georgia, Cambria, "Times New Roman", serif',
-                        fontSize: selectedTemplate === 'yuss_buy_1' ? 13 : 14,
-                        lineHeight: selectedTemplate === 'yuss_buy_1' ? 1.6 : 1.8,
+                        fontFamily: isAgencyContract ? 'Arial, Helvetica, sans-serif' : 'Georgia, Cambria, "Times New Roman", serif',
+                        fontSize: isAgencyContract ? 13 : 14,
+                        lineHeight: isAgencyContract ? 1.6 : 1.8,
                         minHeight: 600,
                     }}
                 >
@@ -1741,7 +1943,8 @@ function DocumentPreview({ template, data, highlight = true }) {
     const dealDate = fDate(deal?.deal_date);
     const today = fDate(deal?.deal_date || new Date().toISOString());
 
-    const principal = buyer || seller;
+    const isAgencySale = template === 'agency_sale_1';
+    const principal = isAgencySale ? (seller || buyer) : (buyer || seller);
     const pDetails = principal?.passport_details || {};
     const principalName = f(principal?.full_name);
     const principalBirth = principal?.birth_date ? fDate(principal.birth_date) : (pDetails.birth_date ? fDate(pDetails.birth_date) : '');
@@ -1754,12 +1957,224 @@ function DocumentPreview({ template, data, highlight = true }) {
     const principalPhone = f(formatPhone(principal?.phone) || principal?.phone);
     const principalShort = toShortName(principalName);
 
+    // Характеристики объекта для агентского договора на продажу
+    const propAddress = f(property?.address || property?.city);
+    const propCadastral = f(property?.cadastral_number);
+    const propArea = property?.area_total ? `${property.area_total} кв.м.` : '';
+    const propRooms = property?.rooms ? (property.rooms === 'studio' ? 'Студия' : `${property.rooms}-комн. кв.`) : (property?.property_type === 'house' ? 'Жилой дом' : (property?.property_type === 'land' ? 'Земельный участок' : ''));
+    const propPrefix = [propRooms, propArea].filter(Boolean).join(', ');
+
+    const rawPrice = deal?.price || property?.price;
+    const cleanPriceNum = rawPrice ? Number(String(rawPrice).replace(/\D/g, '')) : 0;
+    const priceFormatted = cleanPriceNum > 0 ? cleanPriceNum.toLocaleString('ru-RU') : '';
+    const priceWords = cleanPriceNum > 0 ? `(${numberToWordsRu(cleanPriceNum)})` : '';
+
     const rawCommission = deal?.commission || property?.commission;
     const cleanComm = rawCommission ? Number(String(rawCommission).replace(/\D/g, '')) : 0;
     const commFormatted = cleanComm > 0 ? cleanComm.toLocaleString('ru-RU') : '';
     const commWords = cleanComm > 0 ? `(${numberToWordsRu(cleanComm)})` : '';
     const rawEndDate = data.contractEndDate || deal?.contract_end_date;
     const contractEndDate = rawEndDate ? fDate(rawEndDate) : '';
+
+    /* ── Шаблон: Агентский договор — Продажа (1 принципал) ──────────────────── */
+    if (template === 'agency_sale_1') {
+        return (
+            <div>
+                {/* Логотип агентства ЮСС как в шаблоне пользователя */}
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 20 }}>
+                    <img
+                        src={`data:image/png;base64,${YUSS_BUY_1_LOGO_BASE64}`}
+                        alt="ЮСС Риэлти"
+                        style={{ width: 150, height: 124, objectFit: 'contain' }}
+                    />
+                </div>
+
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Агентский договор
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 14, fontWeight: 500 }}>
+                    <span>Город Киров, Кировская область</span>
+                    <span>«<Slot value={today} label="Дата договора" highlight={highlight} />»</span>
+                </div>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    Мы, <Slot value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                    дата рождения: <Slot value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                    паспорт: серия <Slot value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                    выдан <Slot value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
+                    дата выдачи: <Slot value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
+                    код подразделения: <Slot value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
+                    зарегистрированный(-ая) по адресу: <Slot value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
+                    телефон: <Slot value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                    именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
+                    адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; 
+                    р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974., 
+                    именуемая в дальнейшем «Агент», с другой стороны, именуемые в дальнейшем совместно <strong>«Стороны»</strong>, 
+                    заключили Агентский договор о следующем:
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>1. Предмет договора</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    1.1. Принципал поручает, а Агент обязуется за вознаграждение осуществить поиск покупателя (правоприобретателя) на объект недвижимого имущества, имеющего следующие характеристики в Едином государственном реестре недвижимости:<br />
+                    (далее – объект недвижимости).
+                </p>
+
+                {/* Таблица характеристик объекта */}
+                <div style={{ marginBottom: 14, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: 13 }}>
+                        <tbody>
+                            <tr>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px', width: '32%', fontWeight: 'bold', verticalAlign: 'top' }}>
+                                    Вид объекта недвижимости
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
+                                    Квартира/ комната/ земельный участок/ жилой дом/ земельный участок и жилой дом/ доля в праве общей долевой собственности на квартиру, комнату, земельный участок и жилой дом/ гараж/ гаражный бокс/баня/ машина-место/иное
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px', fontWeight: 'bold', verticalAlign: 'top' }}>
+                                    Адрес(местоположение)
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
+                                    {propPrefix ? <span>{propPrefix} </span> : null}
+                                    <Slot value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
+                                    {propCadastral ? (
+                                        <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
+                                    ) : (
+                                        <span> <Slot value="" label="Кадастровый номер" inputId="doc-input-prop-cadastral" fallback="[Кадастровый номер]" highlight={highlight} /></span>
+                                    )}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    1.1.1. Ориентировочная стоимость отчуждаемого объекта недвижимости составляет <Slot value={priceFormatted} label="Ориентировочная стоимость" inputId="doc-input-prop-price" highlight={highlight} /> {priceWords ? <Slot value={priceWords} label="Сумма прописью" inputId="doc-input-prop-price" highlight={highlight} /> : ''} рублей.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость объекта недвижимости путем заключения дополнительного соглашения к Агентскому договору.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено. не заложено, не обещано.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>2. Обязанности сторон</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    <strong>2.1. Обязанности Принципала:</strong>
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.1. По своей воле заключить договор об отчуждении объекта недвижимого имущества (договор купли-продажи, договор участия в долевом строительстве, договор уступки прав и обязанностей и т.п., именуемый далее по тексту – сделка с объектом недвижимости), передаточный акт и иные необходимые документы, а также выполнить иные оговоренные сторонами сделки условия; предоставить заявление и иные необходимые для государственной регистрации перехода права собственности (сделки, подлежащей государственной регистрации) документы в Многофункциональный центр предоставления государственных и муниципальных услуг, Территориальный орган Федеральной службы государственной регистрации, кадастра и картографии (Росреестр), в другие организации; предоставить запрошенные Агентом необходимые документы (сведения) и т.п. до момента заключения сделки с объектом недвижимости; совершать иные законные действия, в т. ч. рекомендованные Агентом.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.2. В день заключения предварительного договора купли-продажи или соглашения об авансе принять составляемый Агентом Отчет о частичном исполнении Агентского договора, в день заключения сделки с объектом недвижимости принять составляемый Агентом Отчет об исполнении Агентского договора (далее – Отчеты Агента).
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.3. За счет собственных средств оплачивать предусмотренные действующим законодательством государственные пошлины и платы (в т.ч. за нотариальные действия), услуги кадастрового инженера, оценщика, банковские комиссии и т.п., в случае необходимости в совершении таких действий и получении указанных услуг.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.4. Не разглашать свои персональные и контактные данные (номер телефона, адрес проживания и/или места работы и т.д.) третьим лицам, с которыми могут возникнуть какие-либо отношения, связанные с исполнением настоящего договора (потенциальные покупатели (правоприобретатели) объекта недвижимости и иные заинтересованные лица) до момента принятия Отчета Агента.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.5. В период действия настоящего договора не заключать аналогичных Агентских договоров с третьими лицами и воздерживаться от самостоятельной деятельности, являющейся предметом настоящего договора (размещать объявления о реализации объекта недвижимости в сети Интернет, печатных изданиях и т.д., вести переговоры и проводить осмотры объектов недвижимости без участия Агента и т.д.).
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.6. Самостоятельное заключение Принципалом сделки с найденным Агентом покупателем (правоприобретателем) объекта недвижимости, его аффилированным лицом либо лицом, находящимся в родстве или свойстве, считается фактом исполнения обязательств Агентом по Агентскому договору, о чем Агентом направляется соответствующее уведомление в соответствии с порядком, установленным настоящим договором.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    2.1.7. Права и обязанности по сделкам, совершенным при участии Агента, возникают непосредственно у Принципала.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    <strong>2.2. Обязанности Агента:</strong>
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.2.1. Осуществить поиск (подбор) потенциального покупателя (правоприобретателя) отчуждаемого объекта недвижимости, используя все законные методы и инструменты (реклама и т.п.), вести переговоры, а также совместно с Принципалом составить проект договора о отчуждении объекта недвижимого имущества, передаточного акта и иных документов, необходимых для государственной регистрации перехода права собственности (сделки, подлежащей государственной регистрации) на объект недвижимости.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    2.2.2. Составить для Принципала Отчет Агента.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>3. Агентское вознаграждение и расчеты между сторонами</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <Slot value={commFormatted} label="Вознаграждение (₽)" inputId="doc-input-commission" highlight={highlight} /> {commWords ? <Slot value={commWords} label="Сумма прописью" inputId="doc-input-commission" highlight={highlight} /> : ''} рублей, в том числе НДС 5 %.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.2. Принципал обязуется уплатить Агенту вознаграждение путем внесения обеспечительного платежа при заключении соглашения об авансе/обеспечительно платеже/предварительного договора о задатке с Покупателем, окончательный расчет производится в день заключения сделки с объектом недвижимости.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.3. Принципал обязуется уплатить Агенту вознаграждение на основании Отчета Агента в день сделки.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.4. Расчеты по Агентскому договору осуществляются в следующем порядке: путем внесения наличных денежных средств в кассу Агента или в безналичном порядке платежными поручениями на расчетный счет Агента.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    3.5. Обязательства Принципала по оплате считаются исполненными в момент зачисления денежных средств на расчетный счет Агента или внесения Принципалом денежных средств в кассу Агента.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>4. Ответственность сторон</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    4.1. При нарушении Принципалом условий настоящего договора без уважительных причин (временная нетрудоспособность и т.п.), в том числе - если он не будет присутствовать лично или не обеспечит присутствие своего уполномоченного представителя в назначенный день для совершения необходимых действий по заключению сделки с объектом недвижимости, либо заключит аналогичный Агентский договор с третьим лицом, являющуюся предметом настоящего договора, Принципал уплачивает неустойку Агенту в размере 50 (пятидесяти) процентов от установленных Агентским договором размеров Агентских вознаграждений.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    4.2. Материальная ответственность Агента перед Принципалом не может превышать размер Агентского вознаграждения.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>5. Срок действия настоящего договора</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <Slot value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" fallback="«___» ________________ 202__ г." highlight={highlight} /> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    5.2. Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    5.3. Договор может быть изменен или расторгнут только по письменному соглашению сторон.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>6. Дополнительные условия</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.1. Все споры, возникающие при выполнении настоящего договора, решаются сторонами путем переговоров, направления и вручения письменных претензий, а при недостижении согласия – в судебном порядке, в соответствии с действующим законодательством.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.2. Агент вправе направить Принципалу по последнему известному ему адресу регистрации Принципала письменные сообщения и (или) электронные сообщения на указанные Принципалом мобильный номер телефона и (или) электронную почту о ходе и результатах исполнения Агентского договора. Все юридически значимые сообщения в адрес Агента должны направляться исключительно по почтовому адресу, который указан в преамбуле Агентского договора. Направление сообщения по другим адресам не может считаться надлежащим. Сообщение считается доставленным и в тех случаях, если оно поступило лицу, которому оно направлено (адресату), но по обстоятельствам, зависящим от него, не было ему вручено или адресат не ознакомился с ним.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.3. Настоящим пунктом Принципал подтверждает, что у него отсутствуют какие-либо обстоятельства и ситуации, которые препятствуют или могут препятствовать заключению им законным образом настоящего Агентского договора и впоследствии – сделки с объектом недвижимости.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.4. Принципал дает согласие на получение от Агента рекламной и иной информации, необходимой для осуществления деятельности Агента, путем направления сообщений смс на телефон, электронных писем на электронную почту, указанных Принципалом в настоящем договоре.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок действия настоящего договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 20, textAlign: 'justify' }}>
+                    6.7. Настоящим стороны Договора заверяют и гарантируют, что они и близкие родственники не имеют гражданства иностранных(ого) государств(а), совершающих(его) в отношении Российской Федерации, российских юридических и физических лиц недружественные действия, а также местом регистрации, местом преимущественного пребывания, местом преимущественного ведения хозяйственной деятельности или извлечения прибыли от деятельности не являются(ется) указанные(ое) государства(о) и территория(ии), перечень которых установлен Распоряжением Правительства Российской Федерации от 05.03.2022 N 430-р «Об утверждении перечня иностранных государств и территорий, совершающих недружественные действия в отношении Российской Федерации, российских юридических и физических лиц».
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 24, marginBottom: 12 }}>7. Подписи сторон</div>
+                <div style={{ marginTop: 12 }}>
+                    <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
+                        <strong>Принципал:</strong>
+                    </div>
+                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
+                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
+
+                    <div style={{ marginTop: 16, marginBottom: 6 }}>
+                        <strong>Агент:</strong>
+                    </div>
+                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
+                </div>
+            </div>
+        );
+    }
 
     /* ── Шаблон: ЮСС Покупка 1 ─────────────────────────────────────────────── */
     if (template === 'yuss_buy_1') {

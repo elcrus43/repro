@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function FormCard({ title, children, style = {} }) {
+export function FormCard({ title, action, children, style = {} }) {
     return (
         <div className="card" style={{ 
             padding: '18px', 
@@ -13,15 +13,26 @@ export function FormCard({ title, children, style = {} }) {
             gap: 12,
             ...style 
         }}>
-            {title && (
-                <div className="font-oswald" style={{ 
-                    fontWeight: 600, 
-                    fontSize: 16, 
-                    color: 'var(--text)',
-                    marginBottom: 8,
-                    letterSpacing: '0.01em'
+            {(title || action) && (
+                <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    marginBottom: 8 
                 }}>
-                    {title}
+                    {title && (
+                        <div className="font-oswald" style={{ 
+                            fontWeight: 600, 
+                            fontSize: 16, 
+                            color: 'var(--text)',
+                            letterSpacing: '0.01em'
+                        }}>
+                            {title}
+                        </div>
+                    )}
+                    {action}
                 </div>
             )}
             {children}

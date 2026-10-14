@@ -333,7 +333,7 @@ export function DetailsPage() {
                     sellerId: isSeller ? id : '',
                     buyerId: isSeller ? '' : id,
                     propertyId: clientProp?.id || '',
-                    template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'sale') : 'yuss_buy_1',
+                    template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'agency_sale_1') : 'yuss_buy_1',
                 }
             }
         });
@@ -545,35 +545,66 @@ export function DetailsPage() {
 
                 {/* ── Компактная статистика ── */}
                 {!client.client_types?.includes('lawyer') && (
-                    <div className="card" style={{ padding: '14px 20px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 24, background: 'var(--surface)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="card" style={{ 
+                        padding: '16px 20px', 
+                        border: 'none', 
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
+                        borderRadius: 24, 
+                        background: 'var(--surface)', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-around' 
+                    }}>
                         {/* Комиссия */}
-                        <div className="card-clickable" onClick={() => navigate('/tasks')} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: 16, padding: '8px 14px', flex: 1, minWidth: 0 }}>
-                            <TrendingUp size={14} color="#fff" style={{ opacity: 0.9, flexShrink: 0 }} />
-                            <div style={{ minWidth: 0 }}>
-                                <div className="font-oswald" style={{ fontSize: 16, fontWeight: 300, color: '#fff', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {formatNumber(totalCommission)} ₽
-                                </div>
-                                <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)', fontWeight: 300, marginTop: 1 }}>Комиссия</div>
+                        <div 
+                            className="card-clickable" 
+                            onClick={() => navigate('/tasks')} 
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
+                            title={`${formatNumber(totalCommission)} ₽`}
+                        >
+                            <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#10b981', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                                {formatNumber(totalCommission)} ₽
                             </div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Комиссия</div>
                         </div>
+
                         {/* Разделитель */}
                         <div style={{ width: 1, height: 32, background: 'var(--border-light)', flexShrink: 0 }} />
+
                         {/* Объектов */}
-                        <div className="card-clickable" onClick={() => navigate(`/properties?client=${id}`)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', minWidth: 48 }}>
+                        <div 
+                            className="card-clickable" 
+                            onClick={() => navigate(`/properties?client=${id}`)} 
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
+                        >
                             <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: 'var(--primary)', lineHeight: 1 }}>{myProperties.length}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 300, marginTop: 2 }}>Объектов</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Объектов</div>
                         </div>
+
+                        {/* Разделитель */}
                         <div style={{ width: 1, height: 32, background: 'var(--border-light)', flexShrink: 0 }} />
+
                         {/* Запросов */}
-                        <div className="card-clickable" onClick={() => navigate(`/requests?client=${id}`)} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', minWidth: 48 }}>
+                        <div 
+                            className="card-clickable" 
+                            onClick={() => navigate(`/requests?client=${id}`)} 
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
+                        >
                             <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#f59e0b', lineHeight: 1 }}>{myRequests.length}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 300, marginTop: 2 }}>Запросов</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Запросов</div>
                         </div>
+
+                        {/* Разделитель */}
                         <div style={{ width: 1, height: 32, background: 'var(--border-light)', flexShrink: 0 }} />
+
                         {/* Сделок */}
-                        <div className="card-clickable" onClick={() => navigate('/tasks')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '0 0 auto', minWidth: 48 }}>
+                        <div 
+                            className="card-clickable" 
+                            onClick={() => navigate('/tasks')} 
+                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
+                        >
                             <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#10b981', lineHeight: 1 }}>{myDeals.length}</div>
-                            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontWeight: 300, marginTop: 2 }}>Сделок</div>
+                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Сделок</div>
                         </div>
                     </div>
                 )}

@@ -269,35 +269,35 @@ export function FormPage() {
             </div>
 
             <form className="page-content" style={{ padding: '0 0 120px', display: 'flex', flexDirection: 'column', gap: 16 }} onSubmit={handleSubmit}>
-                <div className="form-submit-container" style={{ padding: '20px 20px 4px', margin: 0 }}>
-                    <button type="submit" className="form-submit-btn btn btn-primary card-clickable" style={{ 
-                        height: 56, borderRadius: 18, fontSize: 16, 
-                        textTransform: 'uppercase', letterSpacing: '0.05em',
-                        boxShadow: '0 8px 24px rgba(0, 82, 255, 0.15)'
-                    }}>
-                        {id ? 'Сохранить изменения' : 'Создать клиента'}
-                    </button>
-                </div>
-
                 <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <FormCard title="Основная информация">
-                        {/* Кнопка сканирования паспорта */}
-                        <button
-                            type="button"
-                            onClick={() => setShowPassportScan(true)}
-                            className="form-scan-btn card-clickable"
-                            style={{
-                                marginBottom: 16,
-                                padding: '14px 20px', borderRadius: 16, border: 'none',
-                                background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)',
-                                color: '#ffffff', fontSize: 14, fontWeight: 700,
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                                cursor: 'pointer', boxShadow: '0 4px 16px rgba(30,41,59,0.25)'
-                            }}
-                        >
-                            <Camera size={20} />
-                            <span>📸 Сканировать паспорт (авто-заполнение)</span>
-                        </button>
+                    <FormCard 
+                        title="Основная информация"
+                        action={
+                            <button
+                                type="button"
+                                onClick={() => setShowPassportScan(true)}
+                                className="card-clickable"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    padding: '6px 12px',
+                                    borderRadius: 12,
+                                    border: '1px solid rgba(0, 82, 255, 0.2)',
+                                    background: 'rgba(0, 82, 255, 0.06)',
+                                    color: 'var(--primary, #0052ff)',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap'
+                                }}
+                                title="Автозаполнение по фото паспорта"
+                            >
+                                <Camera size={14} />
+                                <span>Сканировать паспорт</span>
+                            </button>
+                        }
+                    >
 
                         <div className="form-group">
                             <label className="form-label">ФИО клиента</label>
@@ -672,6 +672,17 @@ export function FormPage() {
 
                             </div>
                         )}
+                    </div>
+
+                    {/* Кнопка отправки формы в конце */}
+                    <div className="form-submit-container" style={{ marginTop: 8, marginBottom: 16 }}>
+                        <button type="submit" className="form-submit-btn btn btn-primary card-clickable" style={{ 
+                            height: 56, borderRadius: 18, fontSize: 16, 
+                            textTransform: 'uppercase', letterSpacing: '0.05em',
+                            boxShadow: '0 8px 24px rgba(0, 82, 255, 0.15)'
+                        }}>
+                            {id ? 'Сохранить изменения' : 'Создать клиента'}
+                        </button>
                     </div>
 
                 </div>

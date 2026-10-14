@@ -27,9 +27,16 @@ describe('docxGenerator - numberToWordsRu', () => {
 describe('docxGenerator - getDocumentTemplates', () => {
     it('includes yuss_buy_1 as the first template', () => {
         const templates = getDocumentTemplates();
-        expect(templates.length).toBeGreaterThanOrEqual(1);
+        expect(templates.length).toBeGreaterThanOrEqual(2);
         expect(templates[0].key).toBe('yuss_buy_1');
         expect(templates[0].title).toBe('ЮСС Покупка (1 принципал)');
+    });
+
+    it('includes agency_sale_1 template', () => {
+        const templates = getDocumentTemplates();
+        const saleTpl = templates.find(t => t.key === 'agency_sale_1');
+        expect(saleTpl).toBeDefined();
+        expect(saleTpl.title).toBe('Агентский договор — Продажа (1 принципал)');
     });
 });
 
