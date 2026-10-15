@@ -29,6 +29,8 @@ export function MatchesPage() {
         .filter(m => {
             const prop = state.properties.find(p => p.id === m.property_id);
             if (!prop || hasPassedDealStage(prop, state.deals)) return false;
+            const req = state.requests.find(r => r.id === m.request_id);
+            if (!req || req.status !== 'active') return false;
             return true;
         })
         .filter(m => {

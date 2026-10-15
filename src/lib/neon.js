@@ -13,8 +13,10 @@
  *   query(sql, params?)      — произвольный SQL запрос
  */
 
+import { apiFetch } from './apiConfig';
+
 const SESSION_KEY = 'neon_session';
-const API_URL     = '/api/neon-query';
+const API_ENDPOINT = '/api/neon-query';
 
 /* ─── Session helpers ───────────────────────────────────────── */
 
@@ -55,7 +57,7 @@ async function request(sql, params = []) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(API_URL, {
+    const res = await apiFetch(API_ENDPOINT, {
       method:  'POST',
       headers,
       body: JSON.stringify({ query: sql, params, userId }),

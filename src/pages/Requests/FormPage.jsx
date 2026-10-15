@@ -93,6 +93,27 @@ export function FormPage() {
                         {!id && <button type="button" className="btn btn-link btn-sm" onClick={() => navigate('/clients/new?returnTo=' + encodeURIComponent(window.location.hash.slice(1)))}>+ Создать клиента</button>}
                     </div>
 
+                    {/* Status */}
+                    <div className="form-group">
+                        <label className="form-label">Статус запроса</label>
+                        <div className="chip-group">
+                            <button 
+                                type="button" 
+                                className={`chip ${form.status === 'active' ? 'active' : ''}`} 
+                                onClick={() => setF('status', 'active')}
+                            >
+                                Актуально
+                            </button>
+                            <button 
+                                type="button" 
+                                className={`chip ${form.status === 'completed' ? 'active' : ''}`} 
+                                onClick={() => setF('status', 'completed')}
+                            >
+                                Завершен
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Property Types */}
                     <div className="form-group">
                         <label className="form-label">Тип недвижимости</label>

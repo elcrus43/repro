@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -6,13 +6,15 @@ import { formatPhone, stripPhone } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
-import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake } from 'lucide-react';
+import { CLIENT_SOURCES } from '../../data/constants';
+import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake, Calendar } from 'lucide-react';
 
 const DADATA_TOKEN = import.meta.env.VITE_DADATA_TOKEN;
 
 const defaultClient = {
     full_name: '', phone: '', email: '', inn: '', birth_date: '', reg_address: '',
     client_types: ['buyer'], additional_contacts: [], source: '', status: 'new', notes: '',
+    agency_contract_date: '', agency_contract_property_id: '', has_agency_contract: false,
     passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '', inn: '', birth_date: '', snils: '' },
     bank_details: { bank_name: '', bik: '', account: '', corr_account: '', inn: '', kpp: '', beneficiary: '' }
 };
@@ -37,8 +39,12 @@ export function FormPage() {
         inn: existing.inn || existing.passport_details?.inn || '',
         birth_date: existing.birth_date || existing.passport_details?.birth_date || '',
         reg_address: existing.reg_address || existing.passport_details?.registration_address || '',
+        agency_contract_date: existing.agency_contract_date ? existing.agency_contract_date.split('T')[0] : '',
+        agency_contract_property_id: existing.agency_contract_property_id || '',
+        has_agency_contract: existing.has_agency_contract || Boolean(existing.agency_contract_date),
         phones: initialPhones,
-        passport_details: existing.passport_details || defaultClient.passport_details
+        passport_details: existing.passport_details || defaultClient.passport_details,
+        bank_details: existing.bank_details || existing.passport_details?.bank_details || defaultClient.bank_details
     } : {
         ...defaultClient,
         realtor_id: state.currentUser?.id,
@@ -55,11 +61,31 @@ export function FormPage() {
     const [form, setForm] = useState(initialForm);
     const [showPassport, setShowPassport] = useState(!!(form.passport_details?.series || form.inn || form.birth_date || prefill?.passport_details?.series));
     const [showPassportScan, setShowPassportScan] = useState(false);
-    const [showBank, setShowBank] = useState(!!(form.bank_details?.bik || form.bank_details?.account));
+    const [showBank, setShowBank] = useState(!!(form.bank_details?.bik || form.bank_details?.account || existing?.passport_details?.bank_details?.bik));
     const [bankLoading, setBankLoading] = useState(false);
     const [bankFound, setBankFound] = useState(false);
     const [duplicateModalMatch, setDuplicateModalMatch] = useState(null);
     const bikTimerRef = useRef(null);
+
+    // Если данные клиента подгрузились асинхронно после маунта формы
+    useEffect(() => {
+        if (existing && (!form.id || form.id !== existing.id)) {
+            setForm({
+                ...existing,
+                inn: existing.inn || existing.passport_details?.inn || '',
+                birth_date: existing.birth_date || existing.passport_details?.birth_date || '',
+                reg_address: existing.reg_address || existing.passport_details?.registration_address || '',
+                agency_contract_date: existing.agency_contract_date ? existing.agency_contract_date.split('T')[0] : '',
+                agency_contract_property_id: existing.agency_contract_property_id || '',
+                has_agency_contract: existing.has_agency_contract || Boolean(existing.agency_contract_date),
+                phones: existing.phones ? formatPhones(existing.phones) : (existing.phone ? [formatPhone(existing.phone, true)] : ['']),
+                passport_details: existing.passport_details || defaultClient.passport_details,
+                bank_details: existing.bank_details || existing.passport_details?.bank_details || defaultClient.bank_details
+            });
+            setShowPassport(!!(existing.passport_details?.series || existing.inn || existing.birth_date));
+            setShowBank(!!(existing.bank_details?.bik || existing.bank_details?.account || existing.passport_details?.bank_details?.bik));
+        }
+    }, [existing]);
 
     function setF(key, val) { setForm(f => ({ ...f, [key]: val })); }
 
@@ -199,6 +225,9 @@ export function FormPage() {
         const birthDateStr = form.birth_date || pDetails.birth_date || '';
         const innStr = form.inn || pDetails.inn || '';
         const regAddressStr = form.reg_address || pDetails.registration_address || '';
+        const contractDateStr = form.agency_contract_date && form.agency_contract_date.trim()
+            ? (form.agency_contract_date.includes('T') ? form.agency_contract_date : `${form.agency_contract_date}T00:00:00.000Z`) 
+            : null;
 
         return {
             ...form,
@@ -209,11 +238,15 @@ export function FormPage() {
             birth_date: birthDateStr,
             passport: passportStr,
             reg_address: regAddressStr,
+            agency_contract_date: contractDateStr,
+            agency_contract_property_id: (form.agency_contract_property_id && String(form.agency_contract_property_id).trim()) ? form.agency_contract_property_id : null,
+            has_agency_contract: Boolean(contractDateStr || form.has_agency_contract),
             passport_details: {
                 ...pDetails,
                 inn: innStr,
                 birth_date: birthDateStr,
-                registration_address: regAddressStr
+                registration_address: regAddressStr,
+                bank_details: form.bank_details || pDetails.bank_details || undefined
             },
             additional_contacts: (form.additional_contacts || []).map(c => ({
                 ...c,
@@ -223,55 +256,70 @@ export function FormPage() {
     }
 
     async function handleReplaceExisting(targetClient) {
-        const clientPayload = buildClientPayload(targetClient.id);
-        const merged = {
-            ...targetClient,
-            ...clientPayload,
-            id: targetClient.id,
-            updated_at: new Date().toISOString()
-        };
-        const ok = await dispatch({ type: 'UPDATE_CLIENT', client: merged });
-        if (ok !== false) {
-            toast.success(`Данные контакта «${targetClient.full_name || 'Без имени'}» заменены на новые`);
-            navigate(`/clients/${targetClient.id}`);
+        try {
+            const clientPayload = buildClientPayload(targetClient.id);
+            const merged = {
+                ...targetClient,
+                ...clientPayload,
+                id: targetClient.id,
+                updated_at: new Date().toISOString()
+            };
+            const ok = await dispatch({ type: 'UPDATE_CLIENT', client: merged });
+            if (ok !== false) {
+                toast.success(`Данные контакта «${targetClient.full_name || 'Без имени'}» заменены на новые`);
+                navigate(`/clients/${targetClient.id}`);
+            }
+        } catch (err) {
+            console.error('[Client handleReplaceExisting error]', err);
+            toast.error(`Ошибка при замене данных: ${err.message || 'Проверьте данные'}`);
         }
     }
 
     async function saveNewClient() {
-        const client = buildClientPayload();
-        const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
-        if (ok !== false) {
-            toast.success('Клиент создан');
-            const returnTo = searchParams.get('returnTo');
-            if (returnTo) navigate(returnTo);
-            else navigate('/clients');
+        try {
+            const client = buildClientPayload();
+            const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
+            if (ok !== false) {
+                toast.success('Клиент создан');
+                const returnTo = searchParams.get('returnTo');
+                if (returnTo) navigate(returnTo);
+                else navigate('/clients');
+            }
+        } catch (err) {
+            console.error('[Client saveNewClient error]', err);
+            toast.error(`Ошибка создания клиента: ${err.message || 'Проверьте данные'}`);
         }
     }
 
     async function handleSubmit(e) {
         e.preventDefault();
-        if (id) {
-            const client = buildClientPayload(id);
-            const ok = await dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
-            if (ok !== false) {
-                toast.success('Клиент сохранён');
-                navigate(`/clients/${id}`);
+        try {
+            if (id) {
+                const client = buildClientPayload(id);
+                const ok = await dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
+                if (ok !== false) {
+                    toast.success('Клиент сохранён');
+                    navigate(`/clients/${id}`);
+                }
+            } else {
+                // Check for phone duplicate before creating
+                const dups = findDuplicateClients(
+                    (state.clients || []).filter(c => c.id !== id),
+                    { full_name: form.full_name, phone: form.phone, phones: form.phones }
+                );
+                if (dups.phoneMatches.length > 0) {
+                    setDuplicateModalMatch(dups.phoneMatches[0]);
+                    return;
+                }
+                await saveNewClient();
             }
-        } else {
-            // Check for phone duplicate before creating
-            const dups = findDuplicateClients(
-                (state.clients || []).filter(c => c.id !== id),
-                { full_name: form.full_name, phone: form.phone, phones: form.phones }
-            );
-            if (dups.phoneMatches.length > 0) {
-                setDuplicateModalMatch(dups.phoneMatches[0]);
-                return;
-            }
-            await saveNewClient();
+        } catch (err) {
+            console.error('[Client handleSubmit error]', err);
+            toast.error(`Ошибка сохранения: ${err.message || 'Проверьте данные'}`);
         }
     }
 
-    const sources = ['Авито', 'лидген', 'с показа', 'рекомендация', 'соцсети', 'ТОП-100', 'ХЗ', 'попутная наработка', 'Лид Руководителя', 'Вх. звонок в Офис', 'другое'];
+    const sources = CLIENT_SOURCES;
     const clientTypes = [
         { id: 'buyer', label: 'Покупатель' },
         { id: 'seller', label: 'Продавец' },
@@ -490,11 +538,75 @@ export function FormPage() {
                                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Share2 size={18} /></span>
                                 <select className="form-select" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.source || ''} onChange={e => setF('source', e.target.value)}>
                                     <option value="">Не указан</option>
+                                    {form.source && !sources.includes(form.source) && (
+                                        <option value={form.source}>{form.source}</option>
+                                    )}
                                     {sources.map(s => <option key={s} value={s}>{s}</option>)}
                                 </select>
                             </div>
                         </div>
 
+                    </FormCard>
+
+                    <FormCard 
+                        title="Агентский договор (АД)"
+                        action={
+                            (form.agency_contract_date || form.has_agency_contract) ? (
+                                <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: '#ecfdf5', color: '#059669', fontWeight: 600 }}>
+                                    Заключен
+                                </span>
+                            ) : null
+                        }
+                    >
+                        <div className="form-group">
+                            <label className="form-label">Дата заключения АД</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Calendar size={18} /></span>
+                                <input 
+                                    className="form-input" 
+                                    style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} 
+                                    type="date" 
+                                    value={form.agency_contract_date ? form.agency_contract_date.split('T')[0] : ''} 
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setForm(f => ({ ...f, agency_contract_date: val, has_agency_contract: Boolean(val || f.has_agency_contract) }));
+                                    }} 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">По какому объекту</label>
+                            <div style={{ position: 'relative' }}>
+                                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Landmark size={18} /></span>
+                                <select 
+                                    className="form-select" 
+                                    style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} 
+                                    value={form.agency_contract_property_id || ''} 
+                                    onChange={e => setF('agency_contract_property_id', e.target.value)}
+                                >
+                                    <option value="">-- Выберите объект недвижимости --</option>
+                                    {id && state.properties.filter(p => p.client_id === id || (p.client_ids || []).includes(id)).length > 0 && (
+                                        <optgroup label="Объекты клиента">
+                                            {state.properties.filter(p => p.client_id === id || (p.client_ids || []).includes(id)).map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.address || p.city} {p.price ? `(${p.price.toLocaleString()} ₽)` : ''}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                    <optgroup label="Все объекты в базе">
+                                        {state.properties
+                                            .filter(p => !id || !(p.client_id === id || (p.client_ids || []).includes(id)))
+                                            .map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.address || p.city} {p.price ? `(${p.price.toLocaleString()} ₽)` : ''}
+                                                </option>
+                                            ))}
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
                     </FormCard>
 
                     <FormCard title="Заметки">

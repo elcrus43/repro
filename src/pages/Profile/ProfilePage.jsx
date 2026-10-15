@@ -15,6 +15,7 @@ import {
 } from '../../lib/googleCalendar';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { useExport } from '../../hooks/useExport';
+import { buildApiUrl } from '../../lib/apiConfig';
 
 // Lazy load XLSX for code splitting
 const loadXLSX = () => import('xlsx');
@@ -113,7 +114,7 @@ export function ProfilePage() {
 
         try {
             const client_id = import.meta.env.VITE_GOOGLE_CLIENT_ID || '991093392145-f09fodb4e2gf8smrh0tgpco9t4rqserf.apps.googleusercontent.com';
-            const edgeUrl = '/api/google-calendar-token';
+            const edgeUrl = buildApiUrl('/api/google-calendar-token');
 
             const codeClient = window.google.accounts.oauth2.initCodeClient({
                 client_id: client_id,

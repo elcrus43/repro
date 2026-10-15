@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { neonDb } from '../../lib/neon';
 import { authService } from '../../lib/auth';
+import { buildApiUrl } from '../../lib/apiConfig';
 
 /**
  * /debug — диагностическая страница для выявления проблем с данными на базе Neon PostgreSQL.
@@ -31,17 +32,18 @@ export default function DebugPage() {
         addLog('ok', `Location: ${window.location.href}`);
 
         // 1. Сетевой ping к API
-        addLog('info', '1. Сетевой тест (ping API-прокси)...');
+        const pingUrl = buildApiUrl('/api/neon-query');
+        addLog('info', `1. Сетевой тест (ping API-прокси: ${pingUrl})...`);
         try {
             const t0 = Date.now();
-            const res = await fetch('/api/neon-query', {
+            const res = await fetch(pingUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ query: 'SELECT 1' })
             });
-            addLog('ok', `/api/neon-query достижим: HTTP ${res.status} (${Date.now()-t0}ms)`);
+            addLog('ok', `${pingUrl} достижим: HTTP ${res.status} (${Date.now()-t0}ms)`);
         } catch(e) {
-            addLog('error', '/api/neon-query НЕ достижим!', e.message);
+            addLog('error', `${pingUrl} НЕ достижим!`, e.message);
         }
 
         // 2. Сессия

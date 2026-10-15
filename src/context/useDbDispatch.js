@@ -144,6 +144,7 @@ export function useDbDispatch(state, dispatch, onError) {
           ...action.showing,
           // Ensure realtor_id is preserved
           realtor_id: action.showing.realtor_id || stateRef.current.currentUser?.id,
+          updated_at: now,
         };
         enhancedAction.matches = action.showing.status === 'completed'
           ? stateRef.current.matches.map(m =>
@@ -318,9 +319,9 @@ export function useDbDispatch(state, dispatch, onError) {
 
     const success = await syncAction(enhancedAction, { onError, onRollback, currentUser: stateRef.current.currentUser });
 
-    /* ── Cache invalidation for client & profile updates ─────────────────── */
-    // After a successful client or profile update, refresh local cache/session
-    if (success && (enhancedAction.type === 'UPDATE_CLIENT' || enhancedAction.type === 'ADD_CLIENT' || enhancedAction.type === 'DELETE_CLIENT')) {
+    /* ── Cache invalidation for entity updates ─────────────────── */
+    // After a successful update, refresh local cache/session so reloads stay in sync
+    if (success) {
       try {
         const userId = stateRef.current.currentUser?.id;
         if (userId) {
@@ -328,16 +329,46 @@ export function useDbDispatch(state, dispatch, onError) {
           const raw = localStorage.getItem(cacheKey);
           if (raw) {
             const parsed = JSON.parse(raw);
-            if (parsed?.data?.clients) {
+            if (parsed?.data) {
+              // Clients
               if (enhancedAction.type === 'DELETE_CLIENT') {
-                parsed.data.clients = parsed.data.clients.filter(c => c.id !== enhancedAction.id);
-              } else {
+                if (parsed.data.clients) parsed.data.clients = parsed.data.clients.filter(c => c.id !== enhancedAction.id);
+              } else if (enhancedAction.type === 'UPDATE_CLIENT' || enhancedAction.type === 'ADD_CLIENT') {
+                parsed.data.clients = parsed.data.clients || [];
                 const idx = parsed.data.clients.findIndex(c => c.id === enhancedAction.client.id);
-                if (idx >= 0) {
-                  parsed.data.clients[idx] = enhancedAction.client;
-                } else {
-                  parsed.data.clients.push(enhancedAction.client);
-                }
+                if (idx >= 0) parsed.data.clients[idx] = enhancedAction.client;
+                else parsed.data.clients.push(enhancedAction.client);
+              }
+              // Showings
+              if (enhancedAction.type === 'DELETE_SHOWING') {
+                if (parsed.data.showings) parsed.data.showings = parsed.data.showings.filter(s => s.id !== enhancedAction.id);
+              } else if (enhancedAction.type === 'UPDATE_SHOWING' || enhancedAction.type === 'ADD_SHOWING') {
+                parsed.data.showings = parsed.data.showings || [];
+                const idx = parsed.data.showings.findIndex(s => s.id === enhancedAction.showing.id);
+                if (idx >= 0) parsed.data.showings[idx] = enhancedAction.showing;
+                else parsed.data.showings.push(enhancedAction.showing);
+              }
+              // Tasks
+              if (enhancedAction.type === 'DELETE_TASK') {
+                if (parsed.data.tasks) parsed.data.tasks = parsed.data.tasks.filter(t => t.id !== enhancedAction.id);
+              } else if (enhancedAction.type === 'UPDATE_TASK' || enhancedAction.type === 'ADD_TASK') {
+                parsed.data.tasks = parsed.data.tasks || [];
+                const idx = parsed.data.tasks.findIndex(t => t.id === enhancedAction.task.id);
+                if (idx >= 0) parsed.data.tasks[idx] = enhancedAction.task;
+                else parsed.data.tasks.push(enhancedAction.task);
+              }
+              // Properties
+              if (enhancedAction.type === 'DELETE_PROPERTY') {
+                if (parsed.data.properties) parsed.data.properties = parsed.data.properties.filter(p => p.id !== enhancedAction.id);
+              } else if (enhancedAction.type === 'UPDATE_PROPERTY' || enhancedAction.type === 'ADD_PROPERTY') {
+                parsed.data.properties = parsed.data.properties || [];
+                const idx = parsed.data.properties.findIndex(p => p.id === enhancedAction.property.id);
+                if (idx >= 0) parsed.data.properties[idx] = enhancedAction.property;
+                else parsed.data.properties.push(enhancedAction.property);
+              } else if (enhancedAction.type === 'PATCH_PROPERTY') {
+                parsed.data.properties = (parsed.data.properties || []).map(p =>
+                  p.id === enhancedAction.patch.id ? { ...p, ...enhancedAction.patch } : p
+                );
               }
               parsed.ts = Date.now();
               localStorage.setItem(cacheKey, JSON.stringify(parsed));
@@ -345,7 +376,7 @@ export function useDbDispatch(state, dispatch, onError) {
           }
         }
       } catch (e) {
-        console.warn('[Cache] Failed to update client in cache:', e);
+        console.warn('[Cache] Failed to update cache:', e);
       }
     }
 

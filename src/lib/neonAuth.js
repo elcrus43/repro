@@ -6,8 +6,10 @@
  * JWT хранится в localStorage под ключом 'neon_session'.
  */
 
+import { apiFetch } from './apiConfig';
+
 const SESSION_KEY = 'neon_session';
-const AUTH_API    = '/api/neon-auth';
+const AUTH_ENDPOINT = '/api/neon-auth';
 
 /* ─── Callbacks для onAuthStateChange ──────────────────────── */
 const _listeners = new Set();
@@ -51,7 +53,7 @@ async function _authRequest(body) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const res = await fetch(AUTH_API, {
+    const res = await apiFetch(AUTH_ENDPOINT, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify(body),
@@ -213,7 +215,7 @@ export const neonAuthService = {
     }
 
     try {
-      const res = await fetch(AUTH_API, {
+      const res = await apiFetch(AUTH_ENDPOINT, {
         method:  'POST',
         headers: {
           'Content-Type':  'application/json',

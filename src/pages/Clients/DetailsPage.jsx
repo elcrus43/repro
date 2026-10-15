@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
 import { Pencil, Phone, Mail, Calendar, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck, Copy, Check, AlertTriangle, ExternalLink } from 'lucide-react';
-import { PROPERTY_TYPES } from '../../data/constants';
+import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { hasPassedDealStage } from '../../utils/matching';
@@ -28,6 +28,15 @@ export function DetailsPage() {
         property_id: '',
         status: 'planned',
         feedback_comment: '',
+    });
+    const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+    const [editingContractId, setEditingContractId] = useState(null);
+    const [contractForm, setContractForm] = useState({
+        type: 'АД Продажа',
+        date: '',
+        property_id: '',
+        status: 'active',
+        comment: ''
     });
 
     if (!client) return (
@@ -173,7 +182,7 @@ export function DetailsPage() {
         const nextHour = new Date(Date.now() + 60 * 60 * 1000);
         setQuickForm({
             showing_date: toLocalISOString(nextHour),
-            property_id: '',
+            property_id: myProperties.length === 1 ? myProperties[0].id : '',
             status: 'planned',
             feedback_comment: '',
         });
@@ -323,20 +332,204 @@ export function DetailsPage() {
         }
     }
 
-    function handleCreateDocument() {
-        // Определяем роль клиента для подстановки в документ
-        const isSeller = client.client_types?.some(t => ['seller', 'landlord'].includes(t));
-        const clientProp = myProperties[0];
+    const clientContracts = useMemo(() => {
+        const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
+        if (rawContracts.length > 0) return rawContracts;
+        if (client.has_agency_contract || client.agency_contract_date) {
+            return [{
+                id: 'legacy-' + client.id,
+                type: 'АД Продажа',
+                contract_date: client.agency_contract_date,
+                property_id: client.agency_contract_property_id || null,
+                status: 'active'
+            }];
+        }
+        return [];
+    }, [client.agency_contracts, client.has_agency_contract, client.agency_contract_date, client.id, client.agency_contract_property_id]);
+
+    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated'), [clientContracts]);
+    const hasAgencyContract = activeContracts.length > 0;
+    const agencyContractProperty = state.properties.find(p => p.id === (activeContracts[0]?.property_id || client.agency_contract_property_id));
+
+    function getContractTypeConfig(type) {
+        switch (type) {
+            case 'АД Покупка':
+                return { color: '#0052ff', bg: 'rgba(0, 82, 255, 0.08)', border: 'rgba(0, 82, 255, 0.25)' };
+            case 'АД Продажа':
+                return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)' };
+            case 'АД ЮСС Покупка':
+                return { color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: 'rgba(79, 70, 229, 0.25)' };
+            case 'АД ЮСС Продажа':
+                return { color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: 'rgba(124, 58, 237, 0.25)' };
+            case 'АД Аренда с наймодателем':
+                return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: 'rgba(217, 119, 6, 0.25)' };
+            case 'АД Аренда с нанимателем':
+                return { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.08)', border: 'rgba(234, 88, 12, 0.25)' };
+            default:
+                return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)' };
+        }
+    }
+
+    function openAddContractModal() {
+        setEditingContractId(null);
+        setContractForm({
+            type: client.client_types?.includes('buyer') ? 'АД Покупка' : 'АД Продажа',
+            date: new Date().toISOString().split('T')[0],
+            property_id: myProperties[0]?.id || '',
+            status: 'active',
+            comment: ''
+        });
+        setIsContractModalOpen(true);
+    }
+
+    function openEditContractModal(c) {
+        setEditingContractId(c.id);
+        setContractForm({
+            type: c.type || 'АД Продажа',
+            date: c.contract_date ? c.contract_date.split('T')[0] : new Date().toISOString().split('T')[0],
+            property_id: c.property_id || '',
+            status: c.status || 'active',
+            comment: c.comment || ''
+        });
+        setIsContractModalOpen(true);
+    }
+
+    function handleSaveContract(e) {
+        if (e) e.preventDefault();
+        if (!contractForm.date) {
+            toast.error('Укажите дату заключения договора');
+            return;
+        }
+        const dateIso = contractForm.date.includes('T') ? contractForm.date : `${contractForm.date}T00:00:00.000Z`;
+        let updatedContracts;
+        if (editingContractId) {
+            updatedContracts = clientContracts.map(c => {
+                if (c.id === editingContractId) {
+                    return {
+                        ...c,
+                        type: contractForm.type,
+                        contract_date: dateIso,
+                        property_id: contractForm.property_id || null,
+                        status: contractForm.status || 'active',
+                        comment: contractForm.comment ? contractForm.comment.trim() : ''
+                    };
+                }
+                return c;
+            });
+        } else {
+            const newContract = {
+                id: nanoid(),
+                type: contractForm.type,
+                contract_date: dateIso,
+                property_id: contractForm.property_id || null,
+                status: contractForm.status || 'active',
+                comment: contractForm.comment ? contractForm.comment.trim() : '',
+                created_at: new Date().toISOString()
+            };
+            updatedContracts = [newContract, ...clientContracts];
+        }
+
+        const activeList = updatedContracts.filter(c => c && c.status !== 'terminated');
+        const primary = activeList[0] || updatedContracts[0] || null;
+
+        const updatedClient = {
+            ...client,
+            agency_contracts: updatedContracts,
+            agency_contract_date: primary ? primary.contract_date : null,
+            agency_contract_property_id: primary ? primary.property_id : null,
+            has_agency_contract: activeList.length > 0,
+            updated_at: new Date().toISOString()
+        };
+
+        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+        toast.success(editingContractId ? 'Договор обновлен' : 'Агентский договор добавлен');
+        setIsContractModalOpen(false);
+    }
+
+    function handleDeleteContract(contractId) {
+        if (window.confirm('Удалить этот агентский договор?')) {
+            const updatedContracts = clientContracts.filter(c => c.id !== contractId);
+            const activeList = updatedContracts.filter(c => c && c.status !== 'terminated');
+            const primary = activeList[0] || updatedContracts[0] || null;
+
+            const updatedClient = {
+                ...client,
+                agency_contracts: updatedContracts,
+                agency_contract_date: primary ? primary.contract_date : null,
+                agency_contract_property_id: primary ? primary.property_id : null,
+                has_agency_contract: activeList.length > 0,
+                updated_at: new Date().toISOString()
+            };
+            dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+            toast.success('Агентский договор удален');
+            if (editingContractId === contractId) {
+                setIsContractModalOpen(false);
+            }
+        }
+    }
+
+    function handleCreateDocumentForContract(contract) {
+        const prop = state.properties.find(p => p.id === contract.property_id) || myProperties[0];
+        let template = 'agency_sale_1';
+        let sellerId = id;
+        let buyerId = '';
+
+        if (contract.type === 'АД Покупка') {
+            template = 'agency_buy_1';
+            sellerId = '';
+            buyerId = id;
+        } else if (contract.type === 'АД Продажа') {
+            template = 'agency_sale_1';
+            sellerId = id;
+            buyerId = '';
+        } else if (contract.type === 'АД ЮСС Покупка') {
+            template = 'yuss_buy_1';
+            sellerId = '';
+            buyerId = id;
+        } else if (contract.type === 'АД ЮСС Продажа') {
+            template = 'yuss_sale_1';
+            sellerId = id;
+            buyerId = '';
+        } else if (contract.type === 'АД Аренда с наймодателем') {
+            template = 'rent';
+            sellerId = id;
+            buyerId = '';
+        } else if (contract.type === 'АД Аренда с нанимателем') {
+            template = 'rent';
+            sellerId = '';
+            buyerId = id;
+        }
+
         navigate('/documents', {
             state: {
                 docPrefill: {
-                    sellerId: isSeller ? id : '',
-                    buyerId: isSeller ? '' : id,
-                    propertyId: clientProp?.id || '',
-                    template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'agency_sale_1') : 'yuss_buy_1',
+                    sellerId,
+                    buyerId,
+                    propertyId: prop?.id || '',
+                    template
                 }
             }
         });
+    }
+
+    function handleCreateDocument() {
+        const firstActive = activeContracts[0] || clientContracts[0];
+        if (firstActive) {
+            handleCreateDocumentForContract(firstActive);
+        } else {
+            const isSeller = client.client_types?.some(t => ['seller', 'landlord'].includes(t));
+            const clientProp = myProperties[0];
+            navigate('/documents', {
+                state: {
+                    docPrefill: {
+                        sellerId: isSeller ? id : '',
+                        buyerId: isSeller ? '' : id,
+                        propertyId: clientProp?.id || '',
+                        template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'agency_sale_1') : 'yuss_buy_1',
+                    }
+                }
+            });
+        }
     }
 
     const initial  = client.full_name?.charAt(0).toUpperCase() || '?';
@@ -494,6 +687,11 @@ export function DetailsPage() {
                                 {client.email}
                             </a>
                         )}
+                        {client.source && (
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                Источник: <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{client.source}</span>
+                            </div>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', gap: 12, marginTop: 12, justifyContent: 'center' }}>
@@ -609,9 +807,237 @@ export function DetailsPage() {
                     </div>
                 )}
 
+                {/* ── Агентские договоры (АД) ── */}
+                <div className="card" style={{
+                    padding: '22px 24px',
+                    border: 'none',
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                    borderRadius: 28,
+                    background: 'var(--surface)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 16
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                                width: 44, height: 44, borderRadius: 14,
+                                background: activeContracts.length > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-light)',
+                                color: activeContracts.length > 0 ? '#10b981' : 'var(--text-muted)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                <FileText size={22} />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        Агентские договоры (АД)
+                                    </span>
+                                    <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        padding: '3px 8px',
+                                        borderRadius: 8,
+                                        background: activeContracts.length > 0 ? '#ecfdf5' : 'var(--bg-light)',
+                                        color: activeContracts.length > 0 ? '#059669' : 'var(--text-muted)',
+                                        border: activeContracts.length > 0 ? '1px solid #10b98140' : '1px solid var(--border-light)'
+                                    }}>
+                                        {activeContracts.length > 0
+                                            ? `${activeContracts.length} ${activeContracts.length === 1 ? 'активный' : (activeContracts.length < 5 ? 'активных' : 'активных')}`
+                                            : (clientContracts.length > 0 ? 'Архивные' : 'Не заключены')}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                    {clientContracts.length > 0
+                                        ? `Всего договоров: ${clientContracts.length}. Учет договоров по разным объектам клиента.`
+                                        : 'Фиксация агентских договоров (Покупка, Продажа, ЮСС, Аренда) по разным объектам'}
+                                </div>
+                            </div>
+                        </div>
 
+                        <button
+                            type="button"
+                            className="card-clickable"
+                            onClick={openAddContractModal}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '9px 16px', borderRadius: 12, border: 'none',
+                                background: 'linear-gradient(135deg, #0052ff 0%, #0041cc 100%)',
+                                color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                                boxShadow: '0 2px 8px rgba(0,82,255,0.25)'
+                            }}
+                        >
+                            <Plus size={15} /> Добавить АД
+                        </button>
+                    </div>
 
-                {/* ── Последняя активность ──────────────────────────── */}
+                    {clientContracts.length === 0 ? (
+                        <div style={{
+                            background: 'var(--bg-light)',
+                            padding: '20px',
+                            borderRadius: 18,
+                            textAlign: 'center',
+                            color: 'var(--text-secondary)',
+                            fontSize: 13,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 10
+                        }}>
+                            <div>У клиента пока нет добавленных агентских договоров.</div>
+                            <button
+                                type="button"
+                                onClick={openAddContractModal}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '8px 16px', borderRadius: 12, border: '1px solid var(--border-light)',
+                                    background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 500, cursor: 'pointer'
+                                }}
+                            >
+                                <Plus size={14} /> Добавить договор
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {clientContracts.map(c => {
+                                const typeCfg = getContractTypeConfig(c.type);
+                                const isTerminated = c.status === 'terminated';
+                                const contractProp = state.properties.find(p => p.id === c.property_id);
+                                return (
+                                    <div
+                                        key={c.id}
+                                        style={{
+                                            background: 'var(--bg-light)',
+                                            borderRadius: 18,
+                                            padding: '14px 16px',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 10,
+                                            border: isTerminated ? '1px dashed var(--border-light)' : '1px solid var(--border-light)',
+                                            opacity: isTerminated ? 0.75 : 1
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                <span style={{
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    padding: '3px 10px',
+                                                    borderRadius: 8,
+                                                    background: typeCfg.bg,
+                                                    color: typeCfg.color,
+                                                    border: `1px solid ${typeCfg.border}`
+                                                }}>
+                                                    {c.type || 'АД Продажа'}
+                                                </span>
+                                                <span style={{
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    padding: '2px 8px',
+                                                    borderRadius: 6,
+                                                    background: isTerminated ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
+                                                    color: isTerminated ? '#ef4444' : '#059669'
+                                                }}>
+                                                    {isTerminated ? 'Расторгнут' : 'Действует'}
+                                                </span>
+                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                    от {c.contract_date ? formatDate(c.contract_date) : '—'}
+                                                </span>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <button
+                                                    type="button"
+                                                    className="card-clickable"
+                                                    onClick={() => handleCreateDocumentForContract(c)}
+                                                    style={{
+                                                        display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                        padding: '6px 12px', borderRadius: 10, border: 'none',
+                                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                        color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                                        boxShadow: '0 2px 6px rgba(16,185,129,0.2)'
+                                                    }}
+                                                    title="Сформировать печатный документ АД"
+                                                >
+                                                    <FileText size={13} /> Создать АД
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="card-clickable"
+                                                    onClick={() => openEditContractModal(c)}
+                                                    style={{
+                                                        padding: '6px 10px', borderRadius: 10,
+                                                        border: '1px solid var(--border-light)', background: 'var(--surface)',
+                                                        color: 'var(--text)', fontSize: 11, fontWeight: 500, cursor: 'pointer',
+                                                        display: 'inline-flex', alignItems: 'center', gap: 4
+                                                    }}
+                                                    title="Редактировать договор"
+                                                >
+                                                    <Pencil size={13} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="card-clickable"
+                                                    onClick={() => handleDeleteContract(c.id)}
+                                                    style={{
+                                                        padding: '6px 8px', borderRadius: 10,
+                                                        border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.06)',
+                                                        color: '#ef4444', cursor: 'pointer',
+                                                        display: 'inline-flex', alignItems: 'center'
+                                                    }}
+                                                    title="Удалить договор"
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                                            <Home size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                            <span style={{ color: 'var(--text-muted)' }}>Объект:</span>
+                                            {contractProp ? (
+                                                <span
+                                                    onClick={() => navigate(`/properties/${contractProp.id}`)}
+                                                    style={{
+                                                        fontWeight: 600,
+                                                        color: 'var(--primary)',
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }}
+                                                >
+                                                    {contractProp.address || contractProp.city}
+                                                    {contractProp.price ? ` · ${formatNumber(contractProp.price)} ₽` : ''}
+                                                    <ChevronRight size={13} />
+                                                </span>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                    {c.property_id ? `ID: ${c.property_id}` : 'Без привязки к конкретному объекту'}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {c.comment && (
+                                            <div style={{
+                                                fontSize: 11,
+                                                color: 'var(--text-secondary)',
+                                                background: 'var(--surface)',
+                                                padding: '6px 10px',
+                                                borderRadius: 8,
+                                                border: '1px solid var(--border-light)'
+                                            }}>
+                                                <span style={{ fontWeight: 600, color: 'var(--text)' }}>Примечание: </span>
+                                                {c.comment}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
                 {!client.client_types?.includes('lawyer') && (
                     <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
@@ -729,7 +1155,18 @@ export function DetailsPage() {
                                                 <FileText size={16} />
                                             </div>
                                             <div>
-                                                <div style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <span style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</span>
+                                                    <span style={{ 
+                                                        fontSize: 9, 
+                                                        padding: '1px 6px', 
+                                                        borderRadius: 6, 
+                                                        background: (r.status || 'active') === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                                                        color: (r.status || 'active') === 'active' ? '#10b981' : '#64748b'
+                                                    }}>
+                                                        {(r.status || 'active') === 'active' ? 'Актуально' : 'Завершен'}
+                                                    </span>
+                                                </div>
                                                 <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой тип'}</div>
                                                 <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '—'}</div>
                                             </div>
@@ -812,9 +1249,24 @@ export function DetailsPage() {
                                     />
                                 </div>
 
-
-
-                                <div>
+                                {myProperties.length > 0 && (
+                                    <div>
+                                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                            Объект недвижимости {myProperties.length > 1 ? `(${myProperties.length})` : ''}
+                                        </label>
+                                        <select
+                                            className="form-select"
+                                            value={quickForm.property_id || ''}
+                                            onChange={e => setQuickForm({ ...quickForm, property_id: e.target.value })}
+                                            style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                        >
+                                            <option value="">— Без объекта —</option>
+                                            {myProperties.map(p => (
+                                                <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}                                <div>
                                     <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
                                         Статус
                                     </label>
@@ -913,6 +1365,13 @@ export function DetailsPage() {
                                     roleLabel = 'Агент';
                                 }
 
+                                const dealHasContract = Boolean(
+                                    d.has_agency_contract || 
+                                    d.agency_contract_date || 
+                                    (hasAgencyContract && (client.agency_contract_property_id === d.property_id || !client.agency_contract_property_id))
+                                );
+                                const dealContractDate = d.agency_contract_date || (dealHasContract ? client.agency_contract_date : null);
+
                                 return (
                                     <div key={d.id} className="card-clickable" onClick={() => navigate('/tasks')}
                                         style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -921,10 +1380,19 @@ export function DetailsPage() {
                                                 <Briefcase size={16} />
                                             </div>
                                             <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                                     <div style={{ fontSize: 10, fontWeight: 300, color }}>
                                                         {dealStatusLabel[d.status] || 'Сделка'} · {roleLabel}
                                                     </div>
+                                                    {dealHasContract ? (
+                                                        <span style={{ fontSize: 10, fontWeight: 600, color: '#10b981', background: '#ecfdf5', padding: '1px 6px', borderRadius: 6, border: '1px solid rgba(16,185,129,0.25)' }}>
+                                                            АД {dealContractDate ? `от ${formatDate(dealContractDate)}` : 'заключен'}
+                                                        </span>
+                                                    ) : (
+                                                        <span style={{ fontSize: 10, fontWeight: 500, color: '#ef4444', background: 'rgba(239,68,68,0.06)', padding: '1px 6px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
+                                                            Без АД
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div style={{ fontSize: 14, fontWeight: 300 }}>{d.title}</div>
                                                 {d.price > 0 && (
@@ -1112,6 +1580,198 @@ export function DetailsPage() {
                                 <span>Всё равно проверить</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Модальное окно добавления/редактирования агентского договора */}
+            {isContractModalOpen && (
+                <div
+                    className="modal-overlay fade-in"
+                    onClick={() => setIsContractModalOpen(false)}
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        background: 'var(--modal-bg, rgba(0,0,0,0.5))',
+                        backdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 2000,
+                        padding: 16
+                    }}
+                >
+                    <div
+                        className="modal-content fade-up"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            background: 'var(--surface)',
+                            borderRadius: 24,
+                            padding: 24,
+                            width: '100%',
+                            maxWidth: 520,
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+                            border: '1px solid var(--border-light)'
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 40, height: 40, borderRadius: 12,
+                                    background: '#ecfdf5',
+                                    color: '#10b981',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <FileText size={20} />
+                                </div>
+                                <div>
+                                    <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        {editingContractId ? 'Редактировать агентский договор' : 'Добавить агентский договор'}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsContractModalOpen(false)}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveContract} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                    Тип договора *
+                                </label>
+                                <select
+                                    className="form-select"
+                                    required
+                                    value={contractForm.type}
+                                    onChange={e => setContractForm({ ...contractForm, type: e.target.value })}
+                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)', fontWeight: 500 }}
+                                >
+                                    {AGENCY_CONTRACT_TYPES.map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Дата заключения *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        className="form-input"
+                                        required
+                                        value={contractForm.date}
+                                        onChange={e => setContractForm({ ...contractForm, date: e.target.value })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Статус договора
+                                    </label>
+                                    <select
+                                        className="form-select"
+                                        value={contractForm.status}
+                                        onChange={e => setContractForm({ ...contractForm, status: e.target.value })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    >
+                                        <option value="active">Действует</option>
+                                        <option value="terminated">Расторгнут / Завершен</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                    По какому объекту
+                                </label>
+                                <select
+                                    className="form-select"
+                                    value={contractForm.property_id}
+                                    onChange={e => setContractForm({ ...contractForm, property_id: e.target.value })}
+                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                >
+                                    <option value="">-- Без привязки к конкретному объекту --</option>
+                                    {myProperties.length > 0 && (
+                                        <optgroup label="Объекты клиента">
+                                            {myProperties.map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.address || p.city} {p.price ? `(${formatNumber(p.price)} ₽)` : ''}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                    <optgroup label="Все объекты в базе">
+                                        {state.properties
+                                            .filter(p => !myProperties.some(mp => mp.id === p.id))
+                                            .map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.address || p.city} {p.price ? `(${formatNumber(p.price)} ₽)` : ''}
+                                                </option>
+                                            ))}
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                    Примечание / Номер договора
+                                </label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    placeholder="Например: №14/24 или особые условия комиссии"
+                                    value={contractForm.comment}
+                                    onChange={e => setContractForm({ ...contractForm, comment: e.target.value })}
+                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+                                {editingContractId && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDeleteContract(editingContractId)}
+                                        style={{
+                                            height: 46, padding: '0 14px', borderRadius: 14,
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            color: '#ef4444', fontWeight: 500, cursor: 'pointer'
+                                        }}
+                                        title="Удалить этот договор"
+                                    >
+                                        Удалить
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsContractModalOpen(false)}
+                                    style={{ flex: 1, height: 46, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
+                                >
+                                    Отмена
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        flex: 1.5, height: 46, borderRadius: 14, border: 'none',
+                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                        color: '#fff', fontWeight: 600, cursor: 'pointer',
+                                        boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                                    }}
+                                >
+                                    Сохранить
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

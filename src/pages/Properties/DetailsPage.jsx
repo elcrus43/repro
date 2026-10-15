@@ -8,7 +8,7 @@ import {
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star, User, Handshake, Copy, ExternalLink, Check
+    TrendingDown, Star, User, Handshake, Copy, ExternalLink, Check, Zap, Store, DoorOpen
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -92,7 +92,12 @@ function InlinePriceEditor({ prop, onSave }) {
     );
 }
 
-import { BUILDING_TYPES, PROPERTY_TYPES } from '../../data/constants';
+import { 
+    BUILDING_TYPES, PROPERTY_TYPES, RENOVATION_LABELS,
+    HOUSE_MATERIALS, HOUSE_CONDITIONS, LAND_CATEGORIES, ROAD_ACCESS,
+    FENCE_TYPES, WATER_TYPES, GAS_TYPES, SEWAGE_TYPES,
+    COMMERCIAL_TYPES, ENTRANCE_TYPES, COMMERCIAL_LAYOUTS, LOCATION_LINES, VENTILATION_TYPES
+} from '../../data/constants';
 
 import { PortfolioSection } from '../../components/PortfolioSection';
 import { BannerGenerator } from '../../components/BannerGenerator';
@@ -447,7 +452,11 @@ export function DetailsPage() {
     
     const clients = state.clients.filter(c => clientIds.includes(c.id));
     const agent = prop?.agent_id ? state.clients.find(c => c.id === prop.agent_id) : null;
-    const matches = state.matches.filter(m => m.property_id === id);
+    const matches = state.matches.filter(m => {
+        if (m.property_id !== id) return false;
+        const req = state.requests.find(r => r.id === m.request_id);
+        return req && req.status === 'active';
+    });
     const showings = state.showings.filter(s => s.property_id === id);
     const priceHistory = (state.priceHistory || []).filter(h => h.property_id === id).sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
 
@@ -740,22 +749,28 @@ export function DetailsPage() {
                                         specs.push('Комната');
                                     } else if (type === 'house') {
                                         specs.push(prop.rooms > 0 ? `${prop.rooms}-комн. дом` : 'Дом');
+                                        if (prop.land_area) specs.push(`${prop.land_area} сот.`);
+                                        if (prop.land_category) specs.push(LAND_CATEGORIES[prop.land_category] || prop.land_category);
+                                    } else if (type === 'commercial') {
+                                        if (prop.commercial_type) specs.push(COMMERCIAL_TYPES[prop.commercial_type] || prop.commercial_type);
+                                        if (prop.location_line) specs.push(LOCATION_LINES[prop.location_line] || prop.location_line);
+                                        if (prop.has_tenant) specs.push('ГАБ / Арендатор');
                                     } else if (type === 'garden') {
                                         if (prop.land_area) specs.push(`${prop.land_area} сот.`);
                                         if (prop.snt_name) specs.push(`СНТ ${prop.snt_name}`);
                                         if (prop.snt_number) specs.push(`уч. №${prop.snt_number}`);
-                                        if (prop.land_category) specs.push({ snt: 'СНТ', dnt: 'ДНТ', izhs: 'ИЖС', lph: 'ЛПХ', other: 'Другое' }[prop.land_category] || prop.land_category);
+                                        if (prop.land_category) specs.push(LAND_CATEGORIES[prop.land_category] || prop.land_category);
                                         if (prop.distance_to_city) specs.push(`${prop.distance_to_city} км от города`);
                                         if (prop.has_house && prop.house_area) specs.push(`Дом ${prop.house_area} м²`);
                                     }
-                                    if (type !== 'garden' && prop.area_total) specs.push(`${prop.area_total} м²`);
+                                    if (type !== 'garden' && (prop.area_total || prop.house_area)) specs.push(`${prop.area_total || prop.house_area} м²`);
                                     if (prop.microdistrict) specs.push(`мкр. ${prop.microdistrict}`);
                                     if (['apartment', 'room', 'commercial'].includes(type) && prop.floor) {
                                         specs.push(`${prop.floor}/${prop.floors_total || '—'} эт.`);
-                                    } else if (type === 'house' && prop.floors_total) {
-                                        specs.push(`${prop.floors_total} эт.`);
+                                    } else if (type === 'house' && (prop.floors_total || prop.house_floors)) {
+                                        specs.push(`${prop.floors_total || prop.house_floors} эт.`);
                                     }
-                                    if (PROPERTY_TYPES[type]) specs.push(PROPERTY_TYPES[type]);
+                                    if (PROPERTY_TYPES[type] && type !== 'house' && type !== 'commercial') specs.push(PROPERTY_TYPES[type]);
 
                                     return specs.map((spec, i) => (
                                         <span key={i} style={{
@@ -878,7 +893,509 @@ export function DetailsPage() {
                 </div>
 
                 {/* ── ХАРАКТЕРИСТИКИ ОБЪЕКТА (КОМПАКТНЫЙ ЕДИНЫЙ БЛОК) ── */}
-                {prop.property_type !== 'garden' && (
+                {/* ── ХАРАКТЕРИСТИКИ ДОМА (для домов) ── */}
+                {prop.property_type === 'house' && (
+                    <div className="card" style={{ padding: '20px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                                    <Home size={22} />
+                                </div>
+                                <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                                    Характеристики дома
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {(prop.area_total || prop.house_area) && (
+                                    <span style={{ fontSize: 12, fontWeight: 600, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text)' }}>
+                                        {prop.area_total || prop.house_area} м²
+                                    </span>
+                                )}
+                                {prop.land_area && (
+                                    <span style={{ fontSize: 12, fontWeight: 600, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text)' }}>
+                                        {prop.land_area} сот.
+                                    </span>
+                                )}
+                                {(prop.floors_total || prop.house_floors) && (
+                                    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text-secondary)' }}>
+                                        {prop.floors_total || prop.house_floors} эт.
+                                    </span>
+                                )}
+                                {(prop.build_year || prop.house_build_year) && (
+                                    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text-secondary)' }}>
+                                        {prop.build_year || prop.house_build_year} г.
+                                    </span>
+                                )}
+                                {prop.land_category && (
+                                    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text-secondary)' }}>
+                                        {LAND_CATEGORIES[prop.land_category] || prop.land_category}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Главные показатели (плитки) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8, marginBottom: 14 }}>
+                            {(prop.area_total || prop.house_area) ? (
+                                <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Дом</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.area_total || prop.house_area}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>м²{(prop.floors_total || prop.house_floors) ? ` · ${prop.floors_total || prop.house_floors} эт.` : ''}</div>
+                                </div>
+                            ) : null}
+
+                            {prop.land_area ? (
+                                <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Участок</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.land_area}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>соток</div>
+                                </div>
+                            ) : null}
+
+                            {prop.rooms !== undefined && prop.rooms !== null && (
+                                <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Комнат</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.rooms > 0 ? prop.rooms : '—'}</div>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{prop.rooms > 0 ? 'комнаты' : 'свободная'}</div>
+                                </div>
+                            )}
+
+                            {prop.road_access ? (
+                                <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
+                                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Подъезд</div>
+                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 4 }}>
+                                        {ROAD_ACCESS[prop.road_access] || prop.road_access}
+                                    </div>
+                                </div>
+                            ) : null}
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                            {/* Подблок 1: Дом и конструкция */}
+                            <div style={{ background: 'var(--bg-light)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Home size={13} />
+                                    Параметры дома
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 12px' }}>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Площадь дома</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_total || prop.house_area} м²</div>
+                                    </div>
+                                    {prop.area_living > 0 && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Жилая</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_living} м²</div>
+                                        </div>
+                                    )}
+                                    {prop.area_kitchen > 0 && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Кухня</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_kitchen} м²</div>
+                                        </div>
+                                    )}
+                                    {(prop.floors_total || prop.house_floors) && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Этажей в доме</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.floors_total || prop.house_floors}</div>
+                                        </div>
+                                    )}
+                                    {(prop.house_material || prop.building_type) && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Материал стен</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                {HOUSE_MATERIALS[prop.house_material] || BUILDING_TYPES[prop.building_type] || prop.house_material || prop.building_type}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {(prop.house_condition || prop.renovation) && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Состояние</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                {HOUSE_CONDITIONS[prop.house_condition] || RENOVATION_LABELS[prop.renovation] || prop.house_condition || prop.renovation}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {prop.bathroom && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Санузел</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                {{ combined: 'В доме (совмещённый)', separate: 'В доме (раздельный)', two: '2 и более', outside: 'На улице' }[prop.bathroom] || prop.bathroom}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {prop.ceiling_height && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Потолки</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.ceiling_height} м</div>
+                                        </div>
+                                    )}
+                                    {(prop.build_year || prop.house_build_year) && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Год постройки</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.build_year || prop.house_build_year} г.</div>
+                                        </div>
+                                    )}
+                                    {prop.furniture && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Мебель</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Остаётся</div>
+                                        </div>
+                                    )}
+                                    {prop.house_has_cadastre !== undefined && (
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Кадастровый учёт дома</div>
+                                            <div style={{ fontSize: 12, fontWeight: 500, color: prop.house_has_cadastre ? 'var(--success)' : 'var(--text-secondary)' }}>
+                                                {prop.house_has_cadastre ? `Стоит на учёте${prop.house_cadastral_number ? `: ${prop.house_cadastral_number}` : ''}` : 'Не оформлен'}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Подблок 2: Участок и подъезд */}
+                            <div style={{ background: 'var(--bg-light)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <MapPin size={13} />
+                                    Участок и подъезд
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 12px' }}>
+                                    {prop.land_area && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Площадь участка</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.land_area} соток</div>
+                                        </div>
+                                    )}
+                                    {prop.land_category && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Категория земли</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{LAND_CATEGORIES[prop.land_category] || prop.land_category}</div>
+                                        </div>
+                                    )}
+                                    {prop.road_access && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Подъезд</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{ROAD_ACCESS[prop.road_access] || prop.road_access}</div>
+                                        </div>
+                                    )}
+                                    {prop.distance_to_city && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>До города</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.distance_to_city} км</div>
+                                        </div>
+                                    )}
+                                    {prop.fence_type && prop.fence_type !== 'none' && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Забор</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{FENCE_TYPES[prop.fence_type] || prop.fence_type}</div>
+                                        </div>
+                                    )}
+                                    {prop.residential_complex && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Коттеджный посёлок</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.residential_complex}</div>
+                                        </div>
+                                    )}
+                                    {prop.district && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Район</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.district}</div>
+                                        </div>
+                                    )}
+                                    {prop.microdistrict && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Микрорайон</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.microdistrict}</div>
+                                        </div>
+                                    )}
+                                    {prop.cadastral_number && (
+                                        <div style={{ gridColumn: 'span 2' }}>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Кадастровый номер участка</div>
+                                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{prop.cadastral_number}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Коммуникации */}
+                        {(prop.has_electricity || prop.has_water || prop.has_gas || prop.has_sewage) && (
+                            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-light)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                                    Коммуникации
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {prop.has_electricity && (
+                                        <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(245,158,11,0.12)', color: '#b45309' }}>
+                                            Электричество{prop.electricity_kw ? ` (${prop.electricity_kw} кВт)` : ''}
+                                        </span>
+                                    )}
+                                    {prop.has_water && (
+                                        <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(59,130,246,0.1)', color: '#1d4ed8' }}>
+                                            {(() => {
+                                                const types = Array.isArray(prop.water_types) && prop.water_types.length > 0 
+                                                    ? prop.water_types 
+                                                    : (prop.water_type ? [prop.water_type] : []);
+                                                if (types.length === 0) return 'Водоснабжение';
+                                                return `Вода (${types.map(t => WATER_TYPES[t] || t).join(', ')})`;
+                                            })()}
+                                        </span>
+                                    )}
+                                    {prop.has_gas && (
+                                        <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(239,68,68,0.08)', color: '#b91c1c' }}>
+                                            Газ{prop.gas_type ? ` (${GAS_TYPES[prop.gas_type] || prop.gas_type})` : ''}
+                                        </span>
+                                    )}
+                                    {prop.has_sewage && (
+                                        <span style={{ padding: '4px 10px', borderRadius: 8, fontSize: 12, fontWeight: 500, background: 'rgba(16,185,129,0.08)', color: '#047857' }}>
+                                            Канализация{prop.sewage_type ? ` (${SEWAGE_TYPES[prop.sewage_type] || prop.sewage_type})` : ''}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Постройки и удобства */}
+                        {(prop.has_bathhouse || prop.has_garage || prop.has_gazebo || prop.has_greenhouse || prop.has_well || prop.has_summer_kitchen || prop.has_pond) && (
+                            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border-light)' }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                                    Постройки и удобства
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {prop.has_bathhouse && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Баня / Сауна</span>}
+                                    {prop.has_garage && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Гараж{prop.garage_area ? ` (${prop.garage_area} м²)` : ''}</span>}
+                                    {prop.has_gazebo && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Беседка</span>}
+                                    {prop.has_greenhouse && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Теплица</span>}
+                                    {prop.has_well && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Скважина / Колодец</span>}
+                                    {prop.has_summer_kitchen && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Летняя кухня</span>}
+                                    {prop.has_pond && <span style={{ padding: '4px 8px', borderRadius: 8, background: 'var(--bg-light)', fontSize: 12, color: 'var(--text)' }}>Водоём / Бассейн</span>}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Заметки по дому и участку */}
+                        {prop.garden_notes && (
+                            <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 12, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                                {prop.garden_notes}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── ХАРАКТЕРИСТИКИ КОММЕРЧЕСКОГО ОБЪЕКТА ── */}
+                {prop.property_type === 'commercial' && (
+                    <div className="card" style={{ padding: '20px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>
+                                    <Briefcase size={22} />
+                                </div>
+                                <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                                    Характеристики помещения
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                {prop.area_total && (
+                                    <span style={{ fontSize: 12, fontWeight: 600, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text)' }}>
+                                        {prop.area_total} м²
+                                    </span>
+                                )}
+                                {prop.floor && (
+                                    <span style={{ fontSize: 12, fontWeight: 500, background: 'var(--bg-light)', padding: '4px 10px', borderRadius: 8, color: 'var(--text-secondary)' }}>
+                                        {prop.floor}{prop.floors_total ? `/${prop.floors_total}` : ''} эт.
+                                    </span>
+                                )}
+                                {prop.electricity_kw && (
+                                    <span style={{ fontSize: 12, fontWeight: 500, background: 'rgba(234, 179, 8, 0.1)', color: '#b45309', padding: '4px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <Zap size={12} /> {prop.electricity_kw} кВт
+                                    </span>
+                                )}
+                                {prop.has_tenant && (
+                                    <span style={{ fontSize: 12, fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', padding: '4px 10px', borderRadius: 8, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                        <Check size={12} strokeWidth={3} /> ГАБ
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 2-column or 3-column sub-blocks */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+                            {/* Блок 1: Назначение и доступ */}
+                            <div style={{ background: 'var(--bg-light)', borderRadius: 18, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Store size={13} /> Назначение и доступ
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 14px' }}>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Назначение</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                            {COMMERCIAL_TYPES[prop.commercial_type] || prop.commercial_type || 'Свободное (ПСН)'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Линия домов</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                            {LOCATION_LINES[prop.location_line] || prop.location_line || '—'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Вход</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                            {ENTRANCE_TYPES[prop.entrance_type] || prop.entrance_type || '—'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Планировка</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                            {COMMERCIAL_LAYOUTS[prop.commercial_layout] || prop.commercial_layout || '—'}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Badges for shop windows, 24/7, loading, furniture */}
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 4 }}>
+                                    {prop.has_shop_windows && (
+                                        <span style={{ fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border-light)', padding: '3px 8px', borderRadius: 8, color: 'var(--text)', fontWeight: 400 }}>
+                                            🪟 Витринные окна
+                                        </span>
+                                    )}
+                                    {prop.access_24_7 && (
+                                        <span style={{ fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border-light)', padding: '3px 8px', borderRadius: 8, color: 'var(--text)', fontWeight: 400 }}>
+                                            🕒 Доступ 24/7
+                                        </span>
+                                    )}
+                                    {prop.has_loading_zone && (
+                                        <span style={{ fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border-light)', padding: '3px 8px', borderRadius: 8, color: 'var(--text)', fontWeight: 400 }}>
+                                            📦 Зона разгрузки
+                                        </span>
+                                    )}
+                                    {prop.furniture && (
+                                        <span style={{ fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border-light)', padding: '3px 8px', borderRadius: 8, color: 'var(--text)', fontWeight: 400 }}>
+                                            🛋 Оборудование / мебель
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Блок 2: Инженерия и параметры */}
+                            <div style={{ background: 'var(--bg-light)', borderRadius: 18, padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Zap size={13} /> Инженерия и метрики
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px 14px' }}>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Общая площадь</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_total ? `${prop.area_total} м²` : '—'}</div>
+                                    </div>
+                                    {prop.area_living > 0 && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Полезная / торг.</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_living} м²</div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Эл. мощность</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: prop.electricity_kw ? 'var(--primary)' : 'var(--text)' }}>
+                                            {prop.electricity_kw ? `${prop.electricity_kw} кВт` : '—'}
+                                        </div>
+                                    </div>
+                                    {prop.ceiling_height && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Высота потолков</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.ceiling_height} м</div>
+                                        </div>
+                                    )}
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Вентиляция</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                            {VENTILATION_TYPES[prop.ventilation_type] || prop.ventilation_type || '—'}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Мокрые точки</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                            {prop.wet_points !== undefined && prop.wet_points !== null ? `${prop.wet_points} шт.` : (prop.has_water ? 'Есть' : '—')}
+                                        </div>
+                                    </div>
+                                    {prop.renovation && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Отделка / ремонт</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                {RENOVATION_LABELS[prop.renovation] || prop.renovation}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {prop.parking && prop.parking !== 'none' && (
+                                        <div>
+                                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Парковка</div>
+                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                {{ ground: 'Наземная', barrier: 'Под шлагбаумом', underground: 'Подземный паркинг' }[prop.parking] || prop.parking}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Блок 3: Готовый арендный бизнес (ГАБ) — если указано */}
+                        {prop.has_tenant && (
+                            <div style={{ 
+                                marginTop: 14, background: 'rgba(16, 185, 129, 0.05)', 
+                                border: '1px solid rgba(16, 185, 129, 0.2)', 
+                                borderRadius: 18, padding: '14px 18px',
+                                display: 'flex', flexDirection: 'column', gap: 10
+                            }}>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--success)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <CheckCircle2 size={15} /> Готовый арендный бизнес (ГАБ)
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                                    <div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300 }}>Статус</div>
+                                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>Арендатор сидит</div>
+                                    </div>
+                                    {prop.rental_income > 0 && (
+                                        <div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300 }}>Арендная плата</div>
+                                            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--primary)' }}>
+                                                {formatNumber(prop.rental_income)} ₽ / мес.
+                                            </div>
+                                        </div>
+                                    )}
+                                    {prop.rental_income > 0 && (
+                                        <div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300 }}>Годовой арендный поток</div>
+                                            <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>
+                                                {formatNumber(Number(prop.rental_income) * 12)} ₽ / год
+                                            </div>
+                                        </div>
+                                    )}
+                                    {prop.price > 0 && prop.rental_income > 0 && (
+                                        <div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300 }}>Доходность / Окупаемость</div>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--success)' }}>
+                                                {((Number(prop.rental_income) * 12 / Number(prop.price)) * 100).toFixed(1)}% годовых (~{(Number(prop.price) / (Number(prop.rental_income) * 12)).toFixed(1)} л.)
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Блок 4: Заметки по коммерции */}
+                        {prop.commercial_notes && (
+                            <div style={{ marginTop: 14, padding: '12px 16px', background: 'var(--bg-light)', borderRadius: 14, fontSize: 13, color: 'var(--text)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                <span style={{ fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                                    Особенности коммерческого помещения:
+                                </span>
+                                {prop.commercial_notes}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── ХАРАКТЕРИСТИКИ ОБЪЕКТА (для квартир, комнат) ── */}
+                {prop.property_type !== 'garden' && prop.property_type !== 'house' && prop.property_type !== 'commercial' && (
                     <div className="card" style={{ padding: '16px 20px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', borderRadius: 24, background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -913,20 +1430,20 @@ export function DetailsPage() {
                             <div style={{ background: 'var(--bg-light)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Home size={13} />
-                                    {prop.property_type === 'house' ? 'Параметры дома' : prop.property_type === 'commercial' ? 'Параметры помещения' : prop.property_type === 'land' ? 'Параметры участка' : prop.property_type === 'room' ? 'Параметры комнаты' : 'Параметры квартиры'}
+                                    {prop.property_type === 'commercial' ? 'Параметры помещения' : prop.property_type === 'land' ? 'Параметры участка' : prop.property_type === 'room' ? 'Параметры комнаты' : 'Параметры квартиры'}
                                 </div>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px 12px' }}>
                                     <div>
                                         <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Общая площадь</div>
                                         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_total} м²</div>
                                     </div>
-                                    {['apartment', 'room', 'house'].includes(prop.property_type) && prop.area_living > 0 && (
+                                    {['apartment', 'room'].includes(prop.property_type) && prop.area_living > 0 && (
                                         <div>
                                             <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Жилая</div>
                                             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_living} м²</div>
                                         </div>
                                     )}
-                                    {['apartment', 'room', 'house'].includes(prop.property_type) && prop.area_kitchen > 0 && (
+                                    {['apartment', 'room'].includes(prop.property_type) && prop.area_kitchen > 0 && (
                                         <div>
                                             <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Кухня</div>
                                             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.area_kitchen} м²</div>
@@ -938,7 +1455,7 @@ export function DetailsPage() {
                                             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{prop.floor} из {prop.floors_total || '—'}</div>
                                         </div>
                                     )}
-                                    {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && prop.renovation && (
+                                    {['apartment', 'room', 'commercial'].includes(prop.property_type) && prop.renovation && (
                                         <div>
                                             <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Ремонт</div>
                                             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
@@ -946,7 +1463,7 @@ export function DetailsPage() {
                                             </div>
                                         </div>
                                     )}
-                                    {['apartment', 'room', 'house'].includes(prop.property_type) && prop.bathroom && (
+                                    {['apartment', 'room'].includes(prop.property_type) && prop.bathroom && (
                                         <div>
                                             <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300 }}>Санузел</div>
                                             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
@@ -964,7 +1481,7 @@ export function DetailsPage() {
                             </div>
 
                             {/* Подблок 2: О доме / здании */}
-                            {['apartment', 'room', 'house', 'commercial'].includes(prop.property_type) && (
+                            {['apartment', 'room', 'commercial'].includes(prop.property_type) && (
                                 <div style={{ background: 'var(--bg-light)', borderRadius: 16, padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
                                         <Building2 size={13} />

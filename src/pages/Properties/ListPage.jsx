@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
 import { Trash, MapPin, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download } from 'lucide-react';
-import { PROPERTY_TYPES } from '../../data/constants';
+import { PROPERTY_TYPES, COMMERCIAL_TYPES, LOCATION_LINES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PipelinePage } from './PipelinePage';
 import { useExport } from '../../hooks/useExport';
@@ -502,13 +502,20 @@ export function ListPage() {
                                                         if (item.area_total) {
                                                             parts.push(`${item.area_total} м²`);
                                                         }
-                                                        if (item.floor || item.floors_total) {
+                                                        if (item.property_type === 'house') {
+                                                            if (item.land_area) {
+                                                                parts.push(`${item.land_area} сот.`);
+                                                            }
+                                                            if (item.floors_total || item.house_floors) {
+                                                                parts.push(`${item.floors_total || item.house_floors} эт.`);
+                                                            }
+                                                        } else if (item.floor || item.floors_total) {
                                                             if (item.floor && item.floors_total) {
                                                                 parts.push(`${item.floor}/${item.floors_total} эт.`);
                                                             } else if (item.floor) {
                                                                 parts.push(`${item.floor} эт.`);
                                                             } else {
-                                                                parts.push(`/${item.floors_total} эт.`);
+                                                                parts.push(`${item.floors_total} эт.`);
                                                             }
                                                         }
                                                         if (item.property_type) {
@@ -703,6 +710,12 @@ export function ListPage() {
                                                                             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                                                         </>
                                                                     )}
+                                                                    {prop.property_type === 'commercial' && (
+                                                                        <>
+                                                                            <span>{COMMERCIAL_TYPES[prop.commercial_type] || 'Коммерция'}</span>
+                                                                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                        </>
+                                                                    )}
                                                                     {prop.property_type === 'garden' ? (
                                                                         <>
                                                                             {prop.land_area ? <span>{prop.land_area} сот.</span> : null}
@@ -714,9 +727,22 @@ export function ListPage() {
                                                                             ) : null}
                                                                         </>
                                                                     ) : (
-                                                                        prop.area_total ? <span>{prop.area_total} м²</span> : null
+                                                                        (prop.area_total || prop.house_area) ? <span>{prop.area_total || prop.house_area} м²</span> : null
                                                                     )}
-                                                                    {prop.floor || prop.floors_total ? (
+                                                                    {prop.property_type === 'house' && prop.land_area ? (
+                                                                        <>
+                                                                            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                            <span>{prop.land_area} сот.</span>
+                                                                        </>
+                                                                    ) : null}
+                                                                    {prop.property_type === 'house' ? (
+                                                                        (prop.floors_total || prop.house_floors) ? (
+                                                                            <>
+                                                                                <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
+                                                                                <span>{prop.floors_total || prop.house_floors} эт.</span>
+                                                                            </>
+                                                                        ) : null
+                                                                    ) : (prop.floor || prop.floors_total ? (
                                                                         <>
                                                                             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
                                                                             <span>
@@ -724,12 +750,16 @@ export function ListPage() {
                                                                                     ? `${prop.floor}/${prop.floors_total} эт.` 
                                                                                     : prop.floor 
                                                                                         ? `${prop.floor} эт.` 
-                                                                                        : `/${prop.floors_total} эт.`}
+                                                                                        : `${prop.floors_total} эт.`}
                                                                             </span>
                                                                         </>
-                                                                    ) : null}
+                                                                    ) : null)}
                                                                     <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'rgba(0,0,0,0.2)' }} />
-                                                                    <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>{PROPERTY_TYPES[prop.property_type]}</span>
+                                                                    <span style={{ color: 'var(--text-secondary)', fontSize: 10 }}>
+                                                                        {prop.property_type === 'commercial' 
+                                                                            ? (prop.location_line ? (LOCATION_LINES[prop.location_line] || prop.location_line) : 'Коммерция') 
+                                                                            : PROPERTY_TYPES[prop.property_type]}
+                                                                    </span>
                                                                 </div>
 
                                                                 {/* Адрес */}

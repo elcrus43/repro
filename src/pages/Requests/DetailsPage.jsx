@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { Pencil, Trash, Sparkles, User, MapPin, Building2, Wallet, ChevronRight, TrendingUp, ChevronLeft } from 'lucide-react';
-import { PROPERTY_TYPES } from '../../data/constants';
+import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
 import { hasPassedDealStage } from '../../utils/matching';
 
 export function DetailsPage() {
@@ -12,11 +12,15 @@ export function DetailsPage() {
     const navigate = useNavigate();
     const req = state.requests.find(r => r.id === id);
     const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
-    const matches = state.matches.filter(m => {
+    
+    const status = req?.status || 'active';
+    const isActive = status === 'active';
+    
+    const matches = isActive ? state.matches.filter(m => {
         if (m.request_id !== id) return false;
         const prop = state.properties.find(p => p.id === m.property_id);
         return prop && !hasPassedDealStage(prop, state.deals);
-    });
+    }) : [];
 
     if (!req) return (
         <div className="page fade-in">
@@ -27,9 +31,16 @@ export function DetailsPage() {
         </div>
     );
 
-    const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
-    const statusColors = { active: '#10b981', paused: '#f59e0b', deal_closed: '#0052FF', refused: '#94a3b8' };
-    const status = req.status || 'active';
+    function handleUpdateStatus(newStatus) {
+        if ((req.status || 'active') === newStatus) return;
+        dispatch({
+            type: 'UPDATE_REQUEST',
+            request: {
+                ...req,
+                status: newStatus
+            }
+        });
+    }
 
     function handleDelete() {
         if (window.confirm('Удалить этот запрос?')) {
@@ -100,8 +111,8 @@ export function DetailsPage() {
                 
                 {/* Header Card */}
                 <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                        <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 200 }}>
                             <h2 className="font-oswald" style={{ fontSize: 22, fontWeight: 300, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 6 }}>
                                 {req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(' / ') || 'Любой объект'}
                             </h2>
@@ -110,11 +121,63 @@ export function DetailsPage() {
                                 {req.districts?.join(', ') || 'Все районы'}
                             </div>
                         </div>
-                        <span style={{ 
-                            padding: '6px 12px', borderRadius: 12, fontSize: 11, fontWeight: 400,
-                            background: `${statusColors[status]}15`,
-                            color: statusColors[status]
-                        }}>{statusLabels[status]}</span>
+
+                        {/* Переключатель статуса прямо из карточки */}
+                        <div style={{ 
+                            display: 'inline-flex', 
+                            background: 'var(--bg-light)', 
+                            padding: 3, 
+                            borderRadius: 14, 
+                            gap: 3,
+                            border: '1px solid var(--border-light)'
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => handleUpdateStatus('active')}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 11,
+                                    border: 'none',
+                                    fontSize: 12,
+                                    fontFamily: "'Oswald', sans-serif",
+                                    fontWeight: isActive ? 500 : 300,
+                                    background: isActive ? '#10b981' : 'transparent',
+                                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#fff' : '#10b981' }} />
+                                Актуально
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleUpdateStatus('completed')}
+                                style={{
+                                    padding: '6px 14px',
+                                    borderRadius: 11,
+                                    border: 'none',
+                                    fontSize: 12,
+                                    fontFamily: "'Oswald', sans-serif",
+                                    fontWeight: !isActive ? 500 : 300,
+                                    background: !isActive ? '#64748b' : 'transparent',
+                                    color: !isActive ? '#ffffff' : 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: !isActive ? '0 2px 8px rgba(100, 116, 139, 0.25)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: !isActive ? '#fff' : '#64748b' }} />
+                                Завершен
+                            </button>
+                        </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
@@ -128,16 +191,28 @@ export function DetailsPage() {
                         </div>
                     </div>
 
-                    <button 
-                        className="btn btn-primary btn-full card-clickable" 
-                        style={{ 
-                            height: 50, borderRadius: 16, fontSize: 14, fontWeight: 400, 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 
-                        }} 
-                        onClick={() => navigate(`/matches?request_id=${id}`)}
-                    >
-                        <Sparkles size={18} /> Совпадений: {matches.length}
-                    </button>
+                    {isActive ? (
+                        <button 
+                            className="btn btn-primary btn-full card-clickable" 
+                            style={{ 
+                                height: 50, borderRadius: 16, fontSize: 14, fontWeight: 400, 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 
+                            }} 
+                            onClick={() => navigate(`/matches?request=${id}`)}
+                        >
+                            <Sparkles size={18} /> Совпадений: {matches.length}
+                        </button>
+                    ) : (
+                        <div style={{ 
+                            padding: '14px 16px', borderRadius: 16, fontSize: 13, fontWeight: 300, 
+                            background: 'var(--bg-light)', color: 'var(--text-muted)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            border: '1px dashed var(--border-light)'
+                        }}>
+                            <Sparkles size={16} style={{ opacity: 0.4 }} />
+                            <span>Запрос завершен — не участвует в анализе совпадений</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Clients Card */}

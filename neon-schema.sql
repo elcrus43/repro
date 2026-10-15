@@ -66,6 +66,10 @@ CREATE TABLE IF NOT EXISTS clients (
   status              TEXT DEFAULT 'active',
   notes               TEXT,
   passport_details    JSONB,
+  agency_contract_date TIMESTAMPTZ,
+  agency_contract_property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
+  has_agency_contract BOOLEAN DEFAULT false,
+  agency_contracts    JSONB DEFAULT '[]',
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
@@ -175,6 +179,19 @@ CREATE TABLE IF NOT EXISTS properties (
   has_pond                 BOOLEAN DEFAULT FALSE,
   fence_type               TEXT,
   garden_notes             TEXT,
+  -- Коммерческая недвижимость
+  commercial_type          TEXT,
+  entrance_type            TEXT,
+  commercial_layout        TEXT,
+  location_line            TEXT,
+  ventilation_type         TEXT,
+  has_shop_windows         BOOLEAN DEFAULT FALSE,
+  access_24_7              BOOLEAN DEFAULT FALSE,
+  has_loading_zone         BOOLEAN DEFAULT FALSE,
+  wet_points               INTEGER DEFAULT 1,
+  has_tenant               BOOLEAN DEFAULT FALSE,
+  rental_income            NUMERIC,
+  commercial_notes         TEXT,
   created_at               TIMESTAMPTZ DEFAULT NOW(),
   updated_at               TIMESTAMPTZ DEFAULT NOW()
 );
@@ -327,6 +344,10 @@ CREATE TABLE IF NOT EXISTS deals (
 
   -- Расходы (мигр. 040)
   expenses        JSONB DEFAULT '[]',
+
+  -- Агентский договор (мигр. 054)
+  has_agency_contract BOOLEAN DEFAULT false,
+  agency_contract_date TIMESTAMPTZ,
 
   -- Заметки (мигр. 029)
   notes           TEXT,

@@ -332,7 +332,23 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                       </div>
 
                       {/* Type Badges */}
-                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {Boolean(client.has_agency_contract || client.agency_contract_date) && (
+                          <span
+                            title={`Агентский договор заключен${client.agency_contract_date ? ` от ${new Date(client.agency_contract_date).toLocaleDateString('ru-RU')}` : ''}`}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: '#059669',
+                              background: '#ecfdf5',
+                              border: '1px solid #10b981',
+                              borderRadius: 6,
+                              padding: '1px 6px'
+                            }}
+                          >
+                            АД
+                          </span>
+                        )}
                         {validDealTypes.map(t => {
                           const conf = CLIENT_TYPE_INFO[t] || { label: t, color: 'var(--text-secondary)', bg: 'var(--bg-light)', border: 'transparent' };
                           return (

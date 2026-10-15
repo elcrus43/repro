@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
-import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList, FileText } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { useExport } from '../../hooks/useExport';
 import { PipelinePage } from './PipelinePage';
@@ -338,6 +338,27 @@ export function ListPage() {
 
                                     {/* Right: Role Badges */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '42%' }}>
+                                        {Boolean(client.has_agency_contract || client.agency_contract_date) && (
+                                            <span 
+                                                title={`Агентский договор заключен${client.agency_contract_date ? ` от ${new Date(client.agency_contract_date).toLocaleDateString('ru-RU')}` : ''}`}
+                                                style={{ 
+                                                    fontSize: 11, 
+                                                    color: '#059669', 
+                                                    fontWeight: 600, 
+                                                    background: '#ecfdf5', 
+                                                    border: '1px solid #10b981', 
+                                                    padding: '3px 7px', 
+                                                    borderRadius: 6, 
+                                                    whiteSpace: 'nowrap',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 3
+                                                }}
+                                            >
+                                                <FileText size={11} />
+                                                <span>АД</span>
+                                            </span>
+                                        )}
                                         {client.client_types?.map(t => {
                                             const isAgent = t === 'agent';
                                             return (

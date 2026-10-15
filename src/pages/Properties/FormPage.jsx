@@ -2,7 +2,12 @@ import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS } from '../../data/constants';
+import { 
+    PROPERTY_TYPES, BUILDING_TYPES, RENOVATION_LABELS, BALCONY_LABELS,
+    HOUSE_MATERIALS, HOUSE_CONDITIONS, LAND_CATEGORIES, ROAD_ACCESS,
+    FENCE_TYPES, WATER_TYPES, GAS_TYPES, SEWAGE_TYPES,
+    COMMERCIAL_TYPES, ENTRANCE_TYPES, COMMERCIAL_LAYOUTS, LOCATION_LINES, VENTILATION_TYPES
+} from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS, getAllMicrodistricts, saveCustomMicrodistrict } from '../../data/location';
 import { parseHouseFromAddress, describeParsedFields, getMingkhSearchUrl } from '../../utils/houseParser';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
@@ -260,6 +265,51 @@ export function FormPage() {
         floorplan_images: [],
         contact_name: '',
         contact_phone: '',
+        // Характеристики дома и участка
+        land_area: '',
+        land_category: '',
+        distance_to_city: '',
+        road_access: '',
+        has_house: false,
+        house_area: '',
+        house_floors: '',
+        house_material: '',
+        house_condition: '',
+        house_build_year: '',
+        house_has_cadastre: false,
+        house_cadastral_number: '',
+        has_electricity: false,
+        electricity_kw: '',
+        has_water: false,
+        water_type: '',
+        water_types: [],
+        has_gas: false,
+        gas_type: '',
+        has_sewage: false,
+        sewage_type: '',
+        has_bathhouse: false,
+        has_garage: false,
+        garage_area: '',
+        has_gazebo: false,
+        has_greenhouse: false,
+        has_well: false,
+        has_summer_kitchen: false,
+        has_pond: false,
+        fence_type: '',
+        garden_notes: '',
+        // Характеристики коммерческого помещения
+        commercial_type: 'free_purpose',
+        entrance_type: 'separate_street',
+        commercial_layout: 'open_space',
+        location_line: 'first_line',
+        ventilation_type: 'forced',
+        has_shop_windows: false,
+        access_24_7: false,
+        has_loading_zone: false,
+        wet_points: 1,
+        has_tenant: false,
+        rental_income: '',
+        commercial_notes: '',
         ...(prefilledData || {}),
         client_ids: (() => {
             if (!prefilledData) return searchParams.get('client') ? [searchParams.get('client')] : [];
@@ -719,7 +769,13 @@ export function FormPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Тип недвижимости</label>
-                            <select className="form-select" value={form.property_type} onChange={e => setF('property_type', e.target.value)} style={{ borderRadius: 14 }}>
+                            <select className="form-select" value={form.property_type} onChange={e => {
+                                const val = e.target.value;
+                                setF('property_type', val);
+                                if (val === 'house' && (!form.floors_total || form.floors_total === 9)) {
+                                    setF('floors_total', 2);
+                                }
+                            }} style={{ borderRadius: 14 }}>
                                 {Object.entries(PROPERTY_TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                             </select>
                         </div>
@@ -974,46 +1030,48 @@ export function FormPage() {
 
                     {form.property_type !== 'garden' && form.property_type !== 'land' && (
                         <>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                                <button
-                                    type="button"
-                                    onClick={handleParseHouse}
-                                    disabled={parsing || (!form.address && !form.city)}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                                        width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
-                                        border: '2px dashed var(--primary)',
-                                        background: 'var(--primary-light)', color: 'var(--primary)',
-                                        cursor: parsing ? 'wait' : 'pointer',
-                                        fontFamily: 'inherit', fontWeight: 300,
-                                        transition: 'all 0.2s',
-                                        opacity: (!form.address && !form.city) ? 0.5 : 1
-                                    }}
-                                >
-                                    {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
-                                </button>
-                                <button
-                                    type="button"
-                                    title="Открыть dom.mingkh.ru"
-                                    onClick={() => {
-                                        const url = getMingkhSearchUrl(form.address, form.city);
-                                        window.open(url, '_blank', 'noopener');
-                                    }}
-                                    disabled={!form.address && !form.city}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                        padding: '14px 16px', borderRadius: 16, fontSize: 13,
-                                        border: '2px dashed var(--border-light)',
-                                        background: 'var(--bg-card)', color: 'var(--text-secondary)',
-                                        cursor: 'pointer', fontFamily: 'inherit', fontWeight: 300,
-                                        transition: 'all 0.2s', whiteSpace: 'nowrap',
-                                        opacity: (!form.address && !form.city) ? 0.5 : 1
-                                    }}
-                                >
-                                    🏠 МинЖКХ
-                                </button>
-                            </div>
-                            {parsedFields && (
+                            {form.property_type !== 'house' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={handleParseHouse}
+                                        disabled={parsing || (!form.address && !form.city)}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                                            width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
+                                            border: '2px dashed var(--primary)',
+                                            background: 'var(--primary-light)', color: 'var(--primary)',
+                                            cursor: parsing ? 'wait' : 'pointer',
+                                            fontFamily: 'inherit', fontWeight: 300,
+                                            transition: 'all 0.2s',
+                                            opacity: (!form.address && !form.city) ? 0.5 : 1
+                                        }}
+                                    >
+                                        {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        title="Открыть dom.mingkh.ru"
+                                        onClick={() => {
+                                            const url = getMingkhSearchUrl(form.address, form.city);
+                                            window.open(url, '_blank', 'noopener');
+                                        }}
+                                        disabled={!form.address && !form.city}
+                                        style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                            padding: '14px 16px', borderRadius: 16, fontSize: 13,
+                                            border: '2px dashed var(--border-light)',
+                                            background: 'var(--bg-card)', color: 'var(--text-secondary)',
+                                            cursor: 'pointer', fontFamily: 'inherit', fontWeight: 300,
+                                            transition: 'all 0.2s', whiteSpace: 'nowrap',
+                                            opacity: (!form.address && !form.city) ? 0.5 : 1
+                                        }}
+                                    >
+                                        🏠 МинЖКХ
+                                    </button>
+                                </div>
+                            )}
+                            {parsedFields && form.property_type !== 'house' && (
                                 <div style={{
                                     background: parsedFields.length > 0 ? 'var(--success-light)' : 'var(--warning-light)',
                                     border: `1px solid ${parsedFields.length > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
@@ -1034,8 +1092,16 @@ export function FormPage() {
                             )}
 
                             <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Жилой комплекс / ЖК</label>
-                                <input className="form-input" value={form.residential_complex || ''} onChange={e => setF('residential_complex', e.target.value)} placeholder="Название ЖК" style={{ borderRadius: 14 }} />
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>
+                                    {form.property_type === 'house' ? 'Коттеджный посёлок / КП' : 'Жилой комплекс / ЖК'}
+                                </label>
+                                <input 
+                                    className="form-input" 
+                                    value={form.residential_complex || ''} 
+                                    onChange={e => setF('residential_complex', e.target.value)} 
+                                    placeholder={form.property_type === 'house' ? 'Название КП / посёлка' : 'Название ЖК'} 
+                                    style={{ borderRadius: 14 }} 
+                                />
                             </div>
                         </>
                     )}
@@ -1044,47 +1110,108 @@ export function FormPage() {
                 {/* Параметры объекта (для квартир, комнат, коммерции, домов) */}
                 {form.property_type !== 'garden' && (
                 <FormCard title="Параметры объекта" icon={<Ruler size={22} />}>
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Количество комнат</label>
-                        <ChipGroup 
-                             options={[
-                                 { val: 0, label: 'Студия' },
-                                 { val: 1, label: '1' },
-                                 { val: 2, label: '2' },
-                                 { val: 3, label: '3' },
-                                 { val: 4, label: '4' },
-                                 { val: 5, label: '5+' },
-                             ]}
-                             value={form.rooms}
-                             onChange={val => setF('rooms', val)}
-                         />
-                     </div>
- 
-                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                         <div className="form-group">
-                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая м²</label>
-                             <input type="number" className="form-input" value={form.area_total || ''} onChange={e => setF('area_total', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                    {form.property_type === 'commercial' ? (
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Планировка помещения</label>
+                            <ChipGroup 
+                                options={Object.entries(COMMERCIAL_LAYOUTS).map(([val, label]) => ({ val, label }))}
+                                value={form.commercial_layout || 'open_space'}
+                                onChange={val => setF('commercial_layout', val)}
+                            />
+                        </div>
+                    ) : (
+                        <div className="form-group">
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Количество комнат</label>
+                            <ChipGroup 
+                                 options={[
+                                     ...(form.property_type === 'house' ? [] : [{ val: 0, label: 'Студия' }]),
+                                     { val: 1, label: '1' },
+                                     { val: 2, label: '2' },
+                                     { val: 3, label: '3' },
+                                     { val: 4, label: '4' },
+                                     { val: 5, label: '5+' },
+                                     ...(form.property_type === 'house' ? [{ val: 0, label: 'Свободная' }] : []),
+                                 ]}
+                                 value={form.rooms}
+                                 onChange={val => setF('rooms', val)}
+                             />
                          </div>
+                    )}
+
+                    {form.property_type === 'commercial' ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая площадь (м²)</label>
+                                <input 
+                                    type="number" 
+                                    className="form-input" 
+                                    value={form.area_total || ''} 
+                                    onChange={e => setF('area_total', Number(e.target.value))} 
+                                    placeholder="120"
+                                    style={{ borderRadius: 12 }} 
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Полезная / торговая (м²)</label>
+                                <input 
+                                    type="number" 
+                                    className="form-input" 
+                                    value={form.area_living || ''} 
+                                    onChange={e => setF('area_living', Number(e.target.value))} 
+                                    placeholder="95"
+                                    style={{ borderRadius: 12 }} 
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая м²</label>
+                                <input type="number" className="form-input" value={form.area_total || ''} onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setF('area_total', val);
+                                    if (form.property_type === 'house') setF('house_area', val);
+                                }} style={{ borderRadius: 12 }} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Жилая м²</label>
+                                <input type="number" className="form-input" value={form.area_living || ''} onChange={e => setF('area_living', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Кухня м²</label>
+                                <input type="number" className="form-input" value={form.area_kitchen || ''} onChange={e => setF('area_kitchen', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                            </div>
+                        </div>
+                    )}
+
+                     {form.property_type === 'house' ? (
                          <div className="form-group">
-                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Жилая м²</label>
-                             <input type="number" className="form-input" value={form.area_living || ''} onChange={e => setF('area_living', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Этажей в доме</label>
+                             <input 
+                                 type="number" 
+                                 className="form-input" 
+                                 value={form.floors_total || ''} 
+                                 onChange={e => {
+                                     const val = Number(e.target.value);
+                                     setF('floors_total', val);
+                                     setF('house_floors', val);
+                                 }} 
+                                 placeholder="2" 
+                                 style={{ borderRadius: 12 }} 
+                             />
                          </div>
-                         <div className="form-group">
-                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Кухня м²</label>
-                             <input type="number" className="form-input" value={form.area_kitchen || ''} onChange={e => setF('area_kitchen', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                     ) : (
+                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                             <div className="form-group">
+                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Этаж</label>
+                                 <input type="number" className="form-input" value={form.floor || ''} onChange={e => setF('floor', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                             </div>
+                             <div className="form-group">
+                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Всего этажей</label>
+                                 <input type="number" className="form-input" value={form.floors_total || ''} onChange={e => setF('floors_total', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                             </div>
                          </div>
-                     </div>
- 
-                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                         <div className="form-group">
-                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Этаж</label>
-                             <input type="number" className="form-input" value={form.floor || ''} onChange={e => setF('floor', Number(e.target.value))} style={{ borderRadius: 12 }} />
-                         </div>
-                         <div className="form-group">
-                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Всего этажей</label>
-                             <input type="number" className="form-input" value={form.floors_total || ''} onChange={e => setF('floors_total', Number(e.target.value))} style={{ borderRadius: 12 }} />
-                         </div>
-                     </div>
+                     )}
  
                      <div className="form-group">
                          <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Ремонт</label>
@@ -1348,8 +1475,516 @@ export function FormPage() {
                      </FormCard>
                  )}
 
-                {/* Характеристики дома (только для квартир, комнат, домов, коммерции) */}
-                {form.property_type !== 'garden' && (
+                {/* ── ХАРАКТЕРИСТИКИ ДОМА (для домов) ── */}
+                {form.property_type === 'house' && (
+                    <FormCard title="Характеристики дома" icon={<Home size={22} />} description="Конструктив дома, земельный участок, коммуникации и постройки">
+                        {/* 1. Конструктив дома */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Дом и конструкция
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Год постройки</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.build_year || form.house_build_year || ''} 
+                                        onChange={e => {
+                                            const v = Number(e.target.value);
+                                            setF('build_year', v);
+                                            setF('house_build_year', v);
+                                        }} 
+                                        placeholder="2018" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Высота потолков (м)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className="form-input" 
+                                        value={form.ceiling_height || ''} 
+                                        onChange={e => setF('ceiling_height', Number(e.target.value))} 
+                                        placeholder="2.8" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Материал стен</label>
+                                <ChipGroup
+                                    options={Object.entries(HOUSE_MATERIALS).map(([val, label]) => ({ val, label }))}
+                                    value={form.house_material || form.building_type}
+                                    onChange={val => {
+                                        setF('house_material', val);
+                                        setF('building_type', val === 'timber' ? 'wood' : val);
+                                    }}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Состояние дома</label>
+                                <ChipGroup
+                                    options={Object.entries(HOUSE_CONDITIONS).map(([val, label]) => ({ val, label }))}
+                                    value={form.house_condition}
+                                    onChange={val => setF('house_condition', val)}
+                                />
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Санузел</label>
+                                <ChipGroup
+                                    options={[
+                                        { val: 'combined', label: 'В доме (совмещённый)' },
+                                        { val: 'separate', label: 'В доме (раздельный)' },
+                                        { val: 'two', label: '2 и более' },
+                                        { val: 'outside', label: 'На улице' },
+                                    ]}
+                                    value={form.bathroom}
+                                    onChange={val => setF('bathroom', val)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                <ToggleChip label="Мебель остаётся" value={form.furniture} onChange={v => setF('furniture', v)} icon={<Zap size={14} />} />
+                                <ToggleChip 
+                                    label="Дом стоит на кадастровом учёте" 
+                                    value={form.house_has_cadastre} 
+                                    onChange={v => {
+                                        setF('house_has_cadastre', v);
+                                        if (!v) setF('house_cadastral_number', '');
+                                    }} 
+                                />
+                            </div>
+
+                            {form.house_has_cadastre && (
+                                <div className="form-group" style={{ marginTop: 4 }}>
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Кадастровый номер дома</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        value={form.house_cadastral_number || ''} 
+                                        onChange={e => setF('house_cadastral_number', e.target.value)} 
+                                        placeholder="43:40:000000:00" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 2. Земельный участок */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Земельный участок
+                            </div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Площадь участка (соток)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.land_area || ''} 
+                                        onChange={e => setF('land_area', Number(e.target.value))} 
+                                        placeholder="12" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Категория земли</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.land_category || ''} 
+                                        onChange={e => setF('land_category', e.target.value)} 
+                                        style={{ borderRadius: 12 }}
+                                    >
+                                        <option value="">— Не указана —</option>
+                                        {Object.entries(LAND_CATEGORIES).map(([val, label]) => (
+                                            <option key={val} value={val}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Расстояние до города (км)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.distance_to_city || ''} 
+                                        onChange={e => setF('distance_to_city', Number(e.target.value))} 
+                                        placeholder="10" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Подъездная дорога</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.road_access || ''} 
+                                        onChange={e => setF('road_access', e.target.value)} 
+                                        style={{ borderRadius: 12 }}
+                                    >
+                                        <option value="">— Не указан —</option>
+                                        {Object.entries(ROAD_ACCESS).map(([val, label]) => (
+                                            <option key={val} value={val}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Забор</label>
+                                <ChipGroup
+                                    options={Object.entries(FENCE_TYPES).map(([val, label]) => ({ val, label }))}
+                                    value={form.fence_type}
+                                    onChange={val => setF('fence_type', val)}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 3. Коммуникации */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Коммуникации
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                <ToggleChip label="Электричество" value={form.has_electricity} onChange={v => setF('has_electricity', v)} />
+                                <ToggleChip label="Водоснабжение" value={form.has_water} onChange={v => setF('has_water', v)} />
+                                <ToggleChip label="Газ" value={form.has_gas} onChange={v => setF('has_gas', v)} />
+                                <ToggleChip label="Канализация" value={form.has_sewage} onChange={v => setF('has_sewage', v)} />
+                            </div>
+
+                            {form.has_electricity && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Мощность электричества (кВт)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.electricity_kw || ''} 
+                                        onChange={e => setF('electricity_kw', Number(e.target.value))} 
+                                        placeholder="15" 
+                                        style={{ borderRadius: 12, maxWidth: 180 }} 
+                                    />
+                                </div>
+                            )}
+
+                            {form.has_water && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Тип водоснабжения</label>
+                                    <MultiChipGroup
+                                        options={Object.entries(WATER_TYPES).map(([val, label]) => ({ val, label }))}
+                                        value={form.water_types || (form.water_type ? [form.water_type] : [])}
+                                        onChange={val => {
+                                            setF('water_types', val);
+                                            setF('water_type', val[0] || '');
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {form.has_gas && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Тип газоснабжения</label>
+                                    <ChipGroup
+                                        options={Object.entries(GAS_TYPES).map(([val, label]) => ({ val, label }))}
+                                        value={form.gas_type}
+                                        onChange={val => setF('gas_type', val)}
+                                    />
+                                </div>
+                            )}
+
+                            {form.has_sewage && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Тип канализации</label>
+                                    <ChipGroup
+                                        options={Object.entries(SEWAGE_TYPES).map(([val, label]) => ({ val, label }))}
+                                        value={form.sewage_type}
+                                        onChange={val => setF('sewage_type', val)}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 4. Постройки и удобства */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Постройки и удобства
+                            </div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                <ToggleChip label="Баня / Сауна" value={form.has_bathhouse} onChange={v => setF('has_bathhouse', v)} />
+                                <ToggleChip label="Гараж" value={form.has_garage} onChange={v => setF('has_garage', v)} />
+                                <ToggleChip label="Беседка" value={form.has_gazebo} onChange={v => setF('has_gazebo', v)} />
+                                <ToggleChip label="Теплица" value={form.has_greenhouse} onChange={v => setF('has_greenhouse', v)} />
+                                <ToggleChip label="Скважина/Колодец" value={form.has_well} onChange={v => setF('has_well', v)} />
+                                <ToggleChip label="Летняя кухня" value={form.has_summer_kitchen} onChange={v => setF('has_summer_kitchen', v)} />
+                                <ToggleChip label="Водоём / Бассейн" value={form.has_pond} onChange={v => setF('has_pond', v)} />
+                            </div>
+                            {form.has_garage && (
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Площадь гаража (м²)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.garage_area || ''} 
+                                        onChange={e => setF('garage_area', Number(e.target.value))} 
+                                        placeholder="24" 
+                                        style={{ borderRadius: 12, maxWidth: 180 }} 
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 5. Дополнительно */}
+                        <div className="form-group" style={{ paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Дополнительно по дому и участку</label>
+                            <textarea 
+                                className="form-textarea" 
+                                rows={3} 
+                                value={form.garden_notes ?? ''} 
+                                onChange={e => setF('garden_notes', e.target.value)} 
+                                placeholder="Особенности дома, участка, рельеф, насаждения, соседи..." 
+                                style={{ borderRadius: 16, resize: 'none' }} 
+                            />
+                        </div>
+                    </FormCard>
+                )}
+
+                {/* ── ХАРАКТЕРИСТИКИ КОММЕРЧЕСКОГО ПОМЕЩЕНИЯ (для коммерции) ── */}
+                {form.property_type === 'commercial' && (
+                    <FormCard 
+                        title="Характеристики коммерческого помещения" 
+                        icon={<Briefcase size={22} />} 
+                        description="Назначение, вход, витрины, мощности и параметры арендного бизнеса"
+                    >
+                        {/* 1. Назначение и размещение */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Назначение и расположение
+                            </div>
+                            
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Тип назначения помещения</label>
+                                <ChipGroup
+                                    options={Object.entries(COMMERCIAL_TYPES).map(([val, label]) => ({ val, label }))}
+                                    value={form.commercial_type || 'free_purpose'}
+                                    onChange={val => setF('commercial_type', val)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Линия домов</label>
+                                    <ChipGroup
+                                        options={Object.entries(LOCATION_LINES).map(([val, label]) => ({ val, label }))}
+                                        value={form.location_line || 'first_line'}
+                                        onChange={val => setF('location_line', val)}
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Вход в помещение</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.entrance_type || 'separate_street'} 
+                                        onChange={e => setF('entrance_type', e.target.value)}
+                                        style={{ borderRadius: 12 }}
+                                    >
+                                        {Object.entries(ENTRANCE_TYPES).map(([val, label]) => (
+                                            <option key={val} value={val}>{label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                                <ToggleChip 
+                                    label="Витринные окна" 
+                                    value={form.has_shop_windows} 
+                                    onChange={v => setF('has_shop_windows', v)} 
+                                />
+                                <ToggleChip 
+                                    label="Круглосуточный доступ 24/7" 
+                                    value={form.access_24_7} 
+                                    onChange={v => setF('access_24_7', v)} 
+                                />
+                                <ToggleChip 
+                                    label="Зона разгрузки / дебаркадер" 
+                                    value={form.has_loading_zone} 
+                                    onChange={v => setF('has_loading_zone', v)} 
+                                />
+                                <ToggleChip 
+                                    label="Мебель / торговое оборудование" 
+                                    value={form.furniture} 
+                                    onChange={v => setF('furniture', v)} 
+                                    icon={<Zap size={14} />} 
+                                />
+                            </div>
+                        </div>
+
+                        {/* 2. Инженерия и коммуникации */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Инженерия и коммуникации
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Эл. мощность (кВт)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.electricity_kw || ''} 
+                                        onChange={e => setF('electricity_kw', Number(e.target.value))} 
+                                        placeholder="15" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Высота потолков (м)</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.1" 
+                                        className="form-input" 
+                                        value={form.ceiling_height || ''} 
+                                        onChange={e => setF('ceiling_height', Number(e.target.value))} 
+                                        placeholder="3.2" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Мокрые точки (шт)</label>
+                                    <input 
+                                        type="number" 
+                                        className="form-input" 
+                                        value={form.wet_points ?? 1} 
+                                        onChange={e => setF('wet_points', Number(e.target.value))} 
+                                        placeholder="1" 
+                                        style={{ borderRadius: 12 }} 
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="form-group">
+                                <label className="form-label" style={{ fontWeight: 300, fontSize: 12 }}>Вентиляция</label>
+                                <ChipGroup
+                                    options={Object.entries(VENTILATION_TYPES).map(([val, label]) => ({ val, label }))}
+                                    value={form.ventilation_type || 'forced'}
+                                    onChange={val => setF('ventilation_type', val)}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                <ToggleChip label="Водоснабжение" value={form.has_water} onChange={v => setF('has_water', v)} />
+                                <ToggleChip label="Канализация" value={form.has_sewage} onChange={v => setF('has_sewage', v)} />
+                                <ToggleChip label="Газоснабжение" value={form.has_gas} onChange={v => setF('has_gas', v)} />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Тип здания / постройки</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.building_type || ''} 
+                                        onChange={e => setF('building_type', e.target.value)} 
+                                        style={{ borderRadius: 12 }}
+                                    >
+                                        <option value="">— Не указан —</option>
+                                        {Object.entries(BUILDING_TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
+                                    </select>
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Парковка</label>
+                                    <select 
+                                        className="form-select" 
+                                        value={form.parking || 'none'} 
+                                        onChange={e => setF('parking', e.target.value)} 
+                                        style={{ borderRadius: 12 }}
+                                    >
+                                        <option value="none">Нет</option>
+                                        <option value="ground">Наземная открытая</option>
+                                        <option value="barrier">Под шлагбаумом / охраняемая</option>
+                                        <option value="underground">Подземный паркинг</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 3. Готовый арендный бизнес (ГАБ) */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                Аренда и доходность (ГАБ)
+                            </div>
+                            
+                            <ToggleChip 
+                                label="Объект сдан в аренду (есть действующий арендатор)" 
+                                value={form.has_tenant} 
+                                onChange={v => setF('has_tenant', v)} 
+                            />
+
+                            {form.has_tenant && (
+                                <div style={{ 
+                                    display: 'flex', flexDirection: 'column', gap: 12, 
+                                    padding: '16px', background: 'var(--bg-light)', borderRadius: 16 
+                                }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                                        <div className="form-group">
+                                            <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Арендная плата в месяц (₽)</label>
+                                            <input 
+                                                type="number" 
+                                                className="form-input" 
+                                                value={form.rental_income || ''} 
+                                                onChange={e => setF('rental_income', Number(e.target.value))} 
+                                                placeholder="80000" 
+                                                style={{ borderRadius: 12 }} 
+                                            />
+                                        </div>
+                                        <div className="form-group">
+                                            <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Годовой арендный поток</label>
+                                            <div style={{ 
+                                                height: 42, display: 'flex', alignItems: 'center', 
+                                                padding: '0 12px', background: 'var(--surface)', borderRadius: 12,
+                                                fontSize: 14, fontWeight: 500, color: 'var(--primary)'
+                                            }}>
+                                                {form.rental_income ? `${(Number(form.rental_income) * 12).toLocaleString('ru-RU')} ₽ / год` : '—'}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {form.price > 0 && form.rental_income > 0 && (
+                                        <div style={{ 
+                                            fontSize: 12, color: 'var(--success)', background: 'rgba(16, 185, 129, 0.08)', 
+                                            padding: '8px 12px', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 8 
+                                        }}>
+                                            <Check size={14} />
+                                            <span>
+                                                Расчётная доходность: <strong>{((Number(form.rental_income) * 12 / Number(form.price)) * 100).toFixed(1)}% годовых</strong> (окупаемость ~{(Number(form.price) / (Number(form.rental_income) * 12)).toFixed(1)} лет)
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* 4. Дополнительно */}
+                        <div className="form-group" style={{ paddingTop: 12, borderTop: '1px solid var(--border-light)' }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Дополнительные особенности коммерции</label>
+                            <textarea 
+                                className="form-textarea" 
+                                rows={3} 
+                                value={form.commercial_notes ?? ''} 
+                                onChange={e => setF('commercial_notes', e.target.value)} 
+                                placeholder="Пешеходный/автомобильный трафик, возможность размещения фасадной вывески, отдельный вентканал..." 
+                                style={{ borderRadius: 16, resize: 'none' }} 
+                            />
+                        </div>
+                    </FormCard>
+                )}
+
+                {/* ── ХАРАКТЕРИСТИКИ ДОМА (для квартир, комнат) ── */}
+                {form.property_type !== 'garden' && form.property_type !== 'house' && form.property_type !== 'commercial' && (
                 <FormCard title="Характеристики дома" icon={<Building size={22} />}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                         <div className="form-group">

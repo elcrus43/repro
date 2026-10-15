@@ -38,7 +38,9 @@ export function GlobalSearch() {
             matches: state.matches.filter(m => {
                 const prop = state.properties.find(p => p.id === m.property_id);
                 if (!prop || hasPassedDealStage(prop, state.deals)) return false;
-                const client = state.clients.find(c => c.id === m.client_id);
+                const req = state.requests.find(r => r.id === m.request_id);
+                if (!req || req.status !== 'active') return false;
+                const client = state.clients.find(c => c.id === m.client_id || c.id === req.client_id);
                 const text = `${prop?.address || ''} ${prop?.city || ''} ${client?.full_name || ''} ${m.status || ''}`.toLowerCase();
                 return text.includes(q) && m.score > 70;
             }).slice(0, 3),

@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, MapPin, Sparkles } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
-import { PROPERTY_TYPES } from '../../data/constants';
+import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
 import { hasPassedDealStage } from '../../utils/matching';
 
 export function ListPage() {
@@ -20,8 +20,8 @@ export function ListPage() {
         return state.requests
             .filter(r => scope === 'all' || r.realtor_id === user?.id)
             .filter(r => {
-                if (filter === 'active') return r.status === 'active';
-                if (filter === 'paused') return r.status === 'paused';
+                if (filter === 'active') return (r.status || 'active') === 'active';
+                if (filter === 'completed') return (r.status || 'active') !== 'active';
                 return true;
             })
             .filter(r => {
@@ -36,9 +36,6 @@ export function ListPage() {
     const { paginatedItems: requests, currentPage, totalPages, hasNext, hasPrev, nextPage, prevPage, resetPage } = usePagination(filteredRequests, 20);
 
     useEffect(() => { resetPage(); }, [filteredRequests, resetPage]);
-
-    const statusLabels = { active: 'Активен', paused: 'Пауза', deal_closed: 'Сделка', refused: 'Отказ' };
-    const statusColors = { active: '#10b981', paused: '#f59e0b', deal_closed: '#0052FF', refused: '#94a3b8' };
 
     return (
         <div className="page fade-in">
@@ -95,7 +92,7 @@ export function ListPage() {
             </div>
 
             <div className="tab-filters" style={{ padding: '8px 20px', gap: 12, overflowX: 'auto' }}>
-                {[['all', 'Все'], ['active', 'Активные'], ['paused', 'Пауза']].map(([val, label]) => (
+                {[['all', 'Все'], ['active', 'Актуально'], ['completed', 'Завершен']].map(([val, label]) => (
                     <button key={val} 
                         className={`tab-filter ${filter === val ? 'active' : ''}`} 
                         style={{ 
@@ -124,28 +121,49 @@ export function ListPage() {
                 ) : (
                     requests.map(req => {
                         const client = state.clients.find(c => c.id === req.client_id);
-                        const matches = state.matches.filter(m => {
+                        const isReqActive = (req.status || 'active') === 'active';
+                        const matches = isReqActive ? state.matches.filter(m => {
                             if (m.request_id !== req.id) return false;
                             const prop = state.properties.find(p => p.id === m.property_id);
                             return prop && !hasPassedDealStage(prop, state.deals);
-                        });
+                        }) : [];
                         return (
                             <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)} style={{ 
                                 padding: '14px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative',
-                                display: 'flex', flexDirection: 'column', gap: 6
+                                display: 'flex', flexDirection: 'column', gap: 6,
+                                opacity: isReqActive ? 1 : 0.8
                             }}>
                                 {/* Line 1 */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, color: 'var(--text)' }}>
                                         {client?.full_name || 'Без имени'}
                                     </div>
-                                    <div style={{ 
-                                        padding: '2px 8px', borderRadius: 6, fontSize: 9, fontWeight: 300, letterSpacing: '0.02em',
-                                        background: `${statusColors[req.status] || statusColors.active}15`,
-                                        color: statusColors[req.status] || statusColors.active
-                                    }}>
-                                        {statusLabels[req.status] || statusLabels.active}
-                                    </div>
+                                    <button 
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const nextStatus = isReqActive ? 'completed' : 'active';
+                                            dispatch({
+                                                type: 'UPDATE_REQUEST',
+                                                request: { ...req, status: nextStatus }
+                                            });
+                                        }}
+                                        title="Нажмите, чтобы сменить статус"
+                                        style={{ 
+                                            padding: '3px 9px', borderRadius: 8, fontSize: 10, fontWeight: 400, letterSpacing: '0.02em',
+                                            border: 'none', cursor: 'pointer',
+                                            background: isReqActive ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                                            color: isReqActive ? '#10b981' : '#64748b',
+                                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <span style={{ 
+                                            width: 5, height: 5, borderRadius: '50%', 
+                                            background: isReqActive ? '#10b981' : '#64748b' 
+                                        }} />
+                                        {isReqActive ? 'Актуально' : 'Завершен'}
+                                    </button>
                                 </div>
 
                                 {/* Line 2 */}
@@ -155,9 +173,9 @@ export function ListPage() {
                                         <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
                                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100, flexShrink: 1 }}>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || '—'}</span>
                                         <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
-                                        <span style={{ color: '#858518', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                                            <Sparkles size={12} />
-                                            {matches.length}
+                                        <span style={{ color: isReqActive ? '#858518' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                                            <Sparkles size={12} style={{ opacity: isReqActive ? 1 : 0.4 }} />
+                                            {isReqActive ? matches.length : '—'}
                                         </span>
                                         {req.districts?.length > 0 && (
                                             <>

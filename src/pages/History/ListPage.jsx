@@ -331,7 +331,7 @@ export function ListPage() {
                                             }}>
                                                     {getEventStatusLabel(s.event_type, s.status)}
                                             </span>
-                                            {s.realtor_id === user?.id && (
+                                            {(!s.realtor_id || s.realtor_id === user?.id || user?.role === 'admin') && (
                                                 <button className="icon-btn-edit" onClick={() => navigate(`/history/new?id=${s.id}`)} title="Редактировать">
                                                     <Pencil size={16} />
                                                 </button>
@@ -372,7 +372,7 @@ export function ListPage() {
                                         </div>
                                     )}
 
-                                    {s.status === 'planned' && s.realtor_id === user?.id && !feedbackId && (
+                                    {s.status === 'planned' && (!s.realtor_id || s.realtor_id === user?.id || user?.role === 'admin') && !feedbackId && (
                                         <button 
                                             className="card-clickable" 
                                             style={{ 

@@ -1,42 +1,56 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, getEventStatusLabel, parseLocalDateTime, toLocalISOString, stripPhone } from '../../utils/format';
-import { Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock, Info, Check, MessageSquare, Trash2, Plus, Ruler, Image, Building2 } from 'lucide-react';
+import {
+    Calendar, User, Home, Save, UserPlus, X, ChevronLeft, Clock,
+    Info, Check, MessageSquare, Trash2, Plus, Sparkles, Building2,
+    ChevronDown, ChevronUp, ExternalLink
+} from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
-import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { compressImage, readClipboardAndCompress } from '../../utils/image';
 
-function FormCard({ title, children, description }) {
-    const hasHeader = title || description;
-    return (
-        <div className="card fade-in" style={{ 
-            padding: '20px', marginBottom: 16, border: 'none', 
-            boxShadow: '0 4px 16px rgba(0,0,0,0.03)', borderRadius: 20,
-            background: 'var(--surface)'
-        }}>
-            {hasHeader && (
-                <div style={{ marginBottom: 16 }}>
-                    {title && <div className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>{title}</div>}
-                    {description && <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>{description}</div>}
-                </div>
-            )}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {children}
-            </div>
-        </div>
-    );
-}
+const getPropertyClientIds = (p) => {
+    let ids = p?.client_ids || [];
+    if (typeof ids === 'string') {
+        ids = ids.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+    if (p?.client_id && !ids.includes(p.client_id)) {
+        ids = [...ids, p.client_id];
+    }
+    return ids;
+};
+
+const parseClientIds = (ids, singleId) => {
+    let list = ids;
+    if (typeof list === 'string') {
+        list = list.replace(/[{}]/g, '').split(',').filter(Boolean);
+    }
+    if (!Array.isArray(list) || list.length === 0) {
+        list = singleId ? [singleId] : [];
+    }
+    return list.filter(Boolean);
+};
+
+const EVENT_TYPES = [
+    { id: 'showing', label: 'Показ' },
+    { id: 'meeting', label: 'Встреча' },
+    { id: 'call', label: 'Звонок' },
+    { id: 'viewing', label: 'Подбор' },
+    { id: 'deposit', label: 'Задаток' },
+    { id: 'deal', label: 'Сделка' },
+];
 
 export function FormPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
     const { toast } = useToastContext();
     const [searchParams] = useSearchParams();
+
     const prePropId = searchParams.get('propertyId') || searchParams.get('property_id');
     const preClientId = searchParams.get('clientId') || searchParams.get('client_id');
     const preClientIds = searchParams.get('client_ids')
@@ -46,21 +60,42 @@ export function FormPage() {
 
     const existingShowing = editId ? state.showings.find(s => s.id === editId) : null;
 
-    const [form, setForm] = useState(existingShowing ? {
-        ...existingShowing,
-        client_ids: existingShowing.client_ids || (existingShowing.client_id ? [existingShowing.client_id] : []),
-        showing_date: existingShowing.showing_date ? toLocalISOString(existingShowing.showing_date) : '',
-    } : {
-        property_id: prePropId || '',
-        client_id: preClientIds[0] || '',
-        client_ids: preClientIds,
-        showing_date: '',
-        status: 'planned',
-        client_feedback: '',
-        feedback_comment: '',
-        event_type: searchParams.get('event_type') || 'showing',
-        realtor_id: state.currentUser?.id
+    const [form, setForm] = useState(() => {
+        if (existingShowing) {
+            const cIds = parseClientIds(existingShowing.client_ids, existingShowing.client_id);
+            return {
+                ...existingShowing,
+                client_id: cIds[0] || existingShowing.client_id || '',
+                client_ids: cIds,
+                showing_date: existingShowing.showing_date ? toLocalISOString(existingShowing.showing_date) : '',
+            };
+        }
+        return {
+            property_id: prePropId || '',
+            client_id: preClientIds[0] || '',
+            client_ids: preClientIds,
+            showing_date: toLocalISOString(new Date()),
+            status: 'planned',
+            client_feedback: '',
+            feedback_comment: '',
+            event_type: searchParams.get('event_type') || 'showing',
+            realtor_id: state.currentUser?.id
+        };
     });
+
+    // Synchronize form when existingShowing is loaded (or arrives async from Neon DB)
+    useEffect(() => {
+        if (editId && existingShowing) {
+            const cIds = parseClientIds(existingShowing.client_ids, existingShowing.client_id);
+            setForm(prev => ({
+                ...prev,
+                ...existingShowing,
+                client_id: cIds[0] || existingShowing.client_id || '',
+                client_ids: cIds,
+                showing_date: existingShowing.showing_date ? toLocalISOString(existingShowing.showing_date) : prev.showing_date,
+            }));
+        }
+    }, [editId, existingShowing]);
 
     const [showNewClient, setShowNewClient] = useState(false);
     const [newClientName, setNewClientName] = useState('');
@@ -82,6 +117,8 @@ export function FormPage() {
     const [newSelImage, setNewSelImage] = useState('');
     const [newSelLink, setNewSelLink] = useState('');
 
+    const [showAllProperties, setShowAllProperties] = useState(false);
+
     useEffect(() => {
         const clean = stripPhone(newSelContactPhone);
         if (clean && clean.length >= 10) {
@@ -91,11 +128,9 @@ export function FormPage() {
                 return cleanTarget === clean || cleanPhones.includes(clean);
             });
             setNewSelMatchingClient(found || null);
-            if (found) {
-                if (!newSelContactName) {
-                    setNewSelContactName(found.full_name);
-                    setNewSelContactType(found.client_types?.[0] || 'seller');
-                }
+            if (found && !newSelContactName) {
+                setNewSelContactName(found.full_name);
+                setNewSelContactType(found.client_types?.[0] || 'seller');
             }
         } else {
             setNewSelMatchingClient(null);
@@ -110,6 +145,29 @@ export function FormPage() {
         }
         return true;
     });
+
+    // ─── Owner Properties Resolution ──────────────────────────────────────
+    const selectedClientIds = useMemo(() => {
+        return form.client_ids || (form.client_id ? [form.client_id] : []);
+    }, [form.client_ids, form.client_id]);
+
+    const ownerProperties = useMemo(() => {
+        if (!selectedClientIds || selectedClientIds.length === 0) return [];
+        return state.properties.filter(p => {
+            const pClientIds = getPropertyClientIds(p);
+            return selectedClientIds.some(cid => pClientIds.includes(cid));
+        });
+    }, [selectedClientIds, state.properties]);
+
+    // Auto-select property if the owner has exactly 1 property
+    useEffect(() => {
+        if (form.event_type === 'viewing') return;
+        if (ownerProperties.length === 1) {
+            if (form.property_id !== ownerProperties[0].id) {
+                setForm(f => ({ ...f, property_id: ownerProperties[0].id }));
+            }
+        }
+    }, [ownerProperties, form.event_type]);
 
     function handleCreateSelection() {
         if (!form.client_ids?.length) {
@@ -130,7 +188,6 @@ export function FormPage() {
             });
 
             const selectedType = newSelContactType || 'seller';
-
             if (!found) {
                 const newContactClient = {
                     id: nanoid(),
@@ -144,17 +201,15 @@ export function FormPage() {
                     updated_at: new Date().toISOString()
                 };
                 dispatch({ type: 'ADD_CLIENT', client: newContactClient });
-            } else {
-                if (!found.client_types?.includes(selectedType)) {
-                    dispatch({
-                        type: 'UPDATE_CLIENT',
-                        client: {
-                            ...found,
-                            client_types: [...(found.client_types || []), selectedType],
-                            updated_at: new Date().toISOString()
-                        }
-                    });
-                }
+            } else if (!found.client_types?.includes(selectedType)) {
+                dispatch({
+                    type: 'UPDATE_CLIENT',
+                    client: {
+                        ...found,
+                        client_types: [...(found.client_types || []), selectedType],
+                        updated_at: new Date().toISOString()
+                    }
+                });
             }
         }
 
@@ -185,7 +240,6 @@ export function FormPage() {
         setNewSelPrice(0);
         setNewSelContactName('');
         setNewSelContactPhone('');
-        setNewSelContactType('seller');
         setNewSelRooms(1);
         setNewSelAreaTotal('');
         setNewSelFloor('');
@@ -214,12 +268,12 @@ export function FormPage() {
                 updated_at: new Date().toISOString()
             };
             dispatch({ type: 'UPDATE_CLIENT', client: updated });
-            setForm(f => ({ 
-                ...f, 
+            setForm(f => ({
+                ...f,
                 client_id: existing.id,
                 client_ids: Array.from(new Set([...(f.client_ids || []), existing.id]))
             }));
-            toast.info(`Контакт «${existing.full_name}» обновлён и добавлен к событию`);
+            toast.info(`Контакт «${existing.full_name}» обновлён и выбран`);
         } else {
             const client = {
                 id: nanoid(),
@@ -234,17 +288,19 @@ export function FormPage() {
                 updated_at: new Date().toISOString(),
             };
             dispatch({ type: 'ADD_CLIENT', client });
-            setForm(f => ({ 
-                ...f, 
+            setForm(f => ({
+                ...f,
                 client_id: client.id,
                 client_ids: [...(f.client_ids || []), client.id]
             }));
-            toast.success('Клиент создан и добавлен к событию');
+            toast.success('Клиент создан и выбран');
         }
         setShowNewClient(false);
         setNewClientName('');
         setNewClientPhone('');
     }
+
+    const canEdit = !editId || !form.realtor_id || form.realtor_id === state.currentUser?.id || state.currentUser?.role === 'admin';
 
     function handleSubmit(e) {
         e.preventDefault();
@@ -271,18 +327,26 @@ export function FormPage() {
             return;
         }
 
+        const cleanClientIds = (form.client_ids || []).filter(Boolean);
+
         const showing = {
             ...form,
+            id: editId || form.id || nanoid(),
             realtor_id: form.realtor_id || state.currentUser?.id || null,
-            client_id: form.client_ids[0],
+            client_id: cleanClientIds[0] || null,
+            client_ids: cleanClientIds,
             property_id: form.property_id || null,
-            showing_date: dateIso
+            showing_date: dateIso,
+            updated_at: new Date().toISOString(),
         };
 
         if (editId) {
             dispatch({ type: 'UPDATE_SHOWING', showing: { ...showing, id: editId } });
+            toast.success('Изменения сохранены');
         } else {
+            showing.created_at = new Date().toISOString();
             dispatch({ type: 'ADD_SHOWING', showing });
+            toast.success('Событие добавлено в календарь');
         }
         navigate('/history');
     }
@@ -294,401 +358,423 @@ export function FormPage() {
         navigate('/history');
     }
 
+    const selectedProperty = form.event_type === 'viewing'
+        ? allSelectionItems.find(p => p.id === form.property_id)
+        : state.properties.find(p => p.id === form.property_id);
+
     return (
-        <div className="page fade-in" style={{ background: 'var(--surface)' }}>
-            <div className="topbar sticky" style={{ 
-                background: 'var(--topbar-bg)', 
-                backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px',
+        <div className="page fade-in" style={{ background: 'var(--bg)', minHeight: '100vh' }}>
+            {/* ─── Compact Topbar ────────────────────────────────────────── */}
+            <div className="topbar sticky" style={{
+                background: 'var(--topbar-bg)',
+                backdropFilter: 'blur(20px) saturate(180%)',
+                padding: '12px 16px',
                 borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
                 zIndex: 1000
             }}>
-                <button 
+                <button
                     onClick={() => navigate(-1)}
                     className="card-clickable"
-                    style={{ 
-                        width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--surface)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)'
+                    style={{
+                        width: 36, height: 36, borderRadius: 10, border: 'none', background: 'var(--surface)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        boxShadow: '0 1px 4px rgba(0,0,0,0.06)', color: 'var(--text)'
                     }}
                 >
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={18} />
                 </button>
+
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
-                        {editId ? 'Редактор' : 'Новое событие'}
+                    <span className="font-oswald" style={{ fontSize: 16, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                        {editId ? 'Редактор события' : 'Новое событие'}
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Календарь встреч</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 600, textTransform: 'uppercase', opacity: 0.6 }}>
+                        Календарь
+                    </span>
                 </div>
-                <div style={{ width: 44 }} />
+
+                {editId && canEdit ? (
+                    <button
+                        onClick={handleDelete}
+                        className="card-clickable"
+                        title="Удалить событие"
+                        style={{
+                            width: 36, height: 36, borderRadius: 10, border: 'none', background: 'rgba(239, 68, 68, 0.08)',
+                            color: 'var(--danger)', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                ) : (
+                    <div style={{ width: 36 }} />
+                )}
             </div>
 
-            <div className="page-content" style={{ padding: '20px 20px 120px' }}>
+            {/* ─── Page Content ─────────────────────────────────────────── */}
+            <div className="page-content" style={{ padding: '14px 16px 100px', maxWidth: 640, margin: '0 auto' }}>
+
+                {/* Calendar Sync Banner */}
                 {state.calendarStatus && (
                     <div style={{
-                        marginBottom: 20, padding: '12px 16px', borderRadius: 16, fontSize: 12, fontWeight: 700,
-                        display: 'flex', flexDirection: 'column', gap: 6,
+                        marginBottom: 12, padding: '8px 12px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', gap: 8,
                         background: state.calendarStatus === 'ok' ? '#ecfdf5' : state.calendarStatus === 'error' ? '#fef2f2' : '#eff6ff',
                         color: state.calendarStatus === 'ok' ? '#059669' : state.calendarStatus === 'error' ? '#dc2626' : '#2563eb',
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            {state.calendarStatus === 'loading' ? <Clock size={14} className="spin" /> : <Info size={14} />}
+                        {state.calendarStatus === 'loading' ? <Clock size={13} className="spin" /> : <Info size={13} />}
+                        <span>
                             {state.calendarStatus === 'loading' && 'Синхронизация с Google Calendar...'}
-                            {state.calendarStatus === 'ok' && '✓ Событие добавлено в Google Calendar'}
-                            {state.calendarStatus === 'error' && '✗ Ошибка синхронизации с Google Calendar'}
-                        </div>
-                        {state.calendarStatus === 'error' && state.calendarErrorMessage && (
-                            <div style={{ fontSize: 11, opacity: 0.8, fontWeight: 600, paddingLeft: 22 }}>
-                                {state.calendarErrorMessage}
-                            </div>
-                        )}
+                            {state.calendarStatus === 'ok' && '✓ Синхронизировано с Google Calendar'}
+                            {state.calendarStatus === 'error' && '✗ Ошибка Google Calendar'}
+                        </span>
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit}>
-                    <FormCard>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Тип события</label>
-                            <select className="form-select" value={form.event_type || 'showing'} onChange={e => setForm({ ...form, event_type: e.target.value, property_id: '' })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
-                                <option value="showing">Показ</option>
-                                <option value="meeting">Встреча</option>
-                                <option value="call">Звонок</option>
-                                <option value="viewing">Подбор</option>
-                                <option value="deposit">Задаток</option>
-                                <option value="deal">Сделка</option>
-                            </select>
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                    {/* ─── Compact Card 1: Event Type & Status & Timing ─── */}
+                    <div className="card" style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid var(--border-light)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        
+                        {/* Event Type Pills */}
+                        <div>
+                            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 6, display: 'block' }}>
+                                Тип события
+                            </label>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {EVENT_TYPES.map(t => {
+                                    const active = form.event_type === t.id;
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            type="button"
+                                            onClick={() => setForm(f => ({ ...f, event_type: t.id, property_id: '' }))}
+                                            style={{
+                                                padding: '5px 11px',
+                                                borderRadius: 8,
+                                                fontSize: 12,
+                                                fontWeight: active ? 700 : 500,
+                                                border: active ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                                                background: active ? 'var(--primary)' : 'var(--bg-light)',
+                                                color: active ? '#ffffff' : 'var(--text)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            {t.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
 
-                        <div className="form-group">
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>
-                                    {form.event_type === 'viewing' ? 'Объект из подбора *' : 'Объект недвижимости *'}
+                        {/* Date/Time + Status (2 columns) */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+                            <div>
+                                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Calendar size={11} color="var(--primary)" /> Дата и время *
                                 </label>
-                                {form.event_type === 'viewing' && (
-                                    <button type="button" className="card-clickable" onClick={() => setShowNewSelection(v => !v)}
-                                        style={{ 
-                                            display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800,
-                                            color: showNewSelection ? '#dc2626' : 'var(--primary)', border: 'none', background: 'transparent', padding: 0
-                                        }}>
-                                        {showNewSelection ? <><X size={14} /> ОТМЕНА</> : <><Plus size={14} /> НОВЫЙ ПОДБОР</>}
-                                    </button>
-                                )}
+                                <input
+                                    type="datetime-local"
+                                    className="form-input"
+                                    required
+                                    value={form.showing_date}
+                                    onChange={e => setForm({ ...form, showing_date: e.target.value })}
+                                    disabled={!canEdit}
+                                    style={{ height: 40, borderRadius: 10, fontSize: 12, padding: '0 8px', background: 'var(--bg)', width: '100%' }}
+                                />
                             </div>
 
-                            {showNewSelection ? (
-                                <div className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <AddressAutocomplete
-                                        value={newSelAddress}
-                                        onChange={val => setNewSelAddress(val)}
-                                        placeholder="Адрес объекта подбора *"
-                                    />
-                                    
-                                    <div style={{ position: 'relative' }}>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            style={{ paddingLeft: 30, fontSize: 14, height: 44, borderRadius: 12, background: 'var(--surface)' }}
-                                            value={newSelPrice !== undefined && newSelPrice !== null && newSelPrice !== '' ? newSelPrice.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                                            onChange={e => setNewSelPrice(Number(e.target.value.replace(/\D/g, '')))}
-                                            placeholder="Цена (₽)"
-                                        />
-                                        <span style={{ position: 'absolute', left: 12, top: 12, color: 'var(--text-muted)', fontSize: 14 }}>₽</span>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Тип недвижимости</label>
-                                            <select 
-                                                className="form-select" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelPropertyType} 
-                                                onChange={e => setNewSelPropertyType(e.target.value)}
-                                            >
-                                                {Object.entries(PROPERTY_TYPES).map(([val, label]) => (
-                                                    <option key={val} value={val}>{label}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Комнат</label>
-                                            <select 
-                                                className="form-select" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelRooms} 
-                                                onChange={e => setNewSelRooms(Number(e.target.value))}
-                                            >
-                                                <option value={0}>Студия</option>
-                                                <option value={1}>1-комн.</option>
-                                                <option value={2}>2-комн.</option>
-                                                <option value={3}>3-комн.</option>
-                                                <option value={4}>4-комн.</option>
-                                                <option value={5}>5+ комн.</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Площадь м²</label>
-                                            <input 
-                                                type="number" 
-                                                className="form-input" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelAreaTotal} 
-                                                onChange={e => setNewSelAreaTotal(e.target.value ? Number(e.target.value) : '')} 
-                                                placeholder="м²"
-                                            />
-                                        </div>
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Этаж</label>
-                                            <input 
-                                                type="number" 
-                                                className="form-input" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelFloor} 
-                                                onChange={e => setNewSelFloor(e.target.value ? Number(e.target.value) : '')} 
-                                                placeholder="Этаж"
-                                            />
-                                        </div>
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Всего эт.</label>
-                                            <input 
-                                                type="number" 
-                                                className="form-input" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelFloorsTotal} 
-                                                onChange={e => setNewSelFloorsTotal(e.target.value ? Number(e.target.value) : '')} 
-                                                placeholder="Всего"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300 }}>Город</label>
-                                            <input 
-                                                type="text" 
-                                                className="form-input" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelCity} 
-                                                onChange={e => setNewSelCity(e.target.value)} 
-                                                placeholder="г. Киров"
-                                            />
-                                        </div>
-                                        <div className="form-group" style={{ margin: 0 }}>
-                                            <label className="form-label" style={{ fontSize: 10, fontWeight: 300, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <span>Ссылка на фото</span>
-                                                <span 
-                                                    onClick={async () => {
-                                                        const result = await readClipboardAndCompress();
-                                                        if (result.image) {
-                                                            setNewSelImage(result.image);
-                                                            toast.success('Фото вставлено!');
-                                                        } else if (result.text) {
-                                                            setNewSelImage(result.text);
-                                                            toast.success('Ссылка вставлена!');
-                                                        }
-                                                    }}
-                                                    style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
-                                                >
-                                                    Вставить
-                                                </span>
-                                            </label>
-                                            <input 
-                                                type="text" 
-                                                className="form-input" 
-                                                style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                                value={newSelImage} 
-                                                onChange={async (e) => {
-                                                    const val = e.target.value;
-                                                    if (val.startsWith('data:image/')) {
-                                                        const compressed = await compressImage(val);
-                                                        setNewSelImage(compressed);
-                                                    } else {
-                                                        setNewSelImage(val);
-                                                    }
-                                                }} 
-                                                placeholder="https://..."
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="form-group" style={{ margin: 0 }}>
-                                        <label className="form-label" style={{ fontSize: 10, fontWeight: 300, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span>Ссылка на объявление</span>
-                                            <span 
-                                                onClick={async () => {
-                                                    try {
-                                                        const text = await navigator.clipboard.readText();
-                                                        if (text) {
-                                                            setNewSelLink(text);
-                                                            toast.success('Ссылка вставлена!');
-                                                        }
-                                                    } catch (e) {
-                                                        toast.error('Доступ к буферу отклонен');
-                                                    }
-                                                }}
-                                                style={{ color: 'var(--primary)', cursor: 'pointer', fontWeight: 500 }}
-                                            >
-                                                Вставить
-                                            </span>
-                                        </label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input" 
-                                            style={{ borderRadius: 10, height: 38, padding: '5px 10px', fontSize: 13, background: 'var(--surface)' }}
-                                            value={newSelLink} 
-                                            onChange={e => setNewSelLink(e.target.value)} 
-                                            placeholder="https://avito.ru/..."
-                                        />
-                                    </div>
-
-                                    {newSelMatchingClient && (
-                                        <div style={{ 
-                                            fontSize: 11, 
-                                            color: 'var(--success)', 
-                                            background: 'var(--success-light)', 
-                                            padding: '6px 12px', 
-                                            borderRadius: 8, 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 6,
-                                            fontWeight: 500
-                                        }}>
-                                            <span>✓ Найден в базе: <strong>{newSelMatchingClient.full_name}</strong> ({
-                                                newSelMatchingClient.client_types?.map(t => {
-                                                    const labels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
-                                                    return labels[t] || t;
-                                                }).join(', ')
-                                            })</span>
-                                        </div>
-                                    )}
-
-                                    <input
-                                        className="form-input"
-                                        style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
-                                        placeholder="ФИО собственника/агента"
-                                        value={newSelContactName}
-                                        onChange={e => setNewSelContactName(e.target.value)}
-                                    />
-
-                                    <input
-                                        type="tel"
-                                        inputMode="tel"
-                                        className="form-input"
-                                        style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
-                                        placeholder="+7 (___) ___-__-__"
-                                        value={newSelContactPhone}
-                                        onChange={e => setNewSelContactPhone(formatPhone(e.target.value, true))}
-                                    />
-
-                                    <div className="form-group" style={{ margin: 0 }}>
-                                        <label className="form-label" style={{ fontWeight: 300, fontSize: 11, marginBottom: 4, display: 'block' }}>Тип контакта для сохранения</label>
-                                        <div className="chip-group" style={{ gap: 6 }}>
-                                            {[
-                                                { id: 'seller', label: 'Продавец' },
-                                                { id: 'buyer', label: 'Покупатель' },
-                                                { id: 'developer', label: 'Застройщик' },
-                                                { id: 'agent', label: 'Агент' }
-                                            ].map(t => (
-                                                <button key={t.id} type="button"
-                                                    className={`chip ${newSelContactType === t.id ? 'active' : ''}`}
-                                                    onClick={() => setNewSelContactType(t.id)}
-                                                    style={{ padding: '4px 10px', borderRadius: 8, fontSize: 11 }}
-                                                >
-                                                    {t.label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <button type="button" className="card-clickable" style={{ height: 44, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12 }} onClick={handleCreateSelection}>
-                                        СОЗДАТЬ И ВЫБРАТЬ
-                                    </button>
-                                </div>
-                            ) : (
-                                <select className="form-select" value={form.property_id || ''} onChange={e => setForm({ ...form, property_id: e.target.value })} disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
-                                    <option value="">— Выбрать объект —</option>
-                                    {form.event_type === 'viewing' ? (
-                                        allSelectionItems.map(p => (
-                                            <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
-                                        ))
-                                    ) : (
-                                        allProperties.map(p => (
-                                            <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
-                                        ))
-                                    )}
+                            <div>
+                                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+                                    Статус
+                                </label>
+                                <select
+                                    className="form-select"
+                                    value={form.status}
+                                    onChange={e => setForm({ ...form, status: e.target.value })}
+                                    disabled={!canEdit}
+                                    style={{ height: 40, borderRadius: 10, fontSize: 12, padding: '0 8px', background: 'var(--bg)', width: '100%' }}
+                                >
+                                    <option value="planned">{getEventStatusLabel(form.event_type, 'planned')}</option>
+                                    <option value="completed">{getEventStatusLabel(form.event_type, 'completed')}</option>
+                                    <option value="failed">{getEventStatusLabel(form.event_type, 'failed')}</option>
                                 </select>
-                            )}
+                            </div>
                         </div>
-                    </FormCard>
+                    </div>
 
-                    <FormCard title="Участники" icon={<User size={20} />} description="Укажите клиентов для встречи">
-                        <div className="form-group">
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0 }}>Клиенты *</label>
-                                <button type="button" className="card-clickable" onClick={() => setShowNewClient(v => !v)}
-                                    style={{ 
-                                        display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 800,
-                                        color: showNewClient ? '#dc2626' : 'var(--primary)', border: 'none', background: 'transparent', padding: 0
-                                    }}>
-                                    {showNewClient ? <><X size={14} /> ОТМЕНА</> : <><UserPlus size={14} /> НОВЫЙ</>}
+                    {/* ─── Compact Card 2: Clients & Property ───────────── */}
+                    <div className="card" style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid var(--border-light)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                        {/* Client Selector */}
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <User size={11} color="var(--primary)" /> Клиент / Участники *
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewClient(v => !v)}
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 3,
+                                        fontSize: 10, fontWeight: 700, color: showNewClient ? 'var(--danger)' : 'var(--primary)',
+                                        background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
+                                    }}
+                                >
+                                    {showNewClient ? <><X size={12} /> Отмена</> : <><UserPlus size={12} /> + Новый</>}
                                 </button>
                             </div>
 
                             {showNewClient ? (
-                                <div className="fade-in" style={{ background: 'var(--surface)', borderRadius: 20, padding: 16, border: '1.5px solid var(--primary-light)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                                    <input className="form-input" style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }} placeholder="ФИО клиента *" value={newClientName} onChange={e => setNewClientName(e.target.value)} />
+                                <div style={{ background: 'var(--bg-light)', borderRadius: 12, padding: 10, border: '1px dashed var(--primary)', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
                                     <input
                                         className="form-input"
-                                        style={{ borderRadius: 12, height: 44, background: 'var(--surface)' }}
-                                        placeholder="+7 (___) ___-__-__"
-                                        value={newClientPhone}
+                                        style={{ height: 36, fontSize: 12, borderRadius: 8 }}
+                                        placeholder="ФИО клиента *"
+                                        value={newClientName}
+                                        onChange={e => setNewClientName(e.target.value)}
+                                    />
+                                    <input
                                         type="tel"
                                         inputMode="tel"
+                                        className="form-input"
+                                        style={{ height: 36, fontSize: 12, borderRadius: 8 }}
+                                        placeholder="+7 (___) ___-__-__"
+                                        value={newClientPhone}
                                         onChange={e => setNewClientPhone(formatPhone(e.target.value, true))}
                                     />
-                                    <button type="button" className="card-clickable" style={{ height: 44, borderRadius: 12, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 12 }} onClick={handleCreateClient}>
-                                        СОЗДАТЬ И ДОБАВИТЬ
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateClient}
+                                        style={{ height: 34, borderRadius: 8, background: 'var(--primary)', color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                    >
+                                        Создать и выбрать
                                     </button>
                                 </div>
                             ) : (
-                                <MultiClientSelector 
+                                <MultiClientSelector
                                     selectedIds={form.client_ids || []}
-                                    onChange={ids => setForm({ ...form, client_ids: ids })}
+                                    onChange={ids => setForm(f => ({ ...f, client_ids: ids, client_id: ids[0] || '' }))}
                                     clients={myClients.length > 0 ? myClients : state.clients}
-                                    placeholder="Выберите клиентов..."
+                                    placeholder="Выберите клиента..."
                                 />
                             )}
                         </div>
-                    </FormCard>
 
-                    <FormCard>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Дата и время *</label>
-                            <input className="form-input" type="datetime-local" value={form.showing_date} onChange={e => setForm({ ...form, showing_date: e.target.value })} required disabled={editId && form.realtor_id !== state.currentUser?.id} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }} />
+                        {/* Property Section with Owner Property Auto-Load */}
+                        <div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    <Home size={11} color="var(--primary)" />
+                                    {form.event_type === 'viewing' ? 'Объект из подбора' : 'Объект недвижимости'}
+                                </label>
+                                {form.event_type === 'viewing' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNewSelection(v => !v)}
+                                        style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontSize: 10, fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                                    >
+                                        {showNewSelection ? 'Отмена' : '+ Новый подбор'}
+                                    </button>
+                                )}
+                            </div>
+
+                            {form.event_type === 'viewing' ? (
+                                /* Viewing Selection Item Mode */
+                                showNewSelection ? (
+                                    <div style={{ background: 'var(--bg-light)', borderRadius: 12, padding: 12, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        <AddressAutocomplete
+                                            value={newSelAddress}
+                                            onChange={val => setNewSelAddress(val)}
+                                            placeholder="Адрес объекта подбора *"
+                                        />
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            style={{ height: 36, fontSize: 12, borderRadius: 8 }}
+                                            value={newSelPrice ? String(newSelPrice).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
+                                            onChange={e => setNewSelPrice(Number(e.target.value.replace(/\D/g, '')))}
+                                            placeholder="Цена (₽)"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleCreateSelection}
+                                            style={{ height: 34, borderRadius: 8, background: 'var(--primary)', color: 'white', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                                        >
+                                            Создать и выбрать
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <select
+                                        className="form-select"
+                                        value={form.property_id || ''}
+                                        onChange={e => setForm({ ...form, property_id: e.target.value })}
+                                        disabled={!canEdit}
+                                        style={{ height: 40, borderRadius: 10, fontSize: 12, background: 'var(--bg)', width: '100%' }}
+                                    >
+                                        <option value="">— Выберите объект из подбора —</option>
+                                        {allSelectionItems.map(p => (
+                                            <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                        ))}
+                                    </select>
+                                )
+                            ) : (
+                                /* Standard Property Selector with Owner Resolution */
+                                <div>
+                                    {/* A. If owner has exactly 1 property */}
+                                    {ownerProperties.length === 1 && !showAllProperties && (
+                                        <div style={{
+                                            background: 'var(--primary-light)',
+                                            padding: '8px 12px',
+                                            borderRadius: 12,
+                                            border: '1px solid rgba(0, 82, 255, 0.2)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: 8
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                                <div style={{
+                                                    width: 28, height: 28, borderRadius: 8, background: 'var(--primary)',
+                                                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                                }}>
+                                                    <Home size={14} />
+                                                </div>
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {ownerProperties[0].address}
+                                                    </div>
+                                                    <div style={{ fontSize: 10, color: 'var(--primary)', fontWeight: 600 }}>
+                                                        ✓ Объект собственника · {(ownerProperties[0].price || 0).toLocaleString()} ₽
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAllProperties(true)}
+                                                style={{
+                                                    border: 'none', background: 'transparent', color: 'var(--primary)',
+                                                    fontSize: 10, fontWeight: 700, cursor: 'pointer', padding: '4px 6px', flexShrink: 0
+                                                }}
+                                            >
+                                                Сменить
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {/* B. If owner has MULTIPLE properties (предоставлять выбор если несколько) */}
+                                    {ownerProperties.length > 1 && !showAllProperties && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <Sparkles size={11} /> Объекты собственника ({ownerProperties.length}):
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: ownerProperties.length === 2 ? '1fr 1fr' : '1fr', gap: 6 }}>
+                                                {ownerProperties.map(p => {
+                                                    const isSelected = form.property_id === p.id;
+                                                    return (
+                                                        <button
+                                                            key={p.id}
+                                                            type="button"
+                                                            onClick={() => setForm(f => ({ ...f, property_id: p.id }))}
+                                                            style={{
+                                                                padding: '8px 10px',
+                                                                borderRadius: 10,
+                                                                border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                                                                background: isSelected ? 'var(--primary-light)' : 'var(--bg)',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between',
+                                                                cursor: 'pointer',
+                                                                textAlign: 'left',
+                                                                transition: 'all 0.15s ease'
+                                                            }}
+                                                        >
+                                                            <div style={{ minWidth: 0, paddingRight: 6 }}>
+                                                                <div style={{ fontSize: 12, fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--primary)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                    {p.address}
+                                                                </div>
+                                                                <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>
+                                                                    {(p.price || 0).toLocaleString()} ₽ {p.rooms ? `· ${p.rooms}к` : ''}
+                                                                </div>
+                                                            </div>
+                                                            {isSelected && <Check size={14} color="var(--primary)" />}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowAllProperties(true)}
+                                                    style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', fontSize: 10, cursor: 'pointer', padding: 0 }}
+                                                >
+                                                    Выбрать другой объект из базы...
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* C. Fallback: Full property dropdown (when 0 owner props, or user clicked "Сменить/Выбрать другой") */}
+                                    {(ownerProperties.length === 0 || showAllProperties) && (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                            <select
+                                                className="form-select"
+                                                value={form.property_id || ''}
+                                                onChange={e => setForm({ ...form, property_id: e.target.value })}
+                                                disabled={!canEdit}
+                                                style={{ height: 40, borderRadius: 10, fontSize: 12, background: 'var(--bg)', width: '100%' }}
+                                            >
+                                                <option value="">— Без объекта недвижимости —</option>
+                                                {ownerProperties.length > 0 && (
+                                                    <optgroup label="Объекты собственника">
+                                                        {ownerProperties.map(p => (
+                                                            <option key={p.id} value={p.id}>⭐ {p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                                <optgroup label="Все объекты">
+                                                    {allProperties.map(p => (
+                                                        <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                                    ))}
+                                                </optgroup>
+                                            </select>
+                                            {ownerProperties.length > 0 && showAllProperties && (
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowAllProperties(false)}
+                                                        style={{ border: 'none', background: 'transparent', color: 'var(--primary)', fontSize: 10, fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                                                    >
+                                                        Вернуться к объектам собственника ({ownerProperties.length})
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
+                    </div>
 
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Текущий статус</label>
-                            <select className="form-select" value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
-                                <option value="planned">{getEventStatusLabel(form.event_type, 'planned')}</option>
-                                <option value="completed">{getEventStatusLabel(form.event_type, 'completed')}</option>
-                                <option value="failed">{getEventStatusLabel(form.event_type, 'failed')}</option>
-                            </select>
-                        </div>
-                    </FormCard>
-
-                    <FormCard>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Отзыв клиента</label>
-                            <select className="form-select" value={form.client_feedback || ''} onChange={e => setForm({ ...form, client_feedback: e.target.value })} style={{ borderRadius: 14, height: 50, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)' }}>
-                                <option value="">— Выбрать —</option>
+                    {/* ─── Compact Card 3: Feedback & Notes ─────────────── */}
+                    <div className="card" style={{ padding: '14px 16px', borderRadius: 18, border: '1px solid var(--border-light)', background: 'var(--surface)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        <div>
+                            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>
+                                Отзыв / Результат
+                            </label>
+                            <select
+                                className="form-select"
+                                value={form.client_feedback || ''}
+                                onChange={e => setForm({ ...form, client_feedback: e.target.value })}
+                                disabled={!canEdit}
+                                style={{ height: 38, borderRadius: 10, fontSize: 12, padding: '0 8px', background: 'var(--bg)', width: '100%' }}
+                            >
+                                <option value="">— Не указан —</option>
                                 <option value="interested">Заинтересован</option>
+                                <option value="thinking">Думает</option>
                                 <option value="other_options">Ищет другие варианты</option>
                                 <option value="price_high">Дорого</option>
                                 <option value="layout_bad">Не нравится планировка</option>
@@ -698,53 +784,62 @@ export function FormPage() {
                             </select>
                         </div>
 
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 8, display: 'block' }}>Комментарий</label>
-                            <textarea className="form-textarea" rows={4} value={form.feedback_comment || ''} onChange={e => setForm({ ...form, feedback_comment: e.target.value })} placeholder="Заметки по встрече, договоренности..." style={{ borderRadius: 16, border: '1.5px solid rgba(0,0,0,0.05)', background: 'var(--surface)', padding: 16 }} />
+                        <div>
+                            <label style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <MessageSquare size={11} color="var(--primary)" /> Комментарий / Заметки
+                            </label>
+                            <textarea
+                                className="form-textarea"
+                                rows={2}
+                                value={form.feedback_comment || ''}
+                                onChange={e => setForm({ ...form, feedback_comment: e.target.value })}
+                                placeholder="Заметки по встрече, договоренности..."
+                                disabled={!canEdit}
+                                style={{ borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', padding: '8px 10px', fontSize: 12, resize: 'none', width: '100%' }}
+                            />
                         </div>
-                    </FormCard>
+                    </div>
 
-                    {(!editId || form.realtor_id === state.currentUser?.id) && (
-                        <div className="form-submit-container" style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <button 
-                                type="submit" 
-                                className="form-submit-btn card-clickable" 
-                                style={{ 
-                                    height: 56, borderRadius: 16, border: 'none', 
-                                    background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14,
-                                    fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-                                    boxShadow: '0 12px 24px rgba(0, 82, 255, 0.2)'
+                    {/* ─── Action Buttons ───────────────────────────────── */}
+                    {canEdit ? (
+                        <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <button
+                                type="submit"
+                                className="card-clickable"
+                                style={{
+                                    height: 46, borderRadius: 12, border: 'none',
+                                    background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 13,
+                                    fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                                    boxShadow: '0 4px 14px rgba(0, 82, 255, 0.25)', cursor: 'pointer'
                                 }}
                             >
-                                <Save size={20} />
-                                {editId ? 'СОХРАНИТЬ ИЗМЕНЕНИЯ' : 'СОХРАНИТЬ СОБЫТИЕ'}
+                                <Save size={16} />
+                                {editId ? 'Сохранить изменения' : 'Сохранить событие'}
                             </button>
 
                             {editId && (
                                 <button
                                     type="button"
-                                    className="form-submit-btn card-clickable"
+                                    className="card-clickable"
                                     onClick={handleDelete}
                                     style={{
-                                        height: 48, borderRadius: 16, border: '1.5px solid #fca5a5',
-                                        background: 'transparent', color: '#dc2626', fontWeight: 700, fontSize: 13,
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+                                        height: 38, borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        background: 'transparent', color: 'var(--danger)', fontWeight: 600, fontSize: 12,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer'
                                     }}
                                 >
-                                    <Trash2 size={16} />
+                                    <Trash2 size={14} />
                                     Удалить событие
                                 </button>
                             )}
                         </div>
-                    )}
-                    
-                    {editId && form.realtor_id !== state.currentUser?.id && (
-                        <div style={{ 
-                            textAlign: 'center', padding: 20, borderRadius: 20, background: 'rgba(0,0,0,0.03)',
-                            color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, border: '1px dashed rgba(0,0,0,0.1)'
+                    ) : (
+                        <div style={{
+                            textAlign: 'center', padding: 12, borderRadius: 12, background: 'rgba(0,0,0,0.03)',
+                            color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, border: '1px dashed var(--border)'
                         }}>
-                            Редактирование ограничено: только создатель может вносить изменения.
+                            Редактирование ограничено: только создатель или администратор может вносить изменения.
                         </div>
                     )}
                 </form>

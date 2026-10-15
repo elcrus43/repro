@@ -8,10 +8,12 @@
  *  - Refresh token: stored in profiles.google_refresh_token (never sent to client)
  */
 
+import { buildApiUrl } from './apiConfig';
+
 const CLIENT_ID   = import.meta.env.VITE_GOOGLE_CLIENT_ID || '991093392145-f09fodb4e2gf8smrh0tgpco9t4rqserf.apps.googleusercontent.com';
 const SCOPES      = 'https://www.googleapis.com/auth/calendar.events';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const EDGE_FN_URL  = '/api/google-calendar-token';
+const EDGE_FN_URL  = buildApiUrl('/api/google-calendar-token');
 
 // Redirect URI must match what's registered in Google Cloud Console
 const REDIRECT_URI = `${SUPABASE_URL}/functions/v1/google-calendar-token/callback`;

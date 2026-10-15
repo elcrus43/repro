@@ -35,7 +35,8 @@ export function useMatchNotifications() {
                 return false;
             }
             const prop = state.properties.find(p => p.id === m.property_id);
-            return prop && !hasPassedDealStage(prop, state.deals);
+            const req = state.requests.find(r => r.id === m.request_id);
+            return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active';
         });
 
         if (newMatches.length > 0) {

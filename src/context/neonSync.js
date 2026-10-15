@@ -54,17 +54,24 @@ export function sanitizeObj(obj) {
  */
 export function mapShowingFromDb(s) {
   if (!s) return s;
-  if (s.event_type === 'viewing' && s.google_event_id?.startsWith('selection_prop_id:')) {
-    const parts = s.google_event_id.split('::cal_id:');
+  let clientIds = s.client_ids;
+  if (typeof clientIds === 'string') {
+    clientIds = clientIds.replace(/[{}]/g, '').split(',').filter(Boolean);
+  } else if (!Array.isArray(clientIds)) {
+    clientIds = s.client_id ? [s.client_id] : [];
+  }
+  let showing = { ...s, client_ids: clientIds };
+  if (showing.event_type === 'viewing' && showing.google_event_id?.startsWith('selection_prop_id:')) {
+    const parts = showing.google_event_id.split('::cal_id:');
     const propId = parts[0].replace('selection_prop_id:', '');
     const calId = parts[1] || null;
     return {
-      ...s,
+      ...showing,
       property_id: propId,
       google_event_id: calId
     };
   }
-  return s;
+  return showing;
 }
 
 /**
@@ -84,8 +91,16 @@ export function mapShowingToDb(s) {
   if (dbShowing.property_id && !UUID_RE.test(dbShowing.property_id)) {
     dbShowing.property_id = null;
   }
-  if (Array.isArray(dbShowing.client_ids)) {
-    dbShowing.client_ids = dbShowing.client_ids.filter(cid => UUID_RE.test(cid));
+  let cIds = dbShowing.client_ids;
+  if (typeof cIds === 'string') {
+    cIds = cIds.replace(/[{}]/g, '').split(',').filter(Boolean);
+  }
+  if (Array.isArray(cIds)) {
+    dbShowing.client_ids = cIds.filter(cid => UUID_RE.test(cid));
+  } else if (dbShowing.client_id && UUID_RE.test(dbShowing.client_id)) {
+    dbShowing.client_ids = [dbShowing.client_id];
+  } else {
+    dbShowing.client_ids = [];
   }
 
   if (dbShowing.event_type === 'viewing' && dbShowing.property_id) {
@@ -210,10 +225,24 @@ export async function loadUserData(userId, role) {
     if (typeof passport === 'string') {
       try { passport = JSON.parse(passport); } catch { passport = {}; }
     }
+    let contracts = c.agency_contracts;
+    if (typeof contracts === 'string') {
+      try { contracts = JSON.parse(contracts); } catch { contracts = []; }
+    }
+    if ((!contracts || contracts.length === 0) && c.agency_contract_date) {
+      contracts = [{
+        id: 'legacy-' + c.id,
+        type: 'АД Продажа',
+        contract_date: c.agency_contract_date,
+        property_id: c.agency_contract_property_id || null,
+        status: 'active'
+      }];
+    }
     return {
       ...c,
       additional_contacts: Array.isArray(addContacts) ? addContacts : [],
-      passport_details: passport || {}
+      passport_details: passport || {},
+      agency_contracts: Array.isArray(contracts) ? contracts : []
     };
   });
   const properties = mergeUnique(fetchedData.properties, getLocal('properties'), DEMO_PROPERTIES);
@@ -289,6 +318,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Клиенты ──────────────────────────────────────────── */
       case 'ADD_CLIENT': {
+        const contracts = Array.isArray(action.client.agency_contracts) 
+          ? action.client.agency_contracts 
+          : (typeof action.client.agency_contracts === 'string' ? JSON.parse(action.client.agency_contracts || '[]') : []);
+        const activeContracts = contracts.filter(ct => ct && ct.status !== 'terminated');
+        const primaryContract = activeContracts[0] || contracts[0] || null;
+        const primaryDate = primaryContract?.contract_date || action.client.agency_contract_date || null;
+        const primaryPropId = primaryContract?.property_id || action.client.agency_contract_property_id || null;
+        const hasContract = Boolean(contracts.length > 0 || action.client.has_agency_contract || action.client.agency_contract_date);
+
         const clientData = {
           realtor_id: action.client.realtor_id || currentUser?.id,
           full_name: action.client.full_name || '',
@@ -302,6 +340,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           status: action.client.status || 'active',
           notes: action.client.notes || null,
           passport_details: action.client.passport_details ? (typeof action.client.passport_details === 'string' ? action.client.passport_details : JSON.stringify(action.client.passport_details)) : null,
+          agency_contracts: JSON.stringify(contracts),
+          agency_contract_date: (primaryDate && String(primaryDate).trim()) ? primaryDate : null,
+          agency_contract_property_id: (primaryPropId && String(primaryPropId).trim()) ? primaryPropId : null,
+          has_agency_contract: hasContract,
         };
         if (action.client.id) clientData.id = action.client.id;
         if (action.client.created_at) clientData.created_at = action.client.created_at;
@@ -313,6 +355,15 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       case 'UPDATE_CLIENT': {
         const { id: cId } = action.client;
+        const contracts = Array.isArray(action.client.agency_contracts) 
+          ? action.client.agency_contracts 
+          : (typeof action.client.agency_contracts === 'string' ? JSON.parse(action.client.agency_contracts || '[]') : []);
+        const activeContracts = contracts.filter(ct => ct && ct.status !== 'terminated');
+        const primaryContract = activeContracts[0] || contracts[0] || null;
+        const primaryDate = primaryContract?.contract_date || action.client.agency_contract_date || null;
+        const primaryPropId = primaryContract?.property_id || action.client.agency_contract_property_id || null;
+        const hasContract = Boolean(contracts.length > 0 || action.client.has_agency_contract || action.client.agency_contract_date);
+
         const normalizedData = {
           realtor_id: action.client.realtor_id || currentUser?.id,
           full_name: action.client.full_name || '',
@@ -326,6 +377,10 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           status: action.client.status || 'active',
           notes: action.client.notes || null,
           passport_details: action.client.passport_details ? (typeof action.client.passport_details === 'string' ? action.client.passport_details : JSON.stringify(action.client.passport_details)) : null,
+          agency_contracts: JSON.stringify(contracts),
+          agency_contract_date: (primaryDate && String(primaryDate).trim()) ? primaryDate : null,
+          agency_contract_property_id: (primaryPropId && String(primaryPropId).trim()) ? primaryPropId : null,
+          has_agency_contract: hasContract,
         };
         if (action.client.created_at) normalizedData.created_at = action.client.created_at;
         if (action.client.updated_at) normalizedData.updated_at = action.client.updated_at;
@@ -522,7 +577,14 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           if (action.showing[col] !== undefined) rawShowing[col] = action.showing[col];
         });
         const showingData = mapShowingToDb(sanitizeObj(rawShowing));
-        const showingResult = await neonDb.upsert('showings', showingData);
+        showingData.updated_at = new Date().toISOString();
+        const sId = action.showing.id;
+        const { id, ...dataToUpdate } = showingData;
+        
+        let showingResult = await neonDb.update('showings', sId, dataToUpdate);
+        if (showingResult?.error || !showingResult?.data || showingResult.data.length === 0) {
+          showingResult = await neonDb.upsert('showings', showingData);
+        }
         if (showingResult?.error) {
           handleError(`Ошибка обновления события: ${showingResult.error?.message || showingResult.error}`);
           if (typeof onRollback === 'function') onRollback(action);
@@ -607,6 +669,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         dealData.google_event_id = dealData.google_event_id || null;
         dealData.seller_agent_id = action.deal.seller_agent_id || null;
         dealData.buyer_agent_id =  action.deal.buyer_agent_id || null;
+        dealData.has_agency_contract = action.deal.has_agency_contract || false;
+        dealData.agency_contract_date = action.deal.agency_contract_date || null;
 
         // expenses must be JSON string for Neon jsonb column (raw array breaks)
         if (Array.isArray(dealData.expenses)) dealData.expenses = JSON.stringify(dealData.expenses);
@@ -641,7 +705,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
           'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
-          'handover_date', 'handover_amount'
+          'handover_date', 'handover_amount', 'has_agency_contract', 'agency_contract_date'
         ];
         const updateData = {};
         VALID_DEAL_COLUMNS.forEach(col => {
@@ -664,6 +728,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         updateData.google_event_id = updateData.google_event_id || null;
         updateData.seller_agent_id = action.deal.seller_agent_id || null;
         updateData.buyer_agent_id =  action.deal.buyer_agent_id || null;
+        updateData.has_agency_contract = action.deal.has_agency_contract || false;
+        updateData.agency_contract_date = action.deal.agency_contract_date || null;
 
         // expenses must be JSON string for Neon jsonb column (raw array breaks)
         if (Array.isArray(updateData.expenses)) updateData.expenses = JSON.stringify(updateData.expenses);

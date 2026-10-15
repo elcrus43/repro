@@ -40,7 +40,8 @@ export function DashboardPage() {
             });
         return base.filter(m => {
             const prop = state.properties.find(p => p.id === m.property_id);
-            return prop && !hasPassedDealStage(prop, state.deals);
+            const req = state.requests.find(r => r.id === m.request_id);
+            return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active';
         });
     }, [state.matches, state.requests, state.properties, state.deals, state.currentUser?.role, state.currentUser?.id]);
 
@@ -718,7 +719,7 @@ export function DashboardPage() {
                                     <div
                                         key={item.id}
                                         className="card-clickable"
-                                        onClick={() => navigate('/tasks')}
+                                        onClick={() => navigate(item.isShowing ? `/history/new?id=${item.id}` : '/tasks')}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
