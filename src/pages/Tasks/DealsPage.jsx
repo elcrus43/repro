@@ -1277,6 +1277,87 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
 
     const hasContract = resolvedContracts.length > 0;
 
+    // Deal Events for "Даты и события" — sorted descending by date (latest on top)
+    const dealEvents = useMemo(() => {
+        const events = [];
+
+        // 1. Contracts
+        resolvedContracts.forEach((rc, idx) => {
+            events.push({
+                id: `contract-${rc.clientId || idx}`,
+                type: 'contract',
+                date: rc.date || null,
+                title: `${rc.type}${rc.clientName ? ` (${rc.clientName})` : ''}`,
+                icon: <FileText size={14} color="#059669" />,
+                badgeText: rc.date ? `от ${new Date(rc.date).toLocaleDateString('ru-RU')}` : 'Заключен',
+                badgeColor: '#059669',
+                badgeBg: 'rgba(16, 185, 129, 0.1)',
+                badgeBorder: '1px solid rgba(16, 185, 129, 0.25)',
+                amount: null,
+            });
+        });
+
+        // 2. Deposit
+        if (deal.deposit_amount > 0 || deal.deposit_date) {
+            events.push({
+                id: 'deposit',
+                type: 'deposit',
+                date: deal.deposit_date || null,
+                title: 'Задаток',
+                icon: <DollarSign size={14} color="#d97706" />,
+                badgeText: deal.deposit_date 
+                    ? `${new Date(deal.deposit_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                    : null,
+                badgeColor: 'var(--text-secondary)',
+                badgeBg: 'var(--surface, #ffffff)',
+                badgeBorder: '1px solid rgba(245,158,11,0.25)',
+                amount: deal.deposit_amount > 0 ? `${Number(deal.deposit_amount).toLocaleString()} ₽` : null,
+            });
+        }
+
+        // 3. Registration
+        if (deal.deal_date) {
+            events.push({
+                id: 'deal_date',
+                type: 'registration',
+                date: deal.deal_date,
+                title: 'Регистрация',
+                icon: <CheckCircle size={14} color="#10b981" />,
+                badgeText: `${new Date(deal.deal_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+                badgeColor: 'var(--text-secondary)',
+                badgeBg: 'var(--surface, #ffffff)',
+                badgeBorder: '1px solid rgba(16, 185, 129, 0.25)',
+                amount: null,
+            });
+        }
+
+        // 4. Handover
+        if (deal.handover_date || deal.handover_amount > 0) {
+            events.push({
+                id: 'handover',
+                type: 'handover',
+                date: deal.handover_date || null,
+                title: 'Передача объекта',
+                icon: <Home size={14} color="var(--primary)" />,
+                badgeText: deal.handover_date 
+                    ? `${new Date(deal.handover_date).toLocaleDateString('ru-RU')} в ${new Date(deal.handover_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                    : null,
+                badgeColor: 'var(--text-secondary)',
+                badgeBg: 'var(--surface, #ffffff)',
+                badgeBorder: '1px solid rgba(0, 82, 255, 0.2)',
+                amount: deal.handover_amount > 0 ? `${Number(deal.handover_amount).toLocaleString()} ₽` : null,
+            });
+        }
+
+        const STAGE_ORDER = { handover: 4, registration: 3, deposit: 2, contract: 1 };
+        return events.sort((a, b) => {
+            const timeA = a.date ? new Date(a.date).getTime() : 0;
+            const timeB = b.date ? new Date(b.date).getTime() : 0;
+            if (timeB !== timeA) return timeB - timeA;
+            return (STAGE_ORDER[b.type] || 0) - (STAGE_ORDER[a.type] || 0);
+        });
+    }, [deal, resolvedContracts]);
+
     const hasSellerUnread = useMemo(() => {
         const info = lastMessages[deal.id]?.seller;
         if (!info) return false;
@@ -1898,7 +1979,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             )}
 
             {/* ── Dates & Events card ── */}
-            {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || deal.handover_date || deal.mortgage || hasContract) && (
+            {dealEvents.length > 0 && (
                 <div style={{ 
                     padding: '14px 16px', 
                     background: 'rgba(245, 158, 11, 0.05)', 
@@ -1922,142 +2003,48 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {resolvedContracts.length > 0 && (
-                            resolvedContracts.map((rc, idx) => {
-                                const cDate = rc.date ? new Date(rc.date).toLocaleDateString('ru-RU') : null;
-                                return (
-                                    <div key={rc.clientId ? `${rc.clientId}-${idx}` : idx} style={{ 
-                                        display: 'flex', 
-                                        justifyContent: 'space-between', 
-                                        alignItems: 'center', 
-                                        gap: 10,
-                                        flexWrap: 'wrap',
-                                        borderTop: idx > 0 ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                        paddingTop: idx > 0 ? 8 : 0
-                                    }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <FileText size={14} color="#059669" />
-                                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
-                                                {rc.type} {rc.clientName ? `(${rc.clientName})` : ''}
-                                            </span>
-                                        </div>
-                                        <span style={{ 
-                                            fontSize: 11, 
-                                            fontWeight: 600,
-                                            color: '#059669', 
-                                            background: 'rgba(16, 185, 129, 0.1)', 
-                                            padding: '3px 9px', 
-                                            borderRadius: 8, 
-                                            border: '1px solid rgba(16, 185, 129, 0.25)',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                                        }}>
-                                            {cDate ? `от ${cDate}` : 'Заключен'}
-                                        </span>
-                                    </div>
-                                );
-                            })
-                        )}
-
-                        {deal.deposit_amount > 0 && (
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center', 
-                                gap: 10,
-                                flexWrap: 'wrap',
-                                borderTop: hasContract ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                paddingTop: hasContract ? 8 : 0
-                            }}>
+                        {dealEvents.map((evt, idx) => (
+                            <div 
+                                key={evt.id} 
+                                style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center', 
+                                    gap: 10,
+                                    flexWrap: 'wrap',
+                                    borderTop: idx > 0 ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                    paddingTop: idx > 0 ? 8 : 0
+                                }}
+                            >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <DollarSign size={14} color="#d97706" />
-                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Задаток</span>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
-                                        {Number(deal.deposit_amount).toLocaleString()} ₽
+                                    {evt.icon}
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                        {evt.title}
                                     </span>
-                                    {deal.deposit_date && (
-                                        <span style={{ 
-                                            fontSize: 11, 
-                                            fontWeight: 500,
-                                            color: 'var(--text-secondary)', 
-                                            background: 'var(--surface, #ffffff)', 
-                                            padding: '3px 9px', 
-                                            borderRadius: 8, 
-                                            border: '1px solid rgba(245,158,11,0.25)',
-                                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                                        }}>
-                                            {new Date(deal.deposit_date).toLocaleDateString('ru-RU')} в {new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {deal.deal_date && (
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center', 
-                                gap: 10,
-                                flexWrap: 'wrap',
-                                borderTop: (hasContract || deal.deposit_amount > 0) ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                paddingTop: (hasContract || deal.deposit_amount > 0) ? 8 : 0
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <CheckCircle size={14} color="#10b981" />
-                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Регистрация</span>
-                                </div>
-                                <span style={{ 
-                                    fontSize: 11, 
-                                    fontWeight: 500,
-                                    color: 'var(--text-secondary)', 
-                                    background: 'var(--surface, #ffffff)', 
-                                    padding: '3px 9px', 
-                                    borderRadius: 8, 
-                                    border: '1px solid rgba(16, 185, 129, 0.25)',
-                                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                                }}>
-                                    {new Date(deal.deal_date).toLocaleDateString('ru-RU')} в {new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                            </div>
-                        )}
-
-                        {deal.handover_date && (
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                alignItems: 'center', 
-                                gap: 10,
-                                flexWrap: 'wrap',
-                                borderTop: (hasContract || deal.deposit_amount > 0 || deal.deal_date) ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                paddingTop: (hasContract || deal.deposit_amount > 0 || deal.deal_date) ? 8 : 0
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Home size={14} color="var(--primary)" />
-                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Передача объекта</span>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    {deal.handover_amount > 0 && (
+                                    {evt.amount && (
                                         <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }}>
-                                            {Number(deal.handover_amount).toLocaleString()} ₽
+                                            {evt.amount}
                                         </span>
                                     )}
-                                    <span style={{ 
-                                        fontSize: 11, 
-                                        fontWeight: 500,
-                                        color: 'var(--text-secondary)', 
-                                        background: 'var(--surface, #ffffff)', 
-                                        padding: '3px 9px', 
-                                        borderRadius: 8, 
-                                        border: '1px solid rgba(0, 82, 255, 0.2)',
-                                        boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
-                                    }}>
-                                        {new Date(deal.handover_date).toLocaleDateString('ru-RU')} в {new Date(deal.handover_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
+                                    {evt.badgeText && (
+                                        <span style={{ 
+                                            fontSize: 11, 
+                                            fontWeight: evt.type === 'contract' ? 600 : 500,
+                                            color: evt.badgeColor, 
+                                            background: evt.badgeBg, 
+                                            padding: '3px 9px', 
+                                            borderRadius: 8, 
+                                            border: evt.badgeBorder,
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                        }}>
+                                            {evt.badgeText}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
-                        )}
+                        ))}
                     </div>
                 </div>
             )}
