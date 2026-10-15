@@ -43,6 +43,21 @@ export function MeetingOwnerFormPage() {
     const myClients = state.clients.filter(c => c.realtor_id === state.currentUser?.id);
     const myProperties = state.properties.filter(p => p.realtor_id === state.currentUser?.id);
 
+    const ownerProperties = React.useMemo(() => {
+        if (!form.client_id) return [];
+        return state.properties.filter(p => {
+            let pIds = p.client_ids || [];
+            if (typeof pIds === 'string') pIds = pIds.replace(/[{}]/g, '').split(',').filter(Boolean);
+            return p.client_id === form.client_id || pIds.includes(form.client_id);
+        });
+    }, [form.client_id, state.properties]);
+
+    React.useEffect(() => {
+        if (ownerProperties.length === 1 && (!form.property_id || !ownerProperties.some(p => p.id === form.property_id))) {
+            setF('property_id', ownerProperties[0].id);
+        }
+    }, [ownerProperties]);
+
     const setF = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
     function handleCreateClient() {
@@ -177,9 +192,18 @@ export function MeetingOwnerFormPage() {
                         </label>
                         <select className="form-select" style={{ height: 52, borderRadius: 14, background: 'var(--surface)', border: '1.5px solid rgba(0,0,0,0.05)' }} value={form.property_id || ''} onChange={e => setF('property_id', e.target.value)}>
                             <option value="">— Без объекта —</option>
-                            {myProperties.map(p => (
-                                <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
-                            ))}
+                            {ownerProperties.length > 0 && (
+                                <optgroup label={`Объекты собственника (${ownerProperties.length})`}>
+                                    {ownerProperties.map(p => (
+                                        <option key={p.id} value={p.id}>⭐ {p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                    ))}
+                                </optgroup>
+                            )}
+                            <optgroup label="Все объекты">
+                                {myProperties.filter(p => !ownerProperties.some(op => op.id === p.id)).map(p => (
+                                    <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                ))}
+                            </optgroup>
                         </select>
                     </div>
 

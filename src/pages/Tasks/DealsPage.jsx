@@ -87,6 +87,8 @@ export function DealsPage() {
         lawyer_id: prefillData.lawyer_id || '',
         seller_agent_id: prefillData.seller_agent_id || '',
         buyer_agent_id: prefillData.buyer_agent_id || '',
+        has_agency_contract: prefillData.has_agency_contract || false,
+        agency_contract_date: prefillData.agency_contract_date || '',
         handover_date: prefillData.handover_date || '',
         handover_amount: prefillData.handover_amount || '',
     });
@@ -253,12 +255,20 @@ export function DealsPage() {
                     (c.full_name?.toLowerCase() === 'я' || c.full_name === user?.full_name)
                 );
                 const isMyProperty = prop.realtor_id === user?.id;
+                const propClientIds = prop.client_ids || (prop.client_id ? [prop.client_id] : []);
+                const ownerWithContract = state.clients.find(c => 
+                    propClientIds.includes(c.id) && (c.agency_contract_date || c.has_agency_contract)
+                );
                 setNewDeal(prev => ({
                     ...prev,
                     price: formatPriceInput(String(prop.price || '')),
                     commission: formatPriceInput(String(prop.commission || '')),
                     seller_ids: prop.client_ids || (prop.client_id ? [prop.client_id] : []),
-                    seller_agent_id: prop.agent_id || (isMyProperty && meAgent ? meAgent.id : '')
+                    seller_agent_id: prop.agent_id || (isMyProperty && meAgent ? meAgent.id : ''),
+                    ...(ownerWithContract ? {
+                        has_agency_contract: true,
+                        agency_contract_date: ownerWithContract.agency_contract_date ? toLocalISOString(ownerWithContract.agency_contract_date).split('T')[0] : prev.agency_contract_date
+                    } : {})
                 }));
             }
         }
@@ -444,6 +454,8 @@ export function DealsPage() {
             })),
             seller_agent_id: newDeal.seller_agent_id || null,
             buyer_agent_id: newDeal.buyer_agent_id || null,
+            has_agency_contract: Boolean(newDeal.has_agency_contract || newDeal.agency_contract_date),
+            agency_contract_date: newDeal.agency_contract_date ? (newDeal.agency_contract_date.includes('T') ? newDeal.agency_contract_date : `${newDeal.agency_contract_date}T00:00:00.000Z`) : null,
         };
 
         try {
@@ -487,6 +499,8 @@ export function DealsPage() {
             lawyer_id: '', 
             seller_agent_id: '', 
             buyer_agent_id: meAgent ? meAgent.id : '',
+            has_agency_contract: false,
+            agency_contract_date: '',
             handover_date: '',
             handover_amount: '' 
         });
@@ -527,6 +541,8 @@ export function DealsPage() {
             lawyer_id: deal.lawyer_id || '',
             seller_agent_id: deal.seller_agent_id || '',
             buyer_agent_id: deal.buyer_agent_id || '',
+            has_agency_contract: deal.has_agency_contract || Boolean(deal.agency_contract_date),
+            agency_contract_date: deal.agency_contract_date ? toLocalISOString(deal.agency_contract_date).split('T')[0] : '',
             handover_date: deal.handover_date ? toLocalISOString(deal.handover_date) : '',
             handover_amount: deal.handover_amount ? deal.handover_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
         });
@@ -899,6 +915,57 @@ export function DealsPage() {
                             )}
                         </div>
 
+                        {/* ── Агентский договор (АД) Section ── */}
+                        <div style={{
+                            padding: '14px 16px',
+                            background: 'rgba(16, 185, 129, 0.04)',
+                            borderRadius: 18,
+                            border: '1px solid rgba(16, 185, 129, 0.2)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10,
+                            marginBottom: 16
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <FileText size={15} color="#10b981" />
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Агентский договор (АД)</span>
+                                </div>
+                                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={Boolean(newDeal.has_agency_contract || newDeal.agency_contract_date)}
+                                        onChange={e => {
+                                            const checked = e.target.checked;
+                                            handleFieldChange('has_agency_contract', checked);
+                                            if (!checked) handleFieldChange('agency_contract_date', '');
+                                            else if (!newDeal.agency_contract_date) {
+                                                handleFieldChange('agency_contract_date', new Date().toISOString().split('T')[0]);
+                                            }
+                                        }}
+                                        style={{ transform: 'scale(1.2)', accentColor: '#10b981' }}
+                                    />
+                                    <span style={{ fontSize: 12, fontWeight: 500 }}>Договор заключен</span>
+                                </label>
+                            </div>
+
+                            {Boolean(newDeal.has_agency_contract || newDeal.agency_contract_date) && (
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата заключения АД</label>
+                                    <input
+                                        type="date"
+                                        className="form-input"
+                                        style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 12px' }}
+                                        value={newDeal.agency_contract_date ? newDeal.agency_contract_date.split('T')[0] : ''}
+                                        onChange={e => {
+                                            handleFieldChange('agency_contract_date', e.target.value);
+                                            handleFieldChange('has_agency_contract', true);
+                                        }}
+                                    />
+                                </div>
+                            )}
+                        </div>
+
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата задатка</label>
@@ -1148,6 +1215,28 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
         )
     );
 
+    // Agency contract resolution
+    const counterparties = [...sellers, ...buyers];
+    const contractClients = counterparties.filter(c => 
+        Boolean(c.has_agency_contract || c.agency_contract_date)
+    );
+    const contractClient = counterparties.find(c => 
+        (c.has_agency_contract || c.agency_contract_date) && 
+        (!c.agency_contract_property_id || !deal.property_id || c.agency_contract_property_id === deal.property_id)
+    ) || counterparties.find(c => c.has_agency_contract || c.agency_contract_date);
+
+    const hasContract = Boolean(
+        deal.has_agency_contract || 
+        deal.agency_contract_date || 
+        contractClient?.has_agency_contract || 
+        contractClient?.agency_contract_date
+    );
+
+    const contractDate = deal.agency_contract_date || contractClient?.agency_contract_date;
+    const contractDateFormatted = contractDate 
+        ? new Date(contractDate).toLocaleDateString('ru-RU')
+        : null;
+
     const hasSellerUnread = useMemo(() => {
         const info = lastMessages[deal.id]?.seller;
         if (!info) return false;
@@ -1266,13 +1355,14 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                 color: 'var(--text)', 
                                 cursor: 'pointer', 
                                 lineHeight: 1.3,
-                                transition: 'color 0.2s' 
+                                transition: 'color 0.2s',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap'
                             }}
                         >
                             {c.full_name}
                         </div>
-
-
                     </div>
                 ))}
 
@@ -1565,36 +1655,38 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             </div>
 
             {/* ── Financial & Meta Highlight Bar ── */}
-            <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                alignItems: 'center',
-                gap: 12,
-                padding: '12px 14px',
-                background: 'var(--bg-light, rgba(0,0,0,0.02))',
-                borderRadius: 16,
-                border: '1px solid var(--border-light, rgba(0,0,0,0.04))'
-            }}>
-                {Number(deal.price) > 0 && (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                        <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>Цена:</span>
-                        <span className="font-oswald" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
-                            {Number(deal.price).toLocaleString()} ₽
-                        </span>
-                    </div>
-                )}
+            {(Number(deal.price) > 0 || Boolean(deal.mortgage || deal.mortgage_bank || Number(deal.mortgage_amount) > 0) || Boolean(propertyAddress && !isAddressInTitle)) && (
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: 12,
+                    padding: '12px 14px',
+                    background: 'var(--bg-light, rgba(0,0,0,0.02))',
+                    borderRadius: 16,
+                    border: '1px solid var(--border-light, rgba(0,0,0,0.04))'
+                }}>
+                    {Number(deal.price) > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 400 }}>Цена:</span>
+                            <span className="font-oswald" style={{ fontSize: 17, fontWeight: 700, color: 'var(--text)' }}>
+                                {Number(deal.price).toLocaleString()} ₽
+                            </span>
+                        </div>
+                    )}
 
-                {Boolean(deal.mortgage || deal.mortgage_bank || Number(deal.mortgage_amount) > 0) && (
-                    <BankBadge bankName={deal.mortgage_bank} amount={deal.mortgage_amount} />
-                )}
+                    {Boolean(deal.mortgage || deal.mortgage_bank || Number(deal.mortgage_amount) > 0) && (
+                        <BankBadge bankName={deal.mortgage_bank} amount={deal.mortgage_amount} />
+                    )}
 
-                {propertyAddress && !isAddressInTitle && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
-                        <Home size={12} color="var(--primary)" />
-                        <span>{propertyAddress}</span>
-                    </div>
-                )}
-            </div>
+                    {propertyAddress && !isAddressInTitle && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--text-secondary)' }}>
+                            <Home size={12} color="var(--primary)" />
+                            <span>{propertyAddress}</span>
+                        </div>
+                    )}
+                </div>
+            )}
 
             {/* ── Seller + Buyer mini-cards ── */}
             {(sellers.length > 0 || buyers.length > 0) && (
@@ -1766,7 +1858,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             )}
 
             {/* ── Dates & Events card ── */}
-            {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || deal.handover_date || deal.mortgage) && (
+            {(deal.deposit_amount > 0 || deal.deposit_date || deal.deal_date || deal.handover_date || deal.mortgage || hasContract) && (
                 <div style={{ 
                     padding: '14px 16px', 
                     background: 'rgba(245, 158, 11, 0.05)', 
@@ -1790,13 +1882,78 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {deal.deposit_amount > 0 && (
+                        {contractClients.length > 1 ? (
+                            contractClients.map((cc, idx) => {
+                                const cDate = cc.agency_contract_date ? new Date(cc.agency_contract_date).toLocaleDateString('ru-RU') : (contractDateFormatted || null);
+                                return (
+                                    <div key={cc.id || idx} style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center', 
+                                        gap: 10,
+                                        flexWrap: 'wrap',
+                                        borderTop: idx > 0 ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                        paddingTop: idx > 0 ? 8 : 0
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <FileText size={14} color="#059669" />
+                                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                Агентский договор ({cc.full_name})
+                                            </span>
+                                        </div>
+                                        <span style={{ 
+                                            fontSize: 11, 
+                                            fontWeight: 600,
+                                            color: '#059669', 
+                                            background: 'rgba(16, 185, 129, 0.1)', 
+                                            padding: '3px 9px', 
+                                            borderRadius: 8, 
+                                            border: '1px solid rgba(16, 185, 129, 0.25)',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                        }}>
+                                            {cDate ? `от ${cDate}` : 'Заключен'}
+                                        </span>
+                                    </div>
+                                );
+                            })
+                        ) : hasContract ? (
                             <div style={{ 
                                 display: 'flex', 
                                 justifyContent: 'space-between', 
                                 alignItems: 'center', 
                                 gap: 10,
                                 flexWrap: 'wrap'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <FileText size={14} color="#059669" />
+                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                        Агентский договор {contractClient ? `(${contractClient.full_name})` : ''}
+                                    </span>
+                                </div>
+                                <span style={{ 
+                                    fontSize: 11, 
+                                    fontWeight: 600,
+                                    color: '#059669', 
+                                    background: 'rgba(16, 185, 129, 0.1)', 
+                                    padding: '3px 9px', 
+                                    borderRadius: 8, 
+                                    border: '1px solid rgba(16, 185, 129, 0.25)',
+                                    boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+                                }}>
+                                    {contractDateFormatted ? `от ${contractDateFormatted}` : 'Заключен'}
+                                </span>
+                            </div>
+                        ) : null}
+
+                        {deal.deposit_amount > 0 && (
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center', 
+                                gap: 10,
+                                flexWrap: 'wrap',
+                                borderTop: hasContract ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                paddingTop: hasContract ? 8 : 0
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <DollarSign size={14} color="#d97706" />
@@ -1831,8 +1988,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                 alignItems: 'center', 
                                 gap: 10,
                                 flexWrap: 'wrap',
-                                borderTop: deal.deposit_amount > 0 ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                paddingTop: deal.deposit_amount > 0 ? 8 : 0
+                                borderTop: (hasContract || deal.deposit_amount > 0) ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                paddingTop: (hasContract || deal.deposit_amount > 0) ? 8 : 0
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CheckCircle size={14} color="#10b981" />
@@ -1860,8 +2017,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                 alignItems: 'center', 
                                 gap: 10,
                                 flexWrap: 'wrap',
-                                borderTop: (deal.deposit_amount > 0 || deal.deal_date) ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                paddingTop: (deal.deposit_amount > 0 || deal.deal_date) ? 8 : 0
+                                borderTop: (hasContract || deal.deposit_amount > 0 || deal.deal_date) ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
+                                paddingTop: (hasContract || deal.deposit_amount > 0 || deal.deal_date) ? 8 : 0
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <Home size={14} color="var(--primary)" />

@@ -327,6 +327,17 @@ describe('runMatchingForProperty', () => {
     expect(results[0].request_id).toBe('req-1')
   })
 
+  it('skips completed requests (status: "completed")', () => {
+    const prop = makeProperty()
+    const requests = [
+      makeRequest({ id: 'req-1', status: 'active' }),
+      makeRequest({ id: 'req-2', status: 'completed' }),
+    ]
+    const results = runMatchingForProperty(prop, requests)
+    expect(results).toHaveLength(1)
+    expect(results[0].request_id).toBe('req-1')
+  })
+
   it('returns matches for all active requests', () => {
     const prop = makeProperty()
     const requests = [
@@ -386,6 +397,24 @@ describe('runMatchingForRequest', () => {
     ]
     const results = runMatchingForRequest(req, properties)
     expect(results).toHaveLength(1)
+  })
+
+  it('skips request if status is completed', () => {
+    const req = makeRequest({ status: 'completed' })
+    const properties = [
+      makeProperty({ id: 'prop-1', status: 'active' }),
+    ]
+    const results = runMatchingForRequest(req, properties)
+    expect(results).toHaveLength(0)
+  })
+
+  it('skips request if status is not active', () => {
+    const req = makeRequest({ status: 'paused' })
+    const properties = [
+      makeProperty({ id: 'prop-1', status: 'active' }),
+    ]
+    const results = runMatchingForRequest(req, properties)
+    expect(results).toHaveLength(0)
   })
 })
 

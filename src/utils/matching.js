@@ -291,12 +291,23 @@ export function runMatchingForProperty(property, requests) {
 }
 
 /**
+ * Checks whether a request is active and participates in matching.
+ * @param {Request | object} request
+ * @returns {boolean}
+ */
+export function isRequestActive(request) {
+  return Boolean(request && request.status === 'active');
+}
+
+/**
  * @param {Request} request
  * @param {Property[]} properties
  * @returns {MatchWithIds[]}
  */
 export function runMatchingForRequest(request, properties) {
   const results = [];
+  if (!isRequestActive(request)) return results;
+
   for (const prop of properties) {
     if (hasPassedDealStage(prop)) continue;
     if (prop.status !== 'active' && prop.status !== 'advertising') continue;
