@@ -536,7 +536,7 @@ export function DocumentsPage() {
                 tpl = 'yuss_buy_1';
             } else if (c.type === 'АД ЮСС Продажа' || c.type === 'АД Продажа') {
                 tpl = 'agency_sale_1';
-            } else if (c.type?.includes('Аренда')) {
+            } else if (c.type?.includes('Аренда') || c.type?.includes('Найм')) {
                 tpl = 'rent';
             }
             setSelectedTemplate(tpl);
@@ -1165,7 +1165,7 @@ export function DocumentsPage() {
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <FileText size={14} /> Агентский договор клиента (АД)
+                                            <FileText size={14} /> АД клиента
                                         </label>
                                         {hideOtherTemplates && (
                                             <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 500 }}>

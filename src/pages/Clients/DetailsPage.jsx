@@ -361,10 +361,16 @@ export function DetailsPage() {
                 return { color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: 'rgba(79, 70, 229, 0.25)' };
             case 'АД ЮСС Продажа':
                 return { color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: 'rgba(124, 58, 237, 0.25)' };
+            case 'АД Найм с наймодателем':
             case 'АД Аренда с наймодателем':
                 return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: 'rgba(217, 119, 6, 0.25)' };
+            case 'АД Найм с нанимателем':
             case 'АД Аренда с нанимателем':
                 return { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.08)', border: 'rgba(234, 88, 12, 0.25)' };
+            case 'АД Аренда с арендодателем':
+                return { color: '#0284c7', bg: 'rgba(2, 132, 199, 0.08)', border: 'rgba(2, 132, 199, 0.25)' };
+            case 'АД Аренда с арендатором':
+                return { color: '#0891b2', bg: 'rgba(8, 145, 178, 0.08)', border: 'rgba(8, 145, 178, 0.25)' };
             default:
                 return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)' };
         }
@@ -482,11 +488,11 @@ export function DetailsPage() {
             template = 'agency_sale_1';
             sellerId = id;
             buyerId = '';
-        } else if (contract.type === 'АД Аренда с наймодателем') {
+        } else if (contract.type === 'АД Найм с наймодателем' || contract.type === 'АД Аренда с наймодателем' || contract.type === 'АД Аренда с арендодателем') {
             template = 'rent';
             sellerId = id;
             buyerId = '';
-        } else if (contract.type === 'АД Аренда с нанимателем') {
+        } else if (contract.type === 'АД Найм с нанимателем' || contract.type === 'АД Аренда с нанимателем' || contract.type === 'АД Аренда с арендатором') {
             template = 'rent';
             sellerId = '';
             buyerId = id;
@@ -829,7 +835,7 @@ export function DetailsPage() {
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                     <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
-                                        Агентские договоры (АД)
+                                        АД
                                     </span>
                                     <span style={{
                                         fontSize: 11,
