@@ -53,15 +53,25 @@ export default async function handler(req, res) {
       };
       if (GEMINI_API_KEY) {
         try {
-          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+          const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`, {
+            signal: AbortSignal.timeout(5000)
+          });
+          const listData = await listRes.json();
+          results.models = (listData.models || []).map(m => m.name.replace('models/', ''));
+        } catch (e) {
+          results.list_error = e.message;
+        }
+
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: 'Тест' }] }] }),
             signal: AbortSignal.timeout(5000)
           });
-          results.gemini_2_0 = { status: r.status, body: (await r.text()).slice(0, 300) };
+          results.gemini_3_8 = { status: r.status, body: (await r.text()).slice(0, 300) };
         } catch (e) {
-          results.gemini_2_0 = { error: e.message };
+          results.gemini_3_8 = { error: e.message };
         }
       }
       return res.status(200).json(results);
