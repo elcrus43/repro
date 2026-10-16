@@ -47,7 +47,7 @@ describe('docxGenerator - getDocumentTemplates', () => {
     });
 });
 
-import { toShortName } from './docxGenerator';
+import { toShortName, formatPropertyKind } from './docxGenerator';
 
 describe('docxGenerator - toShortName', () => {
     it('formats full Russian names into initials correctly', () => {
@@ -57,3 +57,30 @@ describe('docxGenerator - toShortName', () => {
         expect(toShortName('')).toBe('____________________');
     });
 });
+
+describe('docxGenerator - formatPropertyKind', () => {
+    it('returns correct property kind for apartments with rooms', () => {
+        expect(formatPropertyKind({ property_type: 'apartment', rooms: 2 })).toBe('2-комн. квартира');
+        expect(formatPropertyKind({ property_type: 'apartment', rooms: 1 })).toBe('1-комн. квартира');
+        expect(formatPropertyKind({ property_type: 'apartment', rooms: '3' })).toBe('3-комн. квартира');
+        expect(formatPropertyKind({ property_type: 'apartment', rooms: 'studio' })).toBe('Квартира-студия');
+        expect(formatPropertyKind({ property_type: 'apartment' })).toBe('Квартира');
+        expect(formatPropertyKind(null)).toBe('Квартира');
+    });
+
+    it('returns correct property kind for other types', () => {
+        expect(formatPropertyKind({ property_type: 'room' })).toBe('Комната');
+        expect(formatPropertyKind({ property_type: 'house' })).toBe('Жилой дом');
+        expect(formatPropertyKind({ property_type: 'house', land_area: 10 })).toBe('Жилой дом с земельным участком');
+        expect(formatPropertyKind({ property_type: 'land' })).toBe('Земельный участок');
+        expect(formatPropertyKind({ property_type: 'garden' })).toBe('Земельный участок');
+        expect(formatPropertyKind({ property_type: 'commercial' })).toBe('Нежилое помещение');
+        expect(formatPropertyKind({ property_type: 'garage' })).toBe('Гараж');
+    });
+
+    it('respects custom property_kind if provided', () => {
+        expect(formatPropertyKind({ property_kind: 'Таунхаус' })).toBe('Таунхаус');
+        expect(formatPropertyKind({ property_kind: '2-комн. квартира (евродвушка)' })).toBe('2-комн. квартира (евродвушка)');
+    });
+});
+

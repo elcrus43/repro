@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Search, Save, CheckCircle2, AlertCircle, Sparkles, Check, Loader2,
     UserPlus, X, Calendar, Plus, Key
 } from 'lucide-react';
-import { generateAndDownloadDocx, getDocumentTemplates, numberToWordsRu } from '../../utils/docxGenerator';
+import { generateAndDownloadDocx, getDocumentTemplates, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 
@@ -622,6 +622,7 @@ export function DocumentsPage() {
     }, [propertyId, state.properties]);
 
     const [propDraft, setPropDraft] = useState({
+        property_kind: '',
         address: '',
         cadastral_number: '',
         area_total: '',
@@ -638,6 +639,7 @@ export function DocumentsPage() {
     useEffect(() => {
         if (activeProperty) {
             setPropDraft({
+                property_kind: activeProperty.property_kind || formatPropertyKind(activeProperty),
                 address: activeProperty.address || activeProperty.city || '',
                 cadastral_number: activeProperty.cadastral_number || '',
                 area_total: activeProperty.area_total !== undefined && activeProperty.area_total !== null ? String(activeProperty.area_total).replace('.', ',') : '',
@@ -657,6 +659,7 @@ export function DocumentsPage() {
         const parsedArea = parseArea(propDraft.area_total);
         return {
             ...activeProperty,
+            property_kind: propDraft.property_kind?.trim() || formatPropertyKind(activeProperty),
             address: propDraft.address || activeProperty.address,
             cadastral_number: propDraft.cadastral_number || activeProperty.cadastral_number,
             area_total: parsedArea !== null ? parsedArea : activeProperty.area_total,
@@ -702,6 +705,7 @@ export function DocumentsPage() {
                 const parsedArea = parseArea(propDraft.area_total);
                 const updatedProperty = {
                     ...activeProperty,
+                    property_kind: propDraft.property_kind?.trim() || activeProperty.property_kind,
                     address: propDraft.address?.trim() || activeProperty.address,
                     cadastral_number: propDraft.cadastral_number?.trim() || activeProperty.cadastral_number,
                     area_total: parsedArea !== null ? parsedArea : activeProperty.area_total,
@@ -1513,6 +1517,26 @@ export function DocumentsPage() {
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                            {/* Вид объекта недвижимости */}
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Вид объекта недвижимости (п. 1.1)</span>
+                                    {!propDraft.property_kind?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                </div>
+                                <input
+                                    id="doc-input-prop-kind"
+                                    className="form-input"
+                                    value={propDraft.property_kind}
+                                    onChange={e => handlePropDraftChange('property_kind', e.target.value)}
+                                    placeholder="2-комн. квартира"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                        border: !propDraft.property_kind?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !propDraft.property_kind?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                            </div>
+
                             {/* Адрес */}
                             <div style={{ gridColumn: '1 / -1' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
@@ -1823,6 +1847,7 @@ export function DocumentsPage() {
                                 )}
                                 {property && (
                                     <>
+                                        <DataPreview label="Вид объекта" value={formatPropertyKind(property)} />
                                         <DataPreview label="Объект" value={property.address || property.city} />
                                         {property.cadastral_number && <DataPreview label="Кадастровый №" value={property.cadastral_number} />}
                                         {(deal?.price || property.price) && <DataPreview label="Ориентир. стоимость" value={`${Number(String(deal?.price || property.price).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />}
@@ -2113,6 +2138,7 @@ function DocumentPreview({ template, data, highlight = true }) {
     const principalShort = toShortName(principalName);
 
     // Характеристики объекта для агентского договора на продажу
+    const propKind = formatPropertyKind(property);
     const propAddress = f(property?.address || property?.city);
     const propCadastral = f(property?.cadastral_number);
     const propArea = property?.area_total ? `${property.area_total} кв.м.` : '';
@@ -2188,15 +2214,14 @@ function DocumentPreview({ template, data, highlight = true }) {
                                     Вид объекта недвижимости
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    Квартира/ комната/ земельный участок/ жилой дом/ земельный участок и жилой дом/ доля в праве общей долевой собственности на квартиру, комнату, земельный участок и жилой дом/ гараж/ гаражный бокс/баня/ машина-место/иное
+                                    <Slot value={propKind} label="Вид объекта недвижимости" inputId="doc-input-prop-kind" highlight={highlight} />
                                 </td>
                             </tr>
                             <tr>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px', fontWeight: 'bold', verticalAlign: 'top' }}>
-                                    Адрес(местоположение)
+                                    Адрес (местоположение)
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    {propPrefix ? <span>{propPrefix} </span> : null}
                                     <Slot value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
                                     {propCadastral ? (
                                         <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
@@ -2383,17 +2408,20 @@ function DocumentPreview({ template, data, highlight = true }) {
                                     Вид объекта недвижимости
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    Квартира/ комната/ жилой дом/ нежилое помещение/ иное
+                                    <Slot value={propKind} label="Вид объекта недвижимости" inputId="doc-input-prop-kind" highlight={highlight} />
                                 </td>
                             </tr>
                             <tr>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px', fontWeight: 'bold', verticalAlign: 'top' }}>
-                                    Адрес(местоположение)
+                                    Адрес (местоположение)
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    {propPrefix ? <span>{propPrefix} </span> : null}
                                     <Slot value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
-                                    {property?.cadastral_number ? <span>, кад. № <Slot value={property.cadastral_number} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span> : (propCadastral ? <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span> : null)}
+                                    {propCadastral ? (
+                                        <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
+                                    ) : (
+                                        <span> <Slot value="" label="Кадастровый номер" inputId="doc-input-prop-cadastral" fallback="[Кадастровый номер]" highlight={highlight} /></span>
+                                    )}
                                 </td>
                             </tr>
                         </tbody>

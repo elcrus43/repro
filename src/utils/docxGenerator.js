@@ -59,6 +59,52 @@ export function toShortName(fullName) {
 }
 
 /**
+ * Формирует вид объекта недвижимости (например, '2-комн. квартира')
+ */
+export function formatPropertyKind(property) {
+    if (!property) return 'Квартира';
+    if (property.property_kind && String(property.property_kind).trim()) {
+        return String(property.property_kind).trim();
+    }
+    const type = property.property_type;
+    const rooms = property.rooms;
+
+    if (!type || type === 'apartment') {
+        if (rooms === 'studio' || rooms === 0 || rooms === '0') {
+            return 'Квартира-студия';
+        }
+        if (rooms) {
+            const cleanRooms = String(rooms).replace(/[^\d]/g, '');
+            if (cleanRooms) {
+                return `${cleanRooms}-комн. квартира`;
+            }
+            return `${rooms}-комн. квартира`;
+        }
+        return 'Квартира';
+    }
+    if (type === 'room') {
+        return 'Комната';
+    }
+    if (type === 'house') {
+        if (property.land_area || property.has_house) {
+            return 'Жилой дом с земельным участком';
+        }
+        return 'Жилой дом';
+    }
+    if (type === 'land' || type === 'garden') {
+        return 'Земельный участок';
+    }
+    if (type === 'commercial') {
+        return 'Нежилое помещение';
+    }
+    if (type === 'garage') {
+        return 'Гараж';
+    }
+    return 'Квартира';
+}
+
+
+/**
  * Преобразует целое число в рубли прописью на русском языке
  */
 export function numberToWordsRu(num) {
@@ -410,12 +456,10 @@ function buildAgencySale1Contract(data) {
     const phone = fmt(formatPhone(principal?.phone) || principal?.phone, '______________________________________________');
 
     // Характеристики объекта недвижимости для таблицы
+    const propKind = formatPropertyKind(property);
     const propAddress = fmt(property?.address || property?.city, '_______________________________________________________________________________________________________________________');
     const propCadastral = property?.cadastral_number ? `, кад. № ${property.cadastral_number}` : '';
-    const propArea = property?.area_total ? `${property.area_total} кв.м.` : '';
-    const propRooms = property?.rooms ? (property.rooms === 'studio' ? 'Студия' : `${property.rooms}-комн. кв.`) : (property?.property_type === 'house' ? 'Жилой дом' : (property?.property_type === 'land' ? 'Земельный участок' : ''));
-    const propPrefix = [propRooms, propArea].filter(Boolean).join(', ');
-    const propertyFullDetails = propPrefix ? `${propPrefix}  ${propAddress}${propCadastral}` : `${propAddress}${propCadastral}`;
+    const propertyAddressDetails = `${propAddress}${propCadastral}`;
 
     // Ориентировочная стоимость объекта (п. 1.1.1)
     const rawPrice = deal?.price || property?.price;
@@ -453,7 +497,7 @@ function buildAgencySale1Contract(data) {
                     }),
                     new TableCell({
                         width: { size: 70, type: WidthType.PERCENTAGE },
-                        children: [arialPara([arialRun('Квартира/ комната/ земельный участок/ жилой дом/ земельный участок и жилой дом/ доля в праве общей долевой собственности на квартиру, комнату, земельный участок и жилой дом/ гараж/ гаражный бокс/баня/ машина-место/иное')], { indent: false, afterPt: 2, beforePt: 2 })],
+                        children: [arialPara([arialRun(propKind)], { indent: false, afterPt: 2, beforePt: 2 })],
                     }),
                 ],
             }),
@@ -461,11 +505,11 @@ function buildAgencySale1Contract(data) {
                 children: [
                     new TableCell({
                         width: { size: 30, type: WidthType.PERCENTAGE },
-                        children: [arialPara([arialBold('Адрес(местоположение)')], { indent: false, afterPt: 2, beforePt: 2 })],
+                        children: [arialPara([arialBold('Адрес (местоположение)')], { indent: false, afterPt: 2, beforePt: 2 })],
                     }),
                     new TableCell({
                         width: { size: 70, type: WidthType.PERCENTAGE },
-                        children: [arialPara([arialRun(propertyFullDetails)], { indent: false, afterPt: 2, beforePt: 2 })],
+                        children: [arialPara([arialRun(propertyAddressDetails)], { indent: false, afterPt: 2, beforePt: 2 })],
                     }),
                 ],
             }),
@@ -664,12 +708,10 @@ function buildAgencyRentLandlord1Contract(data) {
     const regAddress = fmt(p.registration_address || principal?.reg_address || principal?.address, '___________________________________________________________________________________________________________________');
 
     // Характеристики объекта недвижимости для таблицы
+    const propKind = formatPropertyKind(property);
     const propAddress = fmt(property?.address || property?.city, '_______________________________________________________________________________________________________________________');
     const propCadastral = property?.cadastral_number ? `, кад. № ${property.cadastral_number}` : '';
-    const propArea = property?.area_total ? `${property.area_total} кв.м.` : '';
-    const propRooms = property?.rooms ? (property.rooms === 'studio' ? 'Студия' : `${property.rooms}-комн. кв.`) : (property?.property_type === 'house' ? 'Жилой дом' : (property?.property_type === 'land' ? 'Земельный участок' : ''));
-    const propPrefix = [propRooms, propArea].filter(Boolean).join(', ');
-    const propertyFullDetails = propPrefix ? `${propPrefix}  ${propAddress}${propCadastral}` : `${propAddress}${propCadastral}`;
+    const propertyAddressDetails = `${propAddress}${propCadastral}`;
 
     // Ориентировочная стоимость платы за найм/арендной платы в месяц (п. 1.1.1)
     const rawPrice = deal?.price || property?.price;
@@ -707,7 +749,7 @@ function buildAgencyRentLandlord1Contract(data) {
                     }),
                     new TableCell({
                         width: { size: 70, type: WidthType.PERCENTAGE },
-                        children: [arialPara([arialRun('Квартира/ комната/ жилой дом/ нежилое помещение/ иное')], { indent: false, afterPt: 2, beforePt: 2 })],
+                        children: [arialPara([arialRun(propKind)], { indent: false, afterPt: 2, beforePt: 2 })],
                     }),
                 ],
             }),
@@ -715,11 +757,11 @@ function buildAgencyRentLandlord1Contract(data) {
                 children: [
                     new TableCell({
                         width: { size: 30, type: WidthType.PERCENTAGE },
-                        children: [arialPara([arialBold('Адрес(местоположение)')], { indent: false, afterPt: 2, beforePt: 2 })],
+                        children: [arialPara([arialBold('Адрес (местоположение)')], { indent: false, afterPt: 2, beforePt: 2 })],
                     }),
                     new TableCell({
                         width: { size: 70, type: WidthType.PERCENTAGE },
-                        children: [arialPara([arialRun(propertyFullDetails)], { indent: false, afterPt: 2, beforePt: 2 })],
+                        children: [arialPara([arialRun(propertyAddressDetails)], { indent: false, afterPt: 2, beforePt: 2 })],
                     }),
                 ],
             }),
