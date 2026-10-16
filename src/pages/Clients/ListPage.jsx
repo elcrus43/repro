@@ -29,6 +29,7 @@ export function ListPage() {
 
     const [collapsedStatuses, setCollapsedStatuses] = useState({
         active: true,
+        control: true,
         selection: true,
         new: true,
         refused: true
@@ -38,6 +39,8 @@ export function ListPage() {
         switch (status) {
             case 'new':
                 return 'new';
+            case 'control':
+                return 'control';
             case 'refused':
                 return 'refused';
             case 'search':
@@ -57,23 +60,26 @@ export function ListPage() {
     };
 
     const statusColors = {
-        new: 'muted',
-        selection: 'blue',
         active: 'success',
+        control: 'warning',
+        selection: 'blue',
+        new: 'muted',
         refused: 'danger'
     };
 
     const statusLabels = {
-        new: 'Не отработан',
-        selection: 'Подбор',
         active: 'В работе',
+        control: 'На контроле',
+        selection: 'Подбор',
+        new: 'Не отработан',
         refused: 'Отказ'
     };
 
     const statusSolidColors = {
-        new: '#6b7280',
-        selection: '#3b82f6',
         active: '#10b981',
+        control: '#f59e0b',
+        selection: '#3b82f6',
+        new: '#6b7280',
         refused: '#ef4444'
     };
 
@@ -105,7 +111,7 @@ export function ListPage() {
                 if (filter === 'agent') {
                     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
                 }
-                const order = { active: 1, selection: 2, new: 3, refused: 4 };
+                const order = { active: 1, control: 2, selection: 3, new: 4, refused: 5 };
                 const orderA = order[mapStatus(a.status)] || 99;
                 const orderB = order[mapStatus(b.status)] || 99;
                 if (orderA !== orderB) return orderA - orderB;
@@ -115,8 +121,9 @@ export function ListPage() {
 
     const groupedClients = useMemo(() => {
         const groups = {
-            selection: [],
             active: [],
+            control: [],
+            selection: [],
             new: [],
             refused: []
         };
@@ -131,8 +138,8 @@ export function ListPage() {
     }, [filteredClients]);
 
     const statusOrder = useMemo(() => {
-        if (filter === 'active') return ['active', 'selection', 'new'];
-        return ['active', 'selection', 'new', 'refused'];
+        if (filter === 'active') return ['active', 'control', 'selection', 'new'];
+        return ['active', 'control', 'selection', 'new', 'refused'];
     }, [filter]);
 
     const toggleStatus = (status) => {

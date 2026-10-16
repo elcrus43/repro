@@ -10,6 +10,7 @@ import {
 import { generateAndDownloadDocx, getDocumentTemplates, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
+import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
 
 /* ─── Иконки шаблонов ─────────────────────────────────────────────────────── */
 const TEMPLATE_ICONS = {
@@ -621,7 +622,32 @@ export function DocumentsPage() {
 
     /* ── Обогащенный клиент для живого предпросмотра ───────────────────────── */
     const enrichedClient = useMemo(() => {
-        if (!activeClient) return null;
+        if (!activeClient) {
+            const hasDraft = Boolean(
+                clientDraft.full_name?.trim() || 
+                clientDraft.phone?.trim() || 
+                clientDraft.passport_series?.trim() || 
+                clientDraft.passport_number?.trim() ||
+                clientDraft.registration_address?.trim()
+            );
+            if (!hasDraft) return null;
+            return {
+                id: 'draft_manual_client',
+                full_name: clientDraft.full_name || '',
+                phone: clientDraft.phone || '',
+                birth_date: clientDraft.birth_date || '',
+                reg_address: clientDraft.registration_address || '',
+                passport_details: {
+                    series: clientDraft.passport_series || '',
+                    number: clientDraft.passport_number || '',
+                    issued_by: clientDraft.passport_issued_by || '',
+                    issue_date: clientDraft.passport_issue_date || '',
+                    unit_code: clientDraft.passport_unit_code || '',
+                    registration_address: clientDraft.registration_address || '',
+                    birth_date: clientDraft.birth_date || '',
+                }
+            };
+        }
         return {
             ...activeClient,
             full_name: clientDraft.full_name || activeClient.full_name,
@@ -680,7 +706,25 @@ export function DocumentsPage() {
     };
 
     const enrichedProperty = useMemo(() => {
-        if (!activeProperty) return null;
+        if (!activeProperty) {
+            const hasDraft = Boolean(
+                propDraft.property_kind?.trim() ||
+                propDraft.address?.trim() || 
+                propDraft.cadastral_number?.trim() || 
+                propDraft.price || 
+                propDraft.area_total
+            );
+            if (!hasDraft) return null;
+            const parsedArea = parseArea(propDraft.area_total);
+            return {
+                id: 'draft_manual_property',
+                property_kind: propDraft.property_kind?.trim() || 'Квартира',
+                address: propDraft.address || '',
+                cadastral_number: propDraft.cadastral_number || '',
+                area_total: parsedArea !== null ? parsedArea : null,
+                price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : null,
+            };
+        }
         const parsedArea = parseArea(propDraft.area_total);
         return {
             ...activeProperty,
@@ -724,6 +768,38 @@ export function DocumentsPage() {
                     }
                 };
                 await dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+            } else if (clientDraft.full_name?.trim() || clientDraft.phone?.trim()) {
+                const series = clientDraft.passport_series?.trim() || '';
+                const number = clientDraft.passport_number?.trim() || '';
+                const passportStr = (series && number) ? `${series} ${number}` : (series || number || '');
+                const birthDateStr = clientDraft.birth_date?.trim() || '';
+                const regAddressStr = clientDraft.registration_address?.trim() || '';
+
+                const newClient = {
+                    id: `client_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                    full_name: clientDraft.full_name?.trim() || 'Клиент',
+                    phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
+                    birth_date: birthDateStr,
+                    reg_address: regAddressStr,
+                    passport: passportStr,
+                    client_types: [isAgencySale ? 'seller' : 'buyer'],
+                    status: 'active',
+                    realtor_id: state.currentUser?.id,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    passport_details: {
+                        series,
+                        number,
+                        issued_by: clientDraft.passport_issued_by?.trim() || '',
+                        issue_date: clientDraft.passport_issue_date?.trim() || '',
+                        unit_code: clientDraft.passport_unit_code?.trim() || '',
+                        registration_address: regAddressStr,
+                        birth_date: birthDateStr,
+                    }
+                };
+                await dispatch({ type: 'ADD_CLIENT', client: newClient });
+                if (isAgencySale) setSellerId(newClient.id);
+                else setBuyerId(newClient.id);
             }
 
             if (activeProperty) {
@@ -737,6 +813,21 @@ export function DocumentsPage() {
                     price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : activeProperty.price,
                 };
                 await dispatch({ type: 'UPDATE_PROPERTY', property: updatedProperty });
+            } else if (propDraft.address?.trim() || propDraft.property_kind?.trim()) {
+                const parsedArea = parseArea(propDraft.area_total);
+                const newProperty = {
+                    id: `prop_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                    property_kind: propDraft.property_kind?.trim() || 'Квартира',
+                    address: propDraft.address?.trim() || '',
+                    cadastral_number: propDraft.cadastral_number?.trim() || '',
+                    area_total: parsedArea !== null ? parsedArea : null,
+                    price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : null,
+                    client_id: activeClient?.id || sellerId || buyerId || null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                };
+                await dispatch({ type: 'ADD_PROPERTY', property: newProperty });
+                setPropertyId(newProperty.id);
             }
 
             if (sourceMode === 'deal' && selectedDealId) {
@@ -826,18 +917,17 @@ export function DocumentsPage() {
 
     /* ── Сохранение правок шаблона ────────────────────────────────────────── */
     const handleSaveAsTemplate = () => {
-        if (previewRef.current) {
-            const html = previewRef.current.innerHTML;
-            try {
-                localStorage.setItem(`repro_custom_doc_template_${selectedTemplate}`, html);
-                setSavedTemplateHtml(html);
-                setHasManualEdits(false);
-                setIsEditMode(false);
-                toast?.success?.('Шаблон успешно сохранен для данного типа договора!');
-            } catch (e) {
-                console.error('Failed to save template to localStorage:', e);
-                toast?.error?.('Ошибка при сохранении шаблона');
-            }
+        if (!previewRef.current) return;
+        try {
+            const sanitizedHtml = sanitizeTemplateForSaving(previewRef.current);
+            localStorage.setItem(`repro_custom_doc_template_${selectedTemplate}`, sanitizedHtml);
+            setSavedTemplateHtml(sanitizedHtml);
+            setHasManualEdits(false);
+            setIsEditMode(false);
+            toast?.success?.('Шаблон успешно сохранен! Формулировки сохранены, а данные клиентов будут автоматически заполняться для каждого договора.');
+        } catch (e) {
+            console.error('Failed to save template to localStorage:', e);
+            toast?.error?.('Ошибка при сохранении шаблона');
         }
     };
 
@@ -853,6 +943,102 @@ export function DocumentsPage() {
         setIsEditMode(false);
         setPreviewKey(k => k + 1);
         toast?.success?.('Шаблон сброшен к исходному системному виду');
+    };
+
+    /* ── Динамическое наполнение сохраненного шаблона актуальными данными ─── */
+    const hydratedCustomTemplateHtml = useMemo(() => {
+        if (!savedTemplateHtml) return null;
+        const slotValues = buildSlotValues(generatorData, selectedTemplate);
+        return injectDataIntoTemplateHtml(
+            savedTemplateHtml,
+            slotValues,
+            highlightSlots && !isEditMode,
+            isEditMode
+        );
+    }, [savedTemplateHtml, generatorData, selectedTemplate, highlightSlots, isEditMode]);
+
+    /* ── Клик по слоту в окне предпросмотра ────────────────────────────────── */
+    const handlePreviewClick = (e) => {
+        if (isEditMode) return;
+        const slotEl = e.target.closest('.doc-slot, [data-input-id]');
+        if (slotEl) {
+            const inputId = slotEl.getAttribute('data-input-id');
+            if (inputId) {
+                const el = document.getElementById(inputId);
+                if (el) {
+                    el.focus();
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+    };
+
+    /* ── Очистка выбранного клиента для нового набора ─────────────────────── */
+    const handleClearClient = () => {
+        setSellerId('');
+        setBuyerId('');
+        setSelectedContractId('');
+        setClientDraft({
+            full_name: '',
+            phone: '',
+            birth_date: '',
+            passport_series: '',
+            passport_number: '',
+            passport_issued_by: '',
+            passport_issue_date: '',
+            passport_unit_code: '',
+            registration_address: '',
+        });
+        setIsSavedToCrm(false);
+    };
+
+    /* ── Создание нового клиента из черновика в CRM ───────────────────────── */
+    const handleSaveNewClientToCrm = async () => {
+        if (!clientDraft.full_name?.trim()) {
+            toast?.error?.('Укажите ФИО принципала');
+            return;
+        }
+        setIsSavingToCrm(true);
+        try {
+            const series = clientDraft.passport_series?.trim() || '';
+            const number = clientDraft.passport_number?.trim() || '';
+            const passportStr = (series && number) ? `${series} ${number}` : (series || number || '');
+            const newClient = {
+                id: `client_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                full_name: clientDraft.full_name.trim(),
+                phone: stripPhone(clientDraft.phone) || clientDraft.phone.trim(),
+                client_types: [isAgencySale ? 'seller' : 'buyer'],
+                status: 'active',
+                realtor_id: state.currentUser?.id,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                birth_date: clientDraft.birth_date || '',
+                reg_address: clientDraft.registration_address || '',
+                passport: passportStr,
+                passport_details: {
+                    series,
+                    number,
+                    issued_by: clientDraft.passport_issued_by?.trim() || '',
+                    issue_date: clientDraft.passport_issue_date?.trim() || '',
+                    unit_code: clientDraft.passport_unit_code?.trim() || '',
+                    registration_address: clientDraft.registration_address?.trim() || '',
+                    birth_date: clientDraft.birth_date || '',
+                }
+            };
+            await dispatch({ type: 'ADD_CLIENT', client: newClient });
+            if (isAgencySale) {
+                setSellerId(newClient.id);
+            } else {
+                setBuyerId(newClient.id);
+            }
+            setIsSavedToCrm(true);
+            toast?.success?.(`Новый клиент «${newClient.full_name}» сохранен в CRM!`);
+        } catch (e) {
+            console.error('Failed to create client in CRM:', e);
+            toast?.error?.('Ошибка при создании клиента в CRM');
+        } finally {
+            setIsSavingToCrm(false);
+        }
     };
 
     const handleDownload = async () => {
@@ -1274,7 +1460,7 @@ export function DocumentsPage() {
                 </div>
 
                 {/* Интерактивное заполнение и подсветка недостающих данных Принципала */}
-                {activeClient && (
+                {(isAgencyContract || sourceMode === 'manual' || activeClient) && (
                     <div className="no-print" style={{
                         background: 'var(--surface)', borderRadius: 20, padding: 20,
                         border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
@@ -1283,8 +1469,21 @@ export function DocumentsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <Sparkles size={16} style={{ color: 'var(--primary)' }} />
                                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    Реквизиты Принципала (карточка CRM)
+                                    {activeClient ? `Реквизиты Принципала (${activeClient.full_name})` : 'Реквизиты Принципала (ручной ввод / новый принципал)'}
                                 </span>
+                                {activeClient && (
+                                    <button
+                                        type="button"
+                                        onClick={handleClearClient}
+                                        style={{
+                                            background: 'none', border: 'none', color: 'var(--primary)',
+                                            fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: '2px 6px'
+                                        }}
+                                        title="Очистить и ввести нового принципала вручную"
+                                    >
+                                        Сменить / Ввести нового
+                                    </button>
+                                )}
                             </div>
                             {(() => {
                                 const missing = [
@@ -1508,32 +1707,54 @@ export function DocumentsPage() {
                             </div>
                         </div>
 
-                        {/* Кнопка сохранения в карточку клиента CRM */}
+                        {/* Кнопка сохранения в CRM */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                            <button
-                                type="button"
-                                className="card-clickable"
-                                onClick={handleSaveToCrm}
-                                disabled={isSavingToCrm}
-                                style={{
-                                    height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
-                                    background: isSavedToCrm ? '#10b981' : 'var(--primary)',
-                                    color: 'white', fontWeight: 600, fontSize: 13,
-                                    boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
-                                    display: 'flex', alignItems: 'center', gap: 8, cursor: isSavingToCrm ? 'not-allowed' : 'pointer',
-                                    transition: 'all 0.2s',
-                                    opacity: isSavingToCrm ? 0.7 : 1,
-                                }}
-                            >
-                                {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <Save size={16} />)}
-                                {isSavingToCrm ? 'Сохранение в CRM...' : (isSavedToCrm ? 'Данные сохранены в CRM' : 'Сохранить в карточку клиента')}
-                            </button>
+                            {activeClient ? (
+                                <button
+                                    type="button"
+                                    className="card-clickable"
+                                    onClick={handleSaveToCrm}
+                                    disabled={isSavingToCrm}
+                                    style={{
+                                        height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
+                                        background: isSavedToCrm ? '#10b981' : 'var(--primary)',
+                                        color: 'white', fontWeight: 600, fontSize: 13,
+                                        boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
+                                        display: 'flex', alignItems: 'center', gap: 8, cursor: isSavingToCrm ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s',
+                                        opacity: isSavingToCrm ? 0.7 : 1,
+                                    }}
+                                >
+                                    {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <Save size={16} />)}
+                                    {isSavingToCrm ? 'Сохранение в CRM...' : (isSavedToCrm ? 'Данные сохранены в CRM' : 'Сохранить в карточку клиента')}
+                                </button>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="card-clickable"
+                                    onClick={handleSaveNewClientToCrm}
+                                    disabled={isSavingToCrm || !clientDraft.full_name?.trim()}
+                                    style={{
+                                        height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
+                                        background: isSavedToCrm ? '#10b981' : 'var(--primary)',
+                                        color: 'white', fontWeight: 600, fontSize: 13,
+                                        boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
+                                        display: 'flex', alignItems: 'center', gap: 8, cursor: (isSavingToCrm || !clientDraft.full_name?.trim()) ? 'not-allowed' : 'pointer',
+                                        transition: 'all 0.2s',
+                                        opacity: (isSavingToCrm || !clientDraft.full_name?.trim()) ? 0.7 : 1,
+                                    }}
+                                    title="Создать нового клиента в CRM с введенными данными"
+                                >
+                                    {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <UserPlus size={16} />)}
+                                    {isSavingToCrm ? 'Создание клиента...' : (isSavedToCrm ? 'Клиент сохранен в CRM' : 'Сохранить нового клиента в CRM')}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
 
                 {/* Интерактивное заполнение и подсветка характеристик объекта недвижимости */}
-                {activeProperty && (
+                {(activeProperty || isAgencySale || selectedTemplate === 'yuss_buy_1' || propertyId) && (
                     <div className="no-print" style={{
                         background: 'var(--surface)', borderRadius: 20, padding: 20,
                         border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
@@ -1542,7 +1763,7 @@ export function DocumentsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <Building2 size={16} style={{ color: 'var(--primary)' }} />
                                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    Характеристики объекта (карточка CRM)
+                                    {activeProperty ? 'Характеристики объекта (карточка CRM)' : 'Характеристики объекта'}
                                 </span>
                             </div>
                             {(() => {
@@ -2242,12 +2463,47 @@ export function DocumentsPage() {
                     </div>
                 )}
 
+                {/* Оповещение об активном сохраненном шаблоне */}
+                {savedTemplateHtml && (
+                    <div className="no-print" style={{
+                        marginTop: 10,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        padding: '12px 18px', borderRadius: 16,
+                        background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)',
+                        fontSize: 12, color: 'var(--text)', gap: 12, flexWrap: 'wrap'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <FileText size={18} style={{ color: '#059669', flexShrink: 0 }} />
+                            <span>
+                                Используется ваш <strong>сохранённый шаблон</strong> для этого типа договора. Данные принципала и объекта обновляются автоматически.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            className="card-clickable"
+                            onClick={handleResetTemplate}
+                            style={{
+                                padding: '6px 14px', borderRadius: 10,
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                color: '#dc2626', fontSize: 12, fontWeight: 600,
+                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                            }}
+                            title="Сбросить все правки шаблона и вернуть стандартный системный вариант договора"
+                        >
+                            <RotateCcw size={13} />
+                            Сбросить к стандартному CRM
+                        </button>
+                    </div>
+                )}
+
                 {/* Предпросмотр документа (для экрана и печати) */}
                 <div
                     ref={previewRef}
                     id="doc-print-area"
                     contentEditable={isEditMode}
                     suppressContentEditableWarning={true}
+                    onClick={handlePreviewClick}
                     onInput={() => setHasManualEdits(true)}
                     style={{
                         background: 'var(--surface)',
@@ -2266,8 +2522,8 @@ export function DocumentsPage() {
                         transition: 'border 0.2s, box-shadow 0.2s',
                     }}
                 >
-                    {savedTemplateHtml ? (
-                        <div dangerouslySetInnerHTML={{ __html: savedTemplateHtml }} />
+                    {hydratedCustomTemplateHtml ? (
+                        <div dangerouslySetInnerHTML={{ __html: hydratedCustomTemplateHtml }} />
                     ) : (
                         <DocumentPreview
                             key={previewKey}
@@ -2285,13 +2541,14 @@ export function DocumentsPage() {
 
 /* ─── Интерактивный слот подстановки данных ──────────────────────────────── */
 
-function Slot({ value, label, fallback, inputId, highlight = true, isEditing = false }) {
+function Slot({ value, label, fallback, inputId, slotId, highlight = true, isEditing = false }) {
     const hasVal = Boolean(value && String(value).trim());
     const displayVal = hasVal ? String(value) : (fallback || `[● Заполнить: ${label}]`);
 
-    const handleClick = () => {
+    const handleClick = (e) => {
         if (isEditing) return;
         if (inputId) {
+            e?.stopPropagation?.();
             const el = document.getElementById(inputId);
             if (el) {
                 el.focus();
@@ -2300,62 +2557,32 @@ function Slot({ value, label, fallback, inputId, highlight = true, isEditing = f
         }
     };
 
-    if (!highlight) {
-        return <span style={{ fontWeight: hasVal ? 'normal' : '600' }}>{displayVal}</span>;
-    }
-
-    if (hasVal) {
-        return (
-            <span
-                className="doc-slot doc-slot-filled"
-                title={`Поле из CRM: ${label}. Нажмите для редактирования.`}
-                onClick={handleClick}
-                style={{
-                    backgroundColor: 'rgba(0, 102, 255, 0.08)',
-                    color: '#0052cc',
-                    fontWeight: 600,
-                    padding: '1px 6px',
-                    borderRadius: 4,
-                    borderBottom: '2px solid #0066ff',
-                    margin: '0 2px',
-                    cursor: inputId ? 'pointer' : 'default',
-                    display: 'inline',
-                    transition: 'all 0.15s ease-in-out',
-                }}
-            >
-                {displayVal}
-            </span>
-        );
-    }
-
     return (
         <span
-            className="doc-slot doc-slot-empty"
-            title={`Не заполнено: ${label}. Нажмите, чтобы ввести.`}
+            className={`doc-slot ${hasVal ? 'doc-slot-filled' : 'doc-slot-empty'}`}
+            data-slot-id={slotId || ''}
+            data-label={label || ''}
+            data-input-id={inputId || ''}
+            data-fallback={fallback || ''}
+            title={hasVal ? `Поле из CRM: ${label}. Нажмите для редактирования.` : `Не заполнено: ${label}. Нажмите, чтобы ввести.`}
             onClick={handleClick}
             style={{
-                backgroundColor: 'rgba(245, 158, 11, 0.14)',
-                color: '#b45309',
-                fontWeight: 600,
-                padding: '2px 8px',
+                backgroundColor: highlight && !isEditing ? (hasVal ? 'rgba(0, 102, 255, 0.08)' : 'rgba(245, 158, 11, 0.14)') : 'transparent',
+                color: highlight && !isEditing ? (hasVal ? '#0052cc' : '#b45309') : 'inherit',
+                fontWeight: hasVal ? (highlight && !isEditing ? 600 : 'normal') : 600,
+                padding: highlight && !isEditing ? (hasVal ? '1px 6px' : '2px 8px') : 0,
                 borderRadius: 4,
-                border: '1.5px dashed #f59e0b',
-                margin: '0 2px',
+                borderBottom: highlight && !isEditing ? (hasVal ? '2px solid #0066ff' : 'none') : 'none',
+                border: highlight && !isEditing ? (hasVal ? 'none' : '1.5px dashed #f59e0b') : 'none',
+                margin: highlight && !isEditing ? '0 2px' : 0,
                 cursor: inputId ? 'pointer' : 'default',
                 display: 'inline',
+                transition: 'all 0.15s ease-in-out',
             }}
         >
             {displayVal}
         </span>
     );
-}
-
-function toShortName(fullName) {
-    if (!fullName) return '____________________';
-    const parts = fullName.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0];
-    if (parts.length === 2) return `${parts[0]} ${parts[1][0]}.`;
-    return `${parts[0]} ${parts[1][0]}.${parts[2][0]}.`;
 }
 
 function renderPassportDetails(person, highlight) {
@@ -2366,10 +2593,10 @@ function renderPassportDetails(person, highlight) {
     
     return (
         <span>
-            паспорт: серия <Slot value={p.series} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> № <Slot value={p.number} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />
-            {p.issued_by ? <>, выдан <Slot value={p.issued_by} label="Кем выдан" inputId="doc-input-issued-by" highlight={highlight} /></> : null}
-            {p.unit_code ? <>, код подразделения <Slot value={p.unit_code} label="Код" inputId="doc-input-unit-code" highlight={highlight} /></> : null}
-            {(p.registration_address || person.reg_address) ? <>, зарегистрирован: <Slot value={p.registration_address || person.reg_address} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /></> : null}
+            паспорт: серия <Slot slotId="principal_series" value={p.series} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> № <Slot slotId="principal_number" value={p.number} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />
+            {p.issued_by ? <>, выдан <Slot slotId="principal_issued_by" value={p.issued_by} label="Кем выдан" inputId="doc-input-issued-by" highlight={highlight} /></> : null}
+            {p.unit_code ? <>, код подразделения <Slot slotId="principal_unit_code" value={p.unit_code} label="Код" inputId="doc-input-unit-code" highlight={highlight} /></> : null}
+            {(p.registration_address || person.reg_address) ? <>, зарегистрирован: <Slot slotId="principal_reg_address" value={p.registration_address || person.reg_address} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /></> : null}
         </span>
     );
 }
@@ -2458,18 +2685,18 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 14, fontWeight: 500 }}>
                     <span>Город Киров, Кировская область</span>
-                    <span>«<Slot value={today} label="Дата договора" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, <Slot value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                    дата рождения: <Slot value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                    паспорт: серия <Slot value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                    выдан <Slot value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
-                    дата выдачи: <Slot value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
-                    код подразделения: <Slot value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
-                    зарегистрированный(-ая) по адресу: <Slot value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
-                    телефон: <Slot value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                    Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                    дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                    паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                    выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
+                    дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
+                    код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
+                    зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
+                    телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
                     именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
                 </p>
 
@@ -2496,7 +2723,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                                     Вид объекта недвижимости
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    <Slot value={propKind} label="Вид объекта недвижимости" inputId="doc-input-prop-kind" highlight={highlight} />
+                                    <Slot slotId="prop_kind" value={propKind} label="Вид объекта недвижимости" inputId="doc-input-prop-kind" highlight={highlight} />
                                 </td>
                             </tr>
                             <tr>
@@ -2504,11 +2731,11 @@ function DocumentPreview({ template, data, highlight = true }) {
                                     Адрес (местоположение)
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    <Slot value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
+                                    <Slot slotId="prop_address" value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
                                     {propCadastral ? (
-                                        <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
+                                        <span>, кад. № <Slot slotId="prop_cadastral" value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
                                     ) : (
-                                        <span> <Slot value="" label="Кадастровый номер" inputId="doc-input-prop-cadastral" fallback="[Кадастровый номер]" highlight={highlight} /></span>
+                                        <span> <Slot slotId="prop_cadastral" value="" label="Кадастровый номер" inputId="doc-input-prop-cadastral" fallback="[Кадастровый номер]" highlight={highlight} /></span>
                                     )}
                                 </td>
                             </tr>
@@ -2517,7 +2744,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </div>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    1.1.1. Ориентировочная стоимость отчуждаемого объекта недвижимости составляет <Slot value={priceFormatted} label="Ориентировочная стоимость" inputId="doc-input-prop-price" highlight={highlight} /> {priceWords ? <Slot value={priceWords} label="Сумма прописью" inputId="doc-input-prop-price" highlight={highlight} /> : ''} рублей.
+                    1.1.1. Ориентировочная стоимость отчуждаемого объекта недвижимости составляет <Slot slotId="price_formatted" value={priceFormatted} label="Ориентировочная стоимость" inputId="doc-input-prop-price" highlight={highlight} /> {priceWords ? <Slot slotId="price_words" value={priceWords} label="Сумма прописью" inputId="doc-input-prop-price" highlight={highlight} /> : ''} рублей.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость объекта недвижимости путем заключения дополнительного соглашения к Агентскому договору.
@@ -2564,7 +2791,7 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>3. Агентское вознаграждение и расчеты между сторонами</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <Slot value={commFormatted} label="Вознаграждение (₽)" inputId="doc-input-commission" highlight={highlight} /> {commWords ? <Slot value={commWords} label="Сумма прописью" inputId="doc-input-commission" highlight={highlight} /> : ''} рублей, в том числе НДС 5 %.
+                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <Slot slotId="comm_formatted" value={commFormatted} label="Вознаграждение (₽)" inputId="doc-input-commission" highlight={highlight} /> {commWords ? <Slot slotId="comm_words" value={commWords} label="Сумма прописью" inputId="doc-input-commission" highlight={highlight} /> : ''} рублей, в том числе НДС 5 %.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     3.2. Принципал обязуется уплатить Агенту вознаграждение путем внесения обеспечительного платежа при заключении соглашения об авансе/обеспечительно платеже/предварительного договора о задатке с Покупателем, окончательный расчет производится в день заключения сделки с объектом недвижимости.
@@ -2589,7 +2816,7 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>5. Срок действия настоящего договора</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <Slot value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" fallback="«___» ________________ 202__ г." highlight={highlight} /> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
+                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <Slot slotId="contract_end_date" value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" fallback="«___» ________________ 202__ г." highlight={highlight} /> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     5.2. Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.
@@ -2657,14 +2884,14 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 14, fontWeight: 500 }}>
                     <span>Город Киров, Кировская область</span>
-                    <span>«<Slot value={today} label="Дата договора" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, Гр. <Slot value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                    дата рождения: <Slot value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                    паспорт РФ серия <Slot value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                    выдан <Slot value={principalIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} /> года <Slot value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /> именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,
+                    Мы, Гр. <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                    дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                    паспорт РФ серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                    выдан <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} /> года <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /> именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,
                 </p>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
@@ -2690,7 +2917,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                                     Вид объекта недвижимости
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    <Slot value={propKind} label="Вид объекта недвижимости" inputId="doc-input-prop-kind" highlight={highlight} />
+                                    <Slot slotId="prop_kind" value={propKind} label="Вид объекта недвижимости" inputId="doc-input-prop-kind" highlight={highlight} />
                                 </td>
                             </tr>
                             <tr>
@@ -2698,11 +2925,11 @@ function DocumentPreview({ template, data, highlight = true }) {
                                     Адрес (местоположение)
                                 </td>
                                 <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
-                                    <Slot value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
+                                    <Slot slotId="prop_address" value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
                                     {propCadastral ? (
-                                        <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
+                                        <span>, кад. № <Slot slotId="prop_cadastral" value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span>
                                     ) : (
-                                        <span> <Slot value="" label="Кадастровый номер" inputId="doc-input-prop-cadastral" fallback="[Кадастровый номер]" highlight={highlight} /></span>
+                                        <span> <Slot slotId="prop_cadastral" value="" label="Кадастровый номер" inputId="doc-input-prop-cadastral" fallback="[Кадастровый номер]" highlight={highlight} /></span>
                                     )}
                                 </td>
                             </tr>
@@ -2711,7 +2938,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </div>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
-                    1.1.1. Ориентировочная стоимость платы за найм/арендной платы в месяц составляет: <strong><Slot value={priceFormatted} label="Плата за найм" inputId="doc-input-prop-price" highlight={highlight} /></strong> {priceWords ? ` ${priceWords}` : ''} рублей.
+                    1.1.1. Ориентировочная стоимость платы за найм/арендной платы в месяц составляет: <strong><Slot slotId="price_formatted" value={priceFormatted} label="Плата за найм" inputId="doc-input-prop-price" highlight={highlight} /></strong> {priceWords ? ` ${priceWords}` : ''} рублей.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
                     1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость, указанную в п. 1.1.1 настоящего договора.
@@ -2751,7 +2978,7 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>3. Агентское вознаграждение и расчеты между сторонами</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <strong><Slot value={commFormatted} label="Вознаграждение Агента" inputId="doc-input-commission" highlight={highlight} /></strong> {commWords ? ` ${commWords}` : ''} рублей, в том числе НДС 5 %.
+                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <strong><Slot slotId="comm_formatted" value={commFormatted} label="Вознаграждение Агента" inputId="doc-input-commission" highlight={highlight} /></strong> {commWords ? ` ${commWords}` : ''} рублей, в том числе НДС 5 %.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     3.2. Настоящим пунктом Принципал предоставляет Агенту право получить с нанимателя/арендатора объекта недвижимости аванс в сумме, не превышающей размер агентского вознаграждения, в счет частичной оплаты его стоимости. Полученный Агентом аванс засчитывается в счет стоимости агентского вознаграждения, подлежащего оплате Принципалом.
@@ -2776,7 +3003,7 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>5. Срок действия настоящего договора</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <strong><Slot value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" highlight={highlight} /></strong> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
+                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <strong><Slot slotId="contract_end_date" value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" highlight={highlight} /></strong> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     5.2. Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.
@@ -2841,18 +3068,18 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 14, fontWeight: 500 }}>
                     <span>Город Киров, Кировская область</span>
-                    <span>«<Slot value={today} label="Дата договора" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, <Slot value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                    дата рождения: <Slot value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                    паспорт: серия <Slot value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                    выдан <Slot value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
-                    дата выдачи: <Slot value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
-                    код подразделения: <Slot value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
-                    зарегистрированный(-ая) по адресу: <Slot value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
-                    телефон: <Slot value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                    Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                    дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                    паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                    выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
+                    дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
+                    код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
+                    зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
+                    телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
                     именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
                 </p>
 
@@ -2907,7 +3134,7 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>3. Агентское вознаграждение и расчеты между сторонами</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <Slot value={commFormatted} label="Вознаграждение (₽)" inputId="doc-input-commission" highlight={highlight} /> {commWords ? <Slot value={commWords} label="Сумма прописью" inputId="doc-input-commission" highlight={highlight} /> : ''} рублей, в том числе НДС 5 %.
+                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <Slot slotId="comm_formatted" value={commFormatted} label="Вознаграждение (₽)" inputId="doc-input-commission" highlight={highlight} /> {commWords ? <Slot slotId="comm_words" value={commWords} label="Сумма прописью" inputId="doc-input-commission" highlight={highlight} /> : ''} рублей, в том числе НДС 5 %.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     3.2. Принципал обязуется уплатить Агенту вознаграждение путем внесения обеспечительного платежа, окончательный расчет производится в день заключения сделки с объектом недвижимости.
@@ -2929,7 +3156,7 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>5. Срок действия настоящего договора</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <Slot value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" fallback="«___» ________________ 202__ г." highlight={highlight} /> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
+                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <Slot slotId="contract_end_date" value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" fallback="«___» ________________ 202__ г." highlight={highlight} /> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     5.2. Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.
@@ -2987,39 +3214,39 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                     <span>г. Киров</span>
-                    <span>«<Slot value={dealDate || today} label="Дата сделки" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="deal_date" value={dealDate || today} label="Дата сделки" highlight={highlight} />»</span>
                 </div>
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     Мы, нижеподписавшиеся:<br/>
-                    Гр. <Slot value={sellerName} label="Продавец" highlight={highlight} />, {renderPassportDetails(seller, highlight)}, именуемый(ая) в дальнейшем «Продавец», с одной стороны, и<br/>
-                    Гр. <Slot value={buyerName} label="Покупатель" highlight={highlight} />, {renderPassportDetails(buyer, highlight)}, именуемый(ая) в дальнейшем «Покупатель», с другой стороны,<br/>
-                    при посредничестве Агентства недвижимости «<Slot value={agency} label="Агентство" highlight={highlight} />» в лице риелтора <Slot value={realtorName} label="Риелтор" highlight={highlight} />, заключили настоящий Договор о нижеследующем:
+                    Гр. <Slot slotId="seller_name" value={sellerName} label="Продавец" highlight={highlight} />, {renderPassportDetails(seller, highlight)}, именуемый(ая) в дальнейшем «Продавец», с одной стороны, и<br/>
+                    Гр. <Slot slotId="buyer_name" value={buyerName} label="Покупатель" highlight={highlight} />, {renderPassportDetails(buyer, highlight)}, именуемый(ая) в дальнейшем «Покупатель», с другой стороны,<br/>
+                    при посредничестве Агентства недвижимости «<Slot slotId="agency_name" value={agency} label="Агентство" highlight={highlight} />» в лице риелтора <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} />, заключили настоящий Договор о нижеследующем:
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>1. ПРЕДМЕТ ДОГОВОРА</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
                     1.1. Продавец продает, а Покупатель покупает в собственность недвижимое имущество (далее – «Объект»):<br/>
-                    Адрес: <Slot value={address} label="Адрес объекта" highlight={highlight} /><br/>
-                    Общая площадь: <Slot value={area} label="Площадь" fallback="________ кв.м." highlight={highlight} />
+                    Адрес: <Slot slotId="address" value={address} label="Адрес объекта" highlight={highlight} /><br/>
+                    Общая площадь: <Slot slotId="area" value={area} label="Площадь" fallback="________ кв.м." highlight={highlight} />
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>2. ЦЕНА И ПОРЯДОК РАСЧЕТОВ</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    2.1. Объект продается за цену в размере <Slot value={price} label="Стоимость" fallback="________________________" highlight={highlight} />.<br/>
+                    2.1. Объект продается за цену в размере <Slot slotId="price" value={price} label="Стоимость" fallback="________________________" highlight={highlight} />.<br/>
                     2.2. Покупатель обязуется выплатить указанную сумму в течение ___ банковских дней с момента государственной регистрации перехода права собственности.
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 12 }}>3. ПОДПИСИ СТОРОН</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 12 }}>
                     <div>
                         <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Продавец:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot value={sellerName} label="Продавец" highlight={highlight} /> /</p>
+                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="seller_name" value={sellerName} label="Продавец" highlight={highlight} /> /</p>
                     </div>
                     <div>
                         <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Покупатель:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot value={buyerName} label="Покупатель" highlight={highlight} /> /</p>
+                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="buyer_name" value={buyerName} label="Покупатель" highlight={highlight} /> /</p>
                     </div>
                 </div>
                 <div style={{ marginTop: 12 }}>
                     <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Риелтор:</p>
-                    <p>____________________ / <Slot value={realtorName} label="Риелтор" highlight={highlight} /> /</p>
+                    <p>____________________ / <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} /> /</p>
                 </div>
             </div>
         );
@@ -3034,36 +3261,36 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                     <span>г. Киров</span>
-                    <span>«<Slot value={dealDate || today} label="Дата" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="deal_date" value={dealDate || today} label="Дата" highlight={highlight} />»</span>
                 </div>
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Гр. <Slot value={sellerName} label="Наймодатель" highlight={highlight} />, {renderPassportDetails(seller, highlight)}, именуемый(ая) в дальнейшем «Наймодатель», с одной стороны, и<br/>
-                    Гр. <Slot value={buyerName} label="Наниматель" highlight={highlight} />, {renderPassportDetails(buyer, highlight)}, именуемый(ая) в дальнейшем «Наниматель», с другой стороны,<br/>
-                    при содействии риелтора <Slot value={realtorName} label="Риелтор" highlight={highlight} /> (Агентство недвижимости «<Slot value={agency} label="Агентство" highlight={highlight} />»), заключили настоящий Договор о нижеследующем:
+                    Гр. <Slot slotId="seller_name" value={sellerName} label="Наймодатель" highlight={highlight} />, {renderPassportDetails(seller, highlight)}, именуемый(ая) в дальнейшем «Наймодатель», с одной стороны, и<br/>
+                    Гр. <Slot slotId="buyer_name" value={buyerName} label="Наниматель" highlight={highlight} />, {renderPassportDetails(buyer, highlight)}, именуемый(ая) в дальнейшем «Наниматель», с другой стороны,<br/>
+                    при содействии риелтора <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} /> (Агентство недвижимости «<Slot slotId="agency_name" value={agency} label="Агентство" highlight={highlight} />»), заключили настоящий Договор о нижеследующем:
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>1. ПРЕДМЕТ ДОГОВОРА</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    1.1. Наймодатель предоставляет Нанимателю за плату во владение и пользование жилое помещение по адресу: <Slot value={address} label="Адрес объекта" highlight={highlight} />.
+                    1.1. Наймодатель предоставляет Нанимателю за плату во владение и пользование жилое помещение по адресу: <Slot slotId="address" value={address} label="Адрес объекта" highlight={highlight} />.
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>2. АРЕНДНАЯ ПЛАТА</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    2.1. Ежемесячная плата за пользование помещением составляет <Slot value={price} label="Арендная плата" fallback="________________________" highlight={highlight} />.<br/>
+                    2.1. Ежемесячная плата за пользование помещением составляет <Slot slotId="price" value={price} label="Арендная плата" fallback="________________________" highlight={highlight} />.<br/>
                     2.2. Арендная плата вносится ежемесячно не позднее ___ числа каждого месяца.
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 12 }}>3. ПОДПИСИ СТОРОН</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 12 }}>
                     <div>
                         <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Наймодатель:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot value={sellerName} label="Наймодатель" highlight={highlight} /> /</p>
+                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="seller_name" value={sellerName} label="Наймодатель" highlight={highlight} /> /</p>
                     </div>
                     <div>
                         <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Наниматель:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot value={buyerName} label="Наниматель" highlight={highlight} /> /</p>
+                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="buyer_name" value={buyerName} label="Наниматель" highlight={highlight} /> /</p>
                     </div>
                 </div>
                 <div style={{ marginTop: 12 }}>
                     <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Риелтор:</p>
-                    <p>____________________ / <Slot value={realtorName} label="Риелтор" highlight={highlight} /> /</p>
+                    <p>____________________ / <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} /> /</p>
                 </div>
             </div>
         );
@@ -3078,27 +3305,27 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                     <span>г. Киров</span>
-                    <span>«<Slot value={fDate(deal?.handover_date || deal?.deal_date) || today} label="Дата акта" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="deal_date" value={fDate(deal?.handover_date || deal?.deal_date) || today} label="Дата акта" highlight={highlight} />»</span>
                 </div>
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, нижеподписавшиеся, Гр. <Slot value={sellerName} label="Передал" highlight={highlight} />, с одной стороны,<br/>
-                    и Гр. <Slot value={buyerName} label="Принял" highlight={highlight} />, с другой стороны, составили настоящий Акт о том, что в соответствии с Договором от «<Slot value={dealDate || today} label="Дата договора" highlight={highlight} />»:
+                    Мы, нижеподписавшиеся, Гр. <Slot slotId="seller_name" value={sellerName} label="Передал" highlight={highlight} />, с одной стороны,<br/>
+                    и Гр. <Slot slotId="buyer_name" value={buyerName} label="Принял" highlight={highlight} />, с другой стороны, составили настоящий Акт о том, что в соответствии с Договором от «<Slot slotId="deal_date" value={dealDate || today} label="Дата договора" highlight={highlight} />»:
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>1. ПРЕДМЕТ АКТА</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    1.1. Продавец/Наймодатель передал, а Покупатель/Наниматель принял недвижимое имущество по адресу: <Slot value={address} label="Адрес объекта" highlight={highlight} />.<br/>
+                    1.1. Продавец/Наймодатель передал, а Покупатель/Наниматель принял недвижимое имущество по адресу: <Slot slotId="address" value={address} label="Адрес объекта" highlight={highlight} />.<br/>
                     1.2. Состояние имущества соответствует условиям договора. Стороны претензий друг к другу не имеют.<br/>
-                    1.3. Передачу осуществил в присутствии риелтора <Slot value={realtorName} label="Риелтор" highlight={highlight} /> (Агентство «<Slot value={agency} label="Агентство" highlight={highlight} />»).
+                    1.3. Передачу осуществил в присутствии риелтора <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} /> (Агентство «<Slot slotId="agency_name" value={agency} label="Агентство" highlight={highlight} />»).
                 </p>
                 <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 12 }}>ПОДПИСИ СТОРОН</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 12 }}>
                     <div>
                         <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Передал:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot value={sellerName} label="Передал" highlight={highlight} /> /</p>
+                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="seller_name" value={sellerName} label="Передал" highlight={highlight} /> /</p>
                     </div>
                     <div>
                         <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Принял:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot value={buyerName} label="Принял" highlight={highlight} /> /</p>
+                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="buyer_name" value={buyerName} label="Принял" highlight={highlight} /> /</p>
                     </div>
                 </div>
             </div>
@@ -3116,11 +3343,11 @@ function DocumentPreview({ template, data, highlight = true }) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
                 <span>г. Киров</span>
-                <span>«<Slot value={today} label="Дата" highlight={highlight} />»</span>
+                <span>«<Slot slotId="contract_date" value={today} label="Дата" highlight={highlight} />»</span>
             </div>
             <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                Гр. <Slot value={sellerName || principalName} label="Принципал" highlight={highlight} />, {renderPassportDetails(seller || principal, highlight)}, именуемый(ая) в дальнейшем «Принципал», с одной стороны, и<br/>
-                Агентство недвижимости «<Slot value={agency} label="Агентство" highlight={highlight} />» в лице риелтора <Slot value={realtorName} label="Риелтор" highlight={highlight} />, именуемое в дальнейшем «Агент», с другой стороны, заключили настоящий Договор о нижеследующем:
+                Гр. <Slot slotId="principal_name" value={sellerName || principalName} label="Принципал" highlight={highlight} />, {renderPassportDetails(seller || principal, highlight)}, именуемый(ая) в дальнейшем «Принципал», с одной стороны, и<br/>
+                Агентство недвижимости «<Slot slotId="agency_name" value={agency} label="Агентство" highlight={highlight} />» в лице риелтора <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} />, именуемое в дальнейшем «Агент», с другой стороны, заключили настоящий Договор о нижеследующем:
             </p>
             <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>1. ПРЕДМЕТ ДОГОВОРА</div>
             <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
@@ -3128,17 +3355,17 @@ function DocumentPreview({ template, data, highlight = true }) {
             </p>
             <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>2. ВОЗНАГРАЖДЕНИЕ</div>
             <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                2.1. Размер агентского вознаграждения составляет: <Slot value={commFormatted ? `${commFormatted} ₽` : ''} label="Размер вознаграждения" fallback="________________________ рублей" highlight={highlight} />.
+                2.1. Размер агентского вознаграждения составляет: <Slot slotId="comm_formatted" value={commFormatted ? `${commFormatted} ₽` : ''} label="Размер вознаграждения" fallback="________________________ рублей" highlight={highlight} />.
             </p>
             <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 12 }}>3. ПОДПИСИ СТОРОН</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 12 }}>
                 <div>
                     <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Принципал:</p>
-                    <p style={{ marginBottom: 16 }}>____________________ / <Slot value={sellerName || principalName} label="Принципал" highlight={highlight} /> /</p>
+                    <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="principal_name" value={sellerName || principalName} label="Принципал" highlight={highlight} /> /</p>
                 </div>
                 <div>
                     <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Агент:</p>
-                    <p style={{ marginBottom: 16 }}>____________________ / <Slot value={realtorName} label="Риелтор" highlight={highlight} /> /</p>
+                    <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} /> /</p>
                 </div>
             </div>
         </div>

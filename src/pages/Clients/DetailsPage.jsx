@@ -171,6 +171,8 @@ export function DetailsPage() {
         switch (status) {
             case 'new':
                 return 'new';
+            case 'control':
+                return 'control';
             case 'refused':
                 return 'refused';
             case 'search':
@@ -191,6 +193,7 @@ export function DetailsPage() {
 
     const statusLabels = {
         new: 'Не отработан',
+        control: 'На контроле',
         selection: 'Подбор',
         active: 'В работе',
         refused: 'Отказ'
