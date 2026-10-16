@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS properties (
   client_ids               UUID[] DEFAULT '{}',
   status                   TEXT DEFAULT 'active',
   property_type            TEXT,
+  property_kind            TEXT,
   market_type              TEXT,
   city                     TEXT,
   district                 TEXT,
