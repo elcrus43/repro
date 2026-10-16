@@ -39,6 +39,7 @@ const TemplatesPage = lazy(() => import('./pages/Messaging/TemplatesPage'));
 const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
 const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m => ({ default: m.SelectionFormPage })));
 const PublicChatPage = lazy(() => import('./pages/Messaging/PublicChatPage'));
+const DevelopmentsPage = lazy(() => import('./pages/Developments/DevelopmentsPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 
 /* ─── BottomNav ────────────────────────────────────────────────────────────── */
@@ -280,6 +281,9 @@ function AppRoutes() {
           <Route path="/selection" element={<Navigate to="/properties?filter=selection" replace />} />
           <Route path="/selection/new" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
           <Route path="/selection/:id/edit" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
+
+          {/* Developments / Новостройки г. Кирова */}
+          <Route path="/developments" element={<RequireAuth><DevelopmentsPage /></RequireAuth>} />
 
           {/* Requests */}
           <Route path="/requests" element={<RequireAuth><RequestsPage /></RequireAuth>} />

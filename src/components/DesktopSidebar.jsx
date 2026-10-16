@@ -11,7 +11,8 @@ import {
   ClipboardList, 
   Sun, 
   Moon,
-  FolderHeart
+  FolderHeart,
+  Landmark
 } from 'lucide-react';
 
 export function DesktopSidebar() {
@@ -51,6 +52,7 @@ export function DesktopSidebar() {
   const navItems = [
     { path: '/', icon: LayoutDashboard, label: 'Дашборд' },
     { path: '/properties', icon: Building2, label: 'Объекты' },
+    { path: '/developments', icon: Landmark, label: 'Новостройки' },
     { path: '/properties?filter=selection', icon: FolderHeart, label: 'Подборки' },
     { path: '/clients', icon: Users, label: 'Клиенты' },
     { path: '/tasks', icon: FileCheck, label: 'Сделки' },

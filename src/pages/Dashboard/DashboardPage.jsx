@@ -4,9 +4,12 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import {
     Sparkles, Users, Home, Search, Target, ArrowRight, Cake,
-    Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight
+    Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight,
+    Pencil, Trash2, X
 } from 'lucide-react';
 import { hasPassedDealStage } from '../../utils/matching';
+import { nanoid } from '../../utils/nanoid';
+import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 
 export function DashboardPage() {
     const { state, dispatch } = useApp();
@@ -44,6 +47,11 @@ export function DashboardPage() {
             return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active';
         });
     }, [state.matches, state.requests, state.properties, state.deals, state.currentUser?.role, state.currentUser?.id]);
+
+    const myClosedDeals = useMemo(() =>
+        (state.deals || []).filter(d => (state.currentUser?.role === 'admin' || d.realtor_id === state.currentUser?.id) && d.status === 'closed'),
+        [state.deals, state.currentUser?.role, state.currentUser?.id]
+    );
 
     const newMatches = useMemo(() =>
         myMatches
@@ -245,6 +253,168 @@ export function DashboardPage() {
         }
     };
 
+    // Состояние модального окна просмотра/редактирования/создания задачи
+    const [taskModal, setTaskModal] = useState({
+        isOpen: false,
+        item: null,
+        isNew: false,
+        id: '',
+        title: '',
+        task_type: 'Позвонить',
+        due_date: '',
+        client_id: '',
+        property_id: '',
+        description: '',
+        status: 'pending',
+        isShowing: false,
+    });
+
+    const handleOpenCreateModal = (defaultDateStr) => {
+        const targetDate = defaultDateStr || selectedDayStr || todayStr;
+        const initialDue = `${targetDate}T10:00`;
+        setTaskModal({
+            isOpen: true,
+            item: null,
+            isNew: true,
+            id: '',
+            title: '',
+            task_type: 'Позвонить',
+            due_date: initialDue,
+            client_id: '',
+            property_id: '',
+            description: '',
+            status: 'pending',
+            isShowing: false,
+        });
+    };
+
+    const handleOpenEditModal = (item) => {
+        let localDue = '';
+        if (item.rawDate) {
+            localDue = toLocalISOString(item.rawDate);
+        } else if (item.dateStr) {
+            localDue = `${item.dateStr}T10:00`;
+        }
+        setTaskModal({
+            isOpen: true,
+            item,
+            isNew: false,
+            id: item.id,
+            title: item.title || '',
+            task_type: item.type || (item.isShowing ? 'Показ' : 'Позвонить'),
+            due_date: localDue,
+            client_id: item.client_id || '',
+            property_id: item.property_id || '',
+            description: item.description || item.raw?.notes || item.raw?.feedback_comment || '',
+            status: item.isDone ? (item.isShowing ? 'completed' : 'done') : (item.isShowing ? 'scheduled' : 'pending'),
+            isShowing: Boolean(item.isShowing),
+        });
+    };
+
+    const handleModalFieldChange = (field, value) => {
+        setTaskModal(prev => {
+            const updated = { ...prev, [field]: value };
+            if (field === 'task_type' || field === 'client_id') {
+                const currentType = field === 'task_type' ? value : prev.task_type;
+                const currentCid = field === 'client_id' ? value : prev.client_id;
+                const client = state.clients.find(c => c.id === currentCid);
+                const standardPrefixes = ['Позвонить', 'Встреча', 'Показ', 'Задаток', 'Сделка', 'Документы'];
+                const isAutoTitle = !prev.title || standardPrefixes.some(p => prev.title.startsWith(p));
+                if (isAutoTitle && currentType && currentType !== 'Другое') {
+                    const parts = [currentType];
+                    if (client?.full_name) parts.push(client.full_name);
+                    updated.title = parts.join(' ');
+                }
+            }
+            return updated;
+        });
+    };
+
+    const handleSaveTaskModal = (e) => {
+        e?.preventDefault();
+        if (!taskModal.title?.trim()) {
+            toast.error('Укажите название задачи');
+            return;
+        }
+
+        const parsedDate = taskModal.due_date ? parseLocalDateTime(taskModal.due_date) : null;
+        const isoDate = parsedDate ? parsedDate.toISOString() : null;
+
+        if (taskModal.isShowing) {
+            const updatedShowing = {
+                ...taskModal.item.raw,
+                showing_date: isoDate || taskModal.item.raw?.showing_date || new Date().toISOString(),
+                client_id: taskModal.client_id || null,
+                property_id: taskModal.property_id || null,
+                notes: taskModal.title.trim(),
+                feedback_comment: taskModal.description?.trim() || null,
+                status: taskModal.status === 'done' || taskModal.status === 'completed' ? 'completed' : 'scheduled',
+            };
+            dispatch({
+                type: 'UPDATE_SHOWING',
+                showing: updatedShowing,
+            });
+            toast.success('Показ обновлен');
+        } else if (taskModal.isNew) {
+            const newTask = {
+                id: nanoid(),
+                realtor_id: state.currentUser?.id,
+                title: taskModal.title.trim(),
+                description: taskModal.description?.trim() || '',
+                task_type: taskModal.task_type || 'Другое',
+                due_date: isoDate,
+                client_id: taskModal.client_id || null,
+                property_id: taskModal.property_id || null,
+                status: taskModal.status || 'pending',
+                priority: 'medium',
+                created_at: new Date().toISOString(),
+            };
+            dispatch({
+                type: 'ADD_TASK',
+                task: newTask,
+            });
+            toast.success('Задача создана');
+        } else {
+            const updatedTask = {
+                ...taskModal.item.raw,
+                title: taskModal.title.trim(),
+                description: taskModal.description?.trim() || '',
+                task_type: taskModal.task_type || taskModal.item.raw?.task_type || 'Другое',
+                due_date: isoDate,
+                client_id: taskModal.client_id || null,
+                property_id: taskModal.property_id || null,
+                status: taskModal.status || 'pending',
+                updated_at: new Date().toISOString(),
+            };
+            dispatch({
+                type: 'UPDATE_TASK',
+                task: updatedTask,
+            });
+            toast.success('Задача сохранена');
+        }
+
+        setTaskModal(prev => ({ ...prev, isOpen: false }));
+    };
+
+    const handleDeleteTaskModal = (itemOrId, isShowing) => {
+        const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+        const showing = typeof itemOrId === 'object' ? itemOrId?.isShowing : isShowing;
+
+        if (!window.confirm(showing ? 'Удалить этот показ?' : 'Удалить эту задачу?')) {
+            return;
+        }
+
+        if (showing) {
+            dispatch({ type: 'DELETE_SHOWING', id });
+            toast.success('Показ удален');
+        } else {
+            dispatch({ type: 'DELETE_TASK', id });
+            toast.success('Задача удалена');
+        }
+
+        setTaskModal(prev => ({ ...prev, isOpen: false }));
+    };
+
     const getItemIconAndColor = (type, isShowing) => {
         if (isShowing || type === 'showing' || type === 'Показ') {
             return { icon: <Home size={13} />, label: 'Показ', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' };
@@ -366,11 +536,11 @@ export function DashboardPage() {
                 {/* Unified CRM Stats Ribbon */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gridTemplateColumns: 'repeat(5, 1fr)',
                     background: 'var(--surface)',
                     borderRadius: 16,
                     border: '1px solid var(--border-light)',
-                    padding: '8px 4px',
+                    padding: '8px 2px',
                     boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                 }}>
                     {/* Клиенты */}
@@ -382,7 +552,7 @@ export function DashboardPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            padding: '4px',
+                            padding: '4px 2px',
                             borderRight: '1px solid var(--border-light)',
                         }}
                     >
@@ -395,7 +565,7 @@ export function DashboardPage() {
                         }}>
                             <Users size={14} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                        <div className="font-oswald" style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
                             {myClients.length}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
@@ -412,7 +582,7 @@ export function DashboardPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            padding: '4px',
+                            padding: '4px 2px',
                             borderRight: '1px solid var(--border-light)',
                         }}
                     >
@@ -425,7 +595,7 @@ export function DashboardPage() {
                         }}>
                             <Home size={14} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                        <div className="font-oswald" style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
                             {myProperties.length}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
@@ -442,7 +612,7 @@ export function DashboardPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            padding: '4px',
+                            padding: '4px 2px',
                             borderRight: '1px solid var(--border-light)',
                         }}
                     >
@@ -455,7 +625,7 @@ export function DashboardPage() {
                         }}>
                             <Search size={14} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
+                        <div className="font-oswald" style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)', lineHeight: 1 }}>
                             {myRequests.length}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
@@ -472,7 +642,8 @@ export function DashboardPage() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             cursor: 'pointer',
-                            padding: '4px',
+                            padding: '4px 2px',
+                            borderRight: '1px solid var(--border-light)',
                         }}
                     >
                         <div style={{
@@ -484,11 +655,41 @@ export function DashboardPage() {
                         }}>
                             <Sparkles size={14} />
                         </div>
-                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: myMatches.length > 0 ? '#d97706' : 'var(--text)', lineHeight: 1 }}>
+                        <div className="font-oswald" style={{ fontSize: 17, fontWeight: 500, color: myMatches.length > 0 ? '#d97706' : 'var(--text)', lineHeight: 1 }}>
                             {myMatches.length}
                         </div>
                         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
                             Матчи
+                        </div>
+                    </div>
+
+                    {/* Сделки (завершенные) */}
+                    <div
+                        onClick={() => navigate('/tasks?filter=closed')}
+                        title={`Завершенные сделки: ${myClosedDeals.length}`}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            padding: '4px 2px',
+                        }}
+                    >
+                        <div style={{
+                            width: 28, height: 28, borderRadius: 8,
+                            background: myClosedDeals.length > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-light)',
+                            color: myClosedDeals.length > 0 ? '#10b981' : 'var(--text-muted)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            marginBottom: 4,
+                        }}>
+                            <CheckCircle2 size={14} />
+                        </div>
+                        <div className="font-oswald" style={{ fontSize: 17, fontWeight: 500, color: myClosedDeals.length > 0 ? '#10b981' : 'var(--text)', lineHeight: 1 }}>
+                            {myClosedDeals.length}
+                        </div>
+                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 2 }}>
+                            Сделки
                         </div>
                     </div>
                 </div>
@@ -583,7 +784,7 @@ export function DashboardPage() {
 
                             <button
                                 type="button"
-                                onClick={() => navigate('/tasks?new=true')}
+                                onClick={() => handleOpenCreateModal()}
                                 className="btn btn-primary"
                                 style={{
                                     padding: '5px 8px',
@@ -719,7 +920,7 @@ export function DashboardPage() {
                                     <div
                                         key={item.id}
                                         className="card-clickable"
-                                        onClick={() => navigate(item.isShowing ? `/history/new?id=${item.id}` : '/tasks')}
+                                        onClick={() => handleOpenEditModal(item)}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
@@ -850,7 +1051,34 @@ export function DashboardPage() {
                                             )}
                                         </div>
 
-                                        <ChevronRight size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteTaskModal(item);
+                                                }}
+                                                title="Удалить"
+                                                style={{
+                                                    width: 26,
+                                                    height: 26,
+                                                    borderRadius: 6,
+                                                    border: 'none',
+                                                    background: 'transparent',
+                                                    color: 'var(--text-muted)',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s ease',
+                                                }}
+                                                onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; }}
+                                                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                            <ChevronRight size={14} color="var(--text-muted)" />
+                                        </div>
                                     </div>
                                 );
                             })}
@@ -986,11 +1214,304 @@ export function DashboardPage() {
                     <button className="btn btn-secondary" style={{ borderRadius: 16, height: 52, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontSize: 13, fontWeight: 300, letterSpacing: '0.03em', padding: '0 8px' }} onClick={() => navigate('/clients/new')}>
                         + Клиент
                     </button>
-                    <button className="btn btn-secondary" style={{ borderRadius: 16, height: 52, background: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary-light)', fontSize: 13, fontWeight: 500, letterSpacing: '0.03em', padding: '0 8px' }} onClick={() => navigate('/tasks?new=true')}>
+                    <button className="btn btn-secondary" style={{ borderRadius: 16, height: 52, background: 'var(--surface)', color: 'var(--primary)', border: '1px solid var(--primary-light)', fontSize: 13, fontWeight: 500, letterSpacing: '0.03em', padding: '0 8px' }} onClick={() => handleOpenCreateModal()}>
                         + Задача
                     </button>
                 </div>
             </div>
+
+            {/* Modal for Creating / Editing Task */}
+            {taskModal.isOpen && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        zIndex: 1000,
+                        background: 'rgba(15, 23, 42, 0.45)',
+                        backdropFilter: 'blur(8px)',
+                        WebkitBackdropFilter: 'blur(8px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: 16,
+                    }}
+                    onClick={() => setTaskModal(prev => ({ ...prev, isOpen: false }))}
+                >
+                    <div
+                        className="fade-in"
+                        onClick={e => e.stopPropagation()}
+                        style={{
+                            width: '100%',
+                            maxWidth: 480,
+                            maxHeight: '90vh',
+                            overflowY: 'auto',
+                            background: 'var(--surface)',
+                            borderRadius: 24,
+                            padding: '24px 20px',
+                            boxShadow: '0 20px 40px -10px rgba(0,0,0,0.25)',
+                            border: '1px solid var(--border-light)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 16,
+                        }}
+                    >
+                        {/* Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 36, height: 36, borderRadius: 10,
+                                    background: 'var(--primary-light)', color: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}>
+                                    {taskModal.isShowing ? <Home size={18} /> : <Calendar size={18} />}
+                                </div>
+                                <div>
+                                    <h3 className="font-oswald" style={{ fontSize: 18, fontWeight: 500, margin: 0, color: 'var(--text)' }}>
+                                        {taskModal.isNew ? 'Новая задача' : (taskModal.isShowing ? 'Редактирование показа' : 'Редактирование задачи')}
+                                    </h3>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                        {taskModal.isNew ? 'Запланируйте звонок, встречу или дело' : 'Измените параметры или удалите'}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setTaskModal(prev => ({ ...prev, isOpen: false }))}
+                                style={{
+                                    width: 32, height: 32, borderRadius: 8, border: 'none',
+                                    background: 'var(--bg-light)', color: 'var(--text-muted)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    cursor: 'pointer',
+                                }}
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Task Type selector */}
+                        {!taskModal.isShowing && (
+                            <div>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                    Тип задачи
+                                </label>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    {['Позвонить', 'Встреча', 'Показ', 'Задаток', 'Сделка', 'Документы', 'Другое'].map(t => {
+                                        const isSel = taskModal.task_type === t;
+                                        return (
+                                            <button
+                                                key={t}
+                                                type="button"
+                                                onClick={() => handleModalFieldChange('task_type', t)}
+                                                style={{
+                                                    padding: '5px 10px',
+                                                    borderRadius: 8,
+                                                    fontSize: 12,
+                                                    fontWeight: isSel ? 600 : 400,
+                                                    border: isSel ? '1px solid var(--primary)' : '1px solid var(--border-light)',
+                                                    background: isSel ? 'var(--primary-light)' : 'var(--bg-light)',
+                                                    color: isSel ? 'var(--primary)' : 'var(--text)',
+                                                    cursor: 'pointer',
+                                                }}
+                                            >
+                                                {t}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Title input */}
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                {taskModal.isShowing ? 'Заметка к показу' : 'Название задачи *'}
+                            </label>
+                            <input
+                                className="form-input"
+                                style={{ height: 42, borderRadius: 10, fontSize: 14 }}
+                                placeholder="Например: Позвонить по поводу задатка"
+                                value={taskModal.title}
+                                onChange={e => handleModalFieldChange('title', e.target.value)}
+                            />
+                        </div>
+
+                        {/* Date & Time */}
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                Дата и время
+                            </label>
+                            <input
+                                type="datetime-local"
+                                className="form-input"
+                                style={{ height: 42, borderRadius: 10, fontSize: 13 }}
+                                value={taskModal.due_date}
+                                onChange={e => handleModalFieldChange('due_date', e.target.value)}
+                            />
+                        </div>
+
+                        {/* Client selector */}
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                Клиент
+                            </label>
+                            <select
+                                className="form-input"
+                                style={{ height: 42, borderRadius: 10, fontSize: 13 }}
+                                value={taskModal.client_id}
+                                onChange={e => handleModalFieldChange('client_id', e.target.value)}
+                            >
+                                <option value="">— Без клиента —</option>
+                                {myClients.map(c => (
+                                    <option key={c.id} value={c.id}>
+                                        {c.full_name} {c.phone ? `(${c.phone})` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Property selector */}
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                Объект
+                            </label>
+                            <select
+                                className="form-input"
+                                style={{ height: 42, borderRadius: 10, fontSize: 13 }}
+                                value={taskModal.property_id}
+                                onChange={e => handleModalFieldChange('property_id', e.target.value)}
+                            >
+                                <option value="">— Без объекта —</option>
+                                {myProperties.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.address || p.city} {p.price ? `(${p.price.toLocaleString()} ₽)` : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Description / Notes */}
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                Комментарий / детали
+                            </label>
+                            <textarea
+                                className="form-input"
+                                rows={2}
+                                style={{ height: 'auto', borderRadius: 10, fontSize: 13, resize: 'vertical' }}
+                                placeholder="Дополнительная информация..."
+                                value={taskModal.description}
+                                onChange={e => handleModalFieldChange('description', e.target.value)}
+                            />
+                        </div>
+
+                        {/* Status switcher */}
+                        {!taskModal.isNew && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', background: 'var(--bg-light)', borderRadius: 12 }}>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Статус:</span>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleModalFieldChange('status', taskModal.isShowing ? 'scheduled' : 'pending')}
+                                        style={{
+                                            padding: '4px 10px',
+                                            borderRadius: 6,
+                                            fontSize: 12,
+                                            fontWeight: 500,
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            background: (taskModal.status === 'pending' || taskModal.status === 'scheduled') ? 'var(--primary)' : 'transparent',
+                                            color: (taskModal.status === 'pending' || taskModal.status === 'scheduled') ? 'white' : 'var(--text-muted)',
+                                        }}
+                                    >
+                                        В работе
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleModalFieldChange('status', taskModal.isShowing ? 'completed' : 'done')}
+                                        style={{
+                                            padding: '4px 10px',
+                                            borderRadius: 6,
+                                            fontSize: 12,
+                                            fontWeight: 500,
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            background: (taskModal.status === 'done' || taskModal.status === 'completed') ? '#10b981' : 'transparent',
+                                            color: (taskModal.status === 'done' || taskModal.status === 'completed') ? 'white' : 'var(--text-muted)',
+                                        }}
+                                    >
+                                        Выполнено
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                            {!taskModal.isNew && (
+                                <button
+                                    type="button"
+                                    onClick={() => handleDeleteTaskModal(taskModal.item)}
+                                    className="btn btn-secondary"
+                                    style={{
+                                        height: 46,
+                                        borderRadius: 12,
+                                        border: '1px solid #fee2e2',
+                                        background: '#fff1f2',
+                                        color: '#ef4444',
+                                        padding: '0 14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                    }}
+                                >
+                                    <Trash2 size={15} />
+                                    Удалить
+                                </button>
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={() => setTaskModal(prev => ({ ...prev, isOpen: false }))}
+                                className="btn btn-secondary"
+                                style={{
+                                    flex: 1,
+                                    height: 46,
+                                    borderRadius: 12,
+                                    fontSize: 13,
+                                    fontWeight: 400,
+                                    background: 'var(--bg-light)',
+                                    border: 'none',
+                                    color: 'var(--text-secondary)',
+                                }}
+                            >
+                                Отмена
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleSaveTaskModal}
+                                className="btn btn-primary"
+                                style={{
+                                    flex: 1.3,
+                                    height: 46,
+                                    borderRadius: 12,
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6,
+                                }}
+                            >
+                                <Check size={16} />
+                                Сохранить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

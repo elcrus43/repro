@@ -56,7 +56,15 @@ export function DealsPage() {
 
     const prefillData = location.state?.prefillDeal || {};
     const [view, setView] = useState('list');
-    const [filter, setFilter] = useState('active');
+    const [filter, setFilter] = useState(() => new URLSearchParams(location.search).get('filter') || 'active');
+
+    useEffect(() => {
+        const queryFilter = new URLSearchParams(location.search).get('filter');
+        if (queryFilter && ['active', 'closed', 'all'].includes(queryFilter)) {
+            setFilter(queryFilter);
+        }
+    }, [location.search]);
+
     const [showForm, setShowForm] = useState(false);
     const [showQuickBuyerForm, setShowQuickBuyerForm] = useState(false);
     const [quickBuyer, setQuickBuyer] = useState({ full_name: '', phone: '' });

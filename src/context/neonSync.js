@@ -438,11 +438,31 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         delete propertyData.mortgage_calc_image;
         Object.keys(propertyData).forEach(key => { if (propertyData[key] === undefined) delete propertyData[key]; });
 
+        if (propertyData.deal_expenses !== undefined) {
+          propertyData.deal_expenses = propertyData.deal_expenses
+            ? (typeof propertyData.deal_expenses === 'string' ? propertyData.deal_expenses : JSON.stringify(propertyData.deal_expenses))
+            : '[]';
+        }
+        if (propertyData.client_shares !== undefined && propertyData.client_shares !== null) {
+          propertyData.client_shares = typeof propertyData.client_shares === 'string'
+            ? propertyData.client_shares
+            : JSON.stringify(propertyData.client_shares);
+        }
+
         result = await neonDb.insert('properties', propertyData);
 
         if (!result?.error && action.matches?.length > 0) {
+          const VALID_MATCH_COLUMNS = [
+            'id', 'realtor_id', 'property_id', 'request_id', 'score',
+            'match_level', 'matched_params', 'mismatched_params', 'status',
+            'rejection_reason', 'realtor_comment', 'created_at', 'updated_at'
+          ];
           for (const m of action.matches) {
-            const mRes = await neonDb.upsert('matches', m);
+            const matchData = {};
+            VALID_MATCH_COLUMNS.forEach(col => {
+              if (m[col] !== undefined) matchData[col] = m[col];
+            });
+            const mRes = await neonDb.upsert('matches', matchData);
             if (mRes?.error) console.error('[neonSync Match Upsert Error]', mRes.error);
           }
         }
@@ -474,6 +494,16 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           portfolio_analog_links: pData.portfolio_analog_links || [],
         };
         delete normalizedData.mortgage_calc_image;
+        if (normalizedData.deal_expenses !== undefined) {
+          normalizedData.deal_expenses = normalizedData.deal_expenses
+            ? (typeof normalizedData.deal_expenses === 'string' ? normalizedData.deal_expenses : JSON.stringify(normalizedData.deal_expenses))
+            : '[]';
+        }
+        if (normalizedData.client_shares !== undefined && normalizedData.client_shares !== null) {
+          normalizedData.client_shares = typeof normalizedData.client_shares === 'string'
+            ? normalizedData.client_shares
+            : JSON.stringify(normalizedData.client_shares);
+        }
         Object.keys(normalizedData).forEach(key => { if (normalizedData[key] === undefined) delete normalizedData[key]; });
 
         result = await neonDb.update('properties', pId, normalizedData);
@@ -484,8 +514,17 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             [pId]
           );
         } else if (!result?.error && action.matches?.length > 0) {
+          const VALID_MATCH_COLUMNS = [
+            'id', 'realtor_id', 'property_id', 'request_id', 'score',
+            'match_level', 'matched_params', 'mismatched_params', 'status',
+            'rejection_reason', 'realtor_comment', 'created_at', 'updated_at'
+          ];
           for (const m of action.matches) {
-            const mRes = await neonDb.upsert('matches', m);
+            const matchData = {};
+            VALID_MATCH_COLUMNS.forEach(col => {
+              if (m[col] !== undefined) matchData[col] = m[col];
+            });
+            const mRes = await neonDb.upsert('matches', matchData);
             if (mRes?.error) console.error('[neonSync Match Upsert Error]', mRes.error);
           }
         }
@@ -509,10 +548,45 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
       /* ── Запросы ──────────────────────────────────────────── */
       case 'ADD_REQUEST':
       case 'UPDATE_REQUEST': {
-        result = await neonDb.upsert('requests', action.request);
+        const rawReq = action.request || {};
+        const sanitized = sanitizeObj(rawReq);
+        const VALID_REQUEST_COLUMNS = [
+          'id', 'realtor_id', 'client_id', 'client_ids', 'parent_property_id',
+          'status', 'property_types', 'market_types', 'city', 'districts',
+          'microdistricts', 'budget_min', 'budget_max', 'rooms', 'area_min',
+          'area_max', 'kitchen_area_min', 'floor_min', 'floor_max',
+          'not_first_floor', 'not_last_floor', 'building_types', 'renovation_min',
+          'balcony_required', 'parking_required', 'payment_types', 'mortgage',
+          'mortgage_approved', 'mortgage_bank', 'mortgage_amount', 'urgency',
+          'desired_move_date', 'must_have_notes', 'nice_to_have_notes',
+          'deal_breakers', 'notes', 'commission', 'deal_expenses',
+          'created_at', 'updated_at'
+        ];
+        const reqData = {};
+        VALID_REQUEST_COLUMNS.forEach(col => {
+          if (sanitized[col] !== undefined) reqData[col] = sanitized[col];
+        });
+        if (reqData.deal_expenses !== undefined) {
+          reqData.deal_expenses = reqData.deal_expenses
+            ? (typeof reqData.deal_expenses === 'string' ? reqData.deal_expenses : JSON.stringify(reqData.deal_expenses))
+            : '[]';
+        }
+        if (Array.isArray(reqData.client_ids)) {
+          reqData.client_ids = reqData.client_ids.filter(Boolean);
+        }
+        result = await neonDb.upsert('requests', reqData);
         if (!result?.error && action.matches?.length > 0) {
+          const VALID_MATCH_COLUMNS = [
+            'id', 'realtor_id', 'property_id', 'request_id', 'score',
+            'match_level', 'matched_params', 'mismatched_params', 'status',
+            'rejection_reason', 'realtor_comment', 'created_at', 'updated_at'
+          ];
           for (const m of action.matches) {
-            const mRes = await neonDb.upsert('matches', m);
+            const matchData = {};
+            VALID_MATCH_COLUMNS.forEach(col => {
+              if (m[col] !== undefined) matchData[col] = m[col];
+            });
+            const mRes = await neonDb.upsert('matches', matchData);
             if (mRes?.error) console.error('[neonSync Match Upsert Error]', mRes.error);
           }
         }
@@ -524,9 +598,19 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         break;
 
       /* ── Матчи ────────────────────────────────────────────── */
-      case 'UPDATE_MATCH':
-        result = await neonDb.upsert('matches', action.match);
+      case 'UPDATE_MATCH': {
+        const VALID_MATCH_COLUMNS = [
+          'id', 'realtor_id', 'property_id', 'request_id', 'score',
+          'match_level', 'matched_params', 'mismatched_params', 'status',
+          'rejection_reason', 'realtor_comment', 'created_at', 'updated_at'
+        ];
+        const matchData = {};
+        VALID_MATCH_COLUMNS.forEach(col => {
+          if (action.match[col] !== undefined) matchData[col] = action.match[col];
+        });
+        result = await neonDb.upsert('matches', matchData);
         break;
+      }
 
       case 'DELETE_MATCH':
         result = await neonDb.delete('matches', action.id);

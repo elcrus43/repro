@@ -136,6 +136,29 @@ function buildWhere(filters, startIdx = 1) {
   };
 }
 
+/* ─── JSON serialization helper ─────────────────────────────── */
+
+const JSON_COLUMNS = new Set([
+  'deal_expenses', 'expenses', 'agency_contracts', 'additional_contacts',
+  'passport_details', 'client_shares', 'context_data', 'input_params',
+  'analogs_ids', 'result_details', 'condition_json', 'channels',
+  'variables', 'raw_data'
+]);
+
+function normalizeJsonValues(data) {
+  if (!data || typeof data !== 'object') return data;
+  const result = { ...data };
+  for (const key of Object.keys(result)) {
+    if (JSON_COLUMNS.has(key)) {
+      const val = result[key];
+      if (val !== null && val !== undefined && typeof val !== 'string') {
+        result[key] = JSON.stringify(val);
+      }
+    }
+  }
+  return result;
+}
+
 /* ─── neonDb public API ─────────────────────────────────────── */
 
 export const neonDb = {
@@ -157,8 +180,9 @@ export const neonDb = {
    * INSERT INTO table (cols) VALUES (...) RETURNING *
    */
   async insert(table, data) {
-    const keys   = Object.keys(data);
-    const values = Object.values(data);
+    const safeData = normalizeJsonValues(data);
+    const keys   = Object.keys(safeData);
+    const values = Object.values(safeData);
     const cols   = keys.map(k => `"${k}"`).join(', ');
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
     const q = `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) RETURNING *`;
@@ -169,8 +193,9 @@ export const neonDb = {
    * INSERT INTO table ... ON CONFLICT (id) DO UPDATE SET ... RETURNING *
    */
   async upsert(table, data) {
-    const keys   = Object.keys(data);
-    const values = Object.values(data);
+    const safeData = normalizeJsonValues(data);
+    const keys   = Object.keys(safeData);
+    const values = Object.values(safeData);
     const cols   = keys.map(k => `"${k}"`).join(', ');
     const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
     const updateSet = keys
@@ -189,8 +214,9 @@ export const neonDb = {
    * UPDATE table SET ... WHERE id = $1 RETURNING *
    */
   async update(table, id, data) {
-    const keys   = Object.keys(data);
-    const values = Object.values(data);
+    const safeData = normalizeJsonValues(data);
+    const keys   = Object.keys(safeData);
+    const values = Object.values(safeData);
     const setClause = keys.map((k, i) => `"${k}" = $${i + 2}`).join(', ');
     const q = `UPDATE "${table}" SET ${setClause} WHERE id = $1 RETURNING *`;
     return request(q, [id, ...values]);
@@ -200,8 +226,9 @@ export const neonDb = {
    * UPDATE table SET ... WHERE filters (для patch запросов)
    */
   async updateWhere(table, filters, data) {
-    const keys   = Object.keys(data);
-    const values = Object.values(data);
+    const safeData = normalizeJsonValues(data);
+    const keys   = Object.keys(safeData);
+    const values = Object.values(safeData);
     const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
     const { clause, params } = buildWhere(filters, keys.length + 1);
     const q = `UPDATE "${table}" SET ${setClause} ${clause} RETURNING *`;
