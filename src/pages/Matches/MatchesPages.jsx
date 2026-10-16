@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPrice, getLevelLabel, hasPassedDealStage } from '../../utils/matching';
+import { formatPrice, getLevelLabel, hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { formatNumber, parseLocalDateTime, stripPhone } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp, Briefcase } from 'lucide-react';
@@ -31,6 +31,7 @@ export function MatchesPage() {
             if (!prop || hasPassedDealStage(prop, state.deals)) return false;
             const req = state.requests.find(r => r.id === m.request_id);
             if (!req || req.status !== 'active') return false;
+            if (!isDealTypeCompatible(prop, req)) return false;
             return true;
         })
         .filter(m => {
@@ -182,7 +183,10 @@ export function MatchDetailPage() {
         }
     }, [match, dispatch]);
 
-    if (!match) return (
+    const prop = state.properties.find(p => p.id === match?.property_id);
+    const req = state.requests.find(r => r.id === match?.request_id);
+
+    if (!match || (prop && req && !isDealTypeCompatible(prop, req))) return (
         <div className="page">
             <div className="topbar">
                 <button className="topbar-back" onClick={() => navigate('/matches')}>←</button>
@@ -191,8 +195,6 @@ export function MatchDetailPage() {
         </div>
     );
 
-    const prop = state.properties.find(p => p.id === match.property_id);
-    const req = state.requests.find(r => r.id === match.request_id);
     const buyer = req ? state.clients.find(c => c.id === req.client_id) : null;
     const seller = prop ? state.clients.find(c => c.id === prop.client_id) : null;
     const lvl = getLevelLabel(match.match_level);

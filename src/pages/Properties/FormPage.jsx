@@ -352,9 +352,9 @@ export function FormPage() {
                         address: data.address || data.title || f.address || '',
                         city: data.city || f.city || 'Киров',
                         price: data.price ? (isNaN(Number(data.price)) ? f.price : Number(data.price)) : f.price,
-                        area_total: data.area_total ? (isNaN(Number(data.area_total)) ? f.area_total : Number(data.area_total)) : f.area_total,
-                        area_living: data.area_living ? (isNaN(Number(data.area_living)) ? f.area_living : Number(data.area_living)) : f.area_living,
-                        area_kitchen: data.area_kitchen ? (isNaN(Number(data.area_kitchen)) ? f.area_kitchen : Number(data.area_kitchen)) : f.area_kitchen,
+                        area_total: data.area_total ? (isNaN(parseFloat(String(data.area_total).replace(',', '.'))) ? f.area_total : parseFloat(String(data.area_total).replace(',', '.'))) : f.area_total,
+                        area_living: data.area_living ? (isNaN(parseFloat(String(data.area_living).replace(',', '.'))) ? f.area_living : parseFloat(String(data.area_living).replace(',', '.'))) : f.area_living,
+                        area_kitchen: data.area_kitchen ? (isNaN(parseFloat(String(data.area_kitchen).replace(',', '.'))) ? f.area_kitchen : parseFloat(String(data.area_kitchen).replace(',', '.'))) : f.area_kitchen,
                         rooms: data.rooms !== undefined && data.rooms !== null ? (isNaN(Number(data.rooms)) ? f.rooms : Number(data.rooms)) : f.rooms,
                         floor: data.floor ? (isNaN(Number(data.floor)) ? f.floor : Number(data.floor)) : f.floor,
                         floors_total: data.floors_total ? (isNaN(Number(data.floors_total)) ? f.floors_total : Number(data.floors_total)) : f.floors_total,
@@ -1144,9 +1144,10 @@ export function FormPage() {
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая площадь (м²)</label>
                                 <input 
                                     type="number" 
+                                    step="any"
                                     className="form-input" 
                                     value={form.area_total || ''} 
-                                    onChange={e => setF('area_total', Number(e.target.value))} 
+                                    onChange={e => setF('area_total', e.target.value === '' ? '' : parseFloat(e.target.value))} 
                                     placeholder="120"
                                     style={{ borderRadius: 12 }} 
                                 />
@@ -1155,9 +1156,10 @@ export function FormPage() {
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Полезная / торговая (м²)</label>
                                 <input 
                                     type="number" 
+                                    step="any"
                                     className="form-input" 
                                     value={form.area_living || ''} 
-                                    onChange={e => setF('area_living', Number(e.target.value))} 
+                                    onChange={e => setF('area_living', e.target.value === '' ? '' : parseFloat(e.target.value))} 
                                     placeholder="95"
                                     style={{ borderRadius: 12 }} 
                                 />
@@ -1167,19 +1169,19 @@ export function FormPage() {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая м²</label>
-                                <input type="number" className="form-input" value={form.area_total || ''} onChange={e => {
-                                    const val = Number(e.target.value);
+                                <input type="number" step="any" className="form-input" value={form.area_total || ''} onChange={e => {
+                                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
                                     setF('area_total', val);
                                     if (form.property_type === 'house') setF('house_area', val);
                                 }} style={{ borderRadius: 12 }} />
                             </div>
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Жилая м²</label>
-                                <input type="number" className="form-input" value={form.area_living || ''} onChange={e => setF('area_living', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                                <input type="number" step="any" className="form-input" value={form.area_living || ''} onChange={e => setF('area_living', e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ borderRadius: 12 }} />
                             </div>
                             <div className="form-group">
                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Кухня м²</label>
-                                <input type="number" className="form-input" value={form.area_kitchen || ''} onChange={e => setF('area_kitchen', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                                <input type="number" step="any" className="form-input" value={form.area_kitchen || ''} onChange={e => setF('area_kitchen', e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ borderRadius: 12 }} />
                             </div>
                         </div>
                     )}
@@ -1234,8 +1236,8 @@ export function FormPage() {
                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                  <div className="form-group">
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Площадь (соток)</label>
-                                     <input type="number" className="form-input" value={form.land_area || ''} onChange={e => {
-                                         const val = Number(e.target.value);
+                                     <input type="number" step="any" className="form-input" value={form.land_area || ''} onChange={e => {
+                                         const val = e.target.value === '' ? '' : parseFloat(e.target.value);
                                          setF('land_area', val);
                                          // Если нет area_total, можно синхронизировать или оставить сотки
                                      }} placeholder="6" style={{ borderRadius: 12 }} />
@@ -1289,8 +1291,8 @@ export function FormPage() {
                                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                                          <div className="form-group">
                                              <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Площадь (м²)</label>
-                                             <input type="number" className="form-input" value={form.house_area || ''} onChange={e => {
-                                                 const val = Number(e.target.value);
+                                             <input type="number" step="any" className="form-input" value={form.house_area || ''} onChange={e => {
+                                                 const val = e.target.value === '' ? '' : parseFloat(e.target.value);
                                                  setF('house_area', val);
                                                  setF('area_total', val);
                                              }} style={{ borderRadius: 12 }} />

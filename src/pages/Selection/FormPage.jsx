@@ -72,7 +72,7 @@ export function FormPage() {
                         address: data.address || data.title || '',
                         price: data.price ? (Number(String(data.price).replace(/\D/g, '')) || 0) : 0,
                         rooms: data.rooms !== undefined && data.rooms !== null ? (isNaN(Number(data.rooms)) ? 1 : Number(data.rooms)) : 1,
-                        area_total: data.area_total ? (isNaN(Number(data.area_total)) ? '' : Number(data.area_total)) : '',
+                        area_total: data.area_total ? (isNaN(parseFloat(String(data.area_total).replace(',', '.'))) ? '' : parseFloat(String(data.area_total).replace(',', '.'))) : '',
                         floor: data.floor ? (isNaN(Number(data.floor)) ? '' : Number(data.floor)) : '',
                         floors_total: data.floors_total ? (isNaN(Number(data.floors_total)) ? '' : Number(data.floors_total)) : '',
                         property_type: data.property_type || 'apartment',
@@ -431,10 +431,11 @@ export function FormPage() {
                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая м²</label>
                             <input 
                                 type="number" 
+                                step="any"
                                 className="form-input" 
                                 style={{ borderRadius: 12 }}
                                 value={form.area_total || ''} 
-                                onChange={e => setF('area_total', e.target.value ? Number(e.target.value) : '')} 
+                                onChange={e => setF('area_total', e.target.value ? parseFloat(e.target.value) : '')} 
                             />
                         </div>
                         <div className="form-group">

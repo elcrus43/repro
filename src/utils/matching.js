@@ -9,12 +9,43 @@ import { RENOVATION_LABELS, BUILDING_TYPES, MARKET_LABELS, PROPERTY_TYPES } from
 const RENOVATION_RANK = { none: 0, cosmetic: 1, euro: 2, designer: 3 };
 
 /**
+ * Normalizes deal type string to 'sale' or 'rent'.
+ * Both properties and requests default to 'sale' (purchase / sale).
+ * @param {string} [val]
+ * @returns {'sale' | 'rent'}
+ */
+export function normalizeDealType(val) {
+  if (!val) return 'sale';
+  const lower = String(val).toLowerCase().trim();
+  if (lower === 'rent' || lower === 'hire' || lower === 'аренда' || lower === 'найм') {
+    return 'rent';
+  }
+  return 'sale';
+}
+
+/**
+ * Checks whether property and request deal types are compatible.
+ * E.g., a purchase request (deal_type: 'sale' / undefined) must never match a rental property ('rent' / 'hire').
+ * @param {Property | object} property
+ * @param {Request | object} request
+ * @returns {boolean}
+ */
+export function isDealTypeCompatible(property, request) {
+  if (!property || !request) return false;
+  return normalizeDealType(property.deal_type) === normalizeDealType(request.deal_type);
+}
+
+/**
  * @param {Property} property
  * @param {Request} request
  * @returns {MatchResult | null}
  */
 export function calculateMatch(property, request) {
   // === MANDATORY (exclusive) params ===
+  // 0. Deal types must be compatible (purchase request must not match rental property)
+  if (!isDealTypeCompatible(property, request)) {
+    return null;
+  }
   // 1. Property type must be in request's property_types
   if (!request.property_types || !request.property_types.includes(property.property_type)) {
     return null;
@@ -281,6 +312,7 @@ export function runMatchingForProperty(property, requests) {
 
   for (const req of requests) {
     if (req.status !== 'active') continue;
+    if (!isDealTypeCompatible(property, req)) continue;
 
     const result = calculateMatch(property, req);
     if (result) {
@@ -311,6 +343,7 @@ export function runMatchingForRequest(request, properties) {
   for (const prop of properties) {
     if (hasPassedDealStage(prop)) continue;
     if (prop.status !== 'active' && prop.status !== 'advertising') continue;
+    if (!isDealTypeCompatible(prop, request)) continue;
 
     const result = calculateMatch(prop, request);
     if (result) {

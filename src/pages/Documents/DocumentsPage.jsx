@@ -403,11 +403,12 @@ export function DocumentsPage() {
 
     const [selectedTemplate, setSelectedTemplate] = useState(prefill.template || 'yuss_buy_1');
     const [sourceMode, setSourceMode] = useState(prefill.dealId ? 'deal' : 'manual'); // 'deal' | 'manual'
+    const [hideOtherTemplates, setHideOtherTemplates] = useState(() => Boolean(prefill.hideOtherTemplates));
+    const [selectedContractId, setSelectedContractId] = useState(() => prefill.contractId || '');
 
     // Для режима «по сделке»
     const [selectedDealId, setSelectedDealId] = useState(prefill.dealId || '');
 
-    // Для режима «вручную»
     // Для режима «вручную»
     const [sellerId, setSellerId] = useState(prefill.sellerId || '');
     const [buyerId, setBuyerId] = useState(prefill.buyerId || '');
@@ -437,8 +438,10 @@ export function DocumentsPage() {
         const qClient = params.get('clientId');
         const qDeal = params.get('dealId');
         const qProperty = params.get('propertyId');
+        const qHide = params.get('hideOther');
 
         if (qTemplate) setSelectedTemplate(qTemplate);
+        if (qHide !== null) setHideOtherTemplates(qHide === 'true');
         if (qDeal) {
             setSourceMode('deal');
             setSelectedDealId(qDeal);
@@ -469,6 +472,21 @@ export function DocumentsPage() {
     const realtor = state.currentUser;
     const agencyName = realtor?.agency_name;
 
+    const TEMPLATE_LABELS = {
+        yuss_buy_1: 'АД ЮСС Покупка',
+        agency_sale_1: 'АД ЮСС Продажа',
+        sale: 'Договор купли-продажи',
+        rent: 'Договор аренды',
+        act: 'Акт приема-передачи',
+    };
+
+    const displayedTemplates = useMemo(() => {
+        if (hideOtherTemplates) {
+            return templates.filter(t => t.key === selectedTemplate);
+        }
+        return templates;
+    }, [templates, hideOtherTemplates, selectedTemplate]);
+
     /* ── Выбранный клиент для редактирования реквизитов ────────────────────── */
     const isAgencySale = selectedTemplate === 'agency_sale_1';
     const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1';
@@ -486,6 +504,54 @@ export function DocumentsPage() {
         const targetId = isAgencySale ? (sellerId || buyerId) : (buyerId || sellerId);
         return state.clients.find(c => c.id === targetId) || null;
     }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, state.deals, state.clients]);
+
+    // Список договоров выбранного клиента
+    const clientContracts = useMemo(() => {
+        if (!activeClient) return [];
+        const rawList = Array.isArray(activeClient.agency_contracts) ? activeClient.agency_contracts : [];
+        if (rawList.length > 0) return rawList;
+        if (activeClient.has_agency_contract || activeClient.agency_contract_date) {
+            const isBuyer = (activeClient.client_types || []).includes('buyer');
+            return [{
+                id: 'legacy-' + activeClient.id,
+                type: isBuyer ? 'АД ЮСС Покупка' : 'АД ЮСС Продажа',
+                contract_date: activeClient.agency_contract_date,
+                property_id: activeClient.agency_contract_property_id || null,
+                status: 'active'
+            }];
+        }
+        return [];
+    }, [activeClient]);
+
+    const handleSelectContract = (cId) => {
+        setSelectedContractId(cId);
+        if (!cId) {
+            setHideOtherTemplates(false);
+            return;
+        }
+        const c = clientContracts.find(item => item.id === cId);
+        if (c) {
+            let tpl = 'yuss_buy_1';
+            if (c.type === 'АД ЮСС Покупка' || c.type === 'АД Покупка') {
+                tpl = 'yuss_buy_1';
+            } else if (c.type === 'АД ЮСС Продажа' || c.type === 'АД Продажа') {
+                tpl = 'agency_sale_1';
+            } else if (c.type?.includes('Аренда')) {
+                tpl = 'rent';
+            }
+            setSelectedTemplate(tpl);
+            setHideOtherTemplates(true);
+            if (c.property_id) {
+                setPropertyId(c.property_id);
+            }
+            if (c.commission) {
+                setCommission(Number(c.commission).toLocaleString('ru-RU'));
+            }
+            if (c.valid_until) {
+                setContractEndDate(c.valid_until.split('T')[0]);
+            }
+        }
+    };
 
     /* ── Черновик реквизитов клиента ──────────────────────────────────────── */
     const [clientDraft, setClientDraft] = useState({
@@ -557,12 +623,19 @@ export function DocumentsPage() {
         price: '',
     });
 
+    const parseArea = (val) => {
+        if (val === null || val === undefined || val === '') return null;
+        const cleaned = String(val).replace(',', '.').replace(/[^\d.]/g, '');
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? null : num;
+    };
+
     useEffect(() => {
         if (activeProperty) {
             setPropDraft({
                 address: activeProperty.address || activeProperty.city || '',
                 cadastral_number: activeProperty.cadastral_number || '',
-                area_total: activeProperty.area_total ? String(activeProperty.area_total) : '',
+                area_total: activeProperty.area_total !== undefined && activeProperty.area_total !== null ? String(activeProperty.area_total).replace('.', ',') : '',
                 price: activeProperty.price ? String(activeProperty.price) : '',
             });
             setIsSavedToCrm(false);
@@ -576,11 +649,12 @@ export function DocumentsPage() {
 
     const enrichedProperty = useMemo(() => {
         if (!activeProperty) return null;
+        const parsedArea = parseArea(propDraft.area_total);
         return {
             ...activeProperty,
             address: propDraft.address || activeProperty.address,
             cadastral_number: propDraft.cadastral_number || activeProperty.cadastral_number,
-            area_total: propDraft.area_total ? Number(String(propDraft.area_total).replace(/\D/g, '')) : activeProperty.area_total,
+            area_total: parsedArea !== null ? parsedArea : activeProperty.area_total,
             price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : activeProperty.price,
         };
     }, [activeProperty, propDraft]);
@@ -620,11 +694,12 @@ export function DocumentsPage() {
             }
 
             if (activeProperty) {
+                const parsedArea = parseArea(propDraft.area_total);
                 const updatedProperty = {
                     ...activeProperty,
                     address: propDraft.address?.trim() || activeProperty.address,
                     cadastral_number: propDraft.cadastral_number?.trim() || activeProperty.cadastral_number,
-                    area_total: propDraft.area_total ? Number(String(propDraft.area_total).replace(/\D/g, '')) : activeProperty.area_total,
+                    area_total: parsedArea !== null ? parsedArea : activeProperty.area_total,
                     price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : activeProperty.price,
                 };
                 await dispatch({ type: 'UPDATE_PROPERTY', property: updatedProperty });
@@ -834,8 +909,8 @@ export function DocumentsPage() {
             <div className="page-content" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
                 {/* Выбор шаблона */}
-                <div className="no-print" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-                    {templates.map(t => (
+                <div className="no-print" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                    {displayedTemplates.map(t => (
                         <button
                             key={t.key}
                             className={`tab-filter ${selectedTemplate === t.key ? 'active' : ''}`}
@@ -844,15 +919,47 @@ export function DocumentsPage() {
                                 whiteSpace: 'nowrap', padding: '10px 18px', borderRadius: 14, border: 'none',
                                 background: selectedTemplate === t.key ? 'var(--primary)' : 'var(--surface)',
                                 color: selectedTemplate === t.key ? 'white' : 'var(--text-secondary)',
-                                fontSize: 13, fontWeight: 300, fontFamily: "'Oswald', sans-serif",
+                                fontSize: 13, fontWeight: 500,
                                 boxShadow: selectedTemplate === t.key ? '0 4px 12px rgba(0,82,255,0.2)' : 'none',
                                 display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0
                             }}
                         >
                             {TEMPLATE_ICONS[t.key]}
-                            {t.title}
+                            {TEMPLATE_LABELS[t.key] || t.title}
                         </button>
                     ))}
+                    {hideOtherTemplates && (
+                        <button
+                            type="button"
+                            onClick={() => setHideOtherTemplates(false)}
+                            title="Показать все доступные шаблоны"
+                            style={{
+                                whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
+                                border: '1px dashed var(--border)', background: 'var(--surface)',
+                                color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+                                display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <span>Показать все ({templates.length})</span>
+                        </button>
+                    )}
+                    {!hideOtherTemplates && selectedContractId && (
+                        <button
+                            type="button"
+                            onClick={() => setHideOtherTemplates(true)}
+                            title="Скрыть остальные шаблоны"
+                            style={{
+                                whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
+                                border: '1px dashed var(--border)', background: 'transparent',
+                                color: 'var(--text-secondary)', fontSize: 12,
+                                display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                                cursor: 'pointer'
+                            }}
+                        >
+                            <span>Скрыть остальные</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Режим источника данных */}
@@ -865,7 +972,7 @@ export function DocumentsPage() {
                     </div>
 
                     {/* Переключатель режима */}
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 8, maxWidth: 360 }}>
                         {[
                             { id: 'deal', label: 'Из сделки', icon: <Briefcase size={14} /> },
                             { id: 'manual', label: 'Выбрать вручную', icon: <User size={14} /> },
@@ -1044,6 +1151,45 @@ export function DocumentsPage() {
                                         />
                                     </div>
                                 </>
+                            )}
+
+                            {clientContracts.length > 0 && (
+                                <div style={{
+                                    padding: '12px 14px',
+                                    borderRadius: 14,
+                                    background: 'rgba(0, 82, 255, 0.04)',
+                                    border: '1px solid rgba(0, 82, 255, 0.15)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 6
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <FileText size={14} /> Агентский договор клиента (АД)
+                                        </label>
+                                        {hideOtherTemplates && (
+                                            <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 500 }}>
+                                                Остальные шаблоны скрыты
+                                            </span>
+                                        )}
+                                    </div>
+                                    <select
+                                        className="form-input"
+                                        style={{ height: 42, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                        value={selectedContractId}
+                                        onChange={e => handleSelectContract(e.target.value)}
+                                    >
+                                        <option value="">— Показать все шаблоны / без привязки к АД —</option>
+                                        {clientContracts.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.type || 'Агентский договор'} {c.contract_date ? `от ${new Date(c.contract_date).toLocaleDateString('ru-RU')}` : ''} {c.property_id ? `(Объект #${c.property_id.slice(-4)})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                        При выборе АД из списка отображается только релевантный шаблон договора (остальные скрываются).
+                                    </span>
+                                </div>
                             )}
 
                             <div>
@@ -1412,8 +1558,8 @@ export function DocumentsPage() {
                                     id="doc-input-prop-area"
                                     className="form-input"
                                     value={propDraft.area_total}
-                                    onChange={e => handlePropDraftChange('area_total', e.target.value.replace(/[^\d.]/g, ''))}
-                                    placeholder="54.2"
+                                    onChange={e => handlePropDraftChange('area_total', e.target.value.replace(/[^\d.,]/g, ''))}
+                                    placeholder="45,4"
                                     style={{
                                         width: '100%', height: 42, borderRadius: 12, fontSize: 13,
                                         border: !propDraft.area_total ? '1.5px solid #f59e0b' : '1px solid var(--border)',
@@ -1709,16 +1855,16 @@ export function DocumentsPage() {
                 )}
 
                 {/* Кнопки действий */}
-                <div className="no-print" style={{ display: 'flex', gap: 10 }}>
+                <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
                     <button
                         className="card-clickable"
                         onClick={handleDownload}
                         disabled={isGenerating}
                         style={{
-                            flex: 1, height: 52, borderRadius: 16, border: 'none',
+                            height: 48, padding: '0 28px', borderRadius: 14, border: 'none',
                             background: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: 14,
-                            boxShadow: '0 8px 16px rgba(0,82,255,0.2)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                            boxShadow: '0 4px 14px rgba(0,82,255,0.25)',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                             opacity: isGenerating ? 0.7 : 1, cursor: isGenerating ? 'not-allowed' : 'pointer',
                         }}
                     >
@@ -1729,10 +1875,11 @@ export function DocumentsPage() {
                         className="card-clickable"
                         onClick={() => window.print()}
                         style={{
-                            height: 52, padding: '0 20px', borderRadius: 16,
+                            height: 48, padding: '0 22px', borderRadius: 14,
                             border: '1px solid var(--border)', background: 'var(--surface)',
                             color: 'var(--text-secondary)', fontWeight: 500, fontSize: 14,
-                            display: 'flex', alignItems: 'center', gap: 8,
+                            display: 'inline-flex', alignItems: 'center', gap: 8,
+                            cursor: 'pointer'
                         }}
                     >
                         <Printer size={18} />

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Search, X, Building2, Users, Target, Sparkles } from 'lucide-react';
 import { PROPERTY_TYPES } from '../data/constants';
-import { hasPassedDealStage } from '../utils/matching';
+import { hasPassedDealStage, isDealTypeCompatible } from '../utils/matching';
 
 /**
  * Глобальный сквозной поиск по объектам, клиентам, запросам и совпадениям.
@@ -40,6 +40,7 @@ export function GlobalSearch() {
                 if (!prop || hasPassedDealStage(prop, state.deals)) return false;
                 const req = state.requests.find(r => r.id === m.request_id);
                 if (!req || req.status !== 'active') return false;
+                if (!isDealTypeCompatible(prop, req)) return false;
                 const client = state.clients.find(c => c.id === m.client_id || c.id === req.client_id);
                 const text = `${prop?.address || ''} ${prop?.city || ''} ${client?.full_name || ''} ${m.status || ''}`.toLowerCase();
                 return text.includes(q) && m.score > 70;

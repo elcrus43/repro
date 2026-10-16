@@ -7,7 +7,7 @@ import {
     Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight,
     Pencil, Trash2, X
 } from 'lucide-react';
-import { hasPassedDealStage } from '../../utils/matching';
+import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
 
@@ -44,7 +44,7 @@ export function DashboardPage() {
         return base.filter(m => {
             const prop = state.properties.find(p => p.id === m.property_id);
             const req = state.requests.find(r => r.id === m.request_id);
-            return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active';
+            return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active' && isDealTypeCompatible(prop, req);
         });
     }, [state.matches, state.requests, state.properties, state.deals, state.currentUser?.role, state.currentUser?.id]);
 

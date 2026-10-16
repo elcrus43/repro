@@ -474,20 +474,12 @@ export function DetailsPage() {
         let sellerId = id;
         let buyerId = '';
 
-        if (contract.type === 'АД Покупка') {
-            template = 'agency_buy_1';
-            sellerId = '';
-            buyerId = id;
-        } else if (contract.type === 'АД Продажа') {
-            template = 'agency_sale_1';
-            sellerId = id;
-            buyerId = '';
-        } else if (contract.type === 'АД ЮСС Покупка') {
+        if (contract.type === 'АД Покупка' || contract.type === 'АД ЮСС Покупка') {
             template = 'yuss_buy_1';
             sellerId = '';
             buyerId = id;
-        } else if (contract.type === 'АД ЮСС Продажа') {
-            template = 'yuss_sale_1';
+        } else if (contract.type === 'АД Продажа' || contract.type === 'АД ЮСС Продажа') {
+            template = 'agency_sale_1';
             sellerId = id;
             buyerId = '';
         } else if (contract.type === 'АД Аренда с наймодателем') {
@@ -506,7 +498,11 @@ export function DetailsPage() {
                     sellerId,
                     buyerId,
                     propertyId: prop?.id || '',
-                    template
+                    template,
+                    contractId: contract.id,
+                    contractType: contract.type,
+                    contractDate: contract.contract_date,
+                    hideOtherTemplates: true,
                 }
             }
         });
@@ -526,6 +522,7 @@ export function DetailsPage() {
                         buyerId: isSeller ? '' : id,
                         propertyId: clientProp?.id || '',
                         template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'agency_sale_1') : 'yuss_buy_1',
+                        hideOtherTemplates: true,
                     }
                 }
             });

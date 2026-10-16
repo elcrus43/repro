@@ -5,7 +5,7 @@ import { formatNumber } from '../../utils/format';
 import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, MapPin, Sparkles } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
-import { hasPassedDealStage } from '../../utils/matching';
+import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -125,7 +125,7 @@ export function ListPage() {
                         const matches = isReqActive ? state.matches.filter(m => {
                             if (m.request_id !== req.id) return false;
                             const prop = state.properties.find(p => p.id === m.property_id);
-                            return prop && !hasPassedDealStage(prop, state.deals);
+                            return prop && !hasPassedDealStage(prop, state.deals) && isDealTypeCompatible(prop, req);
                         }) : [];
                         return (
                             <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)} style={{ 

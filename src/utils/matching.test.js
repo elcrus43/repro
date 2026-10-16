@@ -11,6 +11,8 @@ import {
   runMatchingForProperty,
   runMatchingForRequest,
   getLevelLabel,
+  isDealTypeCompatible,
+  normalizeDealType,
 } from '../utils/matching'
 
 // ─── Test Data Builders ─────────────────────────────────────────────────────
@@ -91,6 +93,24 @@ describe('calculateMatch — mandatory params', () => {
     const prop = makeProperty({ rooms: 3 })
     const req = makeRequest({ rooms: [1, 2] })
     expect(calculateMatch(prop, req)).toBeNull()
+  })
+
+  it('returns null if property is for rent and request is for purchase (default)', () => {
+    const prop = makeProperty({ deal_type: 'rent' })
+    const req = makeRequest()
+    expect(calculateMatch(prop, req)).toBeNull()
+  })
+
+  it('returns null if property is for rent and request deal_type is sale', () => {
+    const prop = makeProperty({ deal_type: 'rent' })
+    const req = makeRequest({ deal_type: 'sale' })
+    expect(calculateMatch(prop, req)).toBeNull()
+  })
+
+  it('passes mandatory check when both property and request are for rent', () => {
+    const prop = makeProperty({ deal_type: 'rent' })
+    const req = makeRequest({ deal_type: 'rent' })
+    expect(calculateMatch(prop, req)).not.toBeNull()
   })
 
   it('passes mandatory check when all match', () => {
@@ -348,6 +368,17 @@ describe('runMatchingForProperty', () => {
     expect(results).toHaveLength(2)
   })
 
+  it('skips purchase requests when property is for rent', () => {
+    const prop = makeProperty({ deal_type: 'rent' })
+    const requests = [
+      makeRequest({ id: 'req-1', status: 'active' }), // default purchase
+      makeRequest({ id: 'req-2', status: 'active', deal_type: 'rent' }),
+    ]
+    const results = runMatchingForProperty(prop, requests)
+    expect(results).toHaveLength(1)
+    expect(results[0].request_id).toBe('req-2')
+  })
+
   it('skips property that has reached deal stage (status: "deal")', () => {
     const prop = makeProperty({ status: 'deal' })
     const requests = [
@@ -373,6 +404,17 @@ describe('runMatchingForRequest', () => {
     const properties = [
       makeProperty({ id: 'prop-1', status: 'active' }),
       makeProperty({ id: 'prop-2', status: 'sold' }),
+    ]
+    const results = runMatchingForRequest(req, properties)
+    expect(results).toHaveLength(1)
+    expect(results[0].property_id).toBe('prop-1')
+  })
+
+  it('skips rental properties when request is for purchase', () => {
+    const req = makeRequest() // default purchase
+    const properties = [
+      makeProperty({ id: 'prop-1', status: 'active', deal_type: 'sale' }),
+      makeProperty({ id: 'prop-2', status: 'active', deal_type: 'rent' }),
     ]
     const results = runMatchingForRequest(req, properties)
     expect(results).toHaveLength(1)
@@ -415,6 +457,33 @@ describe('runMatchingForRequest', () => {
     ]
     const results = runMatchingForRequest(req, properties)
     expect(results).toHaveLength(0)
+  })
+})
+
+describe('isDealTypeCompatible and normalizeDealType', () => {
+  it('defaults to sale for undefined/empty', () => {
+    expect(normalizeDealType()).toBe('sale')
+    expect(normalizeDealType(null)).toBe('sale')
+    expect(normalizeDealType('')).toBe('sale')
+  })
+
+  it('normalizes rent, hire, аренда, найм to rent', () => {
+    expect(normalizeDealType('rent')).toBe('rent')
+    expect(normalizeDealType('RENT')).toBe('rent')
+    expect(normalizeDealType('hire')).toBe('rent')
+    expect(normalizeDealType('Аренда')).toBe('rent')
+    expect(normalizeDealType('найм')).toBe('rent')
+  })
+
+  it('matches purchase request with sale property', () => {
+    expect(isDealTypeCompatible({ deal_type: 'sale' }, {})).toBe(true)
+    expect(isDealTypeCompatible({}, {})).toBe(true)
+  })
+
+  it('rejects rental property with purchase request', () => {
+    expect(isDealTypeCompatible({ deal_type: 'rent' }, {})).toBe(false)
+    expect(isDealTypeCompatible({ deal_type: 'rent' }, { deal_type: 'sale' })).toBe(false)
+    expect(isDealTypeCompatible({ deal_type: 'sale' }, { deal_type: 'rent' })).toBe(false)
   })
 })
 

@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
 import { Pencil, Trash, Sparkles, User, MapPin, Building2, Wallet, ChevronRight, TrendingUp, ChevronLeft } from 'lucide-react';
 import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
-import { hasPassedDealStage } from '../../utils/matching';
+import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 
 export function DetailsPage() {
     const { id } = useParams();
@@ -19,7 +19,7 @@ export function DetailsPage() {
     const matches = isActive ? state.matches.filter(m => {
         if (m.request_id !== id) return false;
         const prop = state.properties.find(p => p.id === m.property_id);
-        return prop && !hasPassedDealStage(prop, state.deals);
+        return prop && !hasPassedDealStage(prop, state.deals) && isDealTypeCompatible(prop, req);
     }) : [];
 
     if (!req) return (

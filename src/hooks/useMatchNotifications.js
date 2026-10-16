@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { hasPassedDealStage } from '../utils/matching';
+import { hasPassedDealStage, isDealTypeCompatible } from '../utils/matching';
 
 export function useMatchNotifications() {
     const { state } = useApp();
@@ -36,7 +36,7 @@ export function useMatchNotifications() {
             }
             const prop = state.properties.find(p => p.id === m.property_id);
             const req = state.requests.find(r => r.id === m.request_id);
-            return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active';
+            return prop && !hasPassedDealStage(prop, state.deals) && req?.status === 'active' && isDealTypeCompatible(prop, req);
         });
 
         if (newMatches.length > 0) {

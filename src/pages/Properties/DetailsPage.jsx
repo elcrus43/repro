@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatNumber } from '../../utils/format';
+import { isDealTypeCompatible } from '../../utils/matching';
 import { 
     Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
@@ -455,7 +456,7 @@ export function DetailsPage() {
     const matches = state.matches.filter(m => {
         if (m.property_id !== id) return false;
         const req = state.requests.find(r => r.id === m.request_id);
-        return req && req.status === 'active';
+        return req && req.status === 'active' && isDealTypeCompatible(prop, req);
     });
     const showings = state.showings.filter(s => s.property_id === id);
     const priceHistory = (state.priceHistory || []).filter(h => h.property_id === id).sort((a, b) => new Date(b.changed_at) - new Date(a.changed_at));
