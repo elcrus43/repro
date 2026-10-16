@@ -15,6 +15,7 @@ import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.b
 const TEMPLATE_ICONS = {
     yuss_buy_1: <Briefcase size={16} />,
     agency_sale_1: <Building2 size={16} />,
+    agency_rent_landlord_1: <Key size={16} />,
     sale: <FileText size={16} />,
     rent: <FileText size={16} />,
     act: <FileText size={16} />,
@@ -475,6 +476,7 @@ export function DocumentsPage() {
     const TEMPLATE_LABELS = {
         yuss_buy_1: 'АД ЮСС Покупка',
         agency_sale_1: 'АД ЮСС Продажа',
+        agency_rent_landlord_1: 'АД Найм с наймодателем',
         sale: 'Договор купли-продажи',
         rent: 'Договор аренды',
         act: 'Акт приема-передачи',
@@ -488,8 +490,9 @@ export function DocumentsPage() {
     }, [templates, hideOtherTemplates, selectedTemplate]);
 
     /* ── Выбранный клиент для редактирования реквизитов ────────────────────── */
-    const isAgencySale = selectedTemplate === 'agency_sale_1';
-    const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1';
+    const isAgencyRentLandlord = selectedTemplate === 'agency_rent_landlord_1';
+    const isAgencySale = selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
+    const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
 
     const activeClient = useMemo(() => {
         if (sourceMode === 'deal' && selectedDealId) {
@@ -536,6 +539,8 @@ export function DocumentsPage() {
                 tpl = 'yuss_buy_1';
             } else if (c.type === 'АД ЮСС Продажа' || c.type === 'АД Продажа') {
                 tpl = 'agency_sale_1';
+            } else if (c.type === 'АД Найм с наймодателем' || c.type === 'АД Аренда с наймодателем' || c.type === 'АД Аренда с арендодателем') {
+                tpl = 'agency_rent_landlord_1';
             } else if (c.type?.includes('Аренда') || c.type?.includes('Найм')) {
                 tpl = 'rent';
             }
@@ -1019,11 +1024,11 @@ export function DocumentsPage() {
                     {/* Режим — вручную */}
                     {sourceMode === 'manual' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {selectedTemplate === 'agency_sale_1' ? (
+                            {(selectedTemplate === 'agency_sale_1' || selectedTemplate === 'agency_rent_landlord_1') ? (
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                            Принципал (Продавец / Собственник)
+                                            {selectedTemplate === 'agency_rent_landlord_1' ? 'Принципал (Наймодатель / Собственник)' : 'Принципал (Продавец / Собственник)'}
                                         </label>
                                         <button
                                             type="button"
@@ -1047,7 +1052,7 @@ export function DocumentsPage() {
                                                 if (found) setPropertyId(found.id);
                                             }
                                         }}
-                                        placeholder="Выберите клиента-принципала (продавца)"
+                                        placeholder={selectedTemplate === 'agency_rent_landlord_1' ? 'Выберите клиента-принципала (наймодателя)' : 'Выберите клиента-принципала (продавца)'}
                                         onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: searchQuery || '' })}
                                         addLabel="Новый принципал"
                                     />
@@ -2321,6 +2326,187 @@ function DocumentPreview({ template, data, highlight = true }) {
                         <strong>Агент:</strong>
                     </div>
                     <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
+                </div>
+            </div>
+        );
+    }
+
+    /* ── Шаблон: АД Найм с наймодателем ─────────────────────────────────────── */
+    if (template === 'agency_rent_landlord_1') {
+        return (
+            <div>
+                {/* Логотип агентства ЮСС как в шаблоне пользователя */}
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 20 }}>
+                    <img
+                        src={`data:image/png;base64,${YUSS_BUY_1_LOGO_BASE64}`}
+                        alt="ЮСС Риэлти"
+                        style={{ width: 150, height: 124, objectFit: 'contain' }}
+                    />
+                </div>
+
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Агентский договор
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 14, fontWeight: 500 }}>
+                    <span>Город Киров, Кировская область</span>
+                    <span>«<Slot value={today} label="Дата договора" highlight={highlight} />»</span>
+                </div>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    Мы, Гр. <Slot value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                    дата рождения: <Slot value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                    паспорт РФ серия <Slot value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                    выдан <Slot value={principalIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} /> года <Slot value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /> именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
+                    адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; 
+                    р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974., 
+                    именуемая в дальнейшем «Агент», с другой стороны, именуемые в дальнейшем совместно <strong>«Стороны»</strong>, 
+                    заключили Агентский договор о следующем:
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>1. Предмет договора</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    1.1. Принципал поручает, а Агент обязуется за вознаграждение осуществить поиск нанимателя/арендатора на объект недвижимого имущества, имеющего следующие характеристики в Едином государственном реестре недвижимости:<br />
+                    (далее – объект недвижимости).
+                </p>
+
+                {/* Таблица характеристик объекта */}
+                <div style={{ marginBottom: 14, overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #000', fontSize: 13 }}>
+                        <tbody>
+                            <tr>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px', width: '32%', fontWeight: 'bold', verticalAlign: 'top' }}>
+                                    Вид объекта недвижимости
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
+                                    Квартира/ комната/ жилой дом/ нежилое помещение/ иное
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px', fontWeight: 'bold', verticalAlign: 'top' }}>
+                                    Адрес(местоположение)
+                                </td>
+                                <td style={{ border: '1px solid #000', padding: '6px 10px' }}>
+                                    {propPrefix ? <span>{propPrefix} </span> : null}
+                                    <Slot value={propAddress} label="Адрес объекта" inputId="doc-input-prop-address" highlight={highlight} />
+                                    {property?.cadastral_number ? <span>, кад. № <Slot value={property.cadastral_number} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span> : (propCadastral ? <span>, кад. № <Slot value={propCadastral} label="Кадастровый номер" inputId="doc-input-prop-cadastral" highlight={highlight} /></span> : null)}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    1.1.1. Ориентировочная стоимость платы за найм/арендной платы в месяц составляет: <strong><Slot value={priceFormatted} label="Плата за найм" inputId="doc-input-prop-price" highlight={highlight} /></strong> {priceWords ? ` ${priceWords}` : ''} рублей.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость, указанную в п. 1.1.1 настоящего договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено. не заложено, не обещано, в найм и аренду не передано.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>2. Обязанности сторон</div>
+                <div style={{ fontWeight: 'bold', marginTop: 8, marginBottom: 6 }}>2.1. Обязанности Принципала:</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.1. По своей воле заключить договор найма жилого помещения/аренды нежилого помещения (именуемый далее по тексту – сделка с объектом недвижимости), передаточный акт и иные необходимые документы, а также выполнить иные оговоренные сторонами сделки условия; совершать иные законные действия, в т. ч. рекомендованные Агентом.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.2. В день заключения сделки с объектом недвижимости принять составляемый Агентом Отчет об исполнении Агентского договора (далее – Отчет Агента).
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.3. Не разглашать свои персональные и контактные данные (номер телефона, адрес проживания и/или места работы и т.д.) третьим лицам, с которыми могут возникнуть какие-либо отношения, связанные с исполнением настоящего договора до момента принятия Отчета Агента.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.4. В период действия настоящего договора не заключать аналогичных Агентских договоров с третьими лицами и воздерживаться от самостоятельной деятельности, являющейся предметом настоящего договора (размещать объявления о реализации объекта недвижимости в сети Интернет, печатных изданиях и т.д., вести переговоры и проводить осмотры объектов недвижимости без участия Агента и т.д.).
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.5. Самостоятельное заключение Принципалом сделки с найденным Агентом нанимателем/арендатором (объекта недвижимости, его аффилированным лицом либо лицом, находящимся в родстве или свойстве, считается фактом исполнения обязательств Агентом по Агентскому договору, о чем Агентом направляется соответствующее уведомление в соответствии с порядком, установленным настоящим договором.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    2.1.6. Права и обязанности по сделкам, совершенным при участии Агента, возникают непосредственно у Принципала.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 8, marginBottom: 6 }}>2.2. Обязанности Агента:</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.2.1. Осуществить поиск (подбор) потенциального нанимателя/арендатора отчуждаемого объекта недвижимости, используя все законные методы и инструменты (реклама и т.п.), вести переговоры, а также составить проект договора найма жилого помещения/аренды нежилого помещения, передаточного акта и иных документов, необходимых для заключения сделки.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    2.2.2. В день исполнения обязательств по Агентскому договору составить для Принципала Отчет Агента.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>3. Агентское вознаграждение и расчеты между сторонами</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: <strong><Slot value={commFormatted} label="Вознаграждение Агента" inputId="doc-input-commission" highlight={highlight} /></strong> {commWords ? ` ${commWords}` : ''} рублей, в том числе НДС 5 %.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.2. Настоящим пунктом Принципал предоставляет Агенту право получить с нанимателя/арендатора объекта недвижимости аванс в сумме, не превышающей размер агентского вознаграждения, в счет частичной оплаты его стоимости. Полученный Агентом аванс засчитывается в счет стоимости агентского вознаграждения, подлежащего оплате Принципалом.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.3. Принципал обязуется уплатить Агенту вознаграждение на основании Отчета Агента в день заключения сделки с объектом недвижимости.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    3.4. Расчеты по Агентскому договору осуществляются в следующем порядке: путем внесения наличных денежных средств в кассу Агента или в безналичном порядке платежными поручениями на расчетный счет Агента.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    3.5. Обязательства Принципала по оплате считаются исполненными в момент зачисления денежных средств на расчетный счет Агента или внесения Принципалом денежных средств в кассу Агента.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>4. Ответственность сторон</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    4.1. При нарушении Принципалом условий настоящего договора без уважительных причин (временная нетрудоспособность и т.п.), в том числе - если он не будет присутствовать лично или не обеспечит присутствие своего уполномоченного представителя в назначенный день для совершения необходимых действий по заключению сделки с объектом недвижимости, либо заключит аналогичный Агентский договор с третьим лицом или будет осуществлять самостоятельную деятельность, являющуюся предметом настоящего договора, Принципал уплачивает неустойку Агенту в размере 50 (пятидесяти) процентов от установленных Агентским договором размеров Агентских вознаграждений.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    4.2. Материальная ответственность Агента перед Принципалом не может превышать размер Агентского вознаграждения.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>5. Срок действия настоящего договора</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до <strong><Slot value={contractEndDate} label="Срок действия договора" inputId="doc-input-contract-end-date" highlight={highlight} /></strong> включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    5.2. Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    5.3. Договор может быть изменен или расторгнут только по письменному соглашению сторон.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>6. Дополнительные условия</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.1. Все споры, возникающие при выполнении настоящего договора, решаются сторонами путем переговоров, направления и вручения письменных претензий, а при недостижении согласия – в судебном порядке, в соответствии с действующим законодательством.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.2. Агент вправе направить Принципалу по последнему известному ему адресу регистрации Принципала письменные сообщения и (или) электронные сообщения на указанные Принципалом мобильный номер телефона и (или) электронную почту о ходе и результатах исполнения Агентского договора. Все юридически значимые сообщения в адрес Агента должны направляться исключительно по почтовому адресу, который указан в преамбуле Агентского договора. Направление сообщения по другим адресам не может считаться надлежащим. Сообщение считается доставленным и в тех случаях, если оно поступило лицу, которому оно направлено (адресату), но по обстоятельствам, зависящим от него, не было ему вручено или адресат не ознакомился с ним.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.3. Настоящим пунктом Принципал подтверждает, что у него отсутствуют какие-либо обстоятельства и ситуации, которые препятствуют или могут препятствовать заключению им законным образом настоящего Агентского договора и впоследствии – сделки с объектом недвижимости.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.4. Принципал дает согласие на получение от Агента рекламной и иной информации, необходимой для осуществления деятельности Агента, путем направления сообщений смс на телефон, электронных писем на электронную почту, указанных Принципалом в настоящем договоре.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок, необходимый для исполнения Агентского договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 18, textAlign: 'justify' }}>
+                    6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 14 }}>7. Подписи сторон</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
+                    <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Принципал:</div>
+                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                    </div>
+                    <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Агент:</div>
+                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                    </div>
                 </div>
             </div>
         );

@@ -7,6 +7,7 @@ import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Searc
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { useExport } from '../../hooks/useExport';
 import { PipelinePage } from './PipelinePage';
+import { CLIENT_TYPE_LABELS } from '../../data/constants';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -141,7 +142,7 @@ export function ListPage() {
         }));
     };
 
-    const typeLabels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор', lawyer: 'Юрист' };
+    const typeLabels = CLIENT_TYPE_LABELS;
 
     const handleExport = () => {
         const headers = [

@@ -7,7 +7,7 @@ import { decodeImportData } from '../../utils/importDecoder';
 import { nanoid } from '../../utils/nanoid';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { ChevronLeft, MapPin, DollarSign, User, Phone, Check, Ruler, Image, Upload } from 'lucide-react';
-import { PROPERTY_TYPES } from '../../data/constants';
+import { PROPERTY_TYPES, CLIENT_TYPE_LABELS } from '../../data/constants';
 import { compressBlob } from '../../utils/image';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 
@@ -327,8 +327,7 @@ export function FormPage() {
                         }}>
                             <span>✓ Найден в базе: <strong>{matchingClient.full_name}</strong> ({
                                 matchingClient.client_types?.map(t => {
-                                    const labels = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор' };
-                                    return labels[t] || t;
+                                    return CLIENT_TYPE_LABELS[t] || t;
                                 }).join(', ')
                             })</span>
                         </div>

@@ -647,6 +647,252 @@ function buildAgencySale1Contract(data) {
     };
 }
 
+/* ─── Шаблон: АД Найм с наймодателем ─────────────────────────────────────── */
+
+function buildAgencyRentLandlord1Contract(data) {
+    const principal = data.seller || data.buyer; // Принципал (Наймодатель / Собственник)
+    const p = principal?.passport_details || {};
+    const deal = data.deal;
+    const property = data.property;
+
+    const fullName = fmt(principal?.full_name);
+    const birthDate = principal?.birth_date ? fmtDate(principal.birth_date) : (p.birth_date ? fmtDate(p.birth_date) : '________________________________________');
+    const series = fmt(p.series, '____________');
+    const number = fmt(p.number, '____________');
+    const issuedBy = fmt(p.issued_by, '_____________________________________________________________________ ______________________');
+    const issueDate = p.issue_date ? fmtDate(p.issue_date) : '_________ года';
+    const regAddress = fmt(p.registration_address || principal?.reg_address || principal?.address, '___________________________________________________________________________________________________________________');
+
+    // Характеристики объекта недвижимости для таблицы
+    const propAddress = fmt(property?.address || property?.city, '_______________________________________________________________________________________________________________________');
+    const propCadastral = property?.cadastral_number ? `, кад. № ${property.cadastral_number}` : '';
+    const propArea = property?.area_total ? `${property.area_total} кв.м.` : '';
+    const propRooms = property?.rooms ? (property.rooms === 'studio' ? 'Студия' : `${property.rooms}-комн. кв.`) : (property?.property_type === 'house' ? 'Жилой дом' : (property?.property_type === 'land' ? 'Земельный участок' : ''));
+    const propPrefix = [propRooms, propArea].filter(Boolean).join(', ');
+    const propertyFullDetails = propPrefix ? `${propPrefix}  ${propAddress}${propCadastral}` : `${propAddress}${propCadastral}`;
+
+    // Ориентировочная стоимость платы за найм/арендной платы в месяц (п. 1.1.1)
+    const rawPrice = deal?.price || property?.price;
+    const cleanPriceNum = rawPrice ? Number(String(rawPrice).replace(/\D/g, '')) : 0;
+    const priceFormatted = cleanPriceNum > 0 ? cleanPriceNum.toLocaleString('ru-RU') : '___________________________________';
+    const priceWords = cleanPriceNum > 0 ? `(${numberToWordsRu(cleanPriceNum)})` : '__________________________________________________________________________________________________________';
+
+    // Вознаграждение Агента (п. 3.1)
+    const rawComm = deal?.commission || data.property?.commission;
+    const cleanComm = rawComm ? Number(String(rawComm).replace(/\D/g, '')) : 0;
+    const commFormatted = cleanComm > 0 ? cleanComm.toLocaleString('ru-RU') : '_____________________________________________';
+    const commWords = cleanComm > 0 ? `(${numberToWordsRu(cleanComm)})` : '_________________________________________________________________________________________________________';
+
+    // Срок действия договора (п. 5.1)
+    const rawEndDate = data.contractEndDate || deal?.contract_end_date;
+    const contractEndDate = rawEndDate ? fmtDate(rawEndDate) : '__________________ г.';
+    const todayStr = fmtDate(deal?.deal_date || new Date().toISOString());
+
+    const propertyTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            left: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            right: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            insideVertical: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        },
+        rows: [
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: 30, type: WidthType.PERCENTAGE },
+                        children: [arialPara([arialBold('Вид объекта недвижимости')], { indent: false, afterPt: 2, beforePt: 2 })],
+                    }),
+                    new TableCell({
+                        width: { size: 70, type: WidthType.PERCENTAGE },
+                        children: [arialPara([arialRun('Квартира/ комната/ жилой дом/ нежилое помещение/ иное')], { indent: false, afterPt: 2, beforePt: 2 })],
+                    }),
+                ],
+            }),
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: 30, type: WidthType.PERCENTAGE },
+                        children: [arialPara([arialBold('Адрес(местоположение)')], { indent: false, afterPt: 2, beforePt: 2 })],
+                    }),
+                    new TableCell({
+                        width: { size: 70, type: WidthType.PERCENTAGE },
+                        children: [arialPara([arialRun(propertyFullDetails)], { indent: false, afterPt: 2, beforePt: 2 })],
+                    }),
+                ],
+            }),
+        ],
+    });
+
+    const bodyChildren = [
+        arialPara([arialBold('Агентский договор')], { alignment: AlignmentType.CENTER, afterPt: 6 }),
+        arialPara([
+            arialRun('Город Киров, Кировская область                                                        '),
+            arialRun(`«${todayStr}»`),
+        ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
+
+        arialPara([
+            arialRun('Мы, Гр. '),
+            arialBold(fullName),
+            arialRun(`, дата рождения: ${birthDate}, паспорт РФ серия `),
+            arialBold(series),
+            arialRun(' номер '),
+            arialBold(number),
+            arialRun(` выдан ${issueDate} года ${issuedBy} зарегистрированный(-ая) по адресу: ${regAddress}`),
+        ], { indent: true, afterPt: 3 }),
+        arialPara([
+            arialRun('именуемый(-ая,-ые) в дальнейшем '),
+            arialBold('«Принципал»'),
+            arialRun(', с одной стороны,'),
+        ], { indent: true, afterPt: 6 }),
+
+        arialPara([
+            arialRun('и '),
+            arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
+            arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974., именуемая в дальнейшем '),
+            arialBold('«Агент»'),
+            arialRun(', с другой стороны, именуемые в дальнейшем совместно '),
+            arialBold('«Стороны»'),
+            arialRun(', заключили Агентский договор о следующем:'),
+        ], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('1. Предмет договора')], { afterPt: 4, beforePt: 4 }),
+        arialPara([
+            arialRun('1.1. Принципал поручает, а Агент обязуется за вознаграждение осуществить поиск нанимателя/арендатора на объект недвижимого имущества, имеющего следующие характеристики в Едином государственном реестре недвижимости:\n(далее – объект недвижимости).'),
+        ], { indent: true, afterPt: 4 }),
+        propertyTable,
+        arialPara([
+            arialRun('1.1.1. Ориентировочная стоимость платы за найм/арендной платы в месяц составляет: '),
+            arialBold(priceFormatted),
+            arialRun(' '),
+            arialRun(priceWords),
+            arialRun(' рублей.'),
+        ], { indent: true, beforePt: 4, afterPt: 3 }),
+        arialPara([
+            arialRun('1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость, указанную в п. 1.1.1 настоящего договора.'),
+        ], { indent: true, afterPt: 3 }),
+        arialPara([
+            arialRun('1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено. не заложено, не обещано, в найм и аренду не передано.'),
+        ], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('2. Обязанности сторон')], { afterPt: 4, beforePt: 4 }),
+        arialPara([arialBold('2.1. Обязанности Принципала:')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.1.1. По своей воле заключить договор найма жилого помещения/аренды нежилого помещения (именуемый далее по тексту – сделка с объектом недвижимости), передаточный акт и иные необходимые документы, а также выполнить иные оговоренные сторонами сделки условия; совершать иные законные действия, в т. ч. рекомендованные Агентом.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.1.2. В день заключения сделки с объектом недвижимости принять составляемый Агентом Отчет об исполнении Агентского договора (далее – Отчет Агента).')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.1.3. Не разглашать свои персональные и контактные данные (номер телефона, адрес проживания и/или места работы и т.д.) третьим лицам, с которыми могут возникнуть какие-либо отношения, связанные с исполнением настоящего договора до момента принятия Отчета Агента.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.1.4. В период действия настоящего договора не заключать аналогичных Агентских договоров с третьими лицами и воздерживаться от самостоятельной деятельности, являющейся предметом настоящего договора (размещать объявления о реализации объекта недвижимости в сети Интернет, печатных изданиях и т.д., вести переговоры и проводить осмотры объектов недвижимости без участия Агента и т.д.).')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.1.5. Самостоятельное заключение Принципалом сделки с найденным Агентом нанимателем/арендатором (объекта недвижимости, его аффилированным лицом либо лицом, находящимся в родстве или свойстве, считается фактом исполнения обязательств Агентом по Агентскому договору, о чем Агентом направляется соответствующее уведомление в соответствии с порядком, установленным настоящим договором.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.1.6. Права и обязанности по сделкам, совершенным при участии Агента, возникают непосредственно у Принципала.')], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('2.2. Обязанности Агента:')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.2.1. Осуществить поиск (подбор) потенциального нанимателя/арендатора отчуждаемого объекта недвижимости, используя все законные методы и инструменты (реклама и т.п.), вести переговоры, а также составить проект договора найма жилого помещения/аренды нежилого помещения, передаточного акта и иных документов, необходимых для заключения сделки.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('2.2.2. В день исполнения обязательств по Агентскому договору составить для Принципала Отчет Агента.')], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('3. Агентское вознаграждение и расчеты между сторонами')], { afterPt: 4, beforePt: 4 }),
+        arialPara([
+            arialRun('3.1. Размер вознаграждения Агента (Агентского вознаграждения) составляет: '),
+            arialBold(commFormatted),
+            arialRun(' '),
+            arialRun(commWords),
+            arialRun(' рублей, в том числе НДС 5 %.'),
+        ], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('3.2. Настоящим пунктом Принципал предоставляет Агенту право получить с нанимателя/арендатора объекта недвижимости аванс в сумме, не превышающей размер агентского вознаграждения, в счет частичной оплаты его стоимости. Полученный Агентом аванс засчитывается в счет стоимости агентского вознаграждения, подлежащего оплате Принципалом.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('3.3. Принципал обязуется уплатить Агенту вознаграждение на основании Отчета Агента в день заключения сделки с объектом недвижимости.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('3.4. Расчеты по Агентскому договору осуществляются в следующем порядке: путем внесения наличных денежных средств в кассу Агента или в безналичном порядке платежными поручениями на расчетный счет Агента.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('3.5. Обязательства Принципала по оплате считаются исполненными в момент зачисления денежных средств на расчетный счет Агента или внесения Принципалом денежных средств в кассу Агента.')], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('4. Ответственность сторон')], { afterPt: 4, beforePt: 4 }),
+        arialPara([arialRun('4.1. При нарушении Принципалом условий настоящего договора без уважительных причин (временная нетрудоспособность и т.п.), в том числе - если он не будет присутствовать лично или не обеспечит присутствие своего уполномоченного представителя в назначенный день для совершения необходимых действий по заключению сделки с объектом недвижимости, либо заключит аналогичный Агентский договор с третьим лицом или будет осуществлять самостоятельную деятельность, являющуюся предметом настоящего договора, Принципал уплачивает неустойку Агенту в размере 50 (пятидесяти) процентов от установленных Агентским договором размеров Агентских вознаграждений.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('4.2. Материальная ответственность Агента перед Принципалом не может превышать размер Агентского вознаграждения.')], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('5. Срок действия настоящего договора')], { afterPt: 4, beforePt: 4 }),
+        arialPara([
+            arialRun('5.1. Настоящий договор вступает в силу с момента его заключения Сторонами и действует до '),
+            arialBold(contractEndDate),
+            arialRun(' включительно, а в части расчетов между сторонами – до полного исполнения всех обязательств.'),
+        ], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('5.2. Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('5.3. Договор может быть изменен или расторгнут только по письменному соглашению сторон.')], { indent: true, afterPt: 6 }),
+
+        arialPara([arialBold('6. Дополнительные условия')], { afterPt: 4, beforePt: 4 }),
+        arialPara([arialRun('6.1. Все споры, возникающие при выполнении настоящего договора, решаются сторонами путем переговоров, направления и вручения письменных претензий, а при недостижении согласия – в судебном порядке, в соответствии с действующим законодательством.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('6.2. Агент вправе направить Принципалу по последнему известному ему адресу регистрации Принципала письменные сообщения и (или) электронные сообщения на указанные Принципалом мобильный номер телефона и (или) электронную почту о ходе и результатах исполнения Агентского договора. Все юридически значимые сообщения в адрес Агента должны направляться исключительно по почтовому адресу, который указан в преамбуле Агентского договора. Направление сообщения по другим адресам не может считаться надлежащим. Сообщение считается доставленным и в тех случаях, если оно поступило лицу, которому оно направлено (адресату), но по обстоятельствам, зависящим от него, не было ему вручено или адресат не ознакомился с ним.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('6.3. Настоящим пунктом Принципал подтверждает, что у него отсутствуют какие-либо обстоятельства и ситуации, которые препятствуют или могут препятствовать заключению им законным образом настоящего Агентского договора и впоследствии – сделки с объектом недвижимости.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('6.4. Принципал дает согласие на получение от Агента рекламной и иной информации, необходимой для осуществления деятельности Агента, путем направления сообщений смс на телефон, электронных писем на электронную почту, указанных Принципалом в настоящем договоре.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок, необходимый для исполнения Агентского договора.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun('6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.')], { indent: true, afterPt: 10 }),
+
+        arialPara([arialBold('7. Подписи сторон')], { afterPt: 6, beforePt: 6 }),
+        new Paragraph({
+            children: [arialRun('Принципал:')],
+            border: {
+                bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+            },
+            spacing: { line: 260, after: 0 },
+        }),
+        new Paragraph({
+            children: [arialRun('\u00A0')],
+            border: {
+                bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+            },
+            spacing: { line: 260, after: 0 },
+        }),
+        new Paragraph({
+            children: [arialRun('\u00A0')],
+            border: {
+                bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+            },
+            spacing: { line: 260, after: 0 },
+        }),
+        new Paragraph({
+            children: [arialRun('\u00A0')],
+            spacing: { line: 260, after: 120 },
+        }),
+        new Paragraph({
+            children: [arialRun('Агент:')],
+            spacing: { line: 260, before: 60, after: 0 },
+        }),
+        new Paragraph({
+            children: [arialRun('\u00A0')],
+            border: {
+                bottom: { color: '000000', space: 1, style: BorderStyle.SINGLE, size: 12 },
+            },
+            spacing: { line: 260, after: 0 },
+        }),
+    ];
+
+    return {
+        headers: {
+            default: new Header({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: getLogoUint8Array(),
+                                transformation: { width: 150, height: 124 },
+                            }),
+                        ],
+                        spacing: { after: 120 },
+                    }),
+                ],
+            }),
+        },
+        properties: {
+            page: {
+                margin: {
+                    top: 851,
+                    right: 566,
+                    bottom: 851,
+                    left: 1134,
+                },
+            },
+        },
+        children: bodyChildren,
+    };
+}
+
 /* ─── Шаблон: Договор купли-продажи ─────────────────────────────────────── */
 
 function buildSaleContract(data) {
@@ -841,6 +1087,7 @@ function buildHandoverAct(data) {
 const TEMPLATES = {
     yuss_buy_1: { title: 'ЮСС Покупка (1 принципал)', builder: buildYussBuy1Contract },
     agency_sale_1: { title: 'Агентский договор — Продажа (1 принципал)', builder: buildAgencySale1Contract },
+    agency_rent_landlord_1: { title: 'АД Найм с наймодателем', builder: buildAgencyRentLandlord1Contract },
     sale: { title: 'Договор купли-продажи', builder: buildSaleContract },
     rent: { title: 'Договор аренды', builder: buildRentContract },
     act: { title: 'Акт приема-передачи', builder: buildHandoverAct },

@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
-import { Pencil, Phone, Mail, Calendar, ChevronRight, Plus, ChevronLeft, Share2, Briefcase, Sparkles, Home, FileText, X, Users, Clock, Trash2, ShieldCheck, Copy, Check, AlertTriangle, ExternalLink } from 'lucide-react';
-import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES } from '../../data/constants';
+import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES, CLIENT_TYPES, CLIENT_TYPE_LABELS } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { hasPassedDealStage } from '../../utils/matching';
@@ -161,7 +160,7 @@ export function DetailsPage() {
         active: 'В работе',
         refused: 'Отказ'
     };
-    const typeLabels   = { buyer: 'Покупатель', seller: 'Продавец', developer: 'Застройщик', agent: 'Агент', landlord: 'Арендодатель', tenant: 'Арендатор', lawyer: 'Юрист' };
+    const typeLabels   = CLIENT_TYPE_LABELS;
 
     const matchStatusLabel = { new: 'Новый', viewed: 'Просмотрен', showing_planned: 'Показ', showing_done: 'Показ проведён' };
     const matchStatusColor = { new: '#3b82f6', viewed: '#64748b', showing_planned: '#f59e0b', showing_done: '#10b981' };
@@ -378,8 +377,17 @@ export function DetailsPage() {
 
     function openAddContractModal() {
         setEditingContractId(null);
+        let defaultType = 'АД Продажа';
+        const types = client.client_types || [];
+        if (types.some(t => ['landlord', 'lessor'].includes(t))) {
+            defaultType = 'АД Аренда с наймодателем';
+        } else if (types.some(t => ['tenant', 'lessee'].includes(t))) {
+            defaultType = 'АД Аренда с нанимателем';
+        } else if (types.includes('buyer')) {
+            defaultType = 'АД Покупка';
+        }
         setContractForm({
-            type: client.client_types?.includes('buyer') ? 'АД Покупка' : 'АД Продажа',
+            type: defaultType,
             date: new Date().toISOString().split('T')[0],
             property_id: myProperties[0]?.id || '',
             status: 'active',
@@ -489,7 +497,7 @@ export function DetailsPage() {
             sellerId = id;
             buyerId = '';
         } else if (contract.type === 'АД Найм с наймодателем' || contract.type === 'АД Аренда с наймодателем' || contract.type === 'АД Аренда с арендодателем') {
-            template = 'rent';
+            template = 'agency_rent_landlord_1';
             sellerId = id;
             buyerId = '';
         } else if (contract.type === 'АД Найм с нанимателем' || contract.type === 'АД Аренда с нанимателем' || contract.type === 'АД Аренда с арендатором') {
@@ -519,7 +527,8 @@ export function DetailsPage() {
         if (firstActive) {
             handleCreateDocumentForContract(firstActive);
         } else {
-            const isSeller = client.client_types?.some(t => ['seller', 'landlord'].includes(t));
+            const isSeller = client.client_types?.some(t => ['seller', 'landlord', 'lessor'].includes(t));
+            const isRent = client.client_types?.some(t => ['landlord', 'tenant', 'lessor', 'lessee'].includes(t));
             const clientProp = myProperties[0];
             navigate('/documents', {
                 state: {
@@ -527,7 +536,7 @@ export function DetailsPage() {
                         sellerId: isSeller ? id : '',
                         buyerId: isSeller ? '' : id,
                         propertyId: clientProp?.id || '',
-                        template: isSeller ? (client.client_types?.includes('landlord') ? 'rent' : 'agency_sale_1') : 'yuss_buy_1',
+                        template: isRent ? 'rent' : (isSeller ? 'agency_sale_1' : 'yuss_buy_1'),
                         hideOtherTemplates: true,
                     }
                 }
@@ -634,9 +643,9 @@ export function DetailsPage() {
                                 })}
                             </>
                         ) : (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '12px', borderRadius: 16, width: '100%', marginTop: 8 }}>
-                                <div style={{ width: '100%', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Выберите типы клиента:</div>
-                                {Object.entries(typeLabels).map(([typeId, label]) => {
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '16px', borderRadius: 20, width: '100%', marginTop: 8 }}>
+                                <div style={{ width: '100%', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 500 }}>Выберите типы клиента:</div>
+                                {CLIENT_TYPES.map(({ id: typeId, label }) => {
                                     const isActive = client.client_types?.includes(typeId);
                                     return (
                                         <button
@@ -644,13 +653,14 @@ export function DetailsPage() {
                                             onClick={() => handleToggleType(typeId)}
                                             className="card-clickable"
                                             style={{
-                                                padding: '6px 12px',
+                                                padding: '6px 14px',
                                                 borderRadius: 10,
-                                                fontSize: 11,
-                                                fontWeight: isActive ? 400 : 300,
+                                                fontSize: 12,
+                                                fontWeight: isActive ? 600 : 400,
                                                 background: isActive ? 'var(--primary)' : 'var(--surface)',
                                                 color: isActive ? '#fff' : 'var(--text)',
                                                 border: isActive ? 'none' : '1px solid var(--border-light)',
+                                                cursor: 'pointer',
                                                 transition: 'all 0.2s'
                                             }}
                                         >
@@ -658,23 +668,29 @@ export function DetailsPage() {
                                         </button>
                                     );
                                 })}
-                                <button
-                                    onClick={() => setIsEditingTypes(false)}
-                                    className="card-clickable"
-                                    style={{
-                                        padding: '6px 16px',
-                                        borderRadius: 10,
-                                        fontSize: 11,
-                                        fontWeight: 500,
-                                        background: 'var(--success)',
-                                        color: '#fff',
-                                        border: 'none',
-                                        marginTop: 8,
-                                        width: '100%'
-                                    }}
-                                >
-                                    Готово
-                                </button>
+                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditingTypes(false)}
+                                        className="card-clickable"
+                                        style={{
+                                            padding: '8px 24px',
+                                            borderRadius: 12,
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            background: 'var(--success)',
+                                            color: '#fff',
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                                        }}
+                                    >
+                                        <Check size={14} /> Готово
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

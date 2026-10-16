@@ -5,20 +5,22 @@ import { formatPhone, formatNumber } from '../../utils/format';
 import { Phone, User, Home, Tag } from 'lucide-react';
 
 const EXCLUDED_TYPES = ['developer', 'agent', 'lawyer'];
-const DEAL_TYPES = ['buyer', 'seller', 'landlord', 'tenant'];
+const DEAL_TYPES = ['buyer', 'seller', 'landlord', 'tenant', 'lessor', 'lessee'];
 
 const CLIENT_TYPE_INFO = {
   buyer:    { label: 'Покупатель',   color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.10)', border: 'rgba(59, 130, 246, 0.25)' },
   seller:   { label: 'Продавец',     color: '#10b981', bg: 'rgba(16, 185, 129, 0.10)', border: 'rgba(16, 185, 129, 0.25)' },
-  landlord: { label: 'Арендодатель', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
-  tenant:   { label: 'Арендатор',    color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
+  landlord: { label: 'Наймодатель',  color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
+  tenant:   { label: 'Наниматель',   color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
+  lessor:   { label: 'Арендодатель', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
+  lessee:   { label: 'Арендатор',    color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
 };
 
 const SEGMENTS = [
   { id: 'all',    label: 'Все клиенты' },
   { id: 'buyer',  label: 'Покупатели' },
   { id: 'seller', label: 'Продавцы' },
-  { id: 'rent',   label: 'Аренда' },
+  { id: 'rent',   label: 'Аренда / Найм' },
 ];
 
 export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
@@ -29,7 +31,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
   // Normalize initial segment
   const defaultSegment = ['buyer', 'seller'].includes(initialSegment)
     ? initialSegment
-    : ['landlord', 'tenant'].includes(initialSegment)
+    : ['landlord', 'tenant', 'lessor', 'lessee'].includes(initialSegment)
       ? 'rent'
       : 'all';
 
@@ -75,7 +77,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
       const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
       if (types.includes('buyer')) counts.buyer++;
       if (types.includes('seller')) counts.seller++;
-      if (types.includes('landlord') || types.includes('tenant')) counts.rent++;
+      if (types.some(t => ['landlord', 'tenant', 'lessor', 'lessee'].includes(t))) counts.rent++;
     });
     return counts;
   }, [dealClients]);
@@ -98,7 +100,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     if (activeSegment === 'rent') {
       return dealClients.filter(c => {
         const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
-        return types.includes('landlord') || types.includes('tenant');
+        return types.some(t => ['landlord', 'tenant', 'lessor', 'lessee'].includes(t));
       });
     }
     return dealClients;
@@ -141,8 +143,8 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
   const getClientMeta = (client) => {
     const types = Array.isArray(client.client_types) ? client.client_types : (client.client_type ? [client.client_type] : []);
     
-    // For buyers / tenants: look for request budget
-    if (types.includes('buyer') || types.includes('tenant')) {
+    // For buyers / tenants / lessees: look for request budget
+    if (types.some(t => ['buyer', 'tenant', 'lessee'].includes(t))) {
       const req = (state.requests || []).find(r => r.client_id === client.id || r.client_ids?.includes(client.id));
       if (req?.budget_max) {
         return { type: 'budget', text: `до ${formatNumber(req.budget_max)} ₽` };
@@ -152,8 +154,8 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
       }
     }
 
-    // For sellers / landlords: look for property count
-    if (types.includes('seller') || types.includes('landlord')) {
+    // For sellers / landlords / lessors: look for property count
+    if (types.some(t => ['seller', 'landlord', 'lessor'].includes(t))) {
       const count = (state.properties || []).filter(p => p.owner_id === client.id || p.client_id === client.id).length;
       if (count > 0) {
         return { type: 'property', text: `Объектов: ${count}` };

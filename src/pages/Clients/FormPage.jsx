@@ -6,7 +6,7 @@ import { formatPhone, stripPhone } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
-import { CLIENT_SOURCES } from '../../data/constants';
+import { CLIENT_SOURCES, CLIENT_TYPES } from '../../data/constants';
 import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake, Calendar } from 'lucide-react';
 
 const DADATA_TOKEN = import.meta.env.VITE_DADATA_TOKEN;
@@ -320,15 +320,7 @@ export function FormPage() {
     }
 
     const sources = CLIENT_SOURCES;
-    const clientTypes = [
-        { id: 'buyer', label: 'Покупатель' },
-        { id: 'seller', label: 'Продавец' },
-        { id: 'developer', label: 'Застройщик' },
-        { id: 'agent', label: 'Агент' },
-        { id: 'landlord', label: 'Арендодатель' },
-        { id: 'tenant', label: 'Арендатор' },
-        { id: 'lawyer', label: 'Юрист' },
-    ];
+    const clientTypes = CLIENT_TYPES;
 
     const toggleType = (typeId) => {
         const types = form.client_types || [];

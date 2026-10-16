@@ -38,6 +38,13 @@ describe('docxGenerator - getDocumentTemplates', () => {
         expect(saleTpl).toBeDefined();
         expect(saleTpl.title).toBe('Агентский договор — Продажа (1 принципал)');
     });
+
+    it('includes agency_rent_landlord_1 template', () => {
+        const templates = getDocumentTemplates();
+        const rentTpl = templates.find(t => t.key === 'agency_rent_landlord_1');
+        expect(rentTpl).toBeDefined();
+        expect(rentTpl.title).toBe('АД Найм с наймодателем');
+    });
 });
 
 import { toShortName } from './docxGenerator';
