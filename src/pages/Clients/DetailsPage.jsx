@@ -7,6 +7,23 @@ import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES, CLIENT_TYPES, CLIENT_TYPE_LABELS
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { hasPassedDealStage } from '../../utils/matching';
+import {
+    ChevronLeft,
+    ChevronRight,
+    Phone,
+    Calendar,
+    Home,
+    Briefcase,
+    FileText,
+    ExternalLink,
+    Plus,
+    X,
+    Check,
+    Pencil,
+    Trash2,
+    ShieldCheck,
+    AlertTriangle
+} from 'lucide-react';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed', 'deal'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
@@ -37,6 +54,24 @@ export function DetailsPage() {
         status: 'active',
         comment: ''
     });
+
+    const clientContracts = useMemo(() => {
+        if (!client) return [];
+        const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
+        if (rawContracts.length > 0) return rawContracts;
+        if (client.has_agency_contract || client.agency_contract_date) {
+            return [{
+                id: 'legacy-' + client.id,
+                type: 'АД Продажа',
+                contract_date: client.agency_contract_date,
+                property_id: client.agency_contract_property_id || null,
+                status: 'active'
+            }];
+        }
+        return [];
+    }, [client?.agency_contracts, client?.has_agency_contract, client?.agency_contract_date, client?.id, client?.agency_contract_property_id]);
+
+    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated'), [clientContracts]);
 
     if (!client) return (
         <div className="page">
@@ -331,22 +366,6 @@ export function DetailsPage() {
         }
     }
 
-    const clientContracts = useMemo(() => {
-        const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
-        if (rawContracts.length > 0) return rawContracts;
-        if (client.has_agency_contract || client.agency_contract_date) {
-            return [{
-                id: 'legacy-' + client.id,
-                type: 'АД Продажа',
-                contract_date: client.agency_contract_date,
-                property_id: client.agency_contract_property_id || null,
-                status: 'active'
-            }];
-        }
-        return [];
-    }, [client.agency_contracts, client.has_agency_contract, client.agency_contract_date, client.id, client.agency_contract_property_id]);
-
-    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated'), [clientContracts]);
     const hasAgencyContract = activeContracts.length > 0;
     const agencyContractProperty = state.properties.find(p => p.id === (activeContracts[0]?.property_id || client.agency_contract_property_id));
 
