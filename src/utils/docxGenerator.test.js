@@ -47,7 +47,7 @@ describe('docxGenerator - getDocumentTemplates', () => {
     });
 });
 
-import { toShortName, formatPropertyKind } from './docxGenerator';
+import { toShortName, formatPropertyKind, collectDocxBlocksFromDom } from './docxGenerator';
 
 describe('docxGenerator - toShortName', () => {
     it('formats full Russian names into initials correctly', () => {
@@ -81,6 +81,34 @@ describe('docxGenerator - formatPropertyKind', () => {
     it('respects custom property_kind if provided', () => {
         expect(formatPropertyKind({ property_kind: 'Таунхаус' })).toBe('Таунхаус');
         expect(formatPropertyKind({ property_kind: '2-комн. квартира (евродвушка)' })).toBe('2-комн. квартира (евродвушка)');
+    });
+});
+
+describe('docxGenerator - collectDocxBlocksFromDom', () => {
+    it('converts DOM paragraphs and spans into docx blocks', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <p><strong>Заголовок</strong></p>
+            <p>Обычный текст с <em>курсивом</em> и <u>подчеркиванием</u>.</p>
+        `;
+        const blocks = collectDocxBlocksFromDom(container, false);
+        expect(blocks.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('handles tables inside DOM correctly', () => {
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <table>
+                <tbody>
+                    <tr>
+                        <td>Колонка 1</td>
+                        <td>Колонка 2</td>
+                    </tr>
+                </tbody>
+            </table>
+        `;
+        const blocks = collectDocxBlocksFromDom(container, false);
+        expect(blocks.length).toBe(1);
     });
 });
 

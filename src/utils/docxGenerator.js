@@ -1136,20 +1136,167 @@ const TEMPLATES = {
 };
 
 /**
- * Генерирует DOCX и скачивает файл.
- *
- * @param {string} templateKey - 'yuss_buy_1' | 'sale' | 'rent' | 'act'
- * @param {Object} data - { seller, buyer, property, realtor, agencyName, deal }
+ * Извлекает блоки docx (Paragraph, Table, ImageRun) из DOM-элемента окна предпросмотра
  */
-export async function generateAndDownloadDocx(templateKey, data) {
+export function collectDocxBlocksFromDom(domElement, isAgencyContract = false) {
+    if (!domElement) return [];
+    const blocks = [];
+    const font = isAgencyContract ? 'Arial' : 'Times New Roman';
+    const fontSize = isAgencyContract ? 20 : 24;
+
+    function extractRuns(parent, defaultFont, defaultSize) {
+        const runs = [];
+        function walk(node, isBold = false, isItalic = false, isUnderline = false) {
+            if (node.nodeType === 3 /* Node.TEXT_NODE */) {
+                const txt = node.textContent;
+                if (txt) {
+                    runs.push(new TextRun({
+                        text: txt,
+                        font: defaultFont,
+                        size: defaultSize,
+                        bold: isBold,
+                        italics: isItalic,
+                        underline: isUnderline ? {} : undefined,
+                    }));
+                }
+                return;
+            }
+            if (node.nodeType === 1 /* Node.ELEMENT_NODE */) {
+                if (node.classList?.contains('no-print')) return;
+                const b = isBold || ['B', 'STRONG'].includes(node.tagName) || node.style?.fontWeight === 'bold' || Number(node.style?.fontWeight) >= 600;
+                const i = isItalic || ['I', 'EM'].includes(node.tagName) || node.style?.fontStyle === 'italic';
+                const u = isUnderline || node.tagName === 'U' || node.style?.textDecoration?.includes('underline');
+                for (const child of node.childNodes) {
+                    walk(child, b, i, u);
+                }
+            }
+        }
+        for (const child of parent.childNodes) {
+            walk(child);
+        }
+        return runs;
+    }
+
+    function processBlock(el) {
+        if (!el || el.nodeType !== 1) return;
+        if (el.classList?.contains('no-print')) return;
+
+        // Логотип (картинка)
+        if (el.tagName === 'IMG' || (el.children?.length === 1 && el.children[0].tagName === 'IMG')) {
+            try {
+                const bytes = getLogoUint8Array();
+                if (bytes.length > 0) {
+                    blocks.push(new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: bytes,
+                                transformation: { width: 150, height: 124 },
+                            }),
+                        ],
+                        spacing: { after: 120 },
+                    }));
+                }
+            } catch (e) {
+                console.warn('Failed to embed logo in DOCX:', e);
+            }
+            return;
+        }
+
+        // Таблица
+        if (el.tagName === 'TABLE') {
+            const trList = Array.from(el.querySelectorAll('tr'));
+            const tableRows = trList.map(tr => {
+                const tdList = Array.from(tr.querySelectorAll('td, th'));
+                const tableCells = tdList.map((td, idx) => {
+                    const runs = extractRuns(td, font, fontSize);
+                    const widthPercent = idx === 0 ? 30 : 70;
+                    return new TableCell({
+                        width: { size: widthPercent, type: WidthType.PERCENTAGE },
+                        children: [
+                            new Paragraph({
+                                children: runs.length > 0 ? runs : [new TextRun({ text: td.textContent || '', font, size: fontSize })],
+                                spacing: { before: 40, after: 40 },
+                            }),
+                        ],
+                    });
+                });
+                return new TableRow({ children: tableCells });
+            });
+
+            if (tableRows.length > 0) {
+                blocks.push(new Table({
+                    width: { size: 100, type: WidthType.PERCENTAGE },
+                    borders: {
+                        top: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+                        bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+                        left: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+                        right: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+                        insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+                        insideVertical: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+                    },
+                    rows: tableRows,
+                }));
+            }
+            return;
+        }
+
+        // Элементы со сложной вложенностью
+        const hasChildBlocks = Array.from(el.children || []).some(c => 
+            ['P', 'TABLE', 'DIV', 'H1', 'H2', 'H3', 'H4', 'IMG', 'UL', 'OL', 'LI'].includes(c.tagName)
+        );
+
+        if (hasChildBlocks && el.tagName !== 'P') {
+            for (const child of el.children) {
+                processBlock(child);
+            }
+            return;
+        }
+
+        // Обычный абзац текста
+        const text = el.textContent || '';
+        if (!text.trim()) return;
+
+        const styleAlign = el.style?.textAlign;
+        let alignment = AlignmentType.JUSTIFIED;
+        if (styleAlign === 'center') alignment = AlignmentType.CENTER;
+        else if (styleAlign === 'right') alignment = AlignmentType.RIGHT;
+        else if (styleAlign === 'left') alignment = AlignmentType.LEFT;
+
+        const hasIndent = Boolean(el.style?.textIndent && el.style.textIndent !== '0' && el.style.textIndent !== '0px');
+        const runs = extractRuns(el, font, fontSize);
+
+        blocks.push(new Paragraph({
+            children: runs.length > 0 ? runs : [new TextRun({ text, font, size: fontSize })],
+            alignment,
+            indent: hasIndent ? { firstLine: convertInchesToTwip(0.4) } : undefined,
+            spacing: { after: 80, before: 40 },
+        }));
+    }
+
+    for (const child of domElement.children) {
+        processBlock(child);
+    }
+    return blocks;
+}
+
+/**
+ * Генерирует DOCX и скачивает файл.
+ * Если передан editedDomElement (элемент из окна предпросмотра с правками),
+ * формирует DOCX с учетом всех правок пользователя.
+ *
+ * @param {string} templateKey - 'yuss_buy_1' | 'agency_sale_1' | 'agency_rent_landlord_1' | 'sale' | 'rent' | 'act'
+ * @param {Object} data - { seller, buyer, property, realtor, agencyName, deal }
+ * @param {HTMLElement|null} editedDomElement - DOM-элемент предпросмотра с правками пользователя
+ */
+export async function generateAndDownloadDocx(templateKey, data, editedDomElement = null) {
     const template = TEMPLATES[templateKey];
     if (!template) throw new Error(`Неизвестный шаблон: ${templateKey}`);
 
-    const result = template.builder(data);
-    const isConfig = result && !Array.isArray(result) && result.children;
-    const bodyChildren = isConfig ? result.children : result;
-    const headers = isConfig ? result.headers : undefined;
-    const sectionProperties = isConfig && result.properties ? result.properties : {
+    const isAgencyContract = templateKey === 'yuss_buy_1' || templateKey === 'agency_sale_1' || templateKey === 'agency_rent_landlord_1';
+
+    let bodyChildren = null;
+    let headers = undefined;
+    let sectionProperties = {
         page: {
             margin: {
                 top: convertInchesToTwip(0.8),
@@ -1159,6 +1306,23 @@ export async function generateAndDownloadDocx(templateKey, data) {
             },
         },
     };
+
+    if (editedDomElement && typeof document !== 'undefined') {
+        const domBlocks = collectDocxBlocksFromDom(editedDomElement, isAgencyContract);
+        if (domBlocks && domBlocks.length > 0) {
+            bodyChildren = domBlocks;
+        }
+    }
+
+    if (!bodyChildren || bodyChildren.length === 0) {
+        const result = template.builder(data);
+        const isConfig = result && !Array.isArray(result) && result.children;
+        bodyChildren = isConfig ? result.children : result;
+        headers = isConfig ? result.headers : undefined;
+        if (isConfig && result.properties) {
+            sectionProperties = result.properties;
+        }
+    }
 
     const section = {
         properties: sectionProperties,
@@ -1189,3 +1353,4 @@ export async function generateAndDownloadDocx(templateKey, data) {
 export function getDocumentTemplates() {
     return Object.entries(TEMPLATES).map(([key, t]) => ({ key, title: t.title }));
 }
+

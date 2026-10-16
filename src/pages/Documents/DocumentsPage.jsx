@@ -1,11 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { 
     ChevronLeft, Printer, FileText, Download, User, Building2, Briefcase, 
     ChevronDown, ChevronUp, Search, Save, CheckCircle2, AlertCircle, Sparkles, Check, Loader2,
-    UserPlus, X, Calendar, Plus, Key
+    UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
 import { generateAndDownloadDocx, getDocumentTemplates, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
 import { formatPhone, stripPhone } from '../../utils/format';
@@ -432,6 +432,31 @@ export function DocumentsPage() {
     const [isSavingToCrm, setIsSavingToCrm] = useState(false);
     const [highlightSlots, setHighlightSlots] = useState(true);
 
+    // Правка шаблона в окне предпросмотра
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [hasManualEdits, setHasManualEdits] = useState(false);
+    const [savedTemplateHtml, setSavedTemplateHtml] = useState(() => {
+        try {
+            return localStorage.getItem(`repro_custom_doc_template_${selectedTemplate}`) || null;
+        } catch {
+            return null;
+        }
+    });
+    const [previewKey, setPreviewKey] = useState(0);
+    const previewRef = useRef(null);
+
+    // При смене шаблона обновляем сохраненный шаблон и выключаем режим редактирования
+    useEffect(() => {
+        setIsEditMode(false);
+        setHasManualEdits(false);
+        try {
+            const saved = localStorage.getItem(`repro_custom_doc_template_${selectedTemplate}`);
+            setSavedTemplateHtml(saved || null);
+        } catch {
+            setSavedTemplateHtml(null);
+        }
+    }, [selectedTemplate]);
+
     // Поддержка параметров в строке адреса ?clientId=...&propertyId=...&dealId=...
     useEffect(() => {
         const params = new URLSearchParams(location.search);
@@ -799,10 +824,42 @@ export function DocumentsPage() {
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
 
+    /* ── Сохранение правок шаблона ────────────────────────────────────────── */
+    const handleSaveAsTemplate = () => {
+        if (previewRef.current) {
+            const html = previewRef.current.innerHTML;
+            try {
+                localStorage.setItem(`repro_custom_doc_template_${selectedTemplate}`, html);
+                setSavedTemplateHtml(html);
+                setHasManualEdits(false);
+                setIsEditMode(false);
+                toast?.success?.('Шаблон успешно сохранен для данного типа договора!');
+            } catch (e) {
+                console.error('Failed to save template to localStorage:', e);
+                toast?.error?.('Ошибка при сохранении шаблона');
+            }
+        }
+    };
+
+    /* ── Сброс правок к исходному шаблону ─────────────────────────────────── */
+    const handleResetTemplate = () => {
+        try {
+            localStorage.removeItem(`repro_custom_doc_template_${selectedTemplate}`);
+        } catch (e) {
+            console.error('Failed to clear template from localStorage:', e);
+        }
+        setSavedTemplateHtml(null);
+        setHasManualEdits(false);
+        setIsEditMode(false);
+        setPreviewKey(k => k + 1);
+        toast?.success?.('Шаблон сброшен к исходному системному виду');
+    };
+
     const handleDownload = async () => {
         setIsGenerating(true);
         try {
-            await generateAndDownloadDocx(selectedTemplate, generatorData);
+            const printEl = (hasManualEdits || savedTemplateHtml) ? previewRef.current : null;
+            await generateAndDownloadDocx(selectedTemplate, generatorData, printEl);
             toast?.success?.('Документ сохранён');
         } catch (e) {
             console.error(e);
@@ -1917,85 +1974,309 @@ export function DocumentsPage() {
                     </button>
                 </div>
 
-                {/* Панель управления предпросмотром и подсветкой */}
+                {/* Панель управления предпросмотром и правкой */}
                 <div className="no-print" style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    padding: '14px 20px',
+                    padding: '12px 18px',
                     background: 'var(--surface)',
-                    border: '1px solid var(--border)',
+                    border: isEditMode ? '1.5px solid var(--primary)' : '1px solid var(--border)',
                     borderRadius: 18,
                     flexWrap: 'wrap',
-                    gap: 12
+                    gap: 12,
+                    transition: 'all 0.2s',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                             Предпросмотр договора
                         </span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11 }}>
+                        {isEditMode ? (
                             <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                padding: '3px 8px', borderRadius: 6,
-                                background: 'rgba(0,102,255,0.08)', color: '#0052cc', fontWeight: 600,
-                                borderBottom: '2px solid #0066ff'
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                padding: '3px 10px', borderRadius: 8,
+                                background: 'rgba(0,102,255,0.12)', color: 'var(--primary)',
+                                fontWeight: 600, fontSize: 11
                             }}>
-                                🟦 Подставлено из CRM
+                                <Edit3 size={13} />
+                                Режим правки включен
                             </span>
-                            <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 4,
-                                padding: '3px 8px', borderRadius: 6,
-                                background: 'rgba(245,158,11,0.14)', color: '#b45309', fontWeight: 600,
-                                border: '1px dashed #f59e0b'
-                            }}>
-                                🟧 Требуется заполнить
-                            </span>
-                        </div>
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, flexWrap: 'wrap' }}>
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '3px 8px', borderRadius: 6,
+                                    background: 'rgba(0,102,255,0.08)', color: '#0052cc', fontWeight: 600,
+                                    borderBottom: '2px solid #0066ff'
+                                }}>
+                                    🟦 Из CRM
+                                </span>
+                                <span style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                                    padding: '3px 8px', borderRadius: 6,
+                                    background: 'rgba(245,158,11,0.14)', color: '#b45309', fontWeight: 600,
+                                    border: '1px dashed #f59e0b'
+                                }}>
+                                    🟧 Заполнить
+                                </span>
+                                {savedTemplateHtml && (
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                                        padding: '3px 8px', borderRadius: 6,
+                                        background: 'rgba(16,185,129,0.12)', color: '#059669', fontWeight: 600
+                                    }}>
+                                        ✓ Свой шаблон
+                                    </span>
+                                )}
+                            </div>
+                        )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        {/* Кнопка включения режима правки */}
                         <button
                             type="button"
                             className="card-clickable"
-                            onClick={() => setHighlightSlots(!highlightSlots)}
+                            onClick={() => {
+                                const next = !isEditMode;
+                                setIsEditMode(next);
+                                if (next) {
+                                    setHighlightSlots(false);
+                                }
+                            }}
                             style={{
                                 height: 36,
                                 padding: '0 14px',
                                 borderRadius: 12,
-                                border: '1px solid var(--border)',
-                                background: highlightSlots ? 'rgba(0,102,255,0.08)' : 'var(--bg)',
-                                color: highlightSlots ? 'var(--primary)' : 'var(--text-secondary)',
+                                border: isEditMode ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                background: isEditMode ? 'var(--primary)' : 'var(--bg)',
+                                color: isEditMode ? 'white' : 'var(--text)',
                                 fontSize: 12,
                                 fontWeight: 600,
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 6,
-                                transition: 'all 0.2s',
+                                transition: 'all 0.15s ease-in-out',
+                                boxShadow: isEditMode ? '0 2px 8px rgba(0,82,255,0.3)' : 'none',
                             }}
+                            title={isEditMode ? "Завершить редактирование текста" : "Включить редактирование текста прямо на листе договора"}
                         >
-                            <Sparkles size={14} />
-                            Подсветка полей: {highlightSlots ? 'ВКЛ' : 'ВЫКЛ'}
+                            <Edit3 size={14} />
+                            {isEditMode ? 'Завершить правку' : 'Редактировать текст'}
                         </button>
+
+                        {/* Панель быстрого форматирования при активной правке */}
+                        {isEditMode && (
+                            <div style={{
+                                display: 'flex', alignItems: 'center', gap: 2,
+                                background: 'var(--bg)', padding: '2px 4px',
+                                borderRadius: 10, border: '1px solid var(--border)'
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => document.execCommand('bold', false, null)}
+                                    title="Жирный (Ctrl+B)"
+                                    style={{
+                                        width: 28, height: 28, borderRadius: 6, border: 'none',
+                                        background: 'transparent', cursor: 'pointer', fontWeight: 'bold',
+                                        color: 'var(--text)', fontSize: 13
+                                    }}
+                                >
+                                    Ж
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => document.execCommand('italic', false, null)}
+                                    title="Курсив (Ctrl+I)"
+                                    style={{
+                                        width: 28, height: 28, borderRadius: 6, border: 'none',
+                                        background: 'transparent', cursor: 'pointer', fontStyle: 'italic',
+                                        color: 'var(--text)', fontSize: 13
+                                    }}
+                                >
+                                    К
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => document.execCommand('underline', false, null)}
+                                    title="Подчеркнутый (Ctrl+U)"
+                                    style={{
+                                        width: 28, height: 28, borderRadius: 6, border: 'none',
+                                        background: 'transparent', cursor: 'pointer', textDecoration: 'underline',
+                                        color: 'var(--text)', fontSize: 13
+                                    }}
+                                >
+                                    Ч
+                                </button>
+                                <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
+                                <button
+                                    type="button"
+                                    onClick={() => document.execCommand('undo', false, null)}
+                                    title="Отменить действие (Ctrl+Z)"
+                                    style={{
+                                        width: 28, height: 28, borderRadius: 6, border: 'none',
+                                        background: 'transparent', cursor: 'pointer', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center', color: 'var(--text)'
+                                    }}
+                                >
+                                    <Undo2 size={13} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => document.execCommand('redo', false, null)}
+                                    title="Повторить действие (Ctrl+Y)"
+                                    style={{
+                                        width: 28, height: 28, borderRadius: 6, border: 'none',
+                                        background: 'transparent', cursor: 'pointer', display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center', color: 'var(--text)'
+                                    }}
+                                >
+                                    <Redo2 size={13} />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Кнопка сохранения как шаблон */}
+                        {(isEditMode || hasManualEdits) && (
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={handleSaveAsTemplate}
+                                style={{
+                                    height: 36,
+                                    padding: '0 12px',
+                                    borderRadius: 12,
+                                    border: '1px solid rgba(16,185,129,0.3)',
+                                    background: 'rgba(16,185,129,0.1)',
+                                    color: '#059669',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                                title="Сохранить эти формулировки как постоянный шаблон для договоров данного типа"
+                            >
+                                <Save size={14} />
+                                Сохранить шаблон
+                            </button>
+                        )}
+
+                        {/* Кнопка сброса правок */}
+                        {(hasManualEdits || savedTemplateHtml) && (
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={handleResetTemplate}
+                                style={{
+                                    height: 36,
+                                    padding: '0 12px',
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg)',
+                                    color: 'var(--text-secondary)',
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                }}
+                                title="Сбросить все правки и вернуться к исходному шаблону CRM"
+                            >
+                                <RotateCcw size={13} />
+                                Сбросить
+                            </button>
+                        )}
+
+                        {/* Кнопка подсветки полей */}
+                        {!isEditMode && (
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={() => setHighlightSlots(!highlightSlots)}
+                                style={{
+                                    height: 36,
+                                    padding: '0 12px',
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border)',
+                                    background: highlightSlots ? 'rgba(0,102,255,0.08)' : 'var(--bg)',
+                                    color: highlightSlots ? 'var(--primary)' : 'var(--text-secondary)',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                <Sparkles size={14} />
+                                {highlightSlots ? 'Подсветка: ВКЛ' : 'Подсветка: ВЫКЛ'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
+                {/* Баннер подсказки в режиме правки */}
+                {isEditMode && (
+                    <div className="no-print" style={{
+                        marginTop: 10,
+                        padding: '10px 16px',
+                        borderRadius: 14,
+                        background: 'rgba(0,102,255,0.06)',
+                        border: '1px solid rgba(0,102,255,0.2)',
+                        fontSize: 12,
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        fontWeight: 500,
+                    }}>
+                        <Sparkles size={16} style={{ flexShrink: 0 }} />
+                        <span>
+                            <strong>Режим правки активен:</strong> Кликните в любой абзац, пункт или таблицу документа ниже, чтобы изменить текст, дописать свои условия или удалить ненужное. Все правки сохранятся при печати и выгрузке в DOCX.
+                        </span>
+                    </div>
+                )}
+
                 {/* Предпросмотр документа (для экрана и печати) */}
                 <div
+                    ref={previewRef}
                     id="doc-print-area"
+                    contentEditable={isEditMode}
+                    suppressContentEditableWarning={true}
+                    onInput={() => setHasManualEdits(true)}
                     style={{
                         background: 'var(--surface)',
                         color: 'var(--text)',
                         borderRadius: 24,
                         padding: '44px 40px',
-                        border: '1px solid var(--border)',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                        marginTop: 14,
+                        border: isEditMode ? '2px dashed var(--primary)' : '1px solid var(--border)',
+                        boxShadow: isEditMode ? '0 0 0 4px rgba(0,102,255,0.08)' : '0 8px 32px rgba(0,0,0,0.03)',
                         fontFamily: isAgencyContract ? 'Arial, Helvetica, sans-serif' : 'Georgia, Cambria, "Times New Roman", serif',
                         fontSize: isAgencyContract ? 13 : 14,
                         lineHeight: isAgencyContract ? 1.6 : 1.8,
                         minHeight: 600,
+                        outline: 'none',
+                        cursor: isEditMode ? 'text' : 'default',
+                        transition: 'border 0.2s, box-shadow 0.2s',
                     }}
                 >
-                    <DocumentPreview template={selectedTemplate} data={generatorData} highlight={highlightSlots} />
+                    {savedTemplateHtml ? (
+                        <div dangerouslySetInnerHTML={{ __html: savedTemplateHtml }} />
+                    ) : (
+                        <DocumentPreview
+                            key={previewKey}
+                            template={selectedTemplate}
+                            data={generatorData}
+                            highlight={highlightSlots && !isEditMode}
+                            isEditing={isEditMode}
+                        />
+                    )}
                 </div>
             </div>
         </div>
@@ -2004,11 +2285,12 @@ export function DocumentsPage() {
 
 /* ─── Интерактивный слот подстановки данных ──────────────────────────────── */
 
-function Slot({ value, label, fallback, inputId, highlight = true }) {
+function Slot({ value, label, fallback, inputId, highlight = true, isEditing = false }) {
     const hasVal = Boolean(value && String(value).trim());
     const displayVal = hasVal ? String(value) : (fallback || `[● Заполнить: ${label}]`);
 
     const handleClick = () => {
+        if (isEditing) return;
         if (inputId) {
             const el = document.getElementById(inputId);
             if (el) {
