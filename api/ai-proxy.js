@@ -45,36 +45,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    if (action === 'testAi') {
-      const results = {
-        has_gemini_key: !!GEMINI_API_KEY,
-        has_openmodel_key: !!OPENMODEL_API_KEY,
-        has_zhipu_key: !!ZHIPU_API_KEY,
-      };
-      if (GEMINI_API_KEY) {
-        try {
-          const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`, {
-            signal: AbortSignal.timeout(5000)
-          });
-          const listData = await listRes.json();
-          results.models = (listData.models || []).map(m => m.name.replace('models/', ''));
-        } catch (e) {
-          results.list_error = e.message;
-        }
-
-        try {
-          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: 'Тест' }] }] }),
-            signal: AbortSignal.timeout(5000)
-          });
-          results.gemini_3_8 = { status: r.status, body: (await r.text()).slice(0, 300) };
-        } catch (e) {
-          results.gemini_3_8 = { error: e.message };
-        }
-      }
-      return res.status(200).json(results);
+    if (action === 'health') {
+      return res.status(200).json({
+        ok: true,
+        gemini: !!GEMINI_API_KEY,
+        openmodel: !!OPENMODEL_API_KEY,
+        zhipu: !!ZHIPU_API_KEY
+      });
     }
 
     if (action === 'generateAd') {
@@ -144,7 +121,7 @@ async function handleGenerateAd(prompt) {
 
   // 1. Сначала пробуем Gemini (быстро, надежно и прямое подключение из Vercel US)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
+    const geminiModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini (${modelName})...`);
@@ -278,10 +255,10 @@ async function handleParseHouse(prompt) {
 
   // 1. Gemini (быстро, надежно на Vercel US)
   if (GEMINI_API_KEY) {
-    // 1а. Пробуем с Google Search на gemini-2.0-flash (без responseMimeType, так как они несовместимы в Gemini REST API)
+    // 1а. Пробуем с Google Search на gemini-3.8-flash (без responseMimeType, так как они несовместимы в Gemini REST API)
     try {
-      console.log(`[ai-proxy] Trying Gemini Search (gemini-2.0-flash)...`);
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+      console.log(`[ai-proxy] Trying Gemini Search (gemini-3.8-flash)...`);
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${GEMINI_API_KEY}`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -309,14 +286,14 @@ async function handleParseHouse(prompt) {
         }
       } else {
         const errText = await response.text();
-        console.warn(`[ai-proxy] Gemini Search (gemini-2.0-flash) returned status ${response.status}:`, errText);
+        console.warn(`[ai-proxy] Gemini Search (gemini-3.8-flash) returned status ${response.status}:`, errText);
       }
     } catch (err) {
-      console.warn(`[ai-proxy] Gemini Search (gemini-2.0-flash) error:`, err.message);
+      console.warn(`[ai-proxy] Gemini Search (gemini-3.8-flash) error:`, err.message);
     }
 
     // 1б. Прямой парсинг через Gemini со структурированным JSON
-    const fallbackGemini = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    const fallbackGemini = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
     for (const modelName of fallbackGemini) {
       try {
         console.log(`[ai-proxy] Trying Gemini Direct Parse (${modelName})...`);
@@ -880,7 +857,7 @@ async function handleScanPassport(imageBase64, mimeType) {
 
   // 1. Gemini Vision (быстро, нативная поддержка OCR)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    const geminiModels = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for passport scan...`);
@@ -1031,7 +1008,7 @@ async function handleScanEgrn(fileBase64, mimeType, pagesBase64 = []) {
 
   // 1. Gemini Vision (нативная поддержка PDF и многостраничных документов)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash'];
+    const geminiModels = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for EGRN scan...`);
