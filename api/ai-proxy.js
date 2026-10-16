@@ -45,6 +45,28 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (action === 'testAi') {
+      const results = {
+        has_gemini_key: !!GEMINI_API_KEY,
+        has_openmodel_key: !!OPENMODEL_API_KEY,
+        has_zhipu_key: !!ZHIPU_API_KEY,
+      };
+      if (GEMINI_API_KEY) {
+        try {
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: 'Тест' }] }] }),
+            signal: AbortSignal.timeout(5000)
+          });
+          results.gemini_2_0 = { status: r.status, body: (await r.text()).slice(0, 300) };
+        } catch (e) {
+          results.gemini_2_0 = { error: e.message };
+        }
+      }
+      return res.status(200).json(results);
+    }
+
     if (action === 'generateAd') {
       const { prompt } = req.body;
       if (!prompt) {
@@ -108,7 +130,7 @@ export default async function handler(req, res) {
 }
 
 async function handleGenerateAd(prompt) {
-  let lastError = null;
+  const providerErrors = [];
 
   // 1. Сначала пробуем Gemini (быстро, надежно и прямое подключение из Vercel US)
   if (GEMINI_API_KEY) {
@@ -138,13 +160,15 @@ async function handleGenerateAd(prompt) {
         } else {
           const errText = await response.text();
           console.warn(`[ai-proxy] Gemini (${modelName}) returned status ${response.status}:`, errText);
-          lastError = new Error(`Gemini ${modelName} failed: ${response.status} - ${errText}`);
+          providerErrors.push(`Gemini ${modelName} (${response.status}): ${errText}`);
         }
       } catch (err) {
         console.warn(`[ai-proxy] Gemini (${modelName}) error:`, err.message);
-        lastError = err;
+        providerErrors.push(`Gemini ${modelName}: ${err.message}`);
       }
     }
+  } else {
+    providerErrors.push('GEMINI_API_KEY is not configured');
   }
 
   // 2. Fallback: DeepSeek через OpenModel
@@ -179,14 +203,16 @@ async function handleGenerateAd(prompt) {
         } else {
           const errText = await response.text();
           console.warn(`[ai-proxy] OpenModel (${modelName}) returned status ${response.status}:`, errText);
-          lastError = new Error(`OpenModel ${modelName} failed: ${response.status} - ${errText}`);
+          providerErrors.push(`OpenModel ${modelName} (${response.status}): ${errText}`);
           if (response.status === 402) break;
         }
       } catch (err) {
         console.warn(`[ai-proxy] OpenModel (${modelName}) error:`, err.message);
-        lastError = err;
+        providerErrors.push(`OpenModel ${modelName}: ${err.message}`);
       }
     }
+  } else {
+    providerErrors.push('OPENMODEL_API_KEY is not configured');
   }
 
   // 3. Fallback: Zhipu AI
@@ -222,17 +248,19 @@ async function handleGenerateAd(prompt) {
         } else {
           const errText = await response.text();
           console.warn(`[ai-proxy] Zhipu (${modelName}) returned status ${response.status}:`, errText);
-          lastError = new Error(`Zhipu ${modelName} failed: ${response.status} - ${errText}`);
+          providerErrors.push(`Zhipu ${modelName} (${response.status}): ${errText}`);
           if (response.status === 429 || response.status === 401) break;
         }
       } catch (err) {
         console.warn(`[ai-proxy] Zhipu (${modelName}) error:`, err.message);
-        lastError = err;
+        providerErrors.push(`Zhipu ${modelName}: ${err.message}`);
       }
     }
+  } else {
+    providerErrors.push('ZHIPU_API_KEY is not configured');
   }
 
-  throw lastError || new Error('Все модели ИИ недоступны или не сконфигурированы.');
+  throw new Error(providerErrors.join(' | ') || 'Все модели ИИ недоступны или не сконфигурированы.');
 }
 
 async function handleParseHouse(prompt) {
