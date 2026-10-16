@@ -5,7 +5,7 @@ import { useToastContext } from '../../components/Toast';
 import { 
     ChevronLeft, Printer, FileText, Download, User, Building2, Briefcase, 
     ChevronDown, ChevronUp, Search, Save, CheckCircle2, AlertCircle, Sparkles, Check, Loader2,
-    UserPlus, X, Calendar, Plus
+    UserPlus, X, Calendar, Plus, Key
 } from 'lucide-react';
 import { generateAndDownloadDocx, getDocumentTemplates, numberToWordsRu } from '../../utils/docxGenerator';
 import { formatPhone, stripPhone } from '../../utils/format';
