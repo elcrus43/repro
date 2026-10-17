@@ -1,0 +1,34 @@
+# Set default behavior to automatically handle line endings and force LF in repo and working directory
+* text=auto eol=lf
+
+# Explicitly ensure text files always use LF line endings
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.sql text eol=lf
+*.env.example text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Windows batch files need CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.db binary
+*.docx binary
+*.xlsx binary

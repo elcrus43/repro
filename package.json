@@ -11,7 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "sync:pull": "git pull --rebase --autostash origin master",
+    "sync:push": "git add . && git commit -m \"wip: sync update\" && git push origin master"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

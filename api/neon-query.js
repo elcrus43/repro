@@ -119,26 +119,43 @@ export default async function handler(req, res) {
     }
   }
 
-  // ─── Защита SQL ───────────────────────────────────────────────
-  // 1. Блокировка multi-statement инъекций (разделение запросов через ;)
-  if (/;\s*\S+/i.test(query.trim())) {
-    console.warn('[neon-query] Chained query blocked:', query.slice(0, 100));
+  // ─── Валидация входных данных ───────────────────────────────
+  if (!Array.isArray(params)) {
+    return res.status(400).json({ data: null, error: 'Invalid params: must be an array' });
+  }
+
+  // ─── Защита SQL (Многоуровневая фильтрация) ──────────────────
+  // 1. Блокировка null-byte атак
+  if (query.includes('\0')) {
+    console.warn('[neon-query] Null-byte detected in query');
+    return res.status(400).json({ data: null, error: 'Query not allowed: invalid characters' });
+  }
+
+  // 2. Блокировка SQL-комментариев (-- и /* */), исключающая обход фильтров
+  if (/(--|\/\*|\*\/)/.test(query)) {
+    console.warn('[neon-query] SQL comments blocked in query:', query.slice(0, 100));
+    return res.status(403).json({ data: null, error: 'Query not allowed: SQL comments forbidden' });
+  }
+
+  // 3. Блокировка multi-statement инъекций (любая точка с запятой запрещена в параметризованных запросах)
+  if (/;/.test(query.trim())) {
+    console.warn('[neon-query] Semicolon detected, chained query blocked:', query.slice(0, 100));
     return res.status(403).json({ data: null, error: 'Query not allowed: multiple statements forbidden' });
   }
 
-  // 2. Блокировка DDL, системных каталогов PostgreSQL и опасных команд
-  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|pg_|information_schema|current_setting|set_config|lo_import|lo_export|dblink)\b/i;
+  // 4. Блокировка DDL, системных каталогов PostgreSQL и процедур выполнения
+  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|EXECUTE|PREPARE|DEALLOCATE|VACUUM|ANALYZE|REINDEX|pg_|information_schema|current_setting|set_config|lo_import|lo_export|lo_create|lo_unlink|dblink|crosstab)\b/i;
   if (dangerousPattern.test(query)) {
     console.warn('[neon-query] Dangerous query blocked:', query.slice(0, 100));
     return res.status(403).json({ data: null, error: 'Query not allowed: forbidden keyword or catalog access' });
   }
 
-  // 3. Валидация таблиц по whitelist ALLOWED_TABLES
-  const tableMatches = [...query.matchAll(/(?:\bFROM|\bJOIN|\bINTO|(?<!\bDO\s+)\bUPDATE)\s+["']?([a-zA-Z0-9_]+)["']?/gi)];
+  // 5. Валидация всех таблиц по whitelist ALLOWED_TABLES с учётом синтаксиса без пробелов
+  const tableMatches = [...query.matchAll(/(?:\bFROM|\bJOIN|\bINTO|(?<!\bDO\s+)\bUPDATE|\bTABLE)\s*["']?([a-zA-Z0-9_]+)["']?/gi)];
   for (const match of tableMatches) {
     const table = match[1]?.toLowerCase();
-    // Игнорируем SQL-служебные слова (например SET после ON CONFLICT ... DO UPDATE SET)
-    if (table === 'set') continue;
+    // Игнорируем SQL-служебные слова
+    if (table === 'set' || table === 'only' || table === 'select') continue;
     if (table && !ALLOWED_TABLES.has(table)) {
       console.warn('[neon-query] Unauthorized table access attempted:', table);
       return res.status(403).json({ data: null, error: `Access denied to table: ${table}` });

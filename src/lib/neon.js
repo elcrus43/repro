@@ -86,14 +86,41 @@ async function request(sql, params = []) {
   }
 }
 
+/* ─── SQL Injection protection helpers ──────────────────────── */
+
+const IDENTIFIER_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+const ORDER_BY_CLAUSE_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)?(?:\s+(?:ASC|DESC))?(?:\s+NULLS\s+(?:FIRST|LAST))?$/i;
+const ALLOWED_OPERATORS = new Set(['eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'in', 'is', 'like', 'ilike']);
+
+export function isValidIdentifier(name) {
+  return typeof name === 'string' && IDENTIFIER_REGEX.test(name);
+}
+
+export function assertValidIdentifier(name, label = 'Identifier') {
+  if (!isValidIdentifier(name)) {
+    throw new Error(`[neonDb] Недопустимое или небезопасное имя (${label}): "${name}"`);
+  }
+}
+
+export function sanitizeOrderBy(orderBy) {
+  if (!orderBy || typeof orderBy !== 'string') return '';
+  const clauses = orderBy.split(',').map(s => s.trim()).filter(Boolean);
+  for (const clause of clauses) {
+    if (!ORDER_BY_CLAUSE_REGEX.test(clause)) {
+      throw new Error(`[neonDb] Недопустимое выражение ORDER BY: "${clause}"`);
+    }
+  }
+  return clauses.join(', ');
+}
+
 /* ─── Query builder helpers ─────────────────────────────────── */
 
 /**
- * Строит WHERE clause из объекта фильтров.
+ * Строит WHERE clause из объекта фильтров с строгой параметризацией.
  * Поддерживает: { column: value } — равенство
  * Специальные операторы через массив: { column: ['neq', value] }
  */
-function buildWhere(filters, startIdx = 1) {
+export function buildWhere(filters, startIdx = 1) {
   if (!filters || Object.keys(filters).length === 0) {
     return { clause: '', params: [] };
   }
@@ -103,23 +130,26 @@ function buildWhere(filters, startIdx = 1) {
   let idx = startIdx;
 
   for (const [key, value] of Object.entries(filters)) {
+    assertValidIdentifier(key, 'column');
+
     if (Array.isArray(value)) {
       const [op, val] = value;
-      switch (op) {
+      const lowerOp = typeof op === 'string' ? op.toLowerCase() : 'eq';
+      if (!ALLOWED_OPERATORS.has(lowerOp)) {
+        throw new Error(`[neonDb] Недопустимый оператор фильтрации: "${op}"`);
+      }
+
+      switch (lowerOp) {
+        case 'eq':   conditions.push(`"${key}" = $${idx}`);  params.push(val); idx++; break;
         case 'neq':  conditions.push(`"${key}" != $${idx}`); params.push(val); idx++; break;
         case 'gt':   conditions.push(`"${key}" > $${idx}`);  params.push(val); idx++; break;
         case 'gte':  conditions.push(`"${key}" >= $${idx}`); params.push(val); idx++; break;
         case 'lt':   conditions.push(`"${key}" < $${idx}`);  params.push(val); idx++; break;
         case 'lte':  conditions.push(`"${key}" <= $${idx}`); params.push(val); idx++; break;
         case 'in':   conditions.push(`"${key}" = ANY($${idx})`); params.push(val); idx++; break;
+        case 'like': conditions.push(`"${key}" LIKE $${idx}`); params.push(val); idx++; break;
+        case 'ilike':conditions.push(`"${key}" ILIKE $${idx}`); params.push(val); idx++; break;
         case 'is':   conditions.push(val === null ? `"${key}" IS NULL` : `"${key}" IS NOT NULL`); break;
-        case 'or': {
-          // { field: ['or', `prop1.eq.val1,prop2.eq.val2`] }
-          // Упрощённый вариант — передаём raw OR
-          conditions.push(`(${val})`);
-          break;
-        }
-        default: conditions.push(`"${key}" = $${idx}`); params.push(value[1] ?? value[0]); idx++;
       }
     } else if (value === null) {
       conditions.push(`"${key}" IS NULL`);
@@ -166,89 +196,151 @@ export const neonDb = {
    * SELECT * FROM table WHERE filters
    * @param {string} table
    * @param {object} [filters]  — { column: value } | { column: [op, value] }
-   * @param {object} [opts]     — { orderBy, limit }
+   * @param {object} [opts]     — { orderBy, limit, offset }
    */
   async select(table, filters = {}, opts = {}) {
-    const { clause, params } = buildWhere(filters);
-    let q = `SELECT * FROM "${table}" ${clause}`;
-    if (opts.orderBy) q += ` ORDER BY ${opts.orderBy}`;
-    if (opts.limit)   q += ` LIMIT ${parseInt(opts.limit, 10)}`;
-    return request(q, params);
+    try {
+      assertValidIdentifier(table, 'table');
+      const { clause, params } = buildWhere(filters);
+      let q = `SELECT * FROM "${table}" ${clause}`;
+      if (opts.orderBy) {
+        const safeOrderBy = sanitizeOrderBy(opts.orderBy);
+        if (safeOrderBy) q += ` ORDER BY ${safeOrderBy}`;
+      }
+      if (opts.limit !== undefined && opts.limit !== null && opts.limit !== '') {
+        const limitNum = parseInt(opts.limit, 10);
+        if (!Number.isInteger(limitNum) || limitNum < 0) {
+          return { data: null, error: { message: `Недопустимое значение limit: "${opts.limit}"`, code: 'SECURITY_ERROR' } };
+        }
+        q += ` LIMIT ${limitNum}`;
+      }
+      if (opts.offset !== undefined && opts.offset !== null && opts.offset !== '') {
+        const offsetNum = parseInt(opts.offset, 10);
+        if (!Number.isInteger(offsetNum) || offsetNum < 0) {
+          return { data: null, error: { message: `Недопустимое значение offset: "${opts.offset}"`, code: 'SECURITY_ERROR' } };
+        }
+        q += ` OFFSET ${offsetNum}`;
+      }
+      return request(q, params);
+    } catch (err) {
+      console.error('[neonDb.select] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
    * INSERT INTO table (cols) VALUES (...) RETURNING *
    */
   async insert(table, data) {
-    const safeData = normalizeJsonValues(data);
-    const keys   = Object.keys(safeData);
-    const values = Object.values(safeData);
-    const cols   = keys.map(k => `"${k}"`).join(', ');
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-    const q = `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) RETURNING *`;
-    return request(q, values);
+    try {
+      assertValidIdentifier(table, 'table');
+      const safeData = normalizeJsonValues(data);
+      const keys   = Object.keys(safeData);
+      keys.forEach(k => assertValidIdentifier(k, 'column'));
+      const values = Object.values(safeData);
+      const cols   = keys.map(k => `"${k}"`).join(', ');
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+      const q = `INSERT INTO "${table}" (${cols}) VALUES (${placeholders}) RETURNING *`;
+      return request(q, values);
+    } catch (err) {
+      console.error('[neonDb.insert] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
    * INSERT INTO table ... ON CONFLICT (id) DO UPDATE SET ... RETURNING *
    */
   async upsert(table, data) {
-    const safeData = normalizeJsonValues(data);
-    const keys   = Object.keys(safeData);
-    const values = Object.values(safeData);
-    const cols   = keys.map(k => `"${k}"`).join(', ');
-    const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
-    const updateSet = keys
-      .filter(k => k !== 'id')
-      .map(k => `"${k}" = EXCLUDED."${k}"`)
-      .join(', ');
-    const q = `
-      INSERT INTO "${table}" (${cols}) VALUES (${placeholders})
-      ON CONFLICT (id) DO UPDATE SET ${updateSet}
-      RETURNING *
-    `;
-    return request(q, values);
+    try {
+      assertValidIdentifier(table, 'table');
+      const safeData = normalizeJsonValues(data);
+      const keys   = Object.keys(safeData);
+      keys.forEach(k => assertValidIdentifier(k, 'column'));
+      const values = Object.values(safeData);
+      const cols   = keys.map(k => `"${k}"`).join(', ');
+      const placeholders = keys.map((_, i) => `$${i + 1}`).join(', ');
+      const updateSet = keys
+        .filter(k => k !== 'id')
+        .map(k => `"${k}" = EXCLUDED."${k}"`)
+        .join(', ');
+      const q = `
+        INSERT INTO "${table}" (${cols}) VALUES (${placeholders})
+        ON CONFLICT (id) DO UPDATE SET ${updateSet}
+        RETURNING *
+      `;
+      return request(q, values);
+    } catch (err) {
+      console.error('[neonDb.upsert] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
    * UPDATE table SET ... WHERE id = $1 RETURNING *
    */
   async update(table, id, data) {
-    const safeData = normalizeJsonValues(data);
-    const keys   = Object.keys(safeData);
-    const values = Object.values(safeData);
-    const setClause = keys.map((k, i) => `"${k}" = $${i + 2}`).join(', ');
-    const q = `UPDATE "${table}" SET ${setClause} WHERE id = $1 RETURNING *`;
-    return request(q, [id, ...values]);
+    try {
+      assertValidIdentifier(table, 'table');
+      const safeData = normalizeJsonValues(data);
+      const keys   = Object.keys(safeData);
+      keys.forEach(k => assertValidIdentifier(k, 'column'));
+      const values = Object.values(safeData);
+      const setClause = keys.map((k, i) => `"${k}" = $${i + 2}`).join(', ');
+      const q = `UPDATE "${table}" SET ${setClause} WHERE id = $1 RETURNING *`;
+      return request(q, [id, ...values]);
+    } catch (err) {
+      console.error('[neonDb.update] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
    * UPDATE table SET ... WHERE filters (для patch запросов)
    */
   async updateWhere(table, filters, data) {
-    const safeData = normalizeJsonValues(data);
-    const keys   = Object.keys(safeData);
-    const values = Object.values(safeData);
-    const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
-    const { clause, params } = buildWhere(filters, keys.length + 1);
-    const q = `UPDATE "${table}" SET ${setClause} ${clause} RETURNING *`;
-    return request(q, [...values, ...params]);
+    try {
+      assertValidIdentifier(table, 'table');
+      const safeData = normalizeJsonValues(data);
+      const keys   = Object.keys(safeData);
+      keys.forEach(k => assertValidIdentifier(k, 'column'));
+      const values = Object.values(safeData);
+      const setClause = keys.map((k, i) => `"${k}" = $${i + 1}`).join(', ');
+      const { clause, params } = buildWhere(filters, keys.length + 1);
+      const q = `UPDATE "${table}" SET ${setClause} ${clause} RETURNING *`;
+      return request(q, [...values, ...params]);
+    } catch (err) {
+      console.error('[neonDb.updateWhere] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
    * DELETE FROM table WHERE id = $1
    */
   async delete(table, id) {
-    return request(`DELETE FROM "${table}" WHERE id = $1`, [id]);
+    try {
+      assertValidIdentifier(table, 'table');
+      return request(`DELETE FROM "${table}" WHERE id = $1`, [id]);
+    } catch (err) {
+      console.error('[neonDb.delete] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
    * DELETE FROM table WHERE filters
    */
   async deleteWhere(table, filters) {
-    const { clause, params } = buildWhere(filters);
-    if (!clause) return { data: null, error: { message: 'deleteWhere requires filters' } };
-    return request(`DELETE FROM "${table}" ${clause}`, params);
+    try {
+      assertValidIdentifier(table, 'table');
+      const { clause, params } = buildWhere(filters);
+      if (!clause) return { data: null, error: { message: 'deleteWhere requires filters', code: 'SECURITY_ERROR' } };
+      return request(`DELETE FROM "${table}" ${clause}`, params);
+    } catch (err) {
+      console.error('[neonDb.deleteWhere] Validation error:', err.message);
+      return { data: null, error: { message: err.message, code: 'SECURITY_ERROR' } };
+    }
   },
 
   /**
