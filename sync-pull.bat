@@ -1,7 +1,6 @@
 @echo off
-chcp 65001 >nul
 echo ========================================================
-echo  [REA CRM] Синхронизация: получение обновлений с GitHub
+echo  [REA CRM] Pulling updates from GitHub...
 echo ========================================================
 echo.
 
@@ -9,12 +8,11 @@ git pull --rebase --autostash origin master
 
 if %ERRORLEVEL% EQU 0 (
     echo.
-    echo [OK] Проект успешно обновлен до последней версии!
+    echo [OK] Project is up to date!
 ) else (
     echo.
-    echo [ВНИМАНИЕ] Возник конфликт при синхронизации.
-    echo Проверьте статус командой: git status
+    echo [ERROR] Failed to pull changes. Check 'git status'.
 )
 
 echo.
-timeout /t 5
+timeout /t 5 >nul 2>&1 || ping -n 5 127.0.0.1 >nul

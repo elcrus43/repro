@@ -1,17 +1,19 @@
 @echo off
-chcp 65001 >nul
 echo ========================================================
-echo  [REA CRM] Синхронизация: отправка изменений на GitHub
+echo  [REA CRM] Pushing changes to GitHub...
 echo ========================================================
 echo.
 
 git status -s
 echo.
 
-set /p MSG="Введите описание коммита (или нажмите Enter для авто): "
+set MSG=%*
+if "%MSG%"=="" (
+    set /p MSG="Enter commit message (or press Enter for auto): "
+)
 
 if "%MSG%"=="" (
-    set MSG=wip: sync from %COMPUTERNAME% %DATE% %TIME%
+    set MSG=wip: sync update from %COMPUTERNAME%
 )
 
 git add .
@@ -20,12 +22,11 @@ git push origin master
 
 if %ERRORLEVEL% EQU 0 (
     echo.
-    echo [OK] Изменения успешно отправлены в репозиторий!
+    echo [OK] Changes pushed to GitHub successfully!
 ) else (
     echo.
-    echo [ОШИБКА] Не удалось отправить изменения.
-    echo Возможно, на сервере есть новые коммиты. Запустите сначала sync-pull.bat
+    echo [ERROR] Push failed. Try running 'sync-pull.bat' first.
 )
 
 echo.
-timeout /t 5
+timeout /t 5 >nul 2>&1 || ping -n 5 127.0.0.1 >nul
