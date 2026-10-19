@@ -8,6 +8,7 @@ import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { DealChat } from '../../components/DealChat';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
+import { DealLocationSelect, saveDealLocation } from '../../components/DealLocationSelect';
 import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone } from '../../utils/format';
@@ -483,6 +484,9 @@ export function DealsPage() {
         };
 
         try {
+            if (dealToSave.deal_location) {
+                saveDealLocation(dealToSave.deal_location);
+            }
             if (newDeal.id) {
                 dispatch({ type: 'UPDATE_DEAL', deal: dealToSave });
                 toast.success('Сделка обновлена');
@@ -1012,7 +1016,11 @@ export function DealsPage() {
                             </div>
                             <div className="form-group">
                                 <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Место сделки</label>
-                                <input type="text" placeholder="Банк, МФЦ, офис, адрес..." className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 12px' }} value={newDeal.deal_location || ''} onChange={e => handleFieldChange('deal_location', e.target.value)} />
+                                <DealLocationSelect
+                                    value={newDeal.deal_location || ''}
+                                    onChange={val => handleFieldChange('deal_location', val)}
+                                    placeholder="Выберите или укажите место сделки"
+                                />
                             </div>
                         </div>
 
@@ -1476,6 +1484,154 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             setQuickExpense({ title: '', customTitle: '', amount: '', payer: 'seller' });
         } catch (err) {
             toast.error('Не удалось сохранить расход');
+        }
+    };
+
+    // Quick Event states
+    const [showQuickEvent, setShowQuickEvent] = useState(false);
+    const [quickEventType, setQuickEventType] = useState('deal');
+    const [quickEventData, setQuickEventData] = useState({
+        date: deal.deal_date ? toLocalISOString(deal.deal_date) : '',
+        location: deal.deal_location || '',
+        amount: ''
+    });
+
+    const handleSelectEventType = (type) => {
+        setQuickEventType(type);
+        if (type === 'deal') {
+            setQuickEventData({
+                date: deal.deal_date ? toLocalISOString(deal.deal_date) : '',
+                location: deal.deal_location || '',
+                amount: ''
+            });
+        } else if (type === 'deposit') {
+            setQuickEventData({
+                date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
+                location: '',
+                amount: deal.deposit_amount ? formatPriceInput(String(deal.deposit_amount)) : ''
+            });
+        } else if (type === 'registration') {
+            setQuickEventData({
+                date: deal.registration_date ? toLocalISOString(deal.registration_date) : '',
+                location: '',
+                amount: ''
+            });
+        } else if (type === 'handover') {
+            setQuickEventData({
+                date: deal.handover_date ? toLocalISOString(deal.handover_date) : '',
+                location: '',
+                amount: deal.handover_amount ? formatPriceInput(String(deal.handover_amount)) : ''
+            });
+        } else if (type === 'contract') {
+            setQuickEventData({
+                date: deal.agency_contract_date ? toLocalISOString(deal.agency_contract_date).split('T')[0] : '',
+                location: '',
+                amount: ''
+            });
+        }
+    };
+
+    const hasCurrentEventData = useMemo(() => {
+        if (quickEventType === 'deal') return Boolean(deal.deal_date || deal.deal_location);
+        if (quickEventType === 'deposit') return Boolean(deal.deposit_date || deal.deposit_amount);
+        if (quickEventType === 'registration') return Boolean(deal.registration_date);
+        if (quickEventType === 'handover') return Boolean(deal.handover_date || deal.handover_amount);
+        if (quickEventType === 'contract') return Boolean(deal.agency_contract_date);
+        return false;
+    }, [deal, quickEventType]);
+
+    const handleSaveQuickEvent = () => {
+        let updates = {};
+        if (quickEventType === 'deal') {
+            if (!quickEventData.date && !quickEventData.location) {
+                toast.error('Укажите дату или место сделки');
+                return;
+            }
+            updates = {
+                deal_date: quickEventData.date ? parseLocalDateTime(quickEventData.date)?.toISOString() : null,
+                deal_location: quickEventData.location ? quickEventData.location.trim() : null
+            };
+            if (quickEventData.location) {
+                saveDealLocation(quickEventData.location);
+            }
+        } else if (quickEventType === 'deposit') {
+            if (!quickEventData.date && !quickEventData.amount) {
+                toast.error('Укажите дату или сумму задатка');
+                return;
+            }
+            updates = {
+                deposit_date: quickEventData.date ? parseLocalDateTime(quickEventData.date)?.toISOString() : null,
+                deposit_amount: Number(parsePriceInput(String(quickEventData.amount))) || 0
+            };
+        } else if (quickEventType === 'registration') {
+            if (!quickEventData.date) {
+                toast.error('Укажите дату регистрации');
+                return;
+            }
+            updates = {
+                registration_date: parseLocalDateTime(quickEventData.date)?.toISOString() || null
+            };
+        } else if (quickEventType === 'handover') {
+            if (!quickEventData.date && !quickEventData.amount) {
+                toast.error('Укажите дату или стоимость передачи');
+                return;
+            }
+            updates = {
+                handover_date: quickEventData.date ? parseLocalDateTime(quickEventData.date)?.toISOString() : null,
+                handover_amount: Number(parsePriceInput(String(quickEventData.amount))) || 0
+            };
+        } else if (quickEventType === 'contract') {
+            if (!quickEventData.date) {
+                toast.error('Укажите дату заключения агентского договора');
+                return;
+            }
+            updates = {
+                has_agency_contract: true,
+                agency_contract_date: quickEventData.date.includes('T') ? quickEventData.date : `${quickEventData.date}T00:00:00.000Z`
+            };
+        }
+
+        const updatedDeal = {
+            ...deal,
+            ...updates,
+            updated_at: new Date().toISOString()
+        };
+
+        try {
+            dispatch({ type: 'UPDATE_DEAL', deal: updatedDeal });
+            toast.success('Событие сохранено');
+            setShowQuickEvent(false);
+        } catch (err) {
+            toast.error('Ошибка сохранения события');
+        }
+    };
+
+    const handleClearQuickEvent = () => {
+        let updates = {};
+        if (quickEventType === 'deal') {
+            updates = { deal_date: null, deal_location: null };
+        } else if (quickEventType === 'deposit') {
+            updates = { deposit_date: null, deposit_amount: 0 };
+        } else if (quickEventType === 'registration') {
+            updates = { registration_date: null };
+        } else if (quickEventType === 'handover') {
+            updates = { handover_date: null, handover_amount: 0 };
+        } else if (quickEventType === 'contract') {
+            updates = { agency_contract_date: null, has_agency_contract: false };
+        }
+
+        const updatedDeal = {
+            ...deal,
+            ...updates,
+            updated_at: new Date().toISOString()
+        };
+
+        try {
+            dispatch({ type: 'UPDATE_DEAL', deal: updatedDeal });
+            toast.success('Событие очищено');
+            setShowQuickEvent(false);
+        } catch (err) {
+            toast.error('Ошибка при очистке события');
         }
     };
 
@@ -2025,17 +2181,17 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             )}
 
             {/* ── Dates & Events card ── */}
-            {dealEvents.length > 0 && (
-                <div style={{ 
-                    padding: '14px 16px', 
-                    background: 'rgba(245, 158, 11, 0.05)', 
-                    borderRadius: 16, 
-                    border: '1px solid rgba(245, 158, 11, 0.2)', 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    gap: 10 
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+            <div style={{ 
+                padding: '14px 16px', 
+                background: 'rgba(245, 158, 11, 0.05)', 
+                borderRadius: 16, 
+                border: '1px solid rgba(245, 158, 11, 0.2)', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 10 
+            }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Calendar size={14} color="#d97706" />
                         <span style={{ 
                             fontSize: 11, 
@@ -2048,10 +2204,275 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         </span>
                     </div>
 
+                    <button
+                        type="button"
+                        onClick={() => {
+                            if (!showQuickEvent) {
+                                handleSelectEventType('deal');
+                            }
+                            setShowQuickEvent(prev => !prev);
+                        }}
+                        title={showQuickEvent ? 'Закрыть добавление события' : 'Быстро добавить или изменить событие'}
+                        style={{
+                            background: showQuickEvent ? 'rgba(217, 119, 6, 0.2)' : 'rgba(217, 119, 6, 0.12)',
+                            border: 'none',
+                            color: '#b45309',
+                            fontSize: 11,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 7,
+                            fontWeight: 600,
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        {showQuickEvent ? <X size={13} /> : <Plus size={13} />}
+                        <span>{showQuickEvent ? 'Закрыть' : 'Добавить'}</span>
+                    </button>
+                </div>
+
+                {/* Inline Quick Event Form */}
+                {showQuickEvent && (
+                    <div style={{
+                        padding: '12px 14px',
+                        background: 'var(--surface, #ffffff)',
+                        borderRadius: 14,
+                        border: '1px solid rgba(245, 158, 11, 0.35)',
+                        boxShadow: '0 4px 14px rgba(217, 119, 6, 0.08)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 10,
+                        animation: 'fadeIn 0.2s ease'
+                    }}>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {[
+                                { key: 'deal', label: 'Сделка' },
+                                { key: 'deposit', label: 'Задаток' },
+                                { key: 'registration', label: 'Регистрация' },
+                                { key: 'handover', label: 'Передача' },
+                                { key: 'contract', label: 'Аг. договор' }
+                            ].map(tab => (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    onClick={() => handleSelectEventType(tab.key)}
+                                    style={{
+                                        padding: '4px 9px',
+                                        borderRadius: 8,
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: quickEventType === tab.key ? '#d97706' : 'rgba(245, 158, 11, 0.08)',
+                                        color: quickEventType === tab.key ? '#ffffff' : '#b45309',
+                                        transition: 'all 0.15s'
+                                    }}
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {quickEventType === 'deal' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8 }}>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                        Дата и время сделки
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        className="form-input"
+                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                        value={quickEventData.date}
+                                        onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                        Место проведения сделки
+                                    </label>
+                                    <DealLocationSelect
+                                        value={quickEventData.location}
+                                        onChange={loc => setQuickEventData(prev => ({ ...prev, location: loc }))}
+                                        placeholder="-- Выберите место --"
+                                        inputStyle={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13 }}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {quickEventType === 'deposit' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                        Дата задатка
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        className="form-input"
+                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                        value={quickEventData.date}
+                                        onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                        Сумма задатка
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Сумма (₽)"
+                                        className="form-input"
+                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 10px', width: '100%' }}
+                                        value={quickEventData.amount}
+                                        onChange={e => setQuickEventData(prev => ({ ...prev, amount: formatPriceInput(e.target.value) }))}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {quickEventType === 'registration' && (
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                    Дата и время регистрации
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    className="form-input"
+                                    style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                    value={quickEventData.date}
+                                    onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                />
+                            </div>
+                        )}
+
+                        {quickEventType === 'handover' && (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                        Дата передачи объекта
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        className="form-input"
+                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                        value={quickEventData.date}
+                                        onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                        Стоимость передачи
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Стоимость (₽)"
+                                        className="form-input"
+                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 10px', width: '100%' }}
+                                        value={quickEventData.amount}
+                                        onChange={e => setQuickEventData(prev => ({ ...prev, amount: formatPriceInput(e.target.value) }))}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {quickEventType === 'contract' && (
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                    Дата заключения агентского договора
+                                </label>
+                                <input
+                                    type="date"
+                                    className="form-input"
+                                    style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                    value={quickEventData.date}
+                                    onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                />
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 4 }}>
+                            {hasCurrentEventData ? (
+                                <button
+                                    type="button"
+                                    onClick={handleClearQuickEvent}
+                                    style={{
+                                        height: 34,
+                                        padding: '0 10px',
+                                        borderRadius: 8,
+                                        background: 'rgba(239, 68, 68, 0.1)',
+                                        color: '#ef4444',
+                                        border: 'none',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4
+                                    }}
+                                    title="Очистить это событие"
+                                >
+                                    <Trash size={13} /> Очистить
+                                </button>
+                            ) : <div />}
+
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuickEvent(false)}
+                                    style={{
+                                        height: 34,
+                                        padding: '0 12px',
+                                        borderRadius: 8,
+                                        background: 'var(--bg-light)',
+                                        color: 'var(--text-secondary)',
+                                        border: '1px solid var(--border-light)',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Отмена
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveQuickEvent}
+                                    style={{
+                                        height: 34,
+                                        padding: '0 14px',
+                                        borderRadius: 8,
+                                        background: '#d97706',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 5
+                                    }}
+                                >
+                                    <Check size={14} /> Сохранить
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Events list */}
+                {dealEvents.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {dealEvents.map((evt, idx) => (
                             <div 
                                 key={evt.id} 
+                                onClick={() => {
+                                    handleSelectEventType(evt.type);
+                                    setShowQuickEvent(true);
+                                }}
+                                className="card-clickable"
+                                title="Нажмите, чтобы редактировать событие"
                                 style={{ 
                                     display: 'flex', 
                                     justifyContent: 'space-between', 
@@ -2059,7 +2480,11 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                     gap: 10,
                                     flexWrap: 'wrap',
                                     borderTop: idx > 0 ? '1px dashed rgba(245, 158, 11, 0.2)' : 'none',
-                                    paddingTop: idx > 0 ? 8 : 0
+                                    paddingTop: idx > 0 ? 8 : 0,
+                                    cursor: 'pointer',
+                                    borderRadius: 6,
+                                    paddingLeft: 4,
+                                    paddingRight: 4
                                 }}
                             >
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
@@ -2079,7 +2504,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                                 background: 'rgba(0, 82, 255, 0.06)', 
                                                 padding: '2px 7px', 
                                                 borderRadius: 6, 
-                                                border: '1px solid rgba(0, 82, 255, 0.2)',
+                                                border: '1px solid rgba(0, 82, 255, 0.2)', 
                                                 maxWidth: 220,
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
@@ -2115,8 +2540,40 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             </div>
                         ))}
                     </div>
-                </div>
-            )}
+                ) : (
+                    !showQuickEvent && (
+                        <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            padding: '2px 0',
+                            fontSize: 11, 
+                            color: 'var(--text-muted)' 
+                        }}>
+                            <span>Нет запланированных событий</span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    handleSelectEventType('deal');
+                                    setShowQuickEvent(true);
+                                }}
+                                style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: '#b45309',
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    padding: 0,
+                                    textDecoration: 'underline'
+                                }}
+                            >
+                                + Назначить
+                            </button>
+                        </div>
+                    )
+                )}
+            </div>
 
             {/* ── Chat toggle buttons ── */}
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
