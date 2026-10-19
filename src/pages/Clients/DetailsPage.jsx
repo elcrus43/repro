@@ -526,6 +526,10 @@ export function DetailsPage() {
             template = 'rent';
             sellerId = '';
             buyerId = id;
+        } else if (contract.type?.includes('3-сторонний') || contract.type?.includes('3 сторонний') || contract.type === 'ДОУ Аренда / найм (3-сторонний)') {
+            template = 'services_rent_3party';
+            sellerId = '';
+            buyerId = id;
         }
 
         navigate('/documents', {

@@ -73,8 +73,52 @@ export function buildSlotValues(data, template) {
     const rawEndDate = data.contractEndDate || deal?.contract_end_date;
     const contractEndDate = rawEndDate ? fDate(rawEndDate) : '';
 
+    // Данные риэлтора (Исполнитель 2 — самозанятый)
+    const rDetails = realtor?.passport_details || {};
+    const realtorInn = f(realtor?.inn);
+    const realtorBirth = realtor?.birth_date ? fDate(realtor.birth_date) : (rDetails.birth_date ? fDate(rDetails.birth_date) : '');
+    const realtorSeries = f(rDetails.series);
+    const realtorNumber = f(rDetails.number);
+    const realtorIssuedBy = f(rDetails.issued_by);
+    const realtorIssueDate = rDetails.issue_date ? fDate(rDetails.issue_date) : '';
+    const realtorUnitCode = f(rDetails.unit_code);
+    const realtorRegAddress = f(rDetails.registration_address || realtor?.reg_address || realtor?.address);
+    const realtorPhone = f(formatPhone(realtor?.phone) || realtor?.phone);
+    const realtorShort = toShortName(realtorName);
+
+    // Данные заказчика (клиента) для 3-стороннего договора
+    const customer = buyer || seller || principal;
+    const cDetails = customer?.passport_details || {};
+    const customerName = f(customer?.full_name);
+    const customerBirth = customer?.birth_date ? fDate(customer.birth_date) : (cDetails.birth_date ? fDate(cDetails.birth_date) : '');
+    const customerSeries = f(cDetails.series);
+    const customerNumber = f(cDetails.number);
+    const customerIssuedBy = f(cDetails.issued_by);
+    const customerIssueDate = cDetails.issue_date ? fDate(cDetails.issue_date) : '';
+    const customerUnitCode = f(cDetails.unit_code);
+    const customerRegAddress = f(cDetails.registration_address || customer?.reg_address || customer?.address);
+    const customerPhone = f(formatPhone(customer?.phone) || customer?.phone);
+    const customerEmail = f(customer?.email);
+    const customerShort = toShortName(customerName);
+
+    // Стоимости услуг (Исполнитель 1 и Исполнитель 2)
+    const rawService1 = data.service1Cost !== undefined ? data.service1Cost : (deal?.service1_cost || '');
+    const cleanS1 = rawService1 ? Number(String(rawService1).replace(/\D/g, '')) : 0;
+    const service1Formatted = cleanS1 > 0 ? cleanS1.toLocaleString('ru-RU') : '';
+    const service1Words = cleanS1 > 0 ? `(${numberToWordsRu(cleanS1)})` : '';
+
+    const rawService2 = data.service2Cost !== undefined ? data.service2Cost : (deal?.service2_cost || '');
+    const cleanS2 = rawService2 ? Number(String(rawService2).replace(/\D/g, '')) : 0;
+    const service2Formatted = cleanS2 > 0 ? cleanS2.toLocaleString('ru-RU') : '';
+    const service2Words = cleanS2 > 0 ? `(${numberToWordsRu(cleanS2)})` : '';
+
+    const actDate = fDate(data.actDate || deal?.act_date || deal?.deal_date || new Date().toISOString());
+    const contractNumber = f(data.contractNumber || deal?.contract_number || 'б/н');
+
     return {
         contract_date: today,
+        act_date: actDate,
+        contract_number: contractNumber,
         principal_name: principalName,
         principal_birth: principalBirth,
         principal_series: principalSeries,
@@ -97,6 +141,31 @@ export function buildSlotValues(data, template) {
         seller_name: sellerName,
         buyer_name: buyerName,
         realtor_name: realtorName,
+        realtor_inn: realtorInn,
+        realtor_birth: realtorBirth,
+        realtor_series: realtorSeries,
+        realtor_number: realtorNumber,
+        realtor_issued_by: realtorIssuedBy,
+        realtor_issue_date: realtorIssueDate,
+        realtor_unit_code: realtorUnitCode,
+        realtor_reg_address: realtorRegAddress,
+        realtor_phone: realtorPhone,
+        realtor_short: realtorShort,
+        customer_name: customerName,
+        customer_birth: customerBirth,
+        customer_series: customerSeries,
+        customer_number: customerNumber,
+        customer_issued_by: customerIssuedBy,
+        customer_issue_date: customerIssueDate,
+        customer_unit_code: customerUnitCode,
+        customer_reg_address: customerRegAddress,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        customer_short: customerShort,
+        service1_cost: service1Formatted,
+        service1_words: service1Words,
+        service2_cost: service2Formatted,
+        service2_words: service2Words,
         agency_name: agency,
         address: address,
         area: area,
@@ -128,7 +197,37 @@ export function injectDataIntoTemplateHtml(html, slotValues, highlight = true, i
 
             // Распознаем slotId, если он не был явно задан (шаблоны из предыдущих сохранений)
             if (!slotId) {
-                if (inputId === 'doc-input-full-name' || title.includes('ФИО') || label.includes('ФИО')) slotId = 'principal_name';
+                if (inputId === 'doc-input-realtor-name') slotId = 'realtor_name';
+                else if (inputId === 'doc-input-realtor-inn') slotId = 'realtor_inn';
+                else if (inputId === 'doc-input-realtor-birth') slotId = 'realtor_birth';
+                else if (inputId === 'doc-input-realtor-series') slotId = 'realtor_series';
+                else if (inputId === 'doc-input-realtor-number') slotId = 'realtor_number';
+                else if (inputId === 'doc-input-realtor-issued-by') slotId = 'realtor_issued_by';
+                else if (inputId === 'doc-input-realtor-issue-date') slotId = 'realtor_issue_date';
+                else if (inputId === 'doc-input-realtor-unit-code') slotId = 'realtor_unit_code';
+                else if (inputId === 'doc-input-realtor-reg-address') slotId = 'realtor_reg_address';
+                else if (inputId === 'doc-input-realtor-phone') slotId = 'realtor_phone';
+                else if (inputId === 'doc-input-customer-name' || label.includes('ФИО Заказчика')) slotId = 'customer_name';
+                else if (inputId === 'doc-input-customer-phone') slotId = 'customer_phone';
+                else if (inputId === 'doc-input-customer-birth') slotId = 'customer_birth';
+                else if (inputId === 'doc-input-customer-series') slotId = 'customer_series';
+                else if (inputId === 'doc-input-customer-number') slotId = 'customer_number';
+                else if (inputId === 'doc-input-customer-issued-by') slotId = 'customer_issued_by';
+                else if (inputId === 'doc-input-customer-issue-date') slotId = 'customer_issue_date';
+                else if (inputId === 'doc-input-customer-unit-code') slotId = 'customer_unit_code';
+                else if (inputId === 'doc-input-customer-reg-address') slotId = 'customer_reg_address';
+                else if (inputId === 'doc-input-customer-email') slotId = 'customer_email';
+                else if (inputId === 'doc-input-customer-short') slotId = 'customer_short';
+                else if (inputId === 'doc-input-realtor-short') slotId = 'realtor_short';
+                else if (inputId === 'doc-input-act-date') slotId = 'act_date';
+                else if (inputId === 'doc-input-contract-number') slotId = 'contract_number';
+                else if (inputId === 'doc-input-service1-cost') {
+                    slotId = (label.includes('прописью') || title.includes('прописью')) ? 'service1_words' : 'service1_cost';
+                }
+                else if (inputId === 'doc-input-service2-cost') {
+                    slotId = (label.includes('прописью') || title.includes('прописью')) ? 'service2_words' : 'service2_cost';
+                }
+                else if (inputId === 'doc-input-full-name' || title.includes('ФИО') || label.includes('ФИО')) slotId = 'principal_name';
                 else if (inputId === 'doc-input-phone' || title.includes('Телефон') || label.includes('Телефон')) slotId = 'principal_phone';
                 else if (inputId === 'doc-input-birth-date' || title.includes('рождения')) slotId = 'principal_birth';
                 else if (inputId === 'doc-input-series' || title.includes('Серия')) slotId = 'principal_series';

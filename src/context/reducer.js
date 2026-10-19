@@ -51,7 +51,11 @@ export function reducer(state, action) {
       return { ...state, currentUser: action.user };
 
     case 'UPDATE_PROFILE':
-      return { ...state, currentUser: { ...state.currentUser, ...action.profile } };
+      return { 
+        ...state, 
+        currentUser: { ...state.currentUser, ...action.profile },
+        users: (state.users || []).map(u => u.id === action.profile.id ? { ...u, ...action.profile } : u),
+      };
 
     case 'SET_PENDING_USERS':
       return { ...state, pendingUsers: action.users };

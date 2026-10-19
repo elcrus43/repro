@@ -353,19 +353,100 @@ export function ProfilePage() {
             <div className="page-content" style={{ padding: '20px', gap: 24, paddingBottom: 120 }}>
                 {/* Profile Header */}
                 {isEditing ? (
-                    <div className="card" style={{ padding: '16px', borderRadius: 20, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
-                            <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
+                    <div className="card" style={{ padding: '20px', borderRadius: 20, border: 'none', boxShadow: '0 4px 16px rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)' }}>Основные данные</div>
+                            <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }} value={editData.full_name} onChange={e => setEditData({ ...editData, full_name: e.target.value })} placeholder="Имя Фамилия" />
+                            <input className="form-input" style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }} value={editData.agency_name} onChange={e => setEditData({ ...editData, agency_name: e.target.value })} placeholder="Название агентства" />
                             <input
                                 className="form-input"
-                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }}
+                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
                                 value={editData.phone || ''}
                                 type="tel"
                                 inputMode="tel"
                                 onChange={e => setEditData({ ...editData, phone: formatPhone(e.target.value, true) })}
                                 placeholder="+7 (___) ___-__-__"
                             />
+
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 8 }}>
+                                Реквизиты самозанятого (для договоров)
+                            </div>
+
+                            <input
+                                className="form-input"
+                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
+                                value={editData.inn || ''}
+                                onChange={e => setEditData({ ...editData, inn: e.target.value })}
+                                placeholder="ИНН самозанятого"
+                            />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                <input
+                                    className="form-input"
+                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
+                                    value={editData.passport_details?.series || ''}
+                                    onChange={e => setPassport('series', e.target.value)}
+                                    placeholder="Серия паспорта"
+                                />
+                                <input
+                                    className="form-input"
+                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
+                                    value={editData.passport_details?.number || ''}
+                                    onChange={e => setPassport('number', e.target.value)}
+                                    placeholder="Номер паспорта"
+                                />
+                            </div>
+
+                            <input
+                                className="form-input"
+                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
+                                value={editData.passport_details?.issued_by || ''}
+                                onChange={e => setPassport('issued_by', e.target.value)}
+                                placeholder="Кем выдан паспорт"
+                            />
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>Дата выдачи паспорта</label>
+                                    <input
+                                        className="form-input"
+                                        type="date"
+                                        style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', width: '100%' }}
+                                        value={editData.passport_details?.issue_date ? editData.passport_details.issue_date.split('T')[0] : ''}
+                                        onChange={e => setPassport('issue_date', e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>Код подразделения</label>
+                                    <input
+                                        className="form-input"
+                                        style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', width: '100%' }}
+                                        value={editData.passport_details?.unit_code || ''}
+                                        onChange={e => setPassport('unit_code', e.target.value)}
+                                        placeholder="000-000"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>Дата рождения</label>
+                                <input
+                                    className="form-input"
+                                    type="date"
+                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', width: '100%' }}
+                                    value={editData.passport_details?.birth_date ? editData.passport_details.birth_date.split('T')[0] : ''}
+                                    onChange={e => setPassport('birth_date', e.target.value)}
+                                />
+                            </div>
+
+                            <input
+                                className="form-input"
+                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
+                                value={editData.passport_details?.registration_address || ''}
+                                onChange={e => setPassport('registration_address', e.target.value)}
+                                placeholder="Адрес постоянной регистрации"
+                            />
+
                             <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                                 <button className="btn btn-secondary" style={{ flex: 1, borderRadius: 12 }} onClick={() => setIsEditing(false)}>Отмена</button>
                                 <button className="btn btn-primary" style={{ flex: 1, borderRadius: 12 }} onClick={handleSave}>Сохранить</button>
@@ -388,6 +469,55 @@ export function ProfilePage() {
                     </div>
                 )}
 
+                {/* Self-employed requisites summary card */}
+                <div className="card" style={{ padding: '16px 20px', borderRadius: 24, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'rgba(0, 82, 255, 0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <FileText size={18} />
+                            </div>
+                            <div>
+                                <div className="font-oswald" style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>Реквизиты самозанятого</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Для 3-сторонних договоров и актов</div>
+                            </div>
+                        </div>
+                        {!isEditing && (
+                            <button
+                                className="card-clickable"
+                                onClick={() => setIsEditing(true)}
+                                style={{
+                                    border: 'none', background: 'var(--bg-light)', color: 'var(--primary)',
+                                    borderRadius: 10, padding: '6px 12px', fontSize: 12, fontWeight: 600,
+                                    display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer'
+                                }}
+                            >
+                                <Pencil size={13} />
+                                <span>{user.inn ? 'Изменить' : 'Заполнить'}</span>
+                            </button>
+                        )}
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 12 }}>
+                        <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>ИНН самозанятого</div>
+                            <div style={{ fontWeight: 600, color: user.inn ? 'var(--text)' : 'var(--danger)' }}>
+                                {user.inn || 'Не указан'}
+                            </div>
+                        </div>
+                        <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Паспортные данные</div>
+                            <div style={{ fontWeight: 600, color: user.passport_details?.number ? 'var(--text)' : 'var(--danger)' }}>
+                                {user.passport_details?.number ? `Серия ${user.passport_details.series || ''} № ${user.passport_details.number}` : 'Не заполнены'}
+                            </div>
+                        </div>
+                        <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14, gridColumn: '1 / -1' }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Адрес регистрации</div>
+                            <div style={{ fontWeight: 500, color: user.passport_details?.registration_address ? 'var(--text)' : 'var(--text-secondary)' }}>
+                                {user.passport_details?.registration_address || 'Не указан'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 {/* Settings Menu */}
                 <div className="card" style={{ padding: 8, borderRadius: 28, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)' }}>

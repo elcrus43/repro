@@ -17,6 +17,7 @@ const TEMPLATE_ICONS = {
     yuss_buy_1: <Briefcase size={16} />,
     agency_sale_1: <Building2 size={16} />,
     agency_rent_landlord_1: <Key size={16} />,
+    services_rent_3party: <Briefcase size={16} />,
     sale: <FileText size={16} />,
     rent: <FileText size={16} />,
     act: <FileText size={16} />,
@@ -428,6 +429,11 @@ export function DocumentsPage() {
         return d.toISOString().split('T')[0];
     });
 
+    // 3-сторонний договор оказания услуг
+    const [service1Cost, setService1Cost] = useState(() => prefill.service1Cost ? String(prefill.service1Cost) : '5 000');
+    const [service2Cost, setService2Cost] = useState(() => prefill.service2Cost ? String(prefill.service2Cost) : (prefill.commission ? String(prefill.commission) : '15 000'));
+    const [actDate, setActDate] = useState(() => prefill.actDate || new Date().toISOString().split('T')[0]);
+
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSavedToCrm, setIsSavedToCrm] = useState(false);
     const [isSavingToCrm, setIsSavingToCrm] = useState(false);
@@ -503,6 +509,7 @@ export function DocumentsPage() {
         yuss_buy_1: 'АД ЮСС Покупка',
         agency_sale_1: 'АД ЮСС Продажа',
         agency_rent_landlord_1: 'АД Найм с наймодателем',
+        services_rent_3party: 'ДОУ Аренда и найм (3-сторонний)',
         sale: 'Договор купли-продажи',
         rent: 'Договор аренды',
         act: 'Акт приема-передачи',
@@ -517,6 +524,7 @@ export function DocumentsPage() {
 
     /* ── Выбранный клиент для редактирования реквизитов ────────────────────── */
     const isAgencyRentLandlord = selectedTemplate === 'agency_rent_landlord_1';
+    const isServicesRent3Party = selectedTemplate === 'services_rent_3party';
     const isAgencySale = selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
     const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
 
@@ -567,6 +575,8 @@ export function DocumentsPage() {
                 tpl = 'agency_sale_1';
             } else if (c.type === 'АД Найм с наймодателем' || c.type === 'АД Аренда с наймодателем' || c.type === 'АД Аренда с арендодателем') {
                 tpl = 'agency_rent_landlord_1';
+            } else if (c.type?.includes('3-сторонний') || c.type?.includes('3 сторонний') || c.type === 'ДОУ Аренда / найм (3-сторонний)') {
+                tpl = 'services_rent_3party';
             } else if (c.type?.includes('Аренда') || c.type?.includes('Найм')) {
                 tpl = 'rent';
             }
@@ -909,8 +919,8 @@ export function DocumentsPage() {
             deal = { ...(deal || {}), contract_end_date: contractEndDate };
         }
 
-        return { seller, buyer, property, realtor, agencyName, deal, contractEndDate };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate]);
+        return { seller, buyer, property, realtor, agencyName, deal, contractEndDate, service1Cost, service2Cost, actDate };
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -1271,7 +1281,40 @@ export function DocumentsPage() {
                     {/* Режим — вручную */}
                     {sourceMode === 'manual' && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {(selectedTemplate === 'agency_sale_1' || selectedTemplate === 'agency_rent_landlord_1') ? (
+                            {isServicesRent3Party ? (
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                        <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            Заказчик (Клиент / Наниматель / Арендатор)
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickModalConfig({ isOpen: true, role: 'buyer', initialName: '' })}
+                                            style={{
+                                                background: 'none', border: 'none', color: 'var(--primary)',
+                                                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                                            }}
+                                        >
+                                            <Plus size={13} /> Создать клиента
+                                        </button>
+                                    </div>
+                                    <ClientSearch
+                                        clients={state.clients}
+                                        value={buyerId || sellerId}
+                                        onChange={(val) => {
+                                            setBuyerId(val);
+                                            setSellerId(val);
+                                            if (val) {
+                                                const found = state.properties.find(p => p.client_id === val || (Array.isArray(p.client_ids) && p.client_ids.includes(val)));
+                                                if (found) setPropertyId(found.id);
+                                            }
+                                        }}
+                                        placeholder="Выберите клиента-заказчика"
+                                        onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'buyer', initialName: searchQuery || '' })}
+                                        addLabel="Новый заказчик"
+                                    />
+                                </div>
+                            ) : (selectedTemplate === 'agency_sale_1' || selectedTemplate === 'agency_rent_landlord_1') ? (
                                 <div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
                                         <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
@@ -1459,8 +1502,8 @@ export function DocumentsPage() {
                     )}
                 </div>
 
-                {/* Интерактивное заполнение и подсветка недостающих данных Принципала */}
-                {(isAgencyContract || sourceMode === 'manual' || activeClient) && (
+                {/* Интерактивное заполнение и подсветка недостающих данных Принципала / Заказчика */}
+                {(isAgencyContract || isServicesRent3Party || sourceMode === 'manual' || activeClient) && (
                     <div className="no-print" style={{
                         background: 'var(--surface)', borderRadius: 20, padding: 20,
                         border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
@@ -1469,7 +1512,10 @@ export function DocumentsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <Sparkles size={16} style={{ color: 'var(--primary)' }} />
                                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    {activeClient ? `Реквизиты Принципала (${activeClient.full_name})` : 'Реквизиты Принципала (ручной ввод / новый принципал)'}
+                                    {activeClient 
+                                        ? (isServicesRent3Party ? `Реквизиты Заказчика (${activeClient.full_name})` : `Реквизиты Принципала (${activeClient.full_name})`) 
+                                        : (isServicesRent3Party ? 'Реквизиты Заказчика (ручной ввод / новый клиент)' : 'Реквизиты Принципала (ручной ввод / новый принципал)')
+                                    }
                                 </span>
                                 {activeClient && (
                                     <button
@@ -1928,129 +1974,372 @@ export function DocumentsPage() {
                     </div>
                 )}
 
-                {/* Отдельный блок: Условия договора и вознаграждение агента */}
-                <div className="no-print" style={{
-                    background: 'var(--surface)', borderRadius: 20, padding: 20,
-                    border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <Briefcase size={16} style={{ color: 'var(--primary)' }} />
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                Условия договора и вознаграждение агента
-                            </span>
+                {/* Блок параметров для договора: 3-сторонний или стандартный агентский */}
+                {isServicesRent3Party ? (
+                    <div className="no-print" style={{
+                        background: 'var(--surface)', borderRadius: 20, padding: 20,
+                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Briefcase size={16} style={{ color: 'var(--primary)' }} />
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                    Условия 3-стороннего договора и оплаты
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {service1Cost?.trim() && service2Cost?.trim() ? (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                        <CheckCircle2 size={13} />
+                                        <span>Стоимости указаны</span>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                        <AlertCircle size={13} />
+                                        <span>Укажите суммы</span>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                            {commission?.trim() && contractEndDate ? (
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                    <CheckCircle2 size={13} />
-                                    <span>Условия заполнены</span>
+
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            В 3-стороннем договоре оплата Исполнителю 1 (ИП Муравьева) и Исполнителю 2 (Риэлтор-самозанятый) производится Заказчиком раздельно.
+                        </div>
+
+                        {/* Карточка Риэлтора (Исполнитель 2 — самозанятый из профиля) */}
+                        <div style={{
+                            background: 'var(--bg)', borderRadius: 14, padding: 14,
+                            border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 8
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <User size={15} style={{ color: 'var(--primary)' }} />
+                                    <strong style={{ fontSize: 13, color: 'var(--text)' }}>Исполнитель 2 (Риэлтор):</strong>
+                                    <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>{realtor?.full_name || 'Не указан'}</span>
+                                    <span style={{ fontSize: 11, background: 'rgba(0, 82, 255, 0.08)', color: 'var(--primary)', padding: '2px 6px', borderRadius: 6, fontWeight: 500 }}>
+                                        Самозанятый (НПД)
+                                    </span>
                                 </div>
-                            ) : (
-                                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/profile')}
+                                    style={{
+                                        background: 'none', border: 'none', color: 'var(--primary)',
+                                        fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
+                                    }}
+                                >
+                                    <Edit3 size={12} /> Изменить в профиле
+                                </button>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 6 }}>
+                                <div>ИНН: <strong style={{ color: 'var(--text)' }}>{realtor?.inn || 'Не указан в профиле'}</strong></div>
+                                <div>Телефон: <strong style={{ color: 'var(--text)' }}>{formatPhone(realtor?.phone) || 'Не указан'}</strong></div>
+                                <div>Паспорт: <strong style={{ color: 'var(--text)' }}>{realtor?.passport_details?.series && realtor?.passport_details?.number ? `${realtor.passport_details.series} ${realtor.passport_details.number}` : 'Не указан'}</strong></div>
+                                <div>Прописка: <strong style={{ color: 'var(--text)' }}>{realtor?.passport_details?.registration_address || realtor?.reg_address || 'Не указан'}</strong></div>
+                            </div>
+                            {(!realtor?.inn || !realtor?.passport_details?.series) && (
+                                <div style={{ fontSize: 11, color: '#d97706', background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <AlertCircle size={13} />
-                                    <span>Укажите вознаграждение и срок</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                        Размер вознаграждения подставляется в п. 3.1, а срок действия договора — в п. 5.1. Данные сразу синхронизируются в предпросмотре и DOCX.
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                        {/* Вознаграждение Агента */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    Вознаграждение Агента (₽) — п. 3.1
-                                </span>
-                                {!commission?.trim() ? (
-                                    <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span>
-                                ) : (
-                                    <span style={{ color: '#10b981' }}>✓ Указано</span>
-                                )}
-                            </div>
-                            <input
-                                id="doc-input-commission"
-                                className="form-input"
-                                value={commission}
-                                onChange={e => {
-                                    const digits = e.target.value.replace(/\D/g, '');
-                                    setCommission(digits ? Number(digits).toLocaleString('ru-RU') : '');
-                                }}
-                                placeholder="50 000"
-                                style={{
-                                    width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
-                                    border: !commission?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                    background: !commission?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                }}
-                            />
-                            {/* Быстрые кнопки сумм */}
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                {[30000, 50000, 70000, 100000].map(amt => (
-                                    <button
-                                        key={amt}
-                                        type="button"
-                                        onClick={() => setCommission(amt.toLocaleString('ru-RU'))}
-                                        style={{
-                                            padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                            background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                            cursor: 'pointer', transition: 'all 0.15s'
-                                        }}
-                                    >
-                                        {amt.toLocaleString('ru-RU')} ₽
-                                    </button>
-                                ))}
-                            </div>
-                            {/* Сумма прописью */}
-                            {commission && Number(commission.replace(/\D/g, '')) > 0 && (
-                                <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                    Прописью: <strong>{numberToWordsRu(Number(commission.replace(/\D/g, '')))}</strong> рублей, в т.ч. НДС 5%
+                                    <span>Заполните ИНН и паспорт в вашем Профиле, чтобы они автоматически подставились в договор.</span>
                                 </div>
                             )}
                         </div>
 
-                        {/* Срок действия договора */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    Срок действия договора (до даты) — п. 5.1
-                                </span>
-                                {!contractEndDate ? (
-                                    <span style={{ color: '#d97706', fontWeight: 600 }}>● Выбрать дату</span>
-                                ) : (
-                                    <span style={{ color: '#10b981' }}>✓ Выбран</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                            {/* Стоимость услуг Исполнителя 1 */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Исполнитель 1 (ИП Муравьева) (₽) — п. 3.2
+                                    </span>
+                                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>в т.ч. НДС 5%</span>
+                                </div>
+                                <input
+                                    id="doc-input-service1-cost"
+                                    className="form-input"
+                                    value={service1Cost}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setService1Cost(digits ? Number(digits).toLocaleString('ru-RU') : '');
+                                    }}
+                                    placeholder="5 000"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
+                                        border: '1px solid var(--border)', background: 'var(--bg)',
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                    {[3000, 5000, 7000, 10000].map(amt => (
+                                        <button
+                                            key={amt}
+                                            type="button"
+                                            onClick={() => setService1Cost(amt.toLocaleString('ru-RU'))}
+                                            style={{
+                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
+                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {amt.toLocaleString('ru-RU')} ₽
+                                        </button>
+                                    ))}
+                                </div>
+                                {service1Cost && Number(service1Cost.replace(/\D/g, '')) > 0 && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        Прописью: <strong>{numberToWordsRu(Number(service1Cost.replace(/\D/g, '')))}</strong> рублей, в т.ч. НДС 5%
+                                    </div>
                                 )}
                             </div>
-                            <input
-                                id="doc-input-contract-end-date"
-                                type="date"
-                                className="form-input"
-                                value={contractEndDate}
-                                onChange={e => setContractEndDate(e.target.value)}
-                                style={{
-                                    width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                    border: !contractEndDate ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                    background: !contractEndDate ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                }}
-                            />
-                            {/* Быстрые кнопки срока */}
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                {[
-                                    { label: '+1 мес', m: 1 },
-                                    { label: '+2 мес', m: 2 },
-                                    { label: '+3 мес', m: 3 },
-                                    { label: '+6 мес', m: 6 },
-                                ].map(item => (
+
+                            {/* Стоимость услуг Исполнителя 2 */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Исполнитель 2 (Риэлтор) (₽) — п. 3.3
+                                    </span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>самозанятый</span>
+                                </div>
+                                <input
+                                    id="doc-input-service2-cost"
+                                    className="form-input"
+                                    value={service2Cost}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setService2Cost(digits ? Number(digits).toLocaleString('ru-RU') : '');
+                                    }}
+                                    placeholder="15 000"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
+                                        border: '1px solid var(--border)', background: 'var(--bg)',
+                                    }}
+                                />
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                    {[10000, 15000, 20000, 25000, 30000].map(amt => (
+                                        <button
+                                            key={amt}
+                                            type="button"
+                                            onClick={() => setService2Cost(amt.toLocaleString('ru-RU'))}
+                                            style={{
+                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
+                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {amt.toLocaleString('ru-RU')} ₽
+                                        </button>
+                                    ))}
+                                </div>
+                                {service2Cost && Number(service2Cost.replace(/\D/g, '')) > 0 && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        Прописью: <strong>{numberToWordsRu(Number(service2Cost.replace(/\D/g, '')))}</strong> рублей
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Даты: Срок оказания услуг и дата Акта */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Срок оказания услуг (до даты) — п. 1.3
+                                    </span>
+                                </div>
+                                <input
+                                    id="doc-input-contract-end-date"
+                                    type="date"
+                                    className="form-input"
+                                    value={contractEndDate}
+                                    onChange={e => setContractEndDate(e.target.value)}
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                    {[
+                                        { label: '+1 мес', m: 1 },
+                                        { label: '+2 мес', m: 2 },
+                                        { label: '+3 мес', m: 3 },
+                                        { label: '+6 мес', m: 6 },
+                                    ].map(item => (
+                                        <button
+                                            key={item.label}
+                                            type="button"
+                                            onClick={() => {
+                                                const d = new Date();
+                                                d.setMonth(d.getMonth() + item.m);
+                                                setContractEndDate(d.toISOString().split('T')[0]);
+                                            }}
+                                            style={{
+                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
+                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Дата Акта выполненных работ
+                                    </span>
+                                </div>
+                                <input
+                                    id="doc-input-act-date"
+                                    type="date"
+                                    className="form-input"
+                                    value={actDate}
+                                    onChange={e => setActDate(e.target.value)}
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
+                                {actDate && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="no-print" style={{
+                        background: 'var(--surface)', borderRadius: 20, padding: 20,
+                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Briefcase size={16} style={{ color: 'var(--primary)' }} />
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                    Условия договора и вознаграждение агента
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                {commission?.trim() && contractEndDate ? (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                        <CheckCircle2 size={13} />
+                                        <span>Условия заполнены</span>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                        <AlertCircle size={13} />
+                                        <span>Укажите вознаграждение и срок</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            Размер вознаграждения подставляется в п. 3.1, а срок действия договора — в п. 5.1. Данные сразу синхронизируются в предпросмотре и DOCX.
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                            {/* Вознаграждение Агента */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Вознаграждение Агента (₽) — п. 3.1
+                                    </span>
+                                    {!commission?.trim() ? (
+                                        <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span>
+                                    ) : (
+                                        <span style={{ color: '#10b981' }}>✓ Указано</span>
+                                    )}
+                                </div>
+                                <input
+                                    id="doc-input-commission"
+                                    className="form-input"
+                                    value={commission}
+                                    onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '');
+                                        setCommission(digits ? Number(digits).toLocaleString('ru-RU') : '');
+                                    }}
+                                    placeholder="50 000"
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
+                                        border: !commission?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !commission?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                                {/* Быстрые кнопки сумм */}
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                    {[30000, 50000, 70000, 100000].map(amt => (
+                                        <button
+                                            key={amt}
+                                            type="button"
+                                            onClick={() => setCommission(amt.toLocaleString('ru-RU'))}
+                                            style={{
+                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
+                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
+                                                cursor: 'pointer', transition: 'all 0.15s'
+                                            }}
+                                        >
+                                            {amt.toLocaleString('ru-RU')} ₽
+                                        </button>
+                                    ))}
+                                </div>
+                                {/* Сумма прописью */}
+                                {commission && Number(commission.replace(/\D/g, '')) > 0 && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        Прописью: <strong>{numberToWordsRu(Number(commission.replace(/\D/g, '')))}</strong> рублей, в т.ч. НДС 5%
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Срок действия договора */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Срок действия договора (до даты) — п. 5.1
+                                    </span>
+                                    {!contractEndDate ? (
+                                        <span style={{ color: '#d97706', fontWeight: 600 }}>● Выбрать дату</span>
+                                    ) : (
+                                        <span style={{ color: '#10b981' }}>✓ Выбран</span>
+                                    )}
+                                </div>
+                                <input
+                                    id="doc-input-contract-end-date"
+                                    type="date"
+                                    className="form-input"
+                                    value={contractEndDate}
+                                    onChange={e => setContractEndDate(e.target.value)}
+                                    style={{
+                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                        border: !contractEndDate ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                        background: !contractEndDate ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                    }}
+                                />
+                                {/* Быстрые кнопки срока */}
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
+                                    {[
+                                        { label: '+1 мес', m: 1 },
+                                        { label: '+2 мес', m: 2 },
+                                        { label: '+3 мес', m: 3 },
+                                        { label: '+6 мес', m: 6 },
+                                    ].map(item => (
+                                        <button
+                                            key={item.label}
+                                            type="button"
+                                            onClick={() => {
+                                                const d = new Date();
+                                                d.setMonth(d.getMonth() + item.m);
+                                                setContractEndDate(d.toISOString().split('T')[0]);
+                                            }}
+                                            style={{
+                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
+                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
                                     <button
-                                        key={item.label}
                                         type="button"
                                         onClick={() => {
-                                            const d = new Date();
-                                            d.setMonth(d.getMonth() + item.m);
-                                            setContractEndDate(d.toISOString().split('T')[0]);
+                                            const yr = new Date().getFullYear();
+                                            setContractEndDate(`${yr}-12-31`);
                                         }}
                                         style={{
                                             padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
@@ -2058,32 +2347,18 @@ export function DocumentsPage() {
                                             cursor: 'pointer'
                                         }}
                                     >
-                                        {item.label}
+                                        До 31 дек
                                     </button>
-                                ))}
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const yr = new Date().getFullYear();
-                                        setContractEndDate(`${yr}-12-31`);
-                                    }}
-                                    style={{
-                                        padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                        background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    До 31 дек
-                                </button>
-                            </div>
-                            {contractEndDate && (
-                                <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                    В договоре: действует до <strong>«{new Date(contractEndDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong> включительно
                                 </div>
-                            )}
+                                {contractEndDate && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        В договоре: действует до <strong>«{new Date(contractEndDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong> включительно
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Модальное окно быстрого создания клиента */}
                 <QuickClientModal
@@ -2112,7 +2387,32 @@ export function DocumentsPage() {
                         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                             Данные для документа
                         </span>
-                        {isAgencyContract ? (
+                        {isServicesRent3Party ? (
+                            <>
+                                <DataPreview label="Исполнитель 1" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
+                                <DataPreview label="Исполнитель 2 (Риэлтор)" value={`${realtor?.full_name || 'Не указан'} (Самозанятый, ${realtor?.inn ? `ИНН ${realtor.inn}` : 'ИНН не указан'})`} />
+                                {(buyer || seller) && (
+                                    <>
+                                        <DataPreview label="Заказчик" value={(seller || buyer).full_name} />
+                                        {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                        <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
+                                        <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
+                                    </>
+                                )}
+                                {service1Cost && (
+                                    <DataPreview label="Исполнитель 1 (ИП)" value={`${Number(String(service1Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
+                                )}
+                                {service2Cost && (
+                                    <DataPreview label="Исполнитель 2 (Риэлтор)" value={`${Number(String(service2Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />
+                                )}
+                                {contractEndDate && (
+                                    <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
+                                )}
+                                {actDate && (
+                                    <DataPreview label="Дата Акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />
+                                )}
+                            </>
+                        ) : isAgencyContract ? (
                             <>
                                 <DataPreview label="Агент" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
                                 {(buyer || seller) && (
@@ -2665,6 +2965,327 @@ function DocumentPreview({ template, data, highlight = true }) {
     const commWords = cleanComm > 0 ? `(${numberToWordsRu(cleanComm)})` : '';
     const rawEndDate = data.contractEndDate || deal?.contract_end_date;
     const contractEndDate = rawEndDate ? fDate(rawEndDate) : '';
+
+    // Риэлтор (Исполнитель 2 — самозанятый из профиля)
+    const rDetails = realtor?.passport_details || {};
+    const realtorFullName = f(realtor?.full_name);
+    const realtorBirth = realtor?.birth_date ? fDate(realtor.birth_date) : (rDetails.birth_date ? fDate(rDetails.birth_date) : '');
+    const realtorSeries = f(rDetails.series);
+    const realtorNumber = f(rDetails.number);
+    const realtorIssuedBy = f(rDetails.issued_by);
+    const realtorIssueDate = rDetails.issue_date ? fDate(rDetails.issue_date) : '';
+    const realtorUnitCode = f(rDetails.unit_code);
+    const realtorRegAddress = f(rDetails.registration_address || realtor?.reg_address || realtor?.address);
+    const realtorPhone = f(formatPhone(realtor?.phone) || realtor?.phone);
+    const realtorInn = f(realtor?.inn);
+    const realtorShort = toShortName(realtorFullName);
+
+    // Заказчик (Клиент)
+    const customer = buyer || seller || principal;
+    const cDetails = customer?.passport_details || {};
+    const customerFullName = f(customer?.full_name);
+    const customerBirth = customer?.birth_date ? fDate(customer.birth_date) : (cDetails.birth_date ? fDate(cDetails.birth_date) : '');
+    const customerSeries = f(cDetails.series);
+    const customerNumber = f(cDetails.number);
+    const customerIssuedBy = f(cDetails.issued_by);
+    const customerIssueDate = cDetails.issue_date ? fDate(cDetails.issue_date) : '';
+    const customerUnitCode = f(cDetails.unit_code);
+    const customerRegAddress = f(cDetails.registration_address || customer?.reg_address || customer?.address);
+    const customerPhone = f(formatPhone(customer?.phone) || customer?.phone);
+    const customerEmail = f(customer?.email);
+    const customerShort = toShortName(customerFullName);
+
+    // Стоимости услуг (Исполнитель 1 и Исполнитель 2)
+    const rawS1 = data.service1Cost !== undefined ? data.service1Cost : (deal?.service1_cost || '');
+    const cleanS1 = rawS1 ? Number(String(rawS1).replace(/\D/g, '')) : 0;
+    const s1Formatted = cleanS1 > 0 ? cleanS1.toLocaleString('ru-RU') : '';
+    const s1Words = cleanS1 > 0 ? `(${numberToWordsRu(cleanS1)})` : '';
+
+    const rawS2 = data.service2Cost !== undefined ? data.service2Cost : (deal?.service2_cost || '');
+    const cleanS2 = rawS2 ? Number(String(rawS2).replace(/\D/g, '')) : 0;
+    const s2Formatted = cleanS2 > 0 ? cleanS2.toLocaleString('ru-RU') : '';
+    const s2Words = cleanS2 > 0 ? `(${numberToWordsRu(cleanS2)})` : '';
+
+    const customActDate = fDate(data.actDate || deal?.act_date || deal?.deal_date || new Date().toISOString());
+    const contractNumber = f(data.contractNumber || deal?.contract_number || 'б/н');
+
+    /* ── Шаблон: ДОУ Аренда / найм 3-сторонний ──────────────────────────────── */
+    if (template === 'services_rent_3party') {
+        return (
+            <div>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    ДОГОВОР ОКАЗАНИЯ УСЛУГ
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20, fontSize: 14, fontWeight: 500 }}>
+                    <span>Город Киров, Кировская область</span>
+                    <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
+                </div>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    <strong>Индивидуальный предприниматель Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
+                    адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; 
+                    р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974, 
+                    с одной стороны, именуемая в дальнейшем <strong>«Исполнитель 1»</strong>,
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    Гр. <strong><Slot slotId="realtor_name" value={realtorFullName} label="ФИО Риэлтора" inputId="doc-input-realtor-name" highlight={highlight} /></strong>, 
+                    ИНН: <Slot slotId="realtor_inn" value={realtorInn} label="ИНН Риэлтора" inputId="doc-input-realtor-inn" highlight={highlight} />, 
+                    дата рождения: <Slot slotId="realtor_birth" value={realtorBirth} label="Дата рождения" inputId="doc-input-realtor-birth" highlight={highlight} />, 
+                    паспорт РФ серия <Slot slotId="realtor_series" value={realtorSeries} label="Серия паспорта" inputId="doc-input-realtor-series" highlight={highlight} /> номер <Slot slotId="realtor_number" value={realtorNumber} label="Номер паспорта" inputId="doc-input-realtor-number" highlight={highlight} />, 
+                    выдан <Slot slotId="realtor_issued_by" value={realtorIssuedBy} label="Кем выдан" inputId="doc-input-realtor-issued-by" highlight={highlight} /> дата выдачи: <Slot slotId="realtor_issue_date" value={realtorIssueDate} label="Дата выдачи" inputId="doc-input-realtor-issue-date" highlight={highlight} />, 
+                    зарегистрированный(-ая) по адресу: <Slot slotId="realtor_reg_address" value={realtorRegAddress} label="Адрес регистрации" inputId="doc-input-realtor-reg-address" highlight={highlight} />, 
+                    телефон: <Slot slotId="realtor_phone" value={realtorPhone} label="Телефон" inputId="doc-input-realtor-phone" highlight={highlight} />, 
+                    действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), со второй стороны, 
+                    именуемый(-ая) в дальнейшем <strong>«Исполнитель 2»</strong>,
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    Гр. <strong><Slot slotId="customer_name" value={customerFullName} label="ФИО Заказчика" inputId="doc-input-customer-name" highlight={highlight} /></strong>, 
+                    паспорт серия <Slot slotId="customer_series" value={customerSeries} label="Серия паспорта" inputId="doc-input-customer-series" highlight={highlight} /> номер <Slot slotId="customer_number" value={customerNumber} label="Номер паспорта" inputId="doc-input-customer-number" highlight={highlight} />, 
+                    выдан <Slot slotId="customer_issued_by" value={customerIssuedBy} label="Кем выдан" inputId="doc-input-customer-issued-by" highlight={highlight} /> дата выдачи: <Slot slotId="customer_issue_date" value={customerIssueDate} label="Дата выдачи" inputId="doc-input-customer-issue-date" highlight={highlight} />, 
+                    зарегистрированный (-ая) по адресу: <Slot slotId="customer_reg_address" value={customerRegAddress} label="Адрес регистрации" inputId="doc-input-customer-reg-address" highlight={highlight} />, 
+                    дата рождения: <Slot slotId="customer_birth" value={customerBirth} label="Дата рождения" inputId="doc-input-customer-birth" highlight={highlight} />, 
+                    телефон: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-customer-phone" highlight={highlight} />, 
+                    адрес эл. почты: <Slot slotId="customer_email" value={customerEmail} label="Email" inputId="doc-input-customer-email" highlight={highlight} />, 
+                    далее по тексту <strong>«Заказчик»</strong>, с третьей стороны, вместе именуемые «Стороны», а по отдельности «Сторона», 
+                    заключили настоящий договор (далее договор) о нижеследующем:
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>1. ПРЕДМЕТ ДОГОВОРА</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    1.1. Предметом Договора в отношении Исполнителя 1 является:
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    1.1.1. Организовать просмотры вариантов объектов недвижимости, извещая о времени и месте просмотра Заказчика.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    1.1.2. Согласовать место и время проведения переговоров с арендодателем/наймодателем Объекта.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    1.1.3. Правовая экспертиза договоров.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    1.2. Предметом Договора в отношении Исполнителя 2 является:
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    1.2.1. Консультирование Заказчика по правовым, организационным и маркетинговым аспектам совершения сделок на рынке недвижимости, а также информирование его о правилах и особенностях совершения сделок по аренде недвижимого имущества.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    1.2.2. Определение реалистичной цены и реалистичных условий аренды, на основании финансовых возможностей Заказчика и ценовой конъюнктуры рынка.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    1.2.3. Анализ рынка недвижимости, выявление вариантов объектов.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    1.2.4. Подготовка, составление и заполнение документов для проведения сделки по аренде/найму объекта недвижимости между Заказчиком и Арендодателем/Наймодателем выбранного Заказчиком объекта недвижимости.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    1.3. Услуги оказываются Исполнителями в период с момента заключения Договора до «<Slot slotId="contract_end_date" value={contractEndDate} label="Срок договора" inputId="doc-input-contract-end-date" highlight={highlight} />». 
+                    Если ни одна из Сторон не заявит о своем намерении прекратить действие договора, то настоящий договор считается возобновленным на тех же условиях и на тот же срок.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>2. ОБЯЗАННОСТИ СТОРОН</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    <strong>2.1. Исполнитель 1 обязан:</strong>
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.1.1. Оказать Заказчику услуги, перечисленные в п.1.1. Договора на условиях, установленных в разделах 2-4 Договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.1.2. Составить и направить Заказчику Акт выполненных работ.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    <strong>2.2. Исполнитель 2 обязан:</strong>
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.2.1. Оказать Заказчику услуги, перечисленные в п.1.2. Договора на условиях, установленных в разделах 2-4 Договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                    2.2.2. Составить и направить Заказчику Акт выполненных работ.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    <strong>2.3. Заказчик Обязан:</strong>
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.1. Проводить действия, связанные с поиском Объекта только при содействии Исполнителя.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.2. Оплатить Исполнителям вознаграждение в размере и в сроки, предусмотренные настоящим договором.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.3. Сохранять конфиденциальность предоставленной ему информации и передавать ее третьим лицам, без согласия Исполнителей.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.4. Не заключать договоры аналогичные настоящему Договору с другими физическими и/или юридическими лицами до истечения срока действия Договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.5. Предоставить Исполнителям информацию и документы, необходимые для надлежащего исполнения Договора.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.6. Незамедлительно информировать Исполнителей обо всех обстоятельствах, влияющих на совершение сделки по аренде/найме Объекта.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.7. Своевременно являться для просмотров вариантов объектов недвижимости, подписания необходимых документов, в том числе Актов осмотра объектов недвижимости, и заключения договора о аренде/найме Объекта.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.8. В случае выбора из представленных вариантов объектов недвижимости Объекта с целью его аренды/найма оповестить об этом Исполнителей.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.9. Не вести самостоятельно никаких переговоров с собственником (-ами) Объекта.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.10. В случае возникновения такой необходимости, оплатить расходы по оформлению договора аренды/найма Объекта и возможной последующей регистрации обременения.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 4, textAlign: 'justify' }}>
+                    2.3.11. В день заключения договора аренды/найма подписать Акт об оказании услуг с Исполнителем 1. Если Акт выполненных работ не будет подписан, а также не будут предоставлены мотивированные возражения Заказчика от подписания Акта, Акт считается подписанным Заказчиком, а Услуги, указанные в Акте принятыми Заказчиком, что является основанием для оплаты услуг Исполнителя.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    2.3.12. В день заключения договора аренды/найма подписать Акт об оказании услуг с Исполнителем 2. Если Акт выполненных работ не будет подписан, а также не будут предоставлены мотивированные возражения Заказчика от подписания Акта, Акт считается подписанным Заказчиком, а Услуги, указанные в Акте принятыми Заказчиком, что является основанием для оплаты услуг Исполнителя.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>3. ОПЛАТА УСЛУГ</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    3.1. Оплата Исполнителю 1 и Исполнителю 2 производится Заказчиком индивидуально.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    3.2. Стоимость услуг, оказываемых Исполнителем 1 по настоящему Договору, определена сторонами в сумме <strong><Slot slotId="service1_cost" value={s1Formatted} label="Сумма Исполнителю 1 (₽)" inputId="doc-input-service1-cost" highlight={highlight} /></strong> {s1Words ? <Slot slotId="service1_words" value={s1Words} label="Сумма прописью" inputId="doc-input-service1-cost" highlight={highlight} /> : ''} рублей, в том числе НДС 5%.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    3.3. Стоимость услуг, оказываемых Исполнителем 2 по настоящему Договору, определена сторонами в сумме <strong><Slot slotId="service2_cost" value={s2Formatted} label="Сумма Исполнителю 2 (₽)" inputId="doc-input-service2-cost" highlight={highlight} /></strong> {s2Words ? <Slot slotId="service2_words" value={s2Words} label="Сумма прописью" inputId="doc-input-service2-cost" highlight={highlight} /> : ''} рублей.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    3.4. Услуги Исполнителей оплачиваются в день подписания договора аренды/найма.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>4. РАЗЪЯСНЕНИЯ, ГАРАНТИИ И ПОДТВЕРЖДЕНИЯ СТОРОН</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    4.1. В случае неисполнения обязательств по настоящему договору Стороны несут ответственность в порядке и по основаниям, предусмотренным действующим законодательством РФ.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
+                    4.2. В случае отказа Заказчика от аренды/найма Объекта по причине, не связанной с действиями Арендодателя/Наймодателя Объекта, либо уклонения от аренды/найма данного Объекта, в том числе при неявке на заключение договора о аренде/найме Объекта, Заказчик обязан уплатить Исполнителям вознаграждение соразмерно оказанным на момент прекращения Договора услугам, размер которого в любом случае не может составлять менее 50% от сумм, указанных в п. 3 настоящего договора.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>5. ЗАКЛЮЧИТЕЛЬНЫЕ ПОЛОЖЕНИЯ</div>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.1. Стороны гарантируют друг другу конфиденциальность условий договора и предстоящих сделок.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.2. Исполнители не несут ответственности за задержку выдачи документов регистрирующим органом.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.3. Заказчик в соответствии с требованиями законодательства Российской Федерации, в том числе на основании статьи 9 Федерального закона «О персональных данных» от 27.07.2006 №152-ФЗ, путем подписания данного Договора предоставляет Исполнителям согласие на обработку и использование своих персональных данных, содержащихся в настоящем договоре и представленных им документах в целях надлежащего исполнения обязанностей Исполнителя в соответствии с настоящем Договором. Заказчик подтверждает наличие у него прав на передачу Исполнителям всех персональных данных, содержащихся в передаваемых документах (копиях документов).
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.4. Во избежание сомнений Стороны установили, что Исполнители, оказывая услуги в рамках настоящего договора, не осуществляют управление денежными средствами, ценными бумагами или иным имуществом Заказчика.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.5. Настоящий Договор составлен в трех экземплярах, по одному для каждой стороны.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.6. Все споры, возникающие в связи с исполнением настоящего Договора разрешаются путем переговоров. В случае не достижения согласия путем переговоров, спор подлежит рассмотрению судом.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.7. Все изменения и дополнения к настоящему Договору действительны, если они совершены в письменной форме и подписаны представителями обеих сторон. Стороны пришли к соглашению, что все уведомления, запросы, документы, связанные с исполнением Сторонами своих обязательств по настоящему Договору, могут направляться Сторонами по реквизитам, указанным в договоре: на электронный адрес, смс сообщением или сообщением посредством Telegram. Стороны обязаны уведомлять друг друга об изменении адресов и телефонов в течении 3 (трех) рабочих дней с момента их изменения.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.8. Все уведомления, запросы, документы, связанные с исполнением Сторонами своих обязательств по настоящему Договору, должны направляться Сторонами по указанным ниже адресам и реквизитам. Стороны обязаны уведомлять друг друга об изменении адресов и реквизитов в течение 3 (трех) рабочих дней с момента их изменения.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
+                    5.9. Все приложения к Договору являются его неотъемлемой частью.
+                </p>
+                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                    5.10. Вопросы, не урегулированные Договором, и споры подлежат разрешению в соответствии с действующим законодательством.
+                </p>
+
+                <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>6. ПОДПИСИ СТОРОН</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 28, fontSize: 13 }}>
+                    <div style={{ border: '1px solid #ddd', padding: 12, borderRadius: 8 }}>
+                        <strong>Исполнитель 1:</strong><br />
+                        ИП Муравьева Юлия Анатольевна<br />
+                        ИНН 434560366213, ОГРН 323784700414782<br />
+                        г. Киров, ул. Ленина, д. 89, пом. 4<br />
+                        АО «Тинькофф Банк»<br />
+                        р/с 40802810400005970330<br />
+                        БИК 044525974<br /><br />
+                        Подпись: ________________ / Муравьева Ю.А. /
+                    </div>
+                    <div style={{ border: '1px solid #ddd', padding: 12, borderRadius: 8 }}>
+                        <strong>Исполнитель 2 (Риэлтор):</strong><br />
+                        <Slot slotId="realtor_name" value={realtorFullName} label="ФИО Риэлтора" inputId="doc-input-realtor-name" highlight={highlight} /><br />
+                        ИНН: <Slot slotId="realtor_inn" value={realtorInn} label="ИНН" inputId="doc-input-realtor-inn" highlight={highlight} /><br />
+                        Паспорт: <Slot slotId="realtor_series" value={realtorSeries} label="Серия" inputId="doc-input-realtor-series" highlight={highlight} /> № <Slot slotId="realtor_number" value={realtorNumber} label="Номер" inputId="doc-input-realtor-number" highlight={highlight} /><br />
+                        Адрес: <Slot slotId="realtor_reg_address" value={realtorRegAddress} label="Адрес регистрации" inputId="doc-input-realtor-reg-address" highlight={highlight} /><br />
+                        Тел: <Slot slotId="realtor_phone" value={realtorPhone} label="Телефон" inputId="doc-input-realtor-phone" highlight={highlight} /><br /><br />
+                        Подпись: ________________ / <Slot slotId="realtor_short" value={realtorShort} label="Инициалы" inputId="doc-input-realtor-short" highlight={highlight} /> /
+                    </div>
+                    <div style={{ border: '1px solid #ddd', padding: 12, borderRadius: 8 }}>
+                        <strong>Заказчик:</strong><br />
+                        <Slot slotId="customer_name" value={customerFullName} label="ФИО Заказчика" inputId="doc-input-customer-name" highlight={highlight} /><br />
+                        Паспорт: <Slot slotId="customer_series" value={customerSeries} label="Серия" inputId="doc-input-customer-series" highlight={highlight} /> № <Slot slotId="customer_number" value={customerNumber} label="Номер" inputId="doc-input-customer-number" highlight={highlight} /><br />
+                        Адрес: <Slot slotId="customer_reg_address" value={customerRegAddress} label="Адрес регистрации" inputId="doc-input-customer-reg-address" highlight={highlight} /><br />
+                        Тел: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-customer-phone" highlight={highlight} /><br />
+                        Email: <Slot slotId="customer_email" value={customerEmail} label="Email" inputId="doc-input-customer-email" highlight={highlight} /><br /><br />
+                        Подпись: ________________ / <Slot slotId="customer_short" value={customerShort} label="Инициалы" inputId="doc-input-customer-short" highlight={highlight} /> /
+                    </div>
+                </div>
+
+                {/* Разделитель перед Актом выполненных работ */}
+                <div style={{ pageBreakBefore: 'always', borderTop: '2px dashed #999', paddingTop: 24, marginTop: 32 }}>
+                    <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 6, textTransform: 'uppercase' }}>
+                        АКТ ВЫПОЛНЕННЫХ РАБОТ
+                    </div>
+                    <div style={{ textAlign: 'center', fontSize: 14, marginBottom: 16 }}>
+                        К ДОГОВОРУ № <Slot slotId="contract_number" value={contractNumber} label="Номер договора" inputId="doc-input-contract-number" highlight={highlight} /> от «<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, fontSize: 14 }}>
+                        <span>г. Киров</span>
+                        <span>«<Slot slotId="act_date" value={customActDate} label="Дата акта" inputId="doc-input-act-date" highlight={highlight} />»</span>
+                    </div>
+
+                    <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                        1. Мы, нижеподписавшиеся, составили настоящий акт по факту завершения услуг по Договору об оказании услуг. Исполнители выполнили в полном объеме свои обязательства согласно Договору об оказании услуг № <Slot slotId="contract_number" value={contractNumber} label="Номер договора" highlight={highlight} /> от «<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />».
+                    </p>
+                    <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
+                        2. Заказчик считает услуги полностью выполненными и претензий к сроку выполнения, полноте и качеству услуг не имеет.
+                    </p>
+                    <p style={{ textIndent: '2.5em', marginBottom: 20, textAlign: 'justify' }}>
+                        3. Настоящий акт является основанием для оплаты Заказчиком вознаграждения Исполнителю 1 и Исполнителю 2.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginTop: 16 }}>
+                        <div>
+                            <strong>Заказчик:</strong>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 26, marginTop: 12 }}></div>
+                            <div style={{ fontSize: 11, color: '#666', textAlign: 'center', marginTop: 2 }}>
+                                (Подпись) / <Slot slotId="customer_short" value={customerShort} label="ФИО" highlight={highlight} />
+                            </div>
+                        </div>
+                        <div>
+                            <strong>Исполнитель 1:</strong>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 26, marginTop: 12 }}></div>
+                            <div style={{ fontSize: 11, color: '#666', textAlign: 'center', marginTop: 2 }}>
+                                (Подпись) / Муравьева Ю.А.
+                            </div>
+                        </div>
+                        <div>
+                            <strong>Исполнитель 2:</strong>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 26, marginTop: 12 }}></div>
+                            <div style={{ fontSize: 11, color: '#666', textAlign: 'center', marginTop: 2 }}>
+                                (Подпись) / <Slot slotId="realtor_short" value={realtorShort} label="ФИО" highlight={highlight} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     /* ── Шаблон: Агентский договор — Продажа (1 принципал) ──────────────────── */
     if (template === 'agency_sale_1') {

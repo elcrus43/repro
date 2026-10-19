@@ -101,4 +101,44 @@ describe('templateUtils - sanitizeTemplateForSaving', () => {
         expect(sanitized).toContain('data-slot-id="principal_name"');
         expect(sanitized).toContain('data-slot-id="principal_phone"');
     });
+
+    it('extracts and populates 3-party rental contract slots accurately', () => {
+        const data = {
+            realtor: {
+                full_name: 'Смирнов Алексей Владимирович',
+                phone: '+7 912 888-77-66',
+                inn: '434512345678',
+                passport_details: {
+                    series: '33 11',
+                    number: '998877',
+                    issued_by: 'УМВД по Кировской области',
+                    issue_date: '2015-01-10',
+                    registration_address: 'г. Киров, Октябрьский пр-т, 10'
+                }
+            },
+            buyer: {
+                full_name: 'Кузнецов Дмитрий Иванович',
+                phone: '+7 900 123-45-67',
+                email: 'kuznetsov@example.com',
+                passport_details: {
+                    series: '45 12',
+                    number: '123456',
+                    registration_address: 'г. Киров, ул. Воровского, 50'
+                }
+            },
+            service1Cost: '5 000',
+            service2Cost: '15 000',
+            actDate: '2026-10-25'
+        };
+
+        const slots = buildSlotValues(data, 'services_rent_3party');
+        expect(slots.realtor_name).toBe('Смирнов Алексей Владимирович');
+        expect(slots.realtor_inn).toBe('434512345678');
+        expect(slots.customer_name).toBe('Кузнецов Дмитрий Иванович');
+        expect(slots.customer_email).toBe('kuznetsov@example.com');
+        expect(slots.service1_cost.replace(/\s/g, ' ')).toBe('5 000');
+        expect(slots.service2_cost.replace(/\s/g, ' ')).toBe('15 000');
+        expect(slots.service1_words).toContain('пять тысяч');
+        expect(slots.service2_words).toContain('пятнадцать тысяч');
+    });
 });

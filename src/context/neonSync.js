@@ -316,9 +316,12 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Профиль ────────────────────────────────────────────── */
       case 'UPDATE_PROFILE': {
-        const { id, full_name, phone, agency_name, inn } = action.profile;
+        const { id, full_name, phone, agency_name, inn, passport_details } = action.profile;
         const updateData = { full_name: full_name || '', phone: phone || '', agency_name: agency_name || '' };
         if (inn !== undefined) updateData.inn = inn || null;
+        if (passport_details !== undefined) {
+          updateData.passport_details = typeof passport_details === 'string' ? JSON.parse(passport_details) : (passport_details || {});
+        }
         result = await neonDb.update('profiles', id, updateData);
         break;
       }

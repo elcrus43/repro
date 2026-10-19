@@ -45,6 +45,13 @@ describe('docxGenerator - getDocumentTemplates', () => {
         expect(rentTpl).toBeDefined();
         expect(rentTpl.title).toBe('АД Найм с наймодателем');
     });
+
+    it('includes services_rent_3party template', () => {
+        const templates = getDocumentTemplates();
+        const rent3PartyTpl = templates.find(t => t.key === 'services_rent_3party');
+        expect(rent3PartyTpl).toBeDefined();
+        expect(rent3PartyTpl.title).toBe('ДОУ Аренда и найм (3-сторонний)');
+    });
 });
 
 import { toShortName, formatPropertyKind, collectDocxBlocksFromDom } from './docxGenerator';
@@ -109,6 +116,45 @@ describe('docxGenerator - collectDocxBlocksFromDom', () => {
         `;
         const blocks = collectDocxBlocksFromDom(container, false);
         expect(blocks.length).toBe(1);
+    });
+});
+
+import { buildServicesRent3PartyContract } from './docxGenerator';
+
+describe('docxGenerator - buildServicesRent3PartyContract', () => {
+    it('generates contract sections for 3-party rental agreement', () => {
+        const data = {
+            realtor: {
+                full_name: 'Смирнов Алексей Владимирович',
+                inn: '434512345678',
+                phone: '+7 912 888-77-66',
+                passport_details: {
+                    series: '33 11',
+                    number: '998877',
+                    issued_by: 'УМВД по Кировской области',
+                    issue_date: '2015-01-10',
+                    registration_address: 'г. Киров, Октябрьский пр-т, 10'
+                }
+            },
+            buyer: {
+                full_name: 'Кузнецов Дмитрий Иванович',
+                phone: '+7 900 123-45-67',
+                email: 'kuznetsov@example.com',
+                passport_details: {
+                    series: '45 12',
+                    number: '123456',
+                    registration_address: 'г. Киров, ул. Воровского, 50'
+                }
+            },
+            service1Cost: '5 000',
+            service2Cost: '15 000',
+            contractEndDate: '2026-12-31',
+            actDate: '2026-10-25'
+        };
+
+        const blocks = buildServicesRent3PartyContract(data);
+        expect(Array.isArray(blocks)).toBe(true);
+        expect(blocks.length).toBeGreaterThan(20);
     });
 });
 
