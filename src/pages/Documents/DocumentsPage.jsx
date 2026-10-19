@@ -596,6 +596,15 @@ export function DocumentsPage() {
 
     /* ── Черновик реквизитов клиента ──────────────────────────────────────── */
     const [clientDraft, setClientDraft] = useState({
+        is_legal_entity: false,
+        company_name: '',
+        inn: '',
+        kpp: '',
+        ogrn: '',
+        legal_address: '',
+        authorized_position: 'Генеральный директор',
+        authorized_name: '',
+        authorized_basis: 'Устава',
         full_name: '',
         phone: '',
         birth_date: '',
@@ -610,9 +619,29 @@ export function DocumentsPage() {
     useEffect(() => {
         if (activeClient) {
             const p = activeClient.passport_details || {};
+            const cd = activeClient.company_details || {};
+            const ap = activeClient.authorized_person || {};
+            const isLegal = Boolean(
+                activeClient.is_legal_entity ||
+                activeClient.client_types?.includes('legal_entity') ||
+                activeClient.company_details?.inn ||
+                activeClient.company_details?.ogrn ||
+                activeClient.company_name ||
+                cd.name ||
+                /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(activeClient.full_name || '')
+            );
             setClientDraft({
+                is_legal_entity: isLegal,
+                company_name: activeClient.company_name || cd.name || cd.short_name || (isLegal ? activeClient.full_name : ''),
+                inn: activeClient.inn || cd.inn || p.inn || '',
+                kpp: activeClient.kpp || cd.kpp || '',
+                ogrn: activeClient.ogrn || cd.ogrn || '',
+                legal_address: activeClient.legal_address || cd.legal_address || activeClient.reg_address || activeClient.address || '',
+                authorized_position: activeClient.authorized_position || ap.position || cd.director_position || 'Генеральный директор',
+                authorized_name: activeClient.authorized_name || ap.name || cd.director_name || (!isLegal ? activeClient.full_name : ''),
+                authorized_basis: activeClient.authorized_basis || ap.basis_document || 'Устава',
                 full_name: activeClient.full_name || '',
-                phone: formatPhone(activeClient.phone || '', true),
+                phone: formatPhone(activeClient.phone || ap.phone || '', true),
                 birth_date: activeClient.birth_date || p.birth_date || '',
                 passport_series: p.series || '',
                 passport_number: p.number || '',
@@ -632,38 +661,90 @@ export function DocumentsPage() {
 
     /* ── Обогащенный клиент для живого предпросмотра ───────────────────────── */
     const enrichedClient = useMemo(() => {
+        const isLegal = Boolean(clientDraft.is_legal_entity);
+        const cd = {
+            name: clientDraft.company_name || '',
+            short_name: clientDraft.company_name || '',
+            inn: clientDraft.inn || '',
+            kpp: clientDraft.kpp || '',
+            ogrn: clientDraft.ogrn || '',
+            legal_address: clientDraft.legal_address || '',
+            director_name: clientDraft.authorized_name || '',
+            director_position: clientDraft.authorized_position || 'Генеральный директор',
+        };
+        const ap = {
+            name: clientDraft.authorized_name || '',
+            position: clientDraft.authorized_position || 'Генеральный директор',
+            basis_document: clientDraft.authorized_basis || 'Устава',
+            phone: clientDraft.phone || '',
+        };
+
         if (!activeClient) {
-            const hasDraft = Boolean(
-                clientDraft.full_name?.trim() || 
-                clientDraft.phone?.trim() || 
-                clientDraft.passport_series?.trim() || 
-                clientDraft.passport_number?.trim() ||
-                clientDraft.registration_address?.trim()
-            );
+            const hasDraft = isLegal
+                ? Boolean(clientDraft.company_name?.trim() || clientDraft.inn?.trim() || clientDraft.authorized_name?.trim())
+                : Boolean(
+                    clientDraft.full_name?.trim() || 
+                    clientDraft.phone?.trim() || 
+                    clientDraft.passport_series?.trim() || 
+                    clientDraft.passport_number?.trim() ||
+                    clientDraft.registration_address?.trim()
+                );
             if (!hasDraft) return null;
             return {
                 id: 'draft_manual_client',
-                full_name: clientDraft.full_name || '',
+                is_legal_entity: isLegal,
+                client_types: isLegal ? ['legal_entity'] : ['buyer'],
+                company_name: clientDraft.company_name || '',
+                inn: clientDraft.inn || '',
+                kpp: clientDraft.kpp || '',
+                ogrn: clientDraft.ogrn || '',
+                legal_address: clientDraft.legal_address || '',
+                authorized_position: clientDraft.authorized_position || 'Генеральный директор',
+                authorized_name: clientDraft.authorized_name || '',
+                authorized_basis: clientDraft.authorized_basis || 'Устава',
+                company_details: cd,
+                authorized_person: ap,
+                full_name: isLegal ? (clientDraft.company_name || 'Юридическое лицо') : (clientDraft.full_name || ''),
                 phone: clientDraft.phone || '',
                 birth_date: clientDraft.birth_date || '',
-                reg_address: clientDraft.registration_address || '',
+                reg_address: isLegal ? (clientDraft.legal_address || '') : (clientDraft.registration_address || ''),
                 passport_details: {
                     series: clientDraft.passport_series || '',
                     number: clientDraft.passport_number || '',
                     issued_by: clientDraft.passport_issued_by || '',
                     issue_date: clientDraft.passport_issue_date || '',
                     unit_code: clientDraft.passport_unit_code || '',
-                    registration_address: clientDraft.registration_address || '',
+                    registration_address: isLegal ? (clientDraft.legal_address || '') : (clientDraft.registration_address || ''),
                     birth_date: clientDraft.birth_date || '',
                 }
             };
         }
         return {
             ...activeClient,
-            full_name: clientDraft.full_name || activeClient.full_name,
+            is_legal_entity: isLegal,
+            client_types: isLegal 
+                ? Array.from(new Set([...(activeClient.client_types || []), 'legal_entity']))
+                : (activeClient.client_types || []).filter(t => t !== 'legal_entity'),
+            company_name: clientDraft.company_name || '',
+            inn: clientDraft.inn || activeClient.inn || '',
+            kpp: clientDraft.kpp || '',
+            ogrn: clientDraft.ogrn || '',
+            legal_address: clientDraft.legal_address || '',
+            authorized_position: clientDraft.authorized_position || 'Генеральный директор',
+            authorized_name: clientDraft.authorized_name || '',
+            authorized_basis: clientDraft.authorized_basis || 'Устава',
+            company_details: {
+                ...(activeClient.company_details || {}),
+                ...cd,
+            },
+            authorized_person: {
+                ...(activeClient.authorized_person || {}),
+                ...ap,
+            },
+            full_name: isLegal ? (clientDraft.company_name || activeClient.full_name) : (clientDraft.full_name || activeClient.full_name),
             phone: clientDraft.phone || activeClient.phone,
-            birth_date: clientDraft.birth_date || activeClient.birth_date,
-            reg_address: clientDraft.registration_address || activeClient.reg_address,
+            birth_date: isLegal ? '' : (clientDraft.birth_date || activeClient.birth_date),
+            reg_address: isLegal ? (clientDraft.legal_address || activeClient.reg_address) : (clientDraft.registration_address || activeClient.reg_address),
             passport_details: {
                 ...(activeClient.passport_details || {}),
                 series: clientDraft.passport_series,
@@ -671,8 +752,8 @@ export function DocumentsPage() {
                 issued_by: clientDraft.passport_issued_by,
                 issue_date: clientDraft.passport_issue_date,
                 unit_code: clientDraft.passport_unit_code,
-                registration_address: clientDraft.registration_address,
-                birth_date: clientDraft.birth_date,
+                registration_address: isLegal ? (clientDraft.legal_address || '') : clientDraft.registration_address,
+                birth_date: isLegal ? '' : clientDraft.birth_date,
             }
         };
     }, [activeClient, clientDraft]);
@@ -750,61 +831,132 @@ export function DocumentsPage() {
     const handleSaveToCrm = async () => {
         setIsSavingToCrm(true);
         try {
+            const isLegal = Boolean(clientDraft.is_legal_entity);
             if (activeClient) {
                 const series = clientDraft.passport_series?.trim() || '';
                 const number = clientDraft.passport_number?.trim() || '';
                 const passportStr = (series && number) ? `${series} ${number}` : (series || number || activeClient.passport || '');
-                const birthDateStr = clientDraft.birth_date?.trim() || activeClient.birth_date || '';
-                const regAddressStr = clientDraft.registration_address?.trim() || activeClient.reg_address || '';
-                const innStr = activeClient.inn || activeClient.passport_details?.inn || '';
+                const birthDateStr = isLegal ? '' : (clientDraft.birth_date?.trim() || activeClient.birth_date || '');
+                const regAddressStr = isLegal ? (clientDraft.legal_address?.trim() || '') : (clientDraft.registration_address?.trim() || activeClient.reg_address || '');
+                const innStr = clientDraft.inn?.trim() || activeClient.inn || activeClient.passport_details?.inn || '';
+
+                const cd = {
+                    ...(activeClient.company_details || {}),
+                    name: clientDraft.company_name?.trim() || activeClient.company_details?.name || '',
+                    short_name: clientDraft.company_name?.trim() || activeClient.company_details?.short_name || '',
+                    inn: innStr,
+                    kpp: clientDraft.kpp?.trim() || '',
+                    ogrn: clientDraft.ogrn?.trim() || '',
+                    legal_address: clientDraft.legal_address?.trim() || '',
+                    director_name: clientDraft.authorized_name?.trim() || '',
+                    director_position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
+                };
+
+                const ap = {
+                    ...(activeClient.authorized_person || {}),
+                    name: clientDraft.authorized_name?.trim() || '',
+                    position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
+                    basis_document: clientDraft.authorized_basis?.trim() || 'Устава',
+                    phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
+                };
+
+                const clientTypes = isLegal
+                    ? Array.from(new Set([...(activeClient.client_types || []), 'legal_entity']))
+                    : (activeClient.client_types || []).filter(t => t !== 'legal_entity');
 
                 const updatedClient = {
                     ...activeClient,
-                    full_name: clientDraft.full_name?.trim() || activeClient.full_name,
+                    is_legal_entity: isLegal,
+                    company_name: isLegal ? (clientDraft.company_name?.trim() || activeClient.company_name) : (activeClient.company_name || ''),
+                    inn: innStr,
+                    kpp: clientDraft.kpp?.trim() || '',
+                    ogrn: clientDraft.ogrn?.trim() || '',
+                    legal_address: clientDraft.legal_address?.trim() || '',
+                    authorized_position: clientDraft.authorized_position?.trim() || '',
+                    authorized_name: clientDraft.authorized_name?.trim() || '',
+                    authorized_basis: clientDraft.authorized_basis?.trim() || '',
+                    company_details: cd,
+                    authorized_person: ap,
+                    client_types: clientTypes,
+                    full_name: isLegal 
+                        ? (clientDraft.company_name?.trim() || activeClient.full_name) 
+                        : (clientDraft.full_name?.trim() || activeClient.full_name),
                     phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || activeClient.phone,
                     birth_date: birthDateStr,
                     reg_address: regAddressStr,
-                    passport: passportStr,
+                    passport: isLegal ? '' : passportStr,
                     passport_details: {
                         ...(activeClient.passport_details || {}),
-                        series,
-                        number,
-                        issued_by: clientDraft.passport_issued_by?.trim() || '',
-                        issue_date: clientDraft.passport_issue_date?.trim() || '',
-                        unit_code: clientDraft.passport_unit_code?.trim() || '',
+                        series: isLegal ? '' : series,
+                        number: isLegal ? '' : number,
+                        issued_by: isLegal ? '' : (clientDraft.passport_issued_by?.trim() || ''),
+                        issue_date: isLegal ? '' : (clientDraft.passport_issue_date?.trim() || ''),
+                        unit_code: isLegal ? '' : (clientDraft.passport_unit_code?.trim() || ''),
                         registration_address: regAddressStr,
                         birth_date: birthDateStr,
                         inn: innStr,
                     }
                 };
                 await dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
-            } else if (clientDraft.full_name?.trim() || clientDraft.phone?.trim()) {
+            } else if (clientDraft.full_name?.trim() || clientDraft.company_name?.trim() || clientDraft.phone?.trim()) {
                 const series = clientDraft.passport_series?.trim() || '';
                 const number = clientDraft.passport_number?.trim() || '';
                 const passportStr = (series && number) ? `${series} ${number}` : (series || number || '');
-                const birthDateStr = clientDraft.birth_date?.trim() || '';
-                const regAddressStr = clientDraft.registration_address?.trim() || '';
+                const birthDateStr = isLegal ? '' : (clientDraft.birth_date?.trim() || '');
+                const regAddressStr = isLegal ? (clientDraft.legal_address?.trim() || '') : (clientDraft.registration_address?.trim() || '');
+                const innStr = clientDraft.inn?.trim() || '';
+
+                const baseType = isAgencySale ? 'seller' : 'buyer';
+                const clientTypes = isLegal ? [baseType, 'legal_entity'] : [baseType];
 
                 const newClient = {
                     id: `client_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                    full_name: clientDraft.full_name?.trim() || 'Клиент',
+                    is_legal_entity: isLegal,
+                    company_name: isLegal ? (clientDraft.company_name?.trim() || '') : '',
+                    inn: innStr,
+                    kpp: clientDraft.kpp?.trim() || '',
+                    ogrn: clientDraft.ogrn?.trim() || '',
+                    legal_address: clientDraft.legal_address?.trim() || '',
+                    authorized_position: clientDraft.authorized_position?.trim() || '',
+                    authorized_name: clientDraft.authorized_name?.trim() || '',
+                    authorized_basis: clientDraft.authorized_basis?.trim() || '',
+                    company_details: {
+                        name: clientDraft.company_name?.trim() || '',
+                        short_name: clientDraft.company_name?.trim() || '',
+                        inn: innStr,
+                        kpp: clientDraft.kpp?.trim() || '',
+                        ogrn: clientDraft.ogrn?.trim() || '',
+                        legal_address: clientDraft.legal_address?.trim() || '',
+                        director_name: clientDraft.authorized_name?.trim() || '',
+                        director_position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
+                    },
+                    authorized_person: {
+                        name: clientDraft.authorized_name?.trim() || '',
+                        position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
+                        basis_document: clientDraft.authorized_basis?.trim() || 'Устава',
+                        phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
+                    },
+                    full_name: isLegal 
+                        ? (clientDraft.company_name?.trim() || 'Юридическое лицо')
+                        : (clientDraft.full_name?.trim() || 'Клиент'),
                     phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
                     birth_date: birthDateStr,
                     reg_address: regAddressStr,
-                    passport: passportStr,
-                    client_types: [isAgencySale ? 'seller' : 'buyer'],
+                    passport: isLegal ? '' : passportStr,
+                    client_types: clientTypes,
                     status: 'active',
                     realtor_id: state.currentUser?.id,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
                     passport_details: {
-                        series,
-                        number,
-                        issued_by: clientDraft.passport_issued_by?.trim() || '',
-                        issue_date: clientDraft.passport_issue_date?.trim() || '',
-                        unit_code: clientDraft.passport_unit_code?.trim() || '',
+                        series: isLegal ? '' : series,
+                        number: isLegal ? '' : number,
+                        issued_by: isLegal ? '' : (clientDraft.passport_issued_by?.trim() || ''),
+                        issue_date: isLegal ? '' : (clientDraft.passport_issue_date?.trim() || ''),
+                        unit_code: isLegal ? '' : (clientDraft.passport_unit_code?.trim() || ''),
                         registration_address: regAddressStr,
                         birth_date: birthDateStr,
+                        inn: innStr,
                     }
                 };
                 await dispatch({ type: 'ADD_CLIENT', client: newClient });
@@ -919,8 +1071,8 @@ export function DocumentsPage() {
             deal = { ...(deal || {}), contract_end_date: contractEndDate };
         }
 
-        return { seller, buyer, property, realtor, agencyName, deal, contractEndDate, service1Cost, service2Cost, actDate };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate]);
+        return { seller, buyer, property, realtor, agencyName, deal, contractEndDate, service1Cost, service2Cost, actDate, isLegalEntity: Boolean(clientDraft.is_legal_entity) };
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, clientDraft.is_legal_entity]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -989,6 +1141,15 @@ export function DocumentsPage() {
         setBuyerId('');
         setSelectedContractId('');
         setClientDraft({
+            is_legal_entity: false,
+            company_name: '',
+            inn: '',
+            kpp: '',
+            ogrn: '',
+            legal_address: '',
+            authorized_position: 'Генеральный директор',
+            authorized_name: '',
+            authorized_basis: 'Устава',
             full_name: '',
             phone: '',
             birth_date: '',
@@ -1004,8 +1165,10 @@ export function DocumentsPage() {
 
     /* ── Создание нового клиента из черновика в CRM ───────────────────────── */
     const handleSaveNewClientToCrm = async () => {
-        if (!clientDraft.full_name?.trim()) {
-            toast?.error?.('Укажите ФИО принципала');
+        const isLegal = Boolean(clientDraft.is_legal_entity);
+        const nameToValidate = isLegal ? clientDraft.company_name?.trim() : clientDraft.full_name?.trim();
+        if (!nameToValidate) {
+            toast?.error?.(isLegal ? 'Укажите наименование организации' : 'Укажите ФИО принципала');
             return;
         }
         setIsSavingToCrm(true);
@@ -1013,26 +1176,61 @@ export function DocumentsPage() {
             const series = clientDraft.passport_series?.trim() || '';
             const number = clientDraft.passport_number?.trim() || '';
             const passportStr = (series && number) ? `${series} ${number}` : (series || number || '');
+            const birthDateStr = isLegal ? '' : (clientDraft.birth_date?.trim() || '');
+            const regAddressStr = isLegal ? (clientDraft.legal_address?.trim() || '') : (clientDraft.registration_address?.trim() || '');
+            const innStr = clientDraft.inn?.trim() || '';
+
+            const baseType = isAgencySale ? 'seller' : 'buyer';
+            const clientTypes = isLegal ? [baseType, 'legal_entity'] : [baseType];
+
             const newClient = {
                 id: `client_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                full_name: clientDraft.full_name.trim(),
-                phone: stripPhone(clientDraft.phone) || clientDraft.phone.trim(),
-                client_types: [isAgencySale ? 'seller' : 'buyer'],
+                is_legal_entity: isLegal,
+                company_name: isLegal ? (clientDraft.company_name?.trim() || '') : '',
+                inn: innStr,
+                kpp: clientDraft.kpp?.trim() || '',
+                ogrn: clientDraft.ogrn?.trim() || '',
+                legal_address: clientDraft.legal_address?.trim() || '',
+                authorized_position: clientDraft.authorized_position?.trim() || '',
+                authorized_name: clientDraft.authorized_name?.trim() || '',
+                authorized_basis: clientDraft.authorized_basis?.trim() || '',
+                company_details: {
+                    name: clientDraft.company_name?.trim() || '',
+                    short_name: clientDraft.company_name?.trim() || '',
+                    inn: innStr,
+                    kpp: clientDraft.kpp?.trim() || '',
+                    ogrn: clientDraft.ogrn?.trim() || '',
+                    legal_address: clientDraft.legal_address?.trim() || '',
+                    director_name: clientDraft.authorized_name?.trim() || '',
+                    director_position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
+                },
+                authorized_person: {
+                    name: clientDraft.authorized_name?.trim() || '',
+                    position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
+                    basis_document: clientDraft.authorized_basis?.trim() || 'Устава',
+                    phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
+                },
+                full_name: isLegal 
+                    ? (clientDraft.company_name?.trim() || 'Юридическое лицо')
+                    : (clientDraft.full_name?.trim() || 'Клиент'),
+                phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
+                birth_date: birthDateStr,
+                reg_address: regAddressStr,
+                passport: isLegal ? '' : passportStr,
+                client_types: clientTypes,
                 status: 'active',
                 realtor_id: state.currentUser?.id,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
-                birth_date: clientDraft.birth_date || '',
-                reg_address: clientDraft.registration_address || '',
-                passport: passportStr,
                 passport_details: {
-                    series,
-                    number,
-                    issued_by: clientDraft.passport_issued_by?.trim() || '',
-                    issue_date: clientDraft.passport_issue_date?.trim() || '',
-                    unit_code: clientDraft.passport_unit_code?.trim() || '',
-                    registration_address: clientDraft.registration_address?.trim() || '',
-                    birth_date: clientDraft.birth_date || '',
+                    series: isLegal ? '' : series,
+                    number: isLegal ? '' : number,
+                    issued_by: isLegal ? '' : (clientDraft.passport_issued_by?.trim() || ''),
+                    issue_date: isLegal ? '' : (clientDraft.passport_issue_date?.trim() || ''),
+                    unit_code: isLegal ? '' : (clientDraft.passport_unit_code?.trim() || ''),
+                    registration_address: regAddressStr,
+                    birth_date: birthDateStr,
+                    inn: innStr,
                 }
             };
             await dispatch({ type: 'ADD_CLIENT', client: newClient });
@@ -1513,8 +1711,12 @@ export function DocumentsPage() {
                                 <Sparkles size={16} style={{ color: 'var(--primary)' }} />
                                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
                                     {activeClient 
-                                        ? (isServicesRent3Party ? `Реквизиты Заказчика (${activeClient.full_name})` : `Реквизиты Принципала (${activeClient.full_name})`) 
-                                        : (isServicesRent3Party ? 'Реквизиты Заказчика (ручной ввод / новый клиент)' : 'Реквизиты Принципала (ручной ввод / новый принципал)')
+                                        ? (isServicesRent3Party 
+                                            ? `Реквизиты Заказчика (${clientDraft.is_legal_entity ? (clientDraft.company_name || activeClient.full_name) : activeClient.full_name})` 
+                                            : `Реквизиты Принципала (${clientDraft.is_legal_entity ? (clientDraft.company_name || activeClient.full_name) : activeClient.full_name})`) 
+                                        : (isServicesRent3Party 
+                                            ? `Реквизиты Заказчика (${clientDraft.is_legal_entity ? 'Юрлицо / новый клиент' : 'ручной ввод / новый клиент'})` 
+                                            : `Реквизиты Принципала (${clientDraft.is_legal_entity ? 'Юрлицо / новый принципал' : 'ручной ввод / новый принципал'})`)
                                     }
                                 </span>
                                 {activeClient && (
@@ -1531,8 +1733,59 @@ export function DocumentsPage() {
                                     </button>
                                 )}
                             </div>
+
+                            {/* Переключатель: Физлицо / Юридическое лицо */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--bg)', padding: '3px', borderRadius: 10, border: '1px solid var(--border)' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDraftChange('is_legal_entity', false)}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: 7,
+                                        border: 'none',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        background: !clientDraft.is_legal_entity ? 'var(--surface)' : 'transparent',
+                                        color: !clientDraft.is_legal_entity ? 'var(--primary)' : 'var(--text-secondary)',
+                                        boxShadow: !clientDraft.is_legal_entity ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    Физлицо
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleDraftChange('is_legal_entity', true)}
+                                    style={{
+                                        padding: '4px 10px',
+                                        borderRadius: 7,
+                                        border: 'none',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        background: clientDraft.is_legal_entity ? 'var(--surface)' : 'transparent',
+                                        color: clientDraft.is_legal_entity ? 'var(--primary)' : 'var(--text-secondary)',
+                                        boxShadow: clientDraft.is_legal_entity ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                >
+                                    Юрлицо (ООО, АО и др.)
+                                </button>
+                            </div>
+
                             {(() => {
-                                const missing = [
+                                const isLegal = Boolean(clientDraft.is_legal_entity);
+                                const missing = isLegal ? [
+                                    !clientDraft.company_name?.trim(),
+                                    !clientDraft.inn?.trim(),
+                                    !clientDraft.ogrn?.trim(),
+                                    !clientDraft.legal_address?.trim(),
+                                    !clientDraft.phone?.trim(),
+                                    !clientDraft.authorized_name?.trim(),
+                                    !clientDraft.authorized_position?.trim(),
+                                    !clientDraft.authorized_basis?.trim(),
+                                ].filter(Boolean).length : [
                                     !clientDraft.full_name?.trim(),
                                     !clientDraft.phone?.trim(),
                                     !clientDraft.birth_date?.trim(),
@@ -1562,196 +1815,387 @@ export function DocumentsPage() {
                         </div>
 
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            Паспортные и контактные данные Принципала подставляются в преамбулу и подписи договора, а кнопка ниже синхронизирует их с CRM.
+                            {clientDraft.is_legal_entity 
+                                ? 'Реквизиты организации (ИНН, ОГРН, юр. адрес) и полномочия представителя подставляются в договор, а кнопка ниже синхронизирует их с CRM.'
+                                : 'Паспортные и контактные данные Принципала подставляются в преамбулу и подписи договора, а кнопка ниже синхронизирует их с CRM.'
+                            }
                         </div>
 
                         {/* Сетка полей с подсветкой недостающих */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-                            {/* ФИО */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>ФИО Принципала</span>
-                                    {!clientDraft.full_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                        {clientDraft.is_legal_entity ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                                {/* Наименование организации */}
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Наименование организации (ООО, АО и т.д.)</span>
+                                        {!clientDraft.company_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-company-name"
+                                        className="form-input"
+                                        value={clientDraft.company_name}
+                                        onChange={e => {
+                                            handleDraftChange('company_name', e.target.value);
+                                            if (!clientDraft.full_name) handleDraftChange('full_name', e.target.value);
+                                        }}
+                                        placeholder="Общество с ограниченной ответственностью «Альфа»"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.company_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.company_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-full-name"
-                                    className="form-input"
-                                    value={clientDraft.full_name}
-                                    onChange={e => handleDraftChange('full_name', e.target.value)}
-                                    placeholder="Иванов Иван Иванович"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.full_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.full_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Телефон */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Телефон</span>
-                                    {!clientDraft.phone?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* ИНН */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>ИНН</span>
+                                        {!clientDraft.inn?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-inn"
+                                        className="form-input"
+                                        value={clientDraft.inn}
+                                        onChange={e => handleDraftChange('inn', e.target.value)}
+                                        placeholder="4345000000"
+                                        maxLength={12}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.inn?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.inn?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-phone"
-                                    type="tel"
-                                    inputMode="tel"
-                                    className="form-input"
-                                    value={clientDraft.phone}
-                                    onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
-                                    placeholder="+7 (___) ___-__-__"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.phone?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.phone?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Дата рождения */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Дата рождения</span>
-                                    {!clientDraft.birth_date?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* КПП */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>КПП (при наличии)</span>
+                                        <span style={{ color: 'var(--text-secondary)' }}>опционально</span>
+                                    </div>
+                                    <input
+                                        id="doc-input-kpp"
+                                        className="form-input"
+                                        value={clientDraft.kpp}
+                                        onChange={e => handleDraftChange('kpp', e.target.value)}
+                                        placeholder="434501001"
+                                        maxLength={9}
+                                        style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, border: '1px solid var(--border)', background: 'var(--bg)' }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-birth-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={clientDraft.birth_date}
-                                    onChange={e => handleDraftChange('birth_date', e.target.value)}
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.birth_date?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.birth_date?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Серия паспорта */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Серия паспорта</span>
-                                    {!clientDraft.passport_series?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* ОГРН */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>ОГРН</span>
+                                        {!clientDraft.ogrn?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-ogrn"
+                                        className="form-input"
+                                        value={clientDraft.ogrn}
+                                        onChange={e => handleDraftChange('ogrn', e.target.value)}
+                                        placeholder="1154300000000"
+                                        maxLength={15}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.ogrn?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.ogrn?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-series"
-                                    className="form-input"
-                                    value={clientDraft.passport_series}
-                                    onChange={e => handleDraftChange('passport_series', e.target.value)}
-                                    placeholder="33 14"
-                                    maxLength={7}
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.passport_series?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.passport_series?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Номер паспорта */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Номер паспорта</span>
-                                    {!clientDraft.passport_number?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* Телефон */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Телефон организации / представителя</span>
+                                        {!clientDraft.phone?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        className="form-input"
+                                        value={clientDraft.phone}
+                                        onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
+                                        placeholder="+7 (___) ___-__-__"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.phone?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.phone?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-number"
-                                    className="form-input"
-                                    value={clientDraft.passport_number}
-                                    onChange={e => handleDraftChange('passport_number', e.target.value)}
-                                    placeholder="123456"
-                                    maxLength={10}
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.passport_number?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.passport_number?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Дата выдачи паспорта */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Дата выдачи паспорта</span>
-                                    {!clientDraft.passport_issue_date?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* Юридический адрес */}
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Юридический адрес местонахождения</span>
+                                        {!clientDraft.legal_address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-legal-address"
+                                        className="form-input"
+                                        value={clientDraft.legal_address}
+                                        onChange={e => handleDraftChange('legal_address', e.target.value)}
+                                        placeholder="610000, Кировская обл., г. Киров, ул. Ленина, д. 10, оф. 5"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.legal_address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.legal_address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-issue-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={clientDraft.passport_issue_date}
-                                    onChange={e => handleDraftChange('passport_issue_date', e.target.value)}
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.passport_issue_date?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.passport_issue_date?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Код подразделения */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Код подразделения</span>
-                                    {!clientDraft.passport_unit_code?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* Должность представителя */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Должность представителя</span>
+                                        {!clientDraft.authorized_position?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-auth-position"
+                                        className="form-input"
+                                        value={clientDraft.authorized_position}
+                                        onChange={e => handleDraftChange('authorized_position', e.target.value)}
+                                        placeholder="Генерального директора"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.authorized_position?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.authorized_position?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-unit-code"
-                                    className="form-input"
-                                    value={clientDraft.passport_unit_code}
-                                    onChange={e => handleDraftChange('passport_unit_code', e.target.value)}
-                                    placeholder="430-001"
-                                    maxLength={8}
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.passport_unit_code?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.passport_unit_code?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Кем выдан паспорт */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Кем выдан паспорт</span>
-                                    {!clientDraft.passport_issued_by?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* ФИО представителя */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>ФИО представителя</span>
+                                        {!clientDraft.authorized_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-auth-name"
+                                        className="form-input"
+                                        value={clientDraft.authorized_name}
+                                        onChange={e => handleDraftChange('authorized_name', e.target.value)}
+                                        placeholder="Иванова Ивана Ивановича"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.authorized_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.authorized_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-issued-by"
-                                    className="form-input"
-                                    value={clientDraft.passport_issued_by}
-                                    onChange={e => handleDraftChange('passport_issued_by', e.target.value)}
-                                    placeholder="Отделом УФМС России по Кировской области в Первомайском р-не г. Кирова"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.passport_issued_by?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.passport_issued_by?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
 
-                            {/* Адрес регистрации */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Адрес регистрации (по паспорту)</span>
-                                    {!clientDraft.registration_address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                {/* Основание полномочий */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Действует на основании</span>
+                                        {!clientDraft.authorized_basis?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-auth-basis"
+                                        className="form-input"
+                                        value={clientDraft.authorized_basis}
+                                        onChange={e => handleDraftChange('authorized_basis', e.target.value)}
+                                        placeholder="Устава / Доверенности № 1 от 10.01.2025"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.authorized_basis?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.authorized_basis?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
                                 </div>
-                                <input
-                                    id="doc-input-reg-address"
-                                    className="form-input"
-                                    value={clientDraft.registration_address}
-                                    onChange={e => handleDraftChange('registration_address', e.target.value)}
-                                    placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !clientDraft.registration_address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !clientDraft.registration_address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
                             </div>
-                        </div>
+                        ) : (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+                                {/* ФИО */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>ФИО Принципала</span>
+                                        {!clientDraft.full_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-full-name"
+                                        className="form-input"
+                                        value={clientDraft.full_name}
+                                        onChange={e => handleDraftChange('full_name', e.target.value)}
+                                        placeholder="Иванов Иван Иванович"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.full_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.full_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Телефон */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Телефон</span>
+                                        {!clientDraft.phone?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        className="form-input"
+                                        value={clientDraft.phone}
+                                        onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
+                                        placeholder="+7 (___) ___-__-__"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.phone?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.phone?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Дата рождения */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Дата рождения</span>
+                                        {!clientDraft.birth_date?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-birth-date"
+                                        type="date"
+                                        className="form-input"
+                                        value={clientDraft.birth_date}
+                                        onChange={e => handleDraftChange('birth_date', e.target.value)}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.birth_date?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.birth_date?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Серия паспорта */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Серия паспорта</span>
+                                        {!clientDraft.passport_series?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-series"
+                                        className="form-input"
+                                        value={clientDraft.passport_series}
+                                        onChange={e => handleDraftChange('passport_series', e.target.value)}
+                                        placeholder="33 14"
+                                        maxLength={7}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.passport_series?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.passport_series?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Номер паспорта */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Номер паспорта</span>
+                                        {!clientDraft.passport_number?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-number"
+                                        className="form-input"
+                                        value={clientDraft.passport_number}
+                                        onChange={e => handleDraftChange('passport_number', e.target.value)}
+                                        placeholder="123456"
+                                        maxLength={10}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.passport_number?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.passport_number?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Дата выдачи паспорта */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Дата выдачи паспорта</span>
+                                        {!clientDraft.passport_issue_date?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-issue-date"
+                                        type="date"
+                                        className="form-input"
+                                        value={clientDraft.passport_issue_date}
+                                        onChange={e => handleDraftChange('passport_issue_date', e.target.value)}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.passport_issue_date?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.passport_issue_date?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Код подразделения */}
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Код подразделения</span>
+                                        {!clientDraft.passport_unit_code?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-unit-code"
+                                        className="form-input"
+                                        value={clientDraft.passport_unit_code}
+                                        onChange={e => handleDraftChange('passport_unit_code', e.target.value)}
+                                        placeholder="430-001"
+                                        maxLength={8}
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.passport_unit_code?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.passport_unit_code?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Кем выдан паспорт */}
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Кем выдан паспорт</span>
+                                        {!clientDraft.passport_issued_by?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-issued-by"
+                                        className="form-input"
+                                        value={clientDraft.passport_issued_by}
+                                        onChange={e => handleDraftChange('passport_issued_by', e.target.value)}
+                                        placeholder="Отделом УФМС России по Кировской области в Первомайском р-не г. Кирова"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.passport_issued_by?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.passport_issued_by?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Адрес регистрации */}
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Адрес регистрации (по паспорту)</span>
+                                        {!clientDraft.registration_address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
+                                    </div>
+                                    <input
+                                        id="doc-input-reg-address"
+                                        className="form-input"
+                                        value={clientDraft.registration_address}
+                                        onChange={e => handleDraftChange('registration_address', e.target.value)}
+                                        placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
+                                        style={{
+                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
+                                            border: !clientDraft.registration_address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
+                                            background: !clientDraft.registration_address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
 
                         {/* Кнопка сохранения в CRM */}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
@@ -2392,12 +2836,22 @@ export function DocumentsPage() {
                                 <DataPreview label="Исполнитель 1" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
                                 <DataPreview label="Исполнитель 2 (Риэлтор)" value={`${realtor?.full_name || 'Не указан'} (Самозанятый, ${realtor?.inn ? `ИНН ${realtor.inn}` : 'ИНН не указан'})`} />
                                 {(buyer || seller) && (
-                                    <>
-                                        <DataPreview label="Заказчик" value={(seller || buyer).full_name} />
-                                        {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
-                                        <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
-                                        <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
-                                    </>
+                                    (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
+                                        <>
+                                            <DataPreview label="Заказчик (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
+                                            {((buyer || seller).inn || clientDraft.inn) && <DataPreview label="ИНН / ОГРН" value={`ИНН ${(buyer || seller).inn || clientDraft.inn}${((buyer || seller).ogrn || clientDraft.ogrn) ? ` / ОГРН ${(buyer || seller).ogrn || clientDraft.ogrn}` : ''}`} />}
+                                            {((buyer || seller).legal_address || clientDraft.legal_address) && <DataPreview label="Юр. адрес" value={(buyer || seller).legal_address || clientDraft.legal_address} />}
+                                            {((buyer || seller).authorized_name || clientDraft.authorized_name) && <DataPreview label="Представитель" value={`${(buyer || seller).authorized_position || clientDraft.authorized_position || 'Руководитель'}: ${(buyer || seller).authorized_name || clientDraft.authorized_name}`} />}
+                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DataPreview label="Заказчик" value={(seller || buyer).full_name} />
+                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                            <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
+                                            <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
+                                        </>
+                                    )
                                 )}
                                 {service1Cost && (
                                     <DataPreview label="Исполнитель 1 (ИП)" value={`${Number(String(service1Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
@@ -2416,12 +2870,22 @@ export function DocumentsPage() {
                             <>
                                 <DataPreview label="Агент" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
                                 {(buyer || seller) && (
-                                    <>
-                                        <DataPreview label="Принципал" value={(seller || buyer).full_name} />
-                                        {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
-                                        <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
-                                        <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
-                                    </>
+                                    (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
+                                        <>
+                                            <DataPreview label="Принципал (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
+                                            {((buyer || seller).inn || clientDraft.inn) && <DataPreview label="ИНН / ОГРН" value={`ИНН ${(buyer || seller).inn || clientDraft.inn}${((buyer || seller).ogrn || clientDraft.ogrn) ? ` / ОГРН ${(buyer || seller).ogrn || clientDraft.ogrn}` : ''}`} />}
+                                            {((buyer || seller).legal_address || clientDraft.legal_address) && <DataPreview label="Юр. адрес" value={(buyer || seller).legal_address || clientDraft.legal_address} />}
+                                            {((buyer || seller).authorized_name || clientDraft.authorized_name) && <DataPreview label="Представитель" value={`${(buyer || seller).authorized_position || clientDraft.authorized_position || 'Руководитель'}: ${(buyer || seller).authorized_name || clientDraft.authorized_name}`} />}
+                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DataPreview label="Принципал" value={(seller || buyer).full_name} />
+                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                            <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
+                                            <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
+                                        </>
+                                    )
                                 )}
                                 {property && (
                                     <>
@@ -2935,6 +3399,29 @@ function DocumentPreview({ template, data, highlight = true }) {
     const isAgencySale = template === 'agency_sale_1';
     const principal = isAgencySale ? (seller || buyer) : (buyer || seller);
     const pDetails = principal?.passport_details || {};
+    const pCompany = principal?.company_details || {};
+    const pAuth = principal?.authorized_person || {};
+    const isLegalEntity = Boolean(
+        data.isLegalEntity ||
+        principal?.is_legal_entity ||
+        principal?.client_types?.includes('legal_entity') ||
+        principal?.company_name ||
+        pCompany.name ||
+        pCompany.inn ||
+        pCompany.ogrn ||
+        /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(principal?.full_name || '')
+    );
+    const companyName = f(principal?.company_name || pCompany.name || pCompany.short_name || (isLegalEntity ? principal?.full_name : ''));
+    const companyInn = f(principal?.inn || pCompany.inn);
+    const companyKpp = f(principal?.kpp || pCompany.kpp);
+    const companyOgrn = f(principal?.ogrn || pCompany.ogrn);
+    const companyLegalAddress = f(principal?.legal_address || pCompany.legal_address || principal?.reg_address || principal?.address);
+    const authPosition = f(principal?.authorized_position || pAuth.position || pCompany.director_position || 'Генерального директора');
+    const authPositionNom = f(principal?.authorized_position || pAuth.position || pCompany.director_position || 'Генеральный директор');
+    const authName = f(principal?.authorized_name || pAuth.name || pCompany.director_name || (!isLegalEntity ? principal?.full_name : ''));
+    const authBasis = f(principal?.authorized_basis || pAuth.basis_document || 'Устава');
+    const authShort = toShortName(authName);
+
     const principalName = f(principal?.full_name);
     const principalBirth = principal?.birth_date ? fDate(principal.birth_date) : (pDetails.birth_date ? fDate(pDetails.birth_date) : '');
     const principalSeries = f(pDetails.series);
@@ -2944,7 +3431,7 @@ function DocumentPreview({ template, data, highlight = true }) {
     const principalUnitCode = f(pDetails.unit_code);
     const principalRegAddress = f(pDetails.registration_address || principal?.reg_address || principal?.address);
     const principalPhone = f(formatPhone(principal?.phone) || principal?.phone);
-    const principalShort = toShortName(principalName);
+    const principalShort = isLegalEntity ? authShort : toShortName(principalName);
 
     // Характеристики объекта для агентского договора на продажу
     const propKind = formatPropertyKind(property);
@@ -2983,6 +3470,29 @@ function DocumentPreview({ template, data, highlight = true }) {
     // Заказчик (Клиент)
     const customer = buyer || seller || principal;
     const cDetails = customer?.passport_details || {};
+    const cCompany = customer?.company_details || {};
+    const cAuth = customer?.authorized_person || {};
+    const isCustomerLegalEntity = Boolean(
+        data.isLegalEntity ||
+        customer?.is_legal_entity ||
+        customer?.client_types?.includes('legal_entity') ||
+        customer?.company_name ||
+        cCompany.name ||
+        cCompany.inn ||
+        cCompany.ogrn ||
+        /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(customer?.full_name || '')
+    );
+    const customerCompanyName = f(customer?.company_name || cCompany.name || cCompany.short_name || (isCustomerLegalEntity ? customer?.full_name : ''));
+    const customerCompanyInn = f(customer?.inn || cCompany.inn);
+    const customerCompanyKpp = f(customer?.kpp || cCompany.kpp);
+    const customerCompanyOgrn = f(customer?.ogrn || cCompany.ogrn);
+    const customerCompanyLegalAddress = f(customer?.legal_address || cCompany.legal_address || customer?.reg_address || customer?.address);
+    const customerAuthPosition = f(customer?.authorized_position || cAuth.position || cCompany.director_position || 'Генерального директора');
+    const customerAuthPositionNom = f(customer?.authorized_position || cAuth.position || cCompany.director_position || 'Генеральный директор');
+    const customerAuthName = f(customer?.authorized_name || cAuth.name || cCompany.director_name || (!isCustomerLegalEntity ? customer?.full_name : ''));
+    const customerAuthBasis = f(customer?.authorized_basis || cAuth.basis_document || 'Устава');
+    const customerAuthShort = toShortName(customerAuthName);
+
     const customerFullName = f(customer?.full_name);
     const customerBirth = customer?.birth_date ? fDate(customer.birth_date) : (cDetails.birth_date ? fDate(cDetails.birth_date) : '');
     const customerSeries = f(cDetails.series);
@@ -2993,7 +3503,7 @@ function DocumentPreview({ template, data, highlight = true }) {
     const customerRegAddress = f(cDetails.registration_address || customer?.reg_address || customer?.address);
     const customerPhone = f(formatPhone(customer?.phone) || customer?.phone);
     const customerEmail = f(customer?.email);
-    const customerShort = toShortName(customerFullName);
+    const customerShort = isCustomerLegalEntity ? customerAuthShort : toShortName(customerFullName);
 
     // Стоимости услуг (Исполнитель 1 и Исполнитель 2)
     const rawS1 = data.service1Cost !== undefined ? data.service1Cost : (deal?.service1_cost || '');
@@ -3041,17 +3551,31 @@ function DocumentPreview({ template, data, highlight = true }) {
                     именуемый(-ая) в дальнейшем <strong>«Исполнитель 2»</strong>,
                 </p>
 
-                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Гр. <strong><Slot slotId="customer_name" value={customerFullName} label="ФИО Заказчика" inputId="doc-input-customer-name" highlight={highlight} /></strong>, 
-                    паспорт серия <Slot slotId="customer_series" value={customerSeries} label="Серия паспорта" inputId="doc-input-customer-series" highlight={highlight} /> номер <Slot slotId="customer_number" value={customerNumber} label="Номер паспорта" inputId="doc-input-customer-number" highlight={highlight} />, 
-                    выдан <Slot slotId="customer_issued_by" value={customerIssuedBy} label="Кем выдан" inputId="doc-input-customer-issued-by" highlight={highlight} /> дата выдачи: <Slot slotId="customer_issue_date" value={customerIssueDate} label="Дата выдачи" inputId="doc-input-customer-issue-date" highlight={highlight} />, 
-                    зарегистрированный (-ая) по адресу: <Slot slotId="customer_reg_address" value={customerRegAddress} label="Адрес регистрации" inputId="doc-input-customer-reg-address" highlight={highlight} />, 
-                    дата рождения: <Slot slotId="customer_birth" value={customerBirth} label="Дата рождения" inputId="doc-input-customer-birth" highlight={highlight} />, 
-                    телефон: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-customer-phone" highlight={highlight} />, 
-                    адрес эл. почты: <Slot slotId="customer_email" value={customerEmail} label="Email" inputId="doc-input-customer-email" highlight={highlight} />, 
-                    далее по тексту <strong>«Заказчик»</strong>, с третьей стороны, вместе именуемые «Стороны», а по отдельности «Сторона», 
-                    заключили настоящий договор (далее договор) о нижеследующем:
-                </p>
+                {isCustomerLegalEntity ? (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        <strong><Slot slotId="company_name" value={customerCompanyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
+                        ОГРН <Slot slotId="company_ogrn" value={customerCompanyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
+                        ИНН <Slot slotId="company_inn" value={customerCompanyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
+                        {customerCompanyKpp ? <span>, КПП <Slot slotId="company_kpp" value={customerCompanyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
+                        адрес местонахождения: <Slot slotId="company_legal_address" value={customerCompanyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
+                        в лице <Slot slotId="auth_position" value={customerAuthPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={customerAuthName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
+                        действующего(-ей) на основании <Slot slotId="auth_basis" value={customerAuthBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
+                        далее по тексту <strong>«Заказчик»</strong>, с третьей стороны, вместе именуемые «Стороны», а по отдельности «Сторона», 
+                        заключили настоящий договор (далее договор) о нижеследующем:
+                    </p>
+                ) : (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        Гр. <strong><Slot slotId="customer_name" value={customerFullName} label="ФИО Заказчика" inputId="doc-input-full-name" highlight={highlight} /></strong>, 
+                        паспорт серия <Slot slotId="customer_series" value={customerSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="customer_number" value={customerNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                        выдан <Slot slotId="customer_issued_by" value={customerIssuedBy} label="Кем выдан" inputId="doc-input-issued-by" highlight={highlight} /> дата выдачи: <Slot slotId="customer_issue_date" value={customerIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} />, 
+                        зарегистрированный (-ая) по адресу: <Slot slotId="customer_reg_address" value={customerRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
+                        дата рождения: <Slot slotId="customer_birth" value={customerBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                        телефон: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                        адрес эл. почты: <Slot slotId="customer_email" value={customerEmail} label="Email" highlight={highlight} />, 
+                        далее по тексту <strong>«Заказчик»</strong>, с третьей стороны, вместе именуемые «Стороны», а по отдельности «Сторона», 
+                        заключили настоящий договор (далее договор) о нижеследующем:
+                    </p>
+                )}
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 8 }}>1. ПРЕДМЕТ ДОГОВОРА</div>
                 <p style={{ textIndent: '2.5em', marginBottom: 6, textAlign: 'justify' }}>
@@ -3226,12 +3750,25 @@ function DocumentPreview({ template, data, highlight = true }) {
                     </div>
                     <div style={{ border: '1px solid #ddd', padding: 12, borderRadius: 8 }}>
                         <strong>Заказчик:</strong><br />
-                        <Slot slotId="customer_name" value={customerFullName} label="ФИО Заказчика" inputId="doc-input-customer-name" highlight={highlight} /><br />
-                        Паспорт: <Slot slotId="customer_series" value={customerSeries} label="Серия" inputId="doc-input-customer-series" highlight={highlight} /> № <Slot slotId="customer_number" value={customerNumber} label="Номер" inputId="doc-input-customer-number" highlight={highlight} /><br />
-                        Адрес: <Slot slotId="customer_reg_address" value={customerRegAddress} label="Адрес регистрации" inputId="doc-input-customer-reg-address" highlight={highlight} /><br />
-                        Тел: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-customer-phone" highlight={highlight} /><br />
-                        Email: <Slot slotId="customer_email" value={customerEmail} label="Email" inputId="doc-input-customer-email" highlight={highlight} /><br /><br />
-                        Подпись: ________________ / <Slot slotId="customer_short" value={customerShort} label="Инициалы" inputId="doc-input-customer-short" highlight={highlight} /> /
+                        {isCustomerLegalEntity ? (
+                            <>
+                                <strong><Slot slotId="company_name" value={customerCompanyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong><br />
+                                ОГРН: <Slot slotId="company_ogrn" value={customerCompanyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} /><br />
+                                ИНН: <Slot slotId="company_inn" value={customerCompanyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{customerCompanyKpp ? ` / КПП: ${customerCompanyKpp}` : ''}<br />
+                                Адрес: <Slot slotId="company_legal_address" value={customerCompanyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} /><br />
+                                Тел: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} /><br /><br />
+                                <Slot slotId="auth_position" value={customerAuthPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: ________________ / <Slot slotId="auth_short" value={customerAuthShort} label="Инициалы" inputId="doc-input-auth-name" highlight={highlight} /> /  М.П.
+                            </>
+                        ) : (
+                            <>
+                                <Slot slotId="customer_name" value={customerFullName} label="ФИО Заказчика" inputId="doc-input-full-name" highlight={highlight} /><br />
+                                Паспорт: <Slot slotId="customer_series" value={customerSeries} label="Серия" inputId="doc-input-series" highlight={highlight} /> № <Slot slotId="customer_number" value={customerNumber} label="Номер" inputId="doc-input-number" highlight={highlight} /><br />
+                                Адрес: <Slot slotId="customer_reg_address" value={customerRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /><br />
+                                Тел: <Slot slotId="customer_phone" value={customerPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} /><br />
+                                Email: <Slot slotId="customer_email" value={customerEmail} label="Email" highlight={highlight} /><br /><br />
+                                Подпись: ________________ / <Slot slotId="customer_short" value={customerShort} label="Инициалы" highlight={highlight} /> /
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -3264,7 +3801,10 @@ function DocumentPreview({ template, data, highlight = true }) {
                             <strong>Заказчик:</strong>
                             <div style={{ borderBottom: '1.5px solid #000', height: 26, marginTop: 12 }}></div>
                             <div style={{ fontSize: 11, color: '#666', textAlign: 'center', marginTop: 2 }}>
-                                (Подпись) / <Slot slotId="customer_short" value={customerShort} label="ФИО" highlight={highlight} />
+                                {isCustomerLegalEntity 
+                                    ? `(Подпись) / ${customerAuthShort} /  М.П.`
+                                    : <>(Подпись) / <Slot slotId="customer_short" value={customerShort} label="ФИО" highlight={highlight} /></>
+                                }
                             </div>
                         </div>
                         <div>
@@ -3309,17 +3849,31 @@ function DocumentPreview({ template, data, highlight = true }) {
                     <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
-                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                    дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                    паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                    выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
-                    дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
-                    код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
-                    зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
-                    телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                    именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
-                </p>
+                {isLegalEntity ? (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        <strong><Slot slotId="company_name" value={companyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
+                        ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
+                        ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
+                        {companyKpp ? <span>, КПП <Slot slotId="company_kpp" value={companyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
+                        адрес местонахождения: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
+                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                        в лице <Slot slotId="auth_position" value={authPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={authName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
+                        действующего(-ей) на основании <Slot slotId="auth_basis" value={authBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
+                        именуемое в дальнейшем «Принципал», с одной стороны,
+                    </p>
+                ) : (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                        дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                        паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                        выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
+                        дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
+                        код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
+                        зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
+                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                        именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
+                    </p>
+                )}
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
@@ -3471,11 +4025,30 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 24, marginBottom: 12 }}>7. Подписи сторон</div>
                 <div style={{ marginTop: 12 }}>
-                    <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
-                        <strong>Принципал:</strong>
-                    </div>
-                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
-                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
+                    {isLegalEntity ? (
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                                Принципал: <Slot slotId="company_name" value={companyName} label="Организация" inputId="doc-input-company-name" highlight={highlight} />
+                            </div>
+                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+                                ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{companyKpp ? `, КПП ${companyKpp}` : ''}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
+                                Адрес: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: 14 }}>
+                                <Slot slotId="auth_position" value={authPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: _________________ / <Slot slotId="auth_name" value={authShort} label="Подпись представителя" inputId="doc-input-auth-name" highlight={highlight} /> / &nbsp; М.П.
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
+                                <strong>Принципал:</strong>
+                            </div>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
+                        </>
+                    )}
 
                     <div style={{ marginTop: 16, marginBottom: 6 }}>
                         <strong>Агент:</strong>
@@ -3508,12 +4081,26 @@ function DocumentPreview({ template, data, highlight = true }) {
                     <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
-                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, Гр. <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                    дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                    паспорт РФ серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                    выдан <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} /> года <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /> именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,
-                </p>
+                {isLegalEntity ? (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        <strong><Slot slotId="company_name" value={companyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
+                        ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
+                        ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
+                        {companyKpp ? <span>, КПП <Slot slotId="company_kpp" value={companyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
+                        адрес местонахождения: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
+                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                        в лице <Slot slotId="auth_position" value={authPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={authName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
+                        действующего(-ей) на основании <Slot slotId="auth_basis" value={authBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
+                        именуемое в дальнейшем «Принципал», с одной стороны,
+                    </p>
+                ) : (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        Мы, Гр. <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                        дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                        паспорт РФ серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                        выдан <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} /> года <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /> именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,
+                    </p>
+                )}
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
@@ -3656,10 +4243,29 @@ function DocumentPreview({ template, data, highlight = true }) {
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 14 }}>7. Подписи сторон</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
                     <div>
-                        <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Принципал:</div>
-                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
-                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
-                        <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                        {isLegalEntity ? (
+                            <div style={{ marginBottom: 16 }}>
+                                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                                    Принципал: <Slot slotId="company_name" value={companyName} label="Организация" inputId="doc-input-company-name" highlight={highlight} />
+                                </div>
+                                <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+                                    ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{companyKpp ? `, КПП ${companyKpp}` : ''}
+                                </div>
+                                <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
+                                    Адрес: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />
+                                </div>
+                                <div style={{ marginTop: 8, fontSize: 14 }}>
+                                    <Slot slotId="auth_position" value={authPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: _________________ / <Slot slotId="auth_name" value={authShort} label="Подпись представителя" inputId="doc-input-auth-name" highlight={highlight} /> / &nbsp; М.П.
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Принципал:</div>
+                                <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                                <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                                <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                            </>
+                        )}
                     </div>
                     <div>
                         <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Агент:</div>
@@ -3692,17 +4298,31 @@ function DocumentPreview({ template, data, highlight = true }) {
                     <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
-                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                    дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                    паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                    выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
-                    дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
-                    код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
-                    зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
-                    телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                    именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
-                </p>
+                {isLegalEntity ? (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        <strong><Slot slotId="company_name" value={companyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
+                        ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
+                        ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
+                        {companyKpp ? <span>, КПП <Slot slotId="company_kpp" value={companyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
+                        адрес местонахождения: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
+                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                        в лице <Slot slotId="auth_position" value={authPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={authName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
+                        действующего(-ей) на основании <Slot slotId="auth_basis" value={authBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
+                        именуемое в дальнейшем «Принципал», с одной стороны,
+                    </p>
+                ) : (
+                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
+                        Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
+                        дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
+                        паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
+                        выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
+                        дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
+                        код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
+                        зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
+                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
+                        именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
+                    </p>
+                )}
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
@@ -3811,11 +4431,30 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 24, marginBottom: 12 }}>7. Подписи сторон</div>
                 <div style={{ marginTop: 12 }}>
-                    <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
-                        <strong>Принципал:</strong>
-                    </div>
-                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
-                    <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
+                    {isLegalEntity ? (
+                        <div style={{ marginBottom: 16 }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                                Принципал: <Slot slotId="company_name" value={companyName} label="Организация" inputId="doc-input-company-name" highlight={highlight} />
+                            </div>
+                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+                                ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{companyKpp ? `, КПП ${companyKpp}` : ''}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
+                                Адрес: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: 14 }}>
+                                <Slot slotId="auth_position" value={authPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: _________________ / <Slot slotId="auth_name" value={authShort} label="Подпись представителя" inputId="doc-input-auth-name" highlight={highlight} /> / &nbsp; М.П.
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
+                                <strong>Принципал:</strong>
+                            </div>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
+                        </>
+                    )}
 
                     <div style={{ marginTop: 16, marginBottom: 6 }}>
                         <strong>Агент:</strong>

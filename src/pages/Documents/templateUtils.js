@@ -56,6 +56,28 @@ export function buildSlotValues(data, template) {
     const principalPhone = f(formatPhone(principal?.phone) || principal?.phone);
     const principalShort = toShortName(principalName);
 
+    // Данные организации (Юрлицо) для принципала
+    const pCompany = principal?.company_details || {};
+    const pAuth = principal?.authorized_person || {};
+    const isLegalEntity = Boolean(
+        data.isLegalEntity ||
+        principal?.is_legal_entity ||
+        principal?.client_types?.includes('legal_entity') ||
+        principal?.company_name ||
+        pCompany.name ||
+        pCompany.inn ||
+        pCompany.ogrn
+    );
+    const companyName = f(principal?.company_name || pCompany.name || pCompany.short_name || (isLegalEntity ? principal?.full_name : ''));
+    const companyInn = f(principal?.inn || pCompany.inn);
+    const companyKpp = f(principal?.kpp || pCompany.kpp);
+    const companyOgrn = f(principal?.ogrn || pCompany.ogrn);
+    const companyLegalAddress = f(principal?.legal_address || pCompany.legal_address || principal?.reg_address || principal?.address);
+    const authPosition = f(principal?.authorized_position || pAuth.position || pCompany.director_position || 'Генеральный директор');
+    const authName = f(principal?.authorized_name || pAuth.name || pCompany.director_name || (!isLegalEntity ? principal?.full_name : ''));
+    const authBasis = f(principal?.authorized_basis || pAuth.basis_document || 'Устава');
+    const authShort = toShortName(authName);
+
     const propKind = formatPropertyKind(property);
     const propAddress = f(property?.address || property?.city);
     const propCadastral = f(property?.cadastral_number);
@@ -89,6 +111,27 @@ export function buildSlotValues(data, template) {
     // Данные заказчика (клиента) для 3-стороннего договора
     const customer = buyer || seller || principal;
     const cDetails = customer?.passport_details || {};
+    const cCompany = customer?.company_details || {};
+    const cAuth = customer?.authorized_person || {};
+    const isCustomerLegalEntity = Boolean(
+        data.isLegalEntity ||
+        customer?.is_legal_entity ||
+        customer?.client_types?.includes('legal_entity') ||
+        customer?.company_name ||
+        cCompany.name ||
+        cCompany.inn ||
+        cCompany.ogrn
+    );
+    const customerCompanyName = f(customer?.company_name || cCompany.name || cCompany.short_name || (isCustomerLegalEntity ? customer?.full_name : ''));
+    const customerCompanyInn = f(customer?.inn || cCompany.inn);
+    const customerCompanyKpp = f(customer?.kpp || cCompany.kpp);
+    const customerCompanyOgrn = f(customer?.ogrn || cCompany.ogrn);
+    const customerCompanyLegalAddress = f(customer?.legal_address || cCompany.legal_address || customer?.reg_address || customer?.address);
+    const customerAuthPosition = f(customer?.authorized_position || cAuth.position || cCompany.director_position || 'Генеральный директор');
+    const customerAuthName = f(customer?.authorized_name || cAuth.name || cCompany.director_name || (!isCustomerLegalEntity ? customer?.full_name : ''));
+    const customerAuthBasis = f(customer?.authorized_basis || cAuth.basis_document || 'Устава');
+    const customerAuthShort = toShortName(customerAuthName);
+
     const customerName = f(customer?.full_name);
     const customerBirth = customer?.birth_date ? fDate(customer.birth_date) : (cDetails.birth_date ? fDate(cDetails.birth_date) : '');
     const customerSeries = f(cDetails.series);
@@ -119,16 +162,26 @@ export function buildSlotValues(data, template) {
         contract_date: today,
         act_date: actDate,
         contract_number: contractNumber,
-        principal_name: principalName,
+        is_legal_entity: isLegalEntity || isCustomerLegalEntity,
+        company_name: isCustomerLegalEntity ? (customerCompanyName || companyName) : companyName,
+        company_inn: isCustomerLegalEntity ? (customerCompanyInn || companyInn) : companyInn,
+        company_kpp: isCustomerLegalEntity ? (customerCompanyKpp || companyKpp) : companyKpp,
+        company_ogrn: isCustomerLegalEntity ? (customerCompanyOgrn || companyOgrn) : companyOgrn,
+        company_legal_address: isCustomerLegalEntity ? (customerCompanyLegalAddress || companyLegalAddress) : companyLegalAddress,
+        auth_position: isCustomerLegalEntity ? (customerAuthPosition || authPosition) : authPosition,
+        auth_name: isCustomerLegalEntity ? (customerAuthName || authName) : authName,
+        auth_basis: isCustomerLegalEntity ? (customerAuthBasis || authBasis) : authBasis,
+        auth_short: isCustomerLegalEntity ? (customerAuthShort || authShort) : authShort,
+        principal_name: isLegalEntity ? (companyName || principalName) : principalName,
         principal_birth: principalBirth,
         principal_series: principalSeries,
         principal_number: principalNumber,
         principal_issued_by: principalIssuedBy,
         principal_issue_date: principalIssueDate,
         principal_unit_code: principalUnitCode,
-        principal_reg_address: principalRegAddress,
+        principal_reg_address: isLegalEntity ? (companyLegalAddress || principalRegAddress) : principalRegAddress,
         principal_phone: principalPhone,
-        principal_short: principalShort,
+        principal_short: isLegalEntity ? authShort : principalShort,
         prop_kind: propKind,
         prop_address: propAddress,
         prop_cadastral: propCadastral,
@@ -151,17 +204,17 @@ export function buildSlotValues(data, template) {
         realtor_reg_address: realtorRegAddress,
         realtor_phone: realtorPhone,
         realtor_short: realtorShort,
-        customer_name: customerName,
+        customer_name: isCustomerLegalEntity ? (customerCompanyName || customerName) : customerName,
         customer_birth: customerBirth,
         customer_series: customerSeries,
         customer_number: customerNumber,
         customer_issued_by: customerIssuedBy,
         customer_issue_date: customerIssueDate,
         customer_unit_code: customerUnitCode,
-        customer_reg_address: customerRegAddress,
+        customer_reg_address: isCustomerLegalEntity ? (customerCompanyLegalAddress || customerRegAddress) : customerRegAddress,
         customer_phone: customerPhone,
         customer_email: customerEmail,
-        customer_short: customerShort,
+        customer_short: isCustomerLegalEntity ? customerAuthShort : customerShort,
         service1_cost: service1Formatted,
         service1_words: service1Words,
         service2_cost: service2Formatted,
@@ -247,6 +300,15 @@ export function injectDataIntoTemplateHtml(html, slotValues, highlight = true, i
                     slotId = (label.includes('прописью') || title.includes('прописью')) ? 'comm_words' : 'comm_formatted';
                 }
                 else if (inputId === 'doc-input-contract-end-date' || title.includes('Срок')) slotId = 'contract_end_date';
+                else if (inputId === 'doc-input-company-name' || label.includes('Наименование организации') || label.includes('Организация')) slotId = 'company_name';
+                else if (inputId === 'doc-input-inn' || label.includes('ИНН организации') || (label.includes('ИНН') && !label.includes('Риэлтор'))) slotId = 'company_inn';
+                else if (inputId === 'doc-input-kpp' || label.includes('КПП')) slotId = 'company_kpp';
+                else if (inputId === 'doc-input-ogrn' || label.includes('ОГРН')) slotId = 'company_ogrn';
+                else if (inputId === 'doc-input-legal-address' || label.includes('Юридический адрес') || label.includes('Юр. адрес')) slotId = 'company_legal_address';
+                else if (inputId === 'doc-input-auth-position' || label.includes('Должность уполномоченного') || label.includes('Должность')) slotId = 'auth_position';
+                else if (inputId === 'doc-input-auth-name' || label.includes('ФИО уполномоченного')) slotId = 'auth_name';
+                else if (inputId === 'doc-input-auth-basis' || label.includes('Основание полномочий')) slotId = 'auth_basis';
+                else if (inputId === 'doc-input-auth-short' || label.includes('Инициалы уполномоченного')) slotId = 'auth_short';
                 else if (title.includes('Дата договора') || label.includes('Дата договора')) slotId = 'contract_date';
                 else if (title.includes('Покупатель') || label.includes('Покупатель')) slotId = 'buyer_name';
                 else if (title.includes('Продавец') || label.includes('Продавец') || title.includes('Наймодатель')) slotId = 'seller_name';
