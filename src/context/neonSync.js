@@ -677,7 +677,17 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         }
 
         if (action.task) {
-          const taskResult = await neonDb.upsert('tasks', sanitizeObj(action.task));
+          const VALID_TASK_COLUMNS = [
+            'id', 'realtor_id', 'client_id', 'seller_id', 'property_id',
+            'title', 'description', 'task_type', 'due_date', 'priority', 'status',
+            'google_event_id', 'created_at', 'updated_at'
+          ];
+          const rawTask = {};
+          VALID_TASK_COLUMNS.forEach(col => {
+            if (action.task[col] !== undefined) rawTask[col] = action.task[col];
+          });
+          const taskData = sanitizeObj(rawTask);
+          const taskResult = await neonDb.upsert('tasks', taskData);
           if (taskResult?.error) console.error('[neonSync ADD_SHOWING task error]', taskResult.error);
         }
         if (action.matches && action.showing.match_id) {
@@ -739,9 +749,20 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Задачи ───────────────────────────────────────────── */
       case 'ADD_TASK':
-      case 'UPDATE_TASK':
-        result = await neonDb.upsert('tasks', action.task);
+      case 'UPDATE_TASK': {
+        const VALID_TASK_COLUMNS = [
+          'id', 'realtor_id', 'client_id', 'seller_id', 'property_id',
+          'title', 'description', 'task_type', 'due_date', 'priority', 'status',
+          'google_event_id', 'created_at', 'updated_at'
+        ];
+        const rawTask = {};
+        VALID_TASK_COLUMNS.forEach(col => {
+          if (action.task[col] !== undefined) rawTask[col] = action.task[col];
+        });
+        const taskData = sanitizeObj(rawTask);
+        result = await neonDb.upsert('tasks', taskData);
         break;
+      }
 
       case 'DELETE_TASK':
         result = await neonDb.delete('tasks', action.id);

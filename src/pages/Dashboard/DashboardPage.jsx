@@ -5,7 +5,7 @@ import { useToastContext } from '../../components/Toast';
 import {
     Sparkles, Users, Home, Search, Target, ArrowRight, Cake,
     Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight,
-    Pencil, Trash2, X
+    Pencil, Trash2, X, Handshake, FileCheck
 } from 'lucide-react';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { nanoid } from '../../utils/nanoid';
@@ -124,6 +124,12 @@ export function DashboardPage() {
             const prop = state.properties.find(p => p.id === s.property_id);
             return prop?.realtor_id === userId;
         });
+        const rawDeals = (state.deals || []).filter(d => {
+            if (isAdmin) return true;
+            if (d.realtor_id === userId) return true;
+            const prop = state.properties.find(p => p.id === d.property_id);
+            return prop?.realtor_id === userId;
+        });
 
         const toDateStr = (val) => {
             if (!val) return '';
@@ -137,6 +143,7 @@ export function DashboardPage() {
             return {
                 id: t.id,
                 isShowing: false,
+                isDeal: false,
                 title: t.title || t.notes || (t.task_type || 'Задача'),
                 description: t.description || '',
                 dateStr,
@@ -157,6 +164,7 @@ export function DashboardPage() {
                 return {
                     id: s.id,
                     isShowing: true,
+                    isDeal: false,
                     title: s.notes || 'Показ объекта',
                     description: '',
                     dateStr,
@@ -170,8 +178,55 @@ export function DashboardPage() {
                 };
             });
 
-        return [...taskItems, ...showingItems];
-    }, [state.tasks, state.showings, state.properties, state.currentUser?.role, state.currentUser?.id]);
+        const dealItems = [];
+        rawDeals.forEach(d => {
+            const client_id = (d.buyer_ids && d.buyer_ids[0]) || d.buyer_id || (d.seller_ids && d.seller_ids[0]) || d.seller_id || null;
+            if (d.deal_date) {
+                const dateStr = toDateStr(d.deal_date);
+                dealItems.push({
+                    id: d.id,
+                    dealId: d.id,
+                    isDeal: true,
+                    isDeposit: false,
+                    isShowing: false,
+                    title: d.title ? `Сделка: ${d.title}` : 'Сделка',
+                    description: d.deal_location ? `Место: ${d.deal_location}` : (d.notes || ''),
+                    dateStr,
+                    rawDate: d.deal_date,
+                    status: d.status || 'active',
+                    isDone: d.status === 'closed',
+                    type: 'Сделка',
+                    client_id,
+                    property_id: d.property_id,
+                    price: d.price,
+                    raw: d,
+                });
+            }
+            if (d.deposit_date && toDateStr(d.deposit_date) !== toDateStr(d.deal_date)) {
+                const dateStr = toDateStr(d.deposit_date);
+                dealItems.push({
+                    id: `${d.id}-deposit`,
+                    dealId: d.id,
+                    isDeal: true,
+                    isDeposit: true,
+                    isShowing: false,
+                    title: d.title ? `Задаток: ${d.title}` : 'Задаток',
+                    description: d.deposit_amount ? `Сумма: ${Number(d.deposit_amount).toLocaleString('ru-RU')} ₽` : (d.notes || ''),
+                    dateStr,
+                    rawDate: d.deposit_date,
+                    status: d.status || 'active',
+                    isDone: d.status === 'closed',
+                    type: 'Задаток',
+                    client_id,
+                    property_id: d.property_id,
+                    price: d.deposit_amount,
+                    raw: d,
+                });
+            }
+        });
+
+        return [...taskItems, ...showingItems, ...dealItems];
+    }, [state.tasks, state.showings, state.deals, state.properties, state.currentUser?.role, state.currentUser?.id]);
 
     const dayTaskCounts = useMemo(() => {
         const counts = {};
@@ -228,7 +283,18 @@ export function DashboardPage() {
     // Выполнение задачи в 1 клик
     const handleToggleTask = (item, e) => {
         e?.stopPropagation();
-        if (item.isShowing) {
+        if (item.isDeal) {
+            const nextStatus = item.isDone ? 'active' : 'closed';
+            dispatch({
+                type: 'UPDATE_DEAL',
+                deal: { ...item.raw, status: nextStatus },
+            });
+            if (nextStatus === 'closed') {
+                toast.success('✓ Сделка завершена!');
+            } else {
+                toast.info('Сделка возвращена в работу');
+            }
+        } else if (item.isShowing) {
             const nextStatus = item.isDone ? 'scheduled' : 'completed';
             dispatch({
                 type: 'UPDATE_SHOWING',
@@ -259,6 +325,7 @@ export function DashboardPage() {
         item: null,
         isNew: false,
         id: '',
+        dealId: null,
         title: '',
         task_type: 'Позвонить',
         due_date: '',
@@ -267,6 +334,8 @@ export function DashboardPage() {
         description: '',
         status: 'pending',
         isShowing: false,
+        isDeal: false,
+        isDeposit: false,
     });
 
     const handleOpenCreateModal = (defaultDateStr) => {
@@ -277,6 +346,7 @@ export function DashboardPage() {
             item: null,
             isNew: true,
             id: '',
+            dealId: null,
             title: '',
             task_type: 'Позвонить',
             due_date: initialDue,
@@ -285,6 +355,8 @@ export function DashboardPage() {
             description: '',
             status: 'pending',
             isShowing: false,
+            isDeal: false,
+            isDeposit: false,
         });
     };
 
@@ -300,14 +372,17 @@ export function DashboardPage() {
             item,
             isNew: false,
             id: item.id,
+            dealId: item.dealId || (item.isDeal ? item.raw?.id : null),
             title: item.title || '',
-            task_type: item.type || (item.isShowing ? 'Показ' : 'Позвонить'),
+            task_type: item.type || (item.isShowing ? 'Показ' : item.isDeal ? 'Сделка' : 'Позвонить'),
             due_date: localDue,
             client_id: item.client_id || '',
             property_id: item.property_id || '',
             description: item.description || item.raw?.notes || item.raw?.feedback_comment || '',
-            status: item.isDone ? (item.isShowing ? 'completed' : 'done') : (item.isShowing ? 'scheduled' : 'pending'),
+            status: item.isDone ? (item.isShowing ? 'completed' : item.isDeal ? 'closed' : 'done') : (item.isShowing ? 'scheduled' : item.isDeal ? 'active' : 'pending'),
             isShowing: Boolean(item.isShowing),
+            isDeal: Boolean(item.isDeal),
+            isDeposit: Boolean(item.isDeposit),
         });
     };
 
@@ -333,14 +408,32 @@ export function DashboardPage() {
     const handleSaveTaskModal = (e) => {
         e?.preventDefault();
         if (!taskModal.title?.trim()) {
-            toast.error('Укажите название задачи');
+            toast.error('Укажите название');
             return;
         }
 
         const parsedDate = taskModal.due_date ? parseLocalDateTime(taskModal.due_date) : null;
         const isoDate = parsedDate ? parsedDate.toISOString() : null;
 
-        if (taskModal.isShowing) {
+        if (taskModal.isDeal) {
+            const rawDeal = taskModal.item.raw;
+            const updatedDeal = {
+                ...rawDeal,
+                title: taskModal.title.replace(/^Сделка:\s*|^Задаток:\s*/i, '').trim() || rawDeal.title,
+                notes: taskModal.description?.trim() || rawDeal.notes,
+                status: (taskModal.status === 'done' || taskModal.status === 'closed' || taskModal.status === 'completed') ? 'closed' : 'active',
+                deal_date: taskModal.isDeposit ? rawDeal.deal_date : (isoDate || rawDeal.deal_date),
+                deposit_date: taskModal.isDeposit ? (isoDate || rawDeal.deposit_date) : rawDeal.deposit_date,
+                client_id: taskModal.client_id || rawDeal.client_id,
+                property_id: taskModal.property_id || rawDeal.property_id,
+                updated_at: new Date().toISOString(),
+            };
+            dispatch({
+                type: 'UPDATE_DEAL',
+                deal: updatedDeal,
+            });
+            toast.success('Сделка сохранена');
+        } else if (taskModal.isShowing) {
             const updatedShowing = {
                 ...taskModal.item.raw,
                 showing_date: isoDate || taskModal.item.raw?.showing_date || new Date().toISOString(),
@@ -398,7 +491,19 @@ export function DashboardPage() {
 
     const handleDeleteTaskModal = (itemOrId, isShowing) => {
         const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
+        const isDeal = typeof itemOrId === 'object' ? itemOrId?.isDeal : (isShowing === 'deal');
         const showing = typeof itemOrId === 'object' ? itemOrId?.isShowing : isShowing;
+
+        if (isDeal || taskModal.isDeal) {
+            if (!window.confirm('Удалить эту сделку?')) {
+                return;
+            }
+            const dealId = itemOrId?.dealId || itemOrId?.raw?.id || id || taskModal.dealId;
+            dispatch({ type: 'DELETE_DEAL', id: dealId });
+            toast.success('Сделка удалена');
+            setTaskModal(prev => ({ ...prev, isOpen: false }));
+            return;
+        }
 
         if (!window.confirm(showing ? 'Удалить этот показ?' : 'Удалить эту задачу?')) {
             return;
@@ -426,9 +531,12 @@ export function DashboardPage() {
             case 'meeting':
             case 'Встреча':
                 return { icon: <Users size={13} />, label: 'Встреча', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' };
+            case 'deposit':
             case 'Задаток':
+                return { icon: <Target size={13} />, label: 'Задаток', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' };
+            case 'deal':
             case 'Сделка':
-                return { icon: <Target size={13} />, label: type, color: '#d97706', bg: 'rgba(245, 158, 11, 0.1)' };
+                return { icon: <Handshake size={13} />, label: 'Сделка', color: '#059669', bg: 'rgba(5, 150, 105, 0.1)' };
             case 'document':
             case 'Документы':
                 return { icon: <Clock size={13} />, label: 'Документы', color: '#ec4899', bg: 'rgba(236, 72, 153, 0.1)' };
@@ -1263,11 +1371,15 @@ export function DashboardPage() {
                                     background: 'var(--primary-light)', color: 'var(--primary)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}>
-                                    {taskModal.isShowing ? <Home size={18} /> : <Calendar size={18} />}
+                                    {taskModal.isDeal ? <Handshake size={18} /> : (taskModal.isShowing ? <Home size={18} /> : <Calendar size={18} />)}
                                 </div>
                                 <div>
                                     <h3 className="font-oswald" style={{ fontSize: 18, fontWeight: 500, margin: 0, color: 'var(--text)' }}>
-                                        {taskModal.isNew ? 'Новая задача' : (taskModal.isShowing ? 'Редактирование показа' : 'Редактирование задачи')}
+                                        {taskModal.isNew
+                                            ? 'Новая задача'
+                                            : (taskModal.isDeal
+                                                ? (taskModal.isDeposit ? 'Задаток по сделке' : 'Редактирование сделки')
+                                                : (taskModal.isShowing ? 'Редактирование показа' : 'Редактирование задачи'))}
                                     </h3>
                                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                         {taskModal.isNew ? 'Запланируйте звонок, встречу или дело' : 'Измените параметры или удалите'}
@@ -1288,8 +1400,44 @@ export function DashboardPage() {
                             </button>
                         </div>
 
+                        {/* Deal quick link */}
+                        {taskModal.isDeal && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 12px',
+                                background: 'rgba(5, 150, 105, 0.08)',
+                                borderRadius: 10,
+                                border: '1px solid rgba(5, 150, 105, 0.2)',
+                            }}>
+                                <span style={{ fontSize: 12, color: '#059669', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Handshake size={14} /> Сделка в CRM
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTaskModal(prev => ({ ...prev, isOpen: false }));
+                                        navigate('/tasks');
+                                    }}
+                                    style={{
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: '#059669',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        textDecoration: 'underline',
+                                        padding: 0,
+                                    }}
+                                >
+                                    Перейти в раздел «Сделки» →
+                                </button>
+                            </div>
+                        )}
+
                         {/* Task Type selector */}
-                        {!taskModal.isShowing && (
+                        {!taskModal.isShowing && !taskModal.isDeal && (
                             <div>
                                 <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
                                     Тип задачи
@@ -1411,7 +1559,7 @@ export function DashboardPage() {
                                 <div style={{ display: 'flex', gap: 6 }}>
                                     <button
                                         type="button"
-                                        onClick={() => handleModalFieldChange('status', taskModal.isShowing ? 'scheduled' : 'pending')}
+                                        onClick={() => handleModalFieldChange('status', taskModal.isDeal ? 'active' : (taskModal.isShowing ? 'scheduled' : 'pending'))}
                                         style={{
                                             padding: '4px 10px',
                                             borderRadius: 6,
@@ -1419,15 +1567,15 @@ export function DashboardPage() {
                                             fontWeight: 500,
                                             border: 'none',
                                             cursor: 'pointer',
-                                            background: (taskModal.status === 'pending' || taskModal.status === 'scheduled') ? 'var(--primary)' : 'transparent',
-                                            color: (taskModal.status === 'pending' || taskModal.status === 'scheduled') ? 'white' : 'var(--text-muted)',
+                                            background: (taskModal.status === 'pending' || taskModal.status === 'scheduled' || taskModal.status === 'active') ? 'var(--primary)' : 'transparent',
+                                            color: (taskModal.status === 'pending' || taskModal.status === 'scheduled' || taskModal.status === 'active') ? 'white' : 'var(--text-muted)',
                                         }}
                                     >
                                         В работе
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => handleModalFieldChange('status', taskModal.isShowing ? 'completed' : 'done')}
+                                        onClick={() => handleModalFieldChange('status', taskModal.isDeal ? 'closed' : (taskModal.isShowing ? 'completed' : 'done'))}
                                         style={{
                                             padding: '4px 10px',
                                             borderRadius: 6,
@@ -1435,11 +1583,11 @@ export function DashboardPage() {
                                             fontWeight: 500,
                                             border: 'none',
                                             cursor: 'pointer',
-                                            background: (taskModal.status === 'done' || taskModal.status === 'completed') ? '#10b981' : 'transparent',
-                                            color: (taskModal.status === 'done' || taskModal.status === 'completed') ? 'white' : 'var(--text-muted)',
+                                            background: (taskModal.status === 'done' || taskModal.status === 'completed' || taskModal.status === 'closed') ? '#10b981' : 'transparent',
+                                            color: (taskModal.status === 'done' || taskModal.status === 'completed' || taskModal.status === 'closed') ? 'white' : 'var(--text-muted)',
                                         }}
                                     >
-                                        Выполнено
+                                        {taskModal.isDeal ? 'Завершена' : 'Выполнено'}
                                     </button>
                                 </div>
                             </div>
