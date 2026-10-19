@@ -150,12 +150,12 @@ export default async function handler(req, res) {
     return res.status(403).json({ data: null, error: 'Query not allowed: forbidden keyword or catalog access' });
   }
 
-  // 5. Валидация всех таблиц по whitelist ALLOWED_TABLES с учётом синтаксиса без пробелов
-  const tableMatches = [...query.matchAll(/(?:\bFROM|\bJOIN|\bINTO|(?<!\bDO\s+)\bUPDATE|\bTABLE)\s*["']?([a-zA-Z0-9_]+)["']?/gi)];
+  // 5. Валидация всех таблиц по whitelist ALLOWED_TABLES с учётом синтаксиса (требуется пробел после ключевых слов)
+  const tableMatches = [...query.matchAll(/(?:\bFROM|\bJOIN|\bINTO|\bTABLE|(?<!\bDO\s+)\bUPDATE)\s+(?:ONLY\s+)?["']?([a-zA-Z0-9_]+)["']?/gi)];
   for (const match of tableMatches) {
     const table = match[1]?.toLowerCase();
     // Игнорируем SQL-служебные слова
-    if (table === 'set' || table === 'only' || table === 'select') continue;
+    if (table === 'set' || table === 'only' || table === 'select' || table === 'values') continue;
     if (table && !ALLOWED_TABLES.has(table)) {
       console.warn('[neon-query] Unauthorized table access attempted:', table);
       return res.status(403).json({ data: null, error: `Access denied to table: ${table}` });
@@ -179,7 +179,7 @@ export default async function handler(req, res) {
     let clientMessage = err.message;
 
     if (pgCode === '23505') clientMessage = 'Запись уже существует (дубликат)';
-    else if (pgCode === '23503') clientMessage = 'Связанный объект не найден';
+    else if (pgCode === '23503') clientMessage = `Связанный объект не найден (${err.detail || err.message})`;
     else if (pgCode === '23502') clientMessage = 'Не заполнено обязательное поле';
     else if (pgCode === '42703') clientMessage = `Колонка не найдена: ${err.message}`;
     else if (pgCode === '42P01') clientMessage = 'Таблица не найдена';

@@ -119,7 +119,8 @@ export function useDbDispatch(state, dispatch, onError) {
       }
 
       case 'ADD_SHOWING': {
-        const realtorId = ensureUuid(action.showing.realtor_id || stateRef.current.currentUser?.id);
+        const rawRealtorId = action.showing.realtor_id || stateRef.current.currentUser?.id;
+        const realtorId = (rawRealtorId && UUID_REGEX.test(rawRealtorId)) ? rawRealtorId : (stateRef.current.currentUser?.id || null);
         const sh = {
           ...action.showing,
           id: ensureUuid(action.showing.id),
@@ -503,7 +504,8 @@ function _buildShowingTask(sh, state, now) {
   const client = state?.clients?.find(c => String(c.id) === String(sh.client_id || (sh.client_ids || [])[0]));
   const clientName = client?.full_name || sh.contact_name || '';
   const withText = clientName ? ` — ${clientName}` : '';
-  const realtorId = ensureUuid(sh.realtor_id || state?.currentUser?.id || client?.realtor_id);
+  const rawRealtorId = sh.realtor_id || state?.currentUser?.id || client?.realtor_id;
+  const realtorId = (rawRealtorId && UUID_REGEX.test(rawRealtorId)) ? rawRealtorId : (state?.currentUser?.id || null);
   return {
     id: nanoid(),
     realtor_id: realtorId,

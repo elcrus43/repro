@@ -91,6 +91,13 @@ export function mapShowingToDb(s) {
   if (dbShowing.property_id && !UUID_RE.test(dbShowing.property_id)) {
     dbShowing.property_id = null;
   }
+  if (dbShowing.match_id && !UUID_RE.test(dbShowing.match_id)) {
+    dbShowing.match_id = null;
+  }
+  if (dbShowing.property_id === '') dbShowing.property_id = null;
+  if (dbShowing.client_id === '') dbShowing.client_id = null;
+  if (dbShowing.realtor_id === '') dbShowing.realtor_id = null;
+  if (dbShowing.match_id === '') dbShowing.match_id = null;
   let cIds = dbShowing.client_ids;
   if (typeof cIds === 'string') {
     cIds = cIds.replace(/[{}]/g, '').split(',').filter(Boolean);
@@ -629,7 +636,20 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         });
         const showingData = mapShowingToDb(sanitizeObj(rawShowing));
         
-        const showingResult = await neonDb.upsert('showings', showingData);
+        let showingResult = await neonDb.upsert('showings', showingData);
+        // FK constraint recovery: if property_id or match_id does not exist in DB, retry with null
+        if (showingResult?.error && (showingResult.error?.code === '23503' || String(showingResult.error?.message).includes('23503'))) {
+          const detail = String(showingResult.error?.message || '');
+          if (detail.includes('property_id') && showingData.property_id) {
+            console.warn('[neonSync ADD_SHOWING] property_id FK failed, retrying without property_id...');
+            showingData.property_id = null;
+            showingResult = await neonDb.upsert('showings', showingData);
+          } else if (detail.includes('match_id') && showingData.match_id) {
+            console.warn('[neonSync ADD_SHOWING] match_id FK failed, retrying without match_id...');
+            showingData.match_id = null;
+            showingResult = await neonDb.upsert('showings', showingData);
+          }
+        }
         if (showingResult?.error) {
           handleError(`Ошибка сохранения события: ${showingResult.error?.message || showingResult.error}`);
           if (typeof onRollback === 'function') onRollback(action);
@@ -668,6 +688,18 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         let showingResult = await neonDb.update('showings', sId, dataToUpdate);
         if (showingResult?.error || !showingResult?.data || showingResult.data.length === 0) {
           showingResult = await neonDb.upsert('showings', showingData);
+        }
+        // FK constraint recovery
+        if (showingResult?.error && (showingResult.error?.code === '23503' || String(showingResult.error?.message).includes('23503'))) {
+          const detail = String(showingResult.error?.message || '');
+          if (detail.includes('property_id') && dataToUpdate.property_id) {
+            dataToUpdate.property_id = null;
+            showingData.property_id = null;
+            showingResult = await neonDb.update('showings', sId, dataToUpdate);
+            if (showingResult?.error || !showingResult?.data || showingResult.data.length === 0) {
+              showingResult = await neonDb.upsert('showings', showingData);
+            }
+          }
         }
         if (showingResult?.error) {
           handleError(`Ошибка обновления события: ${showingResult.error?.message || showingResult.error}`);
