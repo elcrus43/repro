@@ -433,6 +433,7 @@ export function DocumentsPage() {
     const [service1Cost, setService1Cost] = useState(() => prefill.service1Cost ? String(prefill.service1Cost) : '5 000');
     const [service2Cost, setService2Cost] = useState(() => prefill.service2Cost ? String(prefill.service2Cost) : (prefill.commission ? String(prefill.commission) : '15 000'));
     const [actDate, setActDate] = useState(() => prefill.actDate || new Date().toISOString().split('T')[0]);
+    const [realtorTaxStatus, setRealtorTaxStatus] = useState(() => prefill.realtorTaxStatus || state.currentUser?.tax_status || state.currentUser?.passport_details?.tax_status || 'Самозанятый');
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSavedToCrm, setIsSavedToCrm] = useState(false);
@@ -1071,8 +1072,17 @@ export function DocumentsPage() {
             deal = { ...(deal || {}), contract_end_date: contractEndDate };
         }
 
-        return { seller, buyer, property, realtor, agencyName, deal, contractEndDate, service1Cost, service2Cost, actDate, isLegalEntity: Boolean(clientDraft.is_legal_entity) };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, clientDraft.is_legal_entity]);
+        const isRealtorSelfEmployed = (realtorTaxStatus || 'Самозанятый').toLowerCase().includes('самозанят');
+        return {
+            seller, buyer, property,
+            realtor: { ...(realtor || {}), tax_status: realtorTaxStatus },
+            agencyName, deal, contractEndDate,
+            service1Cost, service2Cost, actDate,
+            realtorTaxStatus,
+            isRealtorSelfEmployed,
+            isLegalEntity: Boolean(clientDraft.is_legal_entity)
+        };
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, clientDraft.is_legal_entity, realtorTaxStatus]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -2447,22 +2457,35 @@ export function DocumentsPage() {
                         </div>
 
                         <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            В 3-стороннем договоре оплата Исполнителю 1 (ИП Муравьева) и Исполнителю 2 (Риэлтор-самозанятый) производится Заказчиком раздельно.
+                            В 3-стороннем договоре оплата Исполнителю 1 (ИП Муравьева) и Исполнителю 2 производится Заказчиком раздельно.
                         </div>
 
-                        {/* Карточка Риэлтора (Исполнитель 2 — самозанятый из профиля) */}
+                        {/* Карточка Исполнителя 2 */}
                         <div style={{
                             background: 'var(--bg)', borderRadius: 14, padding: 14,
                             border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 8
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                     <User size={15} style={{ color: 'var(--primary)' }} />
-                                    <strong style={{ fontSize: 13, color: 'var(--text)' }}>Исполнитель 2 (Риэлтор):</strong>
+                                    <strong style={{ fontSize: 13, color: 'var(--text)' }}>Исполнитель 2:</strong>
                                     <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>{realtor?.full_name || 'Не указан'}</span>
-                                    <span style={{ fontSize: 11, background: 'rgba(0, 82, 255, 0.08)', color: 'var(--primary)', padding: '2px 6px', borderRadius: 6, fontWeight: 500 }}>
-                                        Самозанятый (НПД)
-                                    </span>
+                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface)', padding: '2px 6px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Статус:</span>
+                                        <select
+                                            value={realtorTaxStatus}
+                                            onChange={e => setRealtorTaxStatus(e.target.value)}
+                                            style={{
+                                                fontSize: 11, fontWeight: 600, border: 'none', background: 'transparent',
+                                                color: realtorTaxStatus === 'Самозанятый' ? 'var(--primary)' : 'var(--text)',
+                                                cursor: 'pointer', outline: 'none'
+                                            }}
+                                        >
+                                            <option value="Самозанятый">Самозанятый</option>
+                                            <option value="Физическое лицо">Физическое лицо</option>
+                                            <option value="Индивидуальный предприниматель">Индивидуальный предприниматель</option>
+                                        </select>
+                                    </div>
                                 </div>
                                 <button
                                     type="button"
@@ -2539,9 +2562,9 @@ export function DocumentsPage() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
                                     <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Исполнитель 2 (Риэлтор) (₽) — п. 3.3
+                                        Исполнитель 2 (₽) — п. 3.3
                                     </span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>самозанятый</span>
+                                    <span style={{ color: 'var(--text-secondary)' }}>{realtorTaxStatus === 'Самозанятый' ? 'самозанятый' : realtorTaxStatus?.toLowerCase()}</span>
                                 </div>
                                 <input
                                     id="doc-input-service2-cost"
@@ -2834,7 +2857,7 @@ export function DocumentsPage() {
                         {isServicesRent3Party ? (
                             <>
                                 <DataPreview label="Исполнитель 1" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
-                                <DataPreview label="Исполнитель 2 (Риэлтор)" value={`${realtor?.full_name || 'Не указан'} (Самозанятый, ${realtor?.inn ? `ИНН ${realtor.inn}` : 'ИНН не указан'})`} />
+                                <DataPreview label="Исполнитель 2" value={`${(realtorTaxStatus === 'Самозанятый' ? 'Самозанятый ' : '')}${realtor?.full_name || 'Не указан'} (${realtorTaxStatus}, ${realtor?.inn ? `ИНН ${realtor.inn}` : 'ИНН не указан'})`} />
                                 {(buyer || seller) && (
                                     (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
                                         <>
@@ -2857,7 +2880,7 @@ export function DocumentsPage() {
                                     <DataPreview label="Исполнитель 1 (ИП)" value={`${Number(String(service1Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
                                 )}
                                 {service2Cost && (
-                                    <DataPreview label="Исполнитель 2 (Риэлтор)" value={`${Number(String(service2Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />
+                                    <DataPreview label="Исполнитель 2" value={`${Number(String(service2Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />
                                 )}
                                 {contractEndDate && (
                                     <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
@@ -3453,8 +3476,15 @@ function DocumentPreview({ template, data, highlight = true }) {
     const rawEndDate = data.contractEndDate || deal?.contract_end_date;
     const contractEndDate = rawEndDate ? fDate(rawEndDate) : '';
 
-    // Риэлтор (Исполнитель 2 — самозанятый из профиля)
+    // Исполнитель 2 (из профиля или generatorData)
     const rDetails = realtor?.passport_details || {};
+    const realtorTaxStatus = data.realtorTaxStatus || realtor?.tax_status || rDetails?.tax_status || 'Самозанятый';
+    const isRealtorSelfEmployed = Boolean(
+        data.isRealtorSelfEmployed !== undefined 
+            ? data.isRealtorSelfEmployed 
+            : (realtorTaxStatus || '').toLowerCase().includes('самозанят')
+    );
+    const realtorPrefix = isRealtorSelfEmployed ? 'Самозанятый ' : (realtorTaxStatus === 'Индивидуальный предприниматель' ? 'Индивидуальный предприниматель ' : 'Гр. ');
     const realtorFullName = f(realtor?.full_name);
     const realtorBirth = realtor?.birth_date ? fDate(realtor.birth_date) : (rDetails.birth_date ? fDate(rDetails.birth_date) : '');
     const realtorSeries = f(rDetails.series);
@@ -3540,14 +3570,14 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </p>
 
                 <p style={{ textIndent: '2.5em', marginBottom: 12, textAlign: 'justify' }}>
-                    Гр. <strong><Slot slotId="realtor_name" value={realtorFullName} label="ФИО Риэлтора" inputId="doc-input-realtor-name" highlight={highlight} /></strong>, 
-                    ИНН: <Slot slotId="realtor_inn" value={realtorInn} label="ИНН Риэлтора" inputId="doc-input-realtor-inn" highlight={highlight} />, 
+                    {realtorPrefix}<strong><Slot slotId="realtor_name" value={realtorFullName} label="ФИО Исполнителя 2" inputId="doc-input-realtor-name" highlight={highlight} /></strong>, 
+                    ИНН: <Slot slotId="realtor_inn" value={realtorInn} label="ИНН Исполнителя 2" inputId="doc-input-realtor-inn" highlight={highlight} />, 
                     дата рождения: <Slot slotId="realtor_birth" value={realtorBirth} label="Дата рождения" inputId="doc-input-realtor-birth" highlight={highlight} />, 
                     паспорт РФ серия <Slot slotId="realtor_series" value={realtorSeries} label="Серия паспорта" inputId="doc-input-realtor-series" highlight={highlight} /> номер <Slot slotId="realtor_number" value={realtorNumber} label="Номер паспорта" inputId="doc-input-realtor-number" highlight={highlight} />, 
                     выдан <Slot slotId="realtor_issued_by" value={realtorIssuedBy} label="Кем выдан" inputId="doc-input-realtor-issued-by" highlight={highlight} /> дата выдачи: <Slot slotId="realtor_issue_date" value={realtorIssueDate} label="Дата выдачи" inputId="doc-input-realtor-issue-date" highlight={highlight} />, 
                     зарегистрированный(-ая) по адресу: <Slot slotId="realtor_reg_address" value={realtorRegAddress} label="Адрес регистрации" inputId="doc-input-realtor-reg-address" highlight={highlight} />, 
                     телефон: <Slot slotId="realtor_phone" value={realtorPhone} label="Телефон" inputId="doc-input-realtor-phone" highlight={highlight} />, 
-                    действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), со второй стороны, 
+                    {isRealtorSelfEmployed ? 'действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), ' : ''}со второй стороны, 
                     именуемый(-ая) в дальнейшем <strong>«Исполнитель 2»</strong>,
                 </p>
 
@@ -3740,8 +3770,8 @@ function DocumentPreview({ template, data, highlight = true }) {
                         Подпись: ________________ / Муравьева Ю.А. /
                     </div>
                     <div style={{ border: '1px solid #ddd', padding: 12, borderRadius: 8 }}>
-                        <strong>Исполнитель 2 (Риэлтор):</strong><br />
-                        <Slot slotId="realtor_name" value={realtorFullName} label="ФИО Риэлтора" inputId="doc-input-realtor-name" highlight={highlight} /><br />
+                        <strong>Исполнитель 2:</strong><br />
+                        {isRealtorSelfEmployed ? 'Самозанятый ' : ''}<Slot slotId="realtor_name" value={realtorFullName} label="ФИО Исполнителя 2" inputId="doc-input-realtor-name" highlight={highlight} /><br />
                         ИНН: <Slot slotId="realtor_inn" value={realtorInn} label="ИНН" inputId="doc-input-realtor-inn" highlight={highlight} /><br />
                         Паспорт: <Slot slotId="realtor_series" value={realtorSeries} label="Серия" inputId="doc-input-realtor-series" highlight={highlight} /> № <Slot slotId="realtor_number" value={realtorNumber} label="Номер" inputId="doc-input-realtor-number" highlight={highlight} /><br />
                         Адрес: <Slot slotId="realtor_reg_address" value={realtorRegAddress} label="Адрес регистрации" inputId="doc-input-realtor-reg-address" highlight={highlight} /><br />
@@ -3818,7 +3848,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                             <strong>Исполнитель 2:</strong>
                             <div style={{ borderBottom: '1.5px solid #000', height: 26, marginTop: 12 }}></div>
                             <div style={{ fontSize: 11, color: '#666', textAlign: 'center', marginTop: 2 }}>
-                                (Подпись) / <Slot slotId="realtor_short" value={realtorShort} label="ФИО" highlight={highlight} />
+                                (Подпись) / {isRealtorSelfEmployed ? 'Самозанятый ' : ''}<Slot slotId="realtor_short" value={realtorShort} label="ФИО" highlight={highlight} />
                             </div>
                         </div>
                     </div>

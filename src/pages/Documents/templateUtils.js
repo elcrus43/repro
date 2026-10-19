@@ -95,8 +95,15 @@ export function buildSlotValues(data, template) {
     const rawEndDate = data.contractEndDate || deal?.contract_end_date;
     const contractEndDate = rawEndDate ? fDate(rawEndDate) : '';
 
-    // Данные риэлтора (Исполнитель 2 — самозанятый)
+    // Данные Исполнителя 2 (из профиля или generatorData)
     const rDetails = realtor?.passport_details || {};
+    const realtorTaxStatus = data.realtorTaxStatus || realtor?.tax_status || rDetails?.tax_status || 'Самозанятый';
+    const isRealtorSelfEmployed = Boolean(
+        data.isRealtorSelfEmployed !== undefined 
+            ? data.isRealtorSelfEmployed 
+            : (realtorTaxStatus || '').toLowerCase().includes('самозанят')
+    );
+    const realtorPrefix = isRealtorSelfEmployed ? 'Самозанятый ' : (realtorTaxStatus === 'Индивидуальный предприниматель' ? 'Индивидуальный предприниматель ' : 'Гр. ');
     const realtorInn = f(realtor?.inn);
     const realtorBirth = realtor?.birth_date ? fDate(realtor.birth_date) : (rDetails.birth_date ? fDate(rDetails.birth_date) : '');
     const realtorSeries = f(rDetails.series);
@@ -204,6 +211,8 @@ export function buildSlotValues(data, template) {
         realtor_reg_address: realtorRegAddress,
         realtor_phone: realtorPhone,
         realtor_short: realtorShort,
+        realtor_prefix: realtorPrefix,
+        realtor_tax_status: realtorTaxStatus,
         customer_name: isCustomerLegalEntity ? (customerCompanyName || customerName) : customerName,
         customer_birth: customerBirth,
         customer_series: customerSeries,
@@ -301,7 +310,7 @@ export function injectDataIntoTemplateHtml(html, slotValues, highlight = true, i
                 }
                 else if (inputId === 'doc-input-contract-end-date' || title.includes('Срок')) slotId = 'contract_end_date';
                 else if (inputId === 'doc-input-company-name' || label.includes('Наименование организации') || label.includes('Организация')) slotId = 'company_name';
-                else if (inputId === 'doc-input-inn' || label.includes('ИНН организации') || (label.includes('ИНН') && !label.includes('Риэлтор'))) slotId = 'company_inn';
+                else if (inputId === 'doc-input-inn' || label.includes('ИНН организации') || (label.includes('ИНН') && !label.includes('Риэлтор') && !label.includes('Исполнитель 2'))) slotId = 'company_inn';
                 else if (inputId === 'doc-input-kpp' || label.includes('КПП')) slotId = 'company_kpp';
                 else if (inputId === 'doc-input-ogrn' || label.includes('ОГРН')) slotId = 'company_ogrn';
                 else if (inputId === 'doc-input-legal-address' || label.includes('Юридический адрес') || label.includes('Юр. адрес')) slotId = 'company_legal_address';

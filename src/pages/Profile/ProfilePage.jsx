@@ -40,6 +40,7 @@ export function ProfilePage() {
         phone: user?.phone || '',
         agency_name: user?.agency_name || '',
         inn: user?.inn || '',
+        tax_status: user?.tax_status || user?.passport_details?.tax_status || 'Самозанятый',
         passport_details: user?.passport_details || {}
     });
 
@@ -77,6 +78,7 @@ export function ProfilePage() {
             phone: user.phone || '',
             agency_name: user.agency_name || '',
             inn: user.inn || '',
+            tax_status: user.tax_status || user.passport_details?.tax_status || 'Самозанятый',
             passport_details: user.passport_details || {}
         });
     }, [user]);
@@ -99,7 +101,19 @@ export function ProfilePage() {
     }
 
     const handleSave = async () => {
-        const ok = await dispatch({ type: 'UPDATE_PROFILE', profile: { ...user, ...editData } });
+        const updatedPassport = {
+            ...(editData.passport_details || {}),
+            tax_status: editData.tax_status || 'Самозанятый'
+        };
+        const ok = await dispatch({
+            type: 'UPDATE_PROFILE',
+            profile: {
+                ...user,
+                ...editData,
+                tax_status: editData.tax_status || 'Самозанятый',
+                passport_details: updatedPassport
+            }
+        });
         if (ok !== false) {
             toast.success('Профиль сохранён');
             setIsEditing(false);
@@ -369,7 +383,21 @@ export function ProfilePage() {
                             />
 
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginTop: 8 }}>
-                                Реквизиты самозанятого (для договоров)
+                                Реквизиты и статус (для договоров)
+                            </div>
+
+                            <div>
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 4, display: 'block' }}>Статус налогоплательщика</label>
+                                <select
+                                    className="form-input"
+                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', width: '100%', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}
+                                    value={editData.tax_status || 'Самозанятый'}
+                                    onChange={e => setEditData({ ...editData, tax_status: e.target.value })}
+                                >
+                                    <option value="Самозанятый">Самозанятый</option>
+                                    <option value="Физическое лицо">Физическое лицо</option>
+                                    <option value="Индивидуальный предприниматель">Индивидуальный предприниматель</option>
+                                </select>
                             </div>
 
                             <input
@@ -377,7 +405,7 @@ export function ProfilePage() {
                                 style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
                                 value={editData.inn || ''}
                                 onChange={e => setEditData({ ...editData, inn: e.target.value })}
-                                placeholder="ИНН самозанятого"
+                                placeholder="ИНН (для самозанятого или ИП)"
                             />
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -499,12 +527,18 @@ export function ProfilePage() {
 
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, fontSize: 12 }}>
                         <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>ИНН самозанятого</div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Статус в договорах</div>
+                            <div style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                                {user.tax_status || user.passport_details?.tax_status || 'Самозанятый'}
+                            </div>
+                        </div>
+                        <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>ИНН</div>
                             <div style={{ fontWeight: 600, color: user.inn ? 'var(--text)' : 'var(--danger)' }}>
                                 {user.inn || 'Не указан'}
                             </div>
                         </div>
-                        <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14 }}>
+                        <div style={{ background: 'var(--bg-light)', padding: '10px 14px', borderRadius: 14, gridColumn: '1 / -1' }}>
                             <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>Паспортные данные</div>
                             <div style={{ fontWeight: 600, color: user.passport_details?.number ? 'var(--text)' : 'var(--danger)' }}>
                                 {user.passport_details?.number ? `Серия ${user.passport_details.series || ''} № ${user.passport_details.number}` : 'Не заполнены'}

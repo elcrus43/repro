@@ -1311,7 +1311,14 @@ export function buildServicesRent3PartyContract(data) {
     const actDate = data.actDate ? fmtDate(data.actDate) : dealDate;
     const contractNumber = data.deal?.contract_number || data.contractNumber || '________';
 
-    // Реквизиты Исполнителя 2 (самозанятый риэлтор из профиля)
+    // Реквизиты Исполнителя 2 (из профиля или generatorData)
+    const realtorTaxStatus = data.realtorTaxStatus || realtor?.tax_status || rp?.tax_status || 'Самозанятый';
+    const isRealtorSelfEmployed = Boolean(
+        data.isRealtorSelfEmployed !== undefined 
+            ? data.isRealtorSelfEmployed 
+            : (realtorTaxStatus || '').toLowerCase().includes('самозанят')
+    );
+    const realtorPrefix = isRealtorSelfEmployed ? 'Самозанятый ' : (realtorTaxStatus === 'Индивидуальный предприниматель' ? 'Индивидуальный предприниматель ' : 'Гр. ');
     const realtorFullName = fmt(realtor?.full_name);
     const realtorBirth = realtor?.birth_date ? fmtDate(realtor.birth_date) : (rp.birth_date ? fmtDate(rp.birth_date) : '__________________');
     const realtorSeries = fmt(rp.series, '______');
@@ -1367,13 +1374,13 @@ export function buildServicesRent3PartyContract(data) {
             normalRun(','),
         ], { indent: true, afterPt: 6 }),
         para([
-            normalRun('Гр. '),
+            normalRun(realtorPrefix),
             boldRun(realtorFullName),
             normalRun(`, дата рождения: ${realtorBirth}, паспорт РФ серия `),
             boldRun(realtorSeries),
             normalRun(' номер '),
             boldRun(realtorNumber),
-            normalRun(`, выдан ${realtorIssuedBy} дата выдачи: ${realtorIssueDate}, зарегистрированный(-ая) по адресу: ${realtorRegAddress}, телефон: ${realtorPhone}, ${realtorInn}, действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), со второй стороны, именуемый(-ая) в дальнейшем `),
+            normalRun(`, выдан ${realtorIssuedBy} дата выдачи: ${realtorIssueDate}, зарегистрированный(-ая) по адресу: ${realtorRegAddress}, телефон: ${realtorPhone}, ${realtorInn}, ${isRealtorSelfEmployed ? 'действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), ' : ''}со второй стороны, именуемый(-ая) в дальнейшем `),
             boldRun('«Исполнитель 2»'),
             normalRun(','),
         ], { indent: true, afterPt: 6 }),
@@ -1471,7 +1478,7 @@ export function buildServicesRent3PartyContract(data) {
 
         para([boldRun('6. ПОДПИСИ СТОРОН')], { afterPt: 6, beforePt: 6 }),
         para([boldRun('Исполнитель 1: '), normalRun('___________________ / Муравьева Ю.А. /')], { afterPt: 3 }),
-        para([boldRun('Исполнитель 2: '), normalRun(`___________________ / ${realtorShort} /`)], { afterPt: 3 }),
+        para([boldRun('Исполнитель 2: '), normalRun(`___________________ / ${isRealtorSelfEmployed ? 'Самозанятый ' : ''}${realtorShort} /`)], { afterPt: 3 }),
         isCustomerLegal
             ? para([
                 boldRun('Заказчик: '),
@@ -1517,7 +1524,7 @@ export function buildServicesRent3PartyContract(data) {
         para([
             boldRun('Исполнитель 2:'),
             normalRun('\n____________________ / '),
-            boldRun(realtorShort),
+            boldRun(`${isRealtorSelfEmployed ? 'Самозанятый ' : ''}${realtorShort}`),
             normalRun('\n      (Подпись)                  (ФИО)'),
         ], { afterPt: 12 }),
     ];

@@ -155,6 +155,21 @@ describe('docxGenerator - buildServicesRent3PartyContract', () => {
         const blocks = buildServicesRent3PartyContract(data);
         expect(Array.isArray(blocks)).toBe(true);
         expect(blocks.length).toBeGreaterThan(20);
+
+        // Проверяем наличие "Самозанятый " перед ФИО риэлтора по умолчанию
+        const preambleP = blocks[3]; // paragraph for realtor (Исполнитель 2)
+        const fullPreambleText = JSON.stringify(preambleP);
+        expect(fullPreambleText).toContain('Самозанятый');
+
+        // Проверяем, что при статусе Физическое лицо пишется "Гр."
+        const blocksPhys = buildServicesRent3PartyContract({
+            ...data,
+            realtorTaxStatus: 'Физическое лицо',
+            isRealtorSelfEmployed: false
+        });
+        const fullPhysText = JSON.stringify(blocksPhys[3]);
+        expect(fullPhysText).toContain('Гр.');
+        expect(fullPhysText).not.toContain('Самозанятый');
     });
 });
 
