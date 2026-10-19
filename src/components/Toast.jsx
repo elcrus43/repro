@@ -3,7 +3,14 @@ import { useToast } from '../hooks/useToast';
 
 /* ─── Context ──────────────────────────────────────────────────────────────── */
 
-const ToastContext = createContext(null);
+const GLOBAL_TOAST_CONTEXT_KEY = '__REALTOR_MATCH_TOAST_CONTEXT__';
+const ToastContext = (typeof window !== 'undefined' && window[GLOBAL_TOAST_CONTEXT_KEY])
+  ? window[GLOBAL_TOAST_CONTEXT_KEY]
+  : createContext(null);
+
+if (typeof window !== 'undefined') {
+  window[GLOBAL_TOAST_CONTEXT_KEY] = ToastContext;
+}
 
 /**
  * ToastProvider — оборачивает приложение и предоставляет toast-функции через контекст.
@@ -21,9 +28,14 @@ const ToastContext = createContext(null);
  */
 export function ToastProvider({ children }) {
   const { toasts, toast, dismiss } = useToast();
+  const contextValue = React.useMemo(() => ({ toast }), [toast]);
+
+  if (typeof window !== 'undefined') {
+    window.__REALTOR_MATCH_TOAST_CONTEXT_VALUE__ = contextValue;
+  }
 
   return (
-    <ToastContext.Provider value={{ toast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       <ToastContainer toasts={toasts} dismiss={dismiss} />
     </ToastContext.Provider>
@@ -33,7 +45,12 @@ export function ToastProvider({ children }) {
 // eslint-disable-next-line react-refresh/only-export-components
 export function useToastContext() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToastContext must be used inside <ToastProvider>');
+  if (!ctx) {
+    if (typeof window !== 'undefined' && window.__REALTOR_MATCH_TOAST_CONTEXT_VALUE__) {
+      return window.__REALTOR_MATCH_TOAST_CONTEXT_VALUE__;
+    }
+    throw new Error('useToastContext must be used inside <ToastProvider>');
+  }
   return ctx;
 }
 

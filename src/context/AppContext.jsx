@@ -9,7 +9,7 @@
  *  4. Экспортирует reloadData для ручного обновления данных
  */
 
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef, useMemo } from 'react';
 import { reducer, EMPTY_STATE } from './reducer';
 import { loadUserData } from './dbSync';
 import { authService } from '../lib/auth';
@@ -68,7 +68,14 @@ function clearCachedData(userId) {
 
 /* ─── Context ──────────────────────────────────────────────────────────────── */
 
-export const AppContext = createContext(null);
+const GLOBAL_CONTEXT_KEY = '__REALTOR_MATCH_APP_CONTEXT__';
+export const AppContext = (typeof window !== 'undefined' && window[GLOBAL_CONTEXT_KEY])
+  ? window[GLOBAL_CONTEXT_KEY]
+  : createContext(null);
+
+if (typeof window !== 'undefined') {
+  window[GLOBAL_CONTEXT_KEY] = AppContext;
+}
 
 const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
@@ -296,8 +303,18 @@ export function AppProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const contextValue = useMemo(() => ({
+    state,
+    dispatch: dbDispatch,
+    reloadData
+  }), [state, dbDispatch, reloadData]);
+
+  if (typeof window !== 'undefined') {
+    window.__REALTOR_MATCH_APP_CONTEXT_VALUE__ = contextValue;
+  }
+
   return (
-    <AppContext.Provider value={{ state, dispatch: dbDispatch, reloadData }}>
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );
@@ -307,6 +324,11 @@ export function AppProvider({ children }) {
 
 export function useApp() {
   const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp must be used inside <AppProvider>');
+  if (!ctx) {
+    if (typeof window !== 'undefined' && window.__REALTOR_MATCH_APP_CONTEXT_VALUE__) {
+      return window.__REALTOR_MATCH_APP_CONTEXT_VALUE__;
+    }
+    throw new Error('useApp must be used inside <AppProvider>');
+  }
   return ctx;
 }
