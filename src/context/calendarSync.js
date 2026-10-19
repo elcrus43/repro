@@ -104,6 +104,7 @@ export async function syncWithCalendar(actionType, item, dispatch) {
   if (item._propertyAddress) descParts.push(`🏠 ${item._propertyAddress}`);
   if (isDeal) {
     if (item.price) descParts.push(`💰 Цена: ${Number(item.price).toLocaleString('ru-RU')} ₽`);
+    if (item.deal_location) descParts.push(`📍 Место сделки: ${item.deal_location}`);
     if (item.lawyer) descParts.push(`👤 Юрист: ${item.lawyer}`);
     if (item.notes) descParts.push(`📝 Заметки: ${item.notes}`);
     if (item.expenses && item.expenses.length > 0) {

@@ -82,6 +82,8 @@ export function DealsPage() {
         property_id: prefillData.property_id || '',
         price: prefillData.price || '',
         deal_date: prefillData.deal_date || '',
+        deal_location: prefillData.deal_location || '',
+        registration_date: prefillData.registration_date || '',
         deposit_date: prefillData.deposit_date || '',
         deposit_amount: prefillData.deposit_amount || '',
         commission: prefillData.commission || '',
@@ -460,6 +462,8 @@ export function DealsPage() {
                 return sum;
             }, 0),
             deal_date: newDeal.deal_date ? parseLocalDateTime(newDeal.deal_date)?.toISOString() : null,
+            deal_location: newDeal.deal_location ? newDeal.deal_location.trim() : null,
+            registration_date: newDeal.registration_date ? parseLocalDateTime(newDeal.registration_date)?.toISOString() : null,
             deposit_date: newDeal.deposit_date ? parseLocalDateTime(newDeal.deposit_date)?.toISOString() : null,
             handover_date: newDeal.handover_date ? parseLocalDateTime(newDeal.handover_date)?.toISOString() : null,
             handover_amount: Number(parsePriceInput(String(newDeal.handover_amount))) || 0,
@@ -506,6 +510,8 @@ export function DealsPage() {
             property_id: '', 
             price: '', 
             deal_date: '', 
+            deal_location: '',
+            registration_date: '',
             deposit_date: '', 
             deposit_amount: '', 
             commission: '', 
@@ -555,6 +561,8 @@ export function DealsPage() {
             price: deal.price ? deal.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deposit_amount: deal.deposit_amount ? deal.deposit_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             deal_date: deal.deal_date ? toLocalISOString(deal.deal_date) : '',
+            deal_location: deal.deal_location || '',
+            registration_date: deal.registration_date ? toLocalISOString(deal.registration_date) : '',
             deposit_date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
             mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             lawyer: deal.lawyer || '',
@@ -997,9 +1005,20 @@ export function DealsPage() {
                             </div>
                         </div>
 
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата и время сделки</label>
+                                <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.deal_date} onChange={e => handleFieldChange('deal_date', e.target.value)} />
+                            </div>
+                            <div className="form-group">
+                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Место сделки</label>
+                                <input type="text" placeholder="Банк, МФЦ, офис, адрес..." className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 12px' }} value={newDeal.deal_location || ''} onChange={e => handleFieldChange('deal_location', e.target.value)} />
+                            </div>
+                        </div>
+
                         <div className="form-group">
-                            <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата сделки</label>
-                            <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.deal_date} onChange={e => handleFieldChange('deal_date', e.target.value)} />
+                            <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата регистрации</label>
+                            <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.registration_date || ''} onChange={e => handleFieldChange('registration_date', e.target.value)} />
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -1323,15 +1342,34 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             });
         }
 
-        // 3. Registration
-        if (deal.deal_date) {
+        // 3. Deal (сама сделка: дата, время и место)
+        if (deal.deal_date || deal.deal_location) {
             events.push({
                 id: 'deal_date',
+                type: 'deal',
+                date: deal.deal_date || null,
+                title: 'Сделка',
+                location: deal.deal_location || null,
+                icon: <Briefcase size={14} color="#0052ff" />,
+                badgeText: deal.deal_date 
+                    ? `${new Date(deal.deal_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Дата не назначена',
+                badgeColor: deal.deal_date ? 'var(--text-secondary)' : 'var(--text-muted)',
+                badgeBg: 'var(--surface, #ffffff)',
+                badgeBorder: '1px solid rgba(0, 82, 255, 0.25)',
+                amount: null,
+            });
+        }
+
+        // 4. Registration
+        if (deal.registration_date) {
+            events.push({
+                id: 'registration_date',
                 type: 'registration',
-                date: deal.deal_date,
+                date: deal.registration_date,
                 title: 'Регистрация',
                 icon: <CheckCircle size={14} color="#10b981" />,
-                badgeText: `${new Date(deal.deal_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deal_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
+                badgeText: `${new Date(deal.registration_date).toLocaleDateString('ru-RU')} в ${new Date(deal.registration_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`,
                 badgeColor: 'var(--text-secondary)',
                 badgeBg: 'var(--surface, #ffffff)',
                 badgeBorder: '1px solid rgba(16, 185, 129, 0.25)',
@@ -1339,7 +1377,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             });
         }
 
-        // 4. Handover
+        // 5. Handover
         if (deal.handover_date || deal.handover_amount > 0) {
             events.push({
                 id: 'handover',
@@ -1357,7 +1395,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             });
         }
 
-        const STAGE_ORDER = { handover: 4, registration: 3, deposit: 2, contract: 1 };
+        const STAGE_ORDER = { handover: 5, registration: 4, deal: 3, deposit: 2, contract: 1 };
         return events.sort((a, b) => {
             const timeA = a.date ? new Date(a.date).getTime() : 0;
             const timeB = b.date ? new Date(b.date).getTime() : 0;
@@ -2024,11 +2062,34 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                                     paddingTop: idx > 0 ? 8 : 0
                                 }}
                             >
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                     {evt.icon}
                                     <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
                                         {evt.title}
                                     </span>
+                                    {evt.location && (
+                                        <span 
+                                            title={`Место: ${evt.location}`}
+                                            style={{ 
+                                                fontSize: 11, 
+                                                color: '#0052ff', 
+                                                display: 'inline-flex', 
+                                                alignItems: 'center', 
+                                                gap: 3, 
+                                                background: 'rgba(0, 82, 255, 0.06)', 
+                                                padding: '2px 7px', 
+                                                borderRadius: 6, 
+                                                border: '1px solid rgba(0, 82, 255, 0.2)',
+                                                maxWidth: 220,
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                            }}
+                                        >
+                                            <MapPin size={11} color="#0052ff" style={{ flexShrink: 0 }} />
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{evt.location}</span>
+                                        </span>
+                                    )}
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                     {evt.amount && (

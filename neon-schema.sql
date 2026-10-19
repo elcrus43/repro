@@ -325,6 +325,8 @@ CREATE TABLE IF NOT EXISTS deals (
   price           NUMERIC DEFAULT 0,
   commission      NUMERIC DEFAULT 0,
   deal_date       TIMESTAMPTZ,
+  deal_location   TEXT,
+  registration_date TIMESTAMPTZ,
 
   -- Задаток (мигр. 029)
   deposit_date    TIMESTAMPTZ,
