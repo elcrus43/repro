@@ -98,6 +98,7 @@ export function ListPage() {
 
                 if (filter === 'buyer') return types.includes('buyer');
                 if (filter === 'seller') return types.includes('seller');
+                if (filter === 'legal_entity') return types.includes('legal_entity');
                 if (filter === 'developer') return types.includes('developer');
                 if (filter === 'landlord') return types.includes('landlord');
                 if (filter === 'tenant') return types.includes('tenant');
@@ -105,7 +106,13 @@ export function ListPage() {
             })
             .filter(c => {
                 const phones = c.phones || [c.phone];
-                return !search || c.full_name?.toLowerCase().includes(search.toLowerCase()) || phones.some(p => p?.includes(search));
+                const inn = c.inn || c.company_details?.inn || '';
+                const authName = c.authorized_person?.name || '';
+                return !search || 
+                    c.full_name?.toLowerCase().includes(search.toLowerCase()) || 
+                    phones.some(p => p?.includes(search)) ||
+                    inn.includes(search) ||
+                    authName.toLowerCase().includes(search.toLowerCase());
             })
             .sort((a, b) => {
                 if (filter === 'agent') {
@@ -241,7 +248,7 @@ export function ListPage() {
 
                     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
                         {[
-                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['developer', 'Застройщики'], ['agent', 'Агенты'], ['lawyer', 'Юристы']
+                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['legal_entity', 'Юрлица'], ['developer', 'Застройщики'], ['agent', 'Агенты'], ['lawyer', 'Юристы']
                         ].map(([val, label]) => (
                             <button 
                                 key={val} 
@@ -341,6 +348,20 @@ export function ListPage() {
                                                 {client.phone ? formatPhone(client.phone) : (client.phone_2 ? formatPhone(client.phone_2) : (client.email || 'Нет телефона'))}
                                                 {client.phone && client.phone_2 ? ` · ${formatPhone(client.phone_2)}` : ''}
                                             </div>
+                                            {Boolean(client.company_details?.inn || client.authorized_person?.name) && (
+                                                <div style={{ 
+                                                    fontSize: 11, 
+                                                    color: 'var(--text-muted)', 
+                                                    marginTop: 2,
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis'
+                                                }}>
+                                                    {client.company_details?.inn ? `ИНН: ${client.company_details.inn}` : ''}
+                                                    {client.company_details?.inn && client.authorized_person?.name ? ' · ' : ''}
+                                                    {client.authorized_person?.name ? `Предст.: ${client.authorized_person.name}` : ''}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
 
@@ -369,13 +390,14 @@ export function ListPage() {
                                         )}
                                         {client.client_types?.map(t => {
                                             const isAgent = t === 'agent';
+                                            const isLegal = t === 'legal_entity';
                                             return (
                                                 <span key={t} style={{ 
                                                     fontSize: 11, 
-                                                    color: isAgent ? '#059669' : 'var(--text-secondary)', 
-                                                    fontWeight: isAgent ? 600 : 400, 
-                                                    background: isAgent ? '#ecfdf5' : 'var(--bg-light)', 
-                                                    border: isAgent ? '1px solid #10b981' : '1px solid transparent', 
+                                                    color: isAgent ? '#059669' : (isLegal ? '#0284c7' : 'var(--text-secondary)'), 
+                                                    fontWeight: (isAgent || isLegal) ? 600 : 400, 
+                                                    background: isAgent ? '#ecfdf5' : (isLegal ? 'rgba(2, 132, 199, 0.10)' : 'var(--bg-light)'), 
+                                                    border: isAgent ? '1px solid #10b981' : (isLegal ? '1px solid rgba(2, 132, 199, 0.3)' : '1px solid transparent'), 
                                                     padding: '3px 8px', 
                                                     borderRadius: 6, 
                                                     whiteSpace: 'nowrap' 

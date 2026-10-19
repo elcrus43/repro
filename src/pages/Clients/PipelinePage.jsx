@@ -5,22 +5,24 @@ import { formatPhone, formatNumber } from '../../utils/format';
 import { Phone, User, Home, Tag, Calendar, FileText } from 'lucide-react';
 
 const EXCLUDED_TYPES = ['developer', 'agent', 'lawyer'];
-const DEAL_TYPES = ['buyer', 'seller', 'landlord', 'tenant', 'lessor', 'lessee'];
+const DEAL_TYPES = ['buyer', 'seller', 'legal_entity', 'landlord', 'tenant', 'lessor', 'lessee'];
 
 const CLIENT_TYPE_INFO = {
-  buyer:    { label: 'Покупатель',   color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.10)', border: 'rgba(59, 130, 246, 0.25)' },
-  seller:   { label: 'Продавец',     color: '#10b981', bg: 'rgba(16, 185, 129, 0.10)', border: 'rgba(16, 185, 129, 0.25)' },
-  landlord: { label: 'Наймодатель',  color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
-  tenant:   { label: 'Наниматель',   color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
-  lessor:   { label: 'Арендодатель', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
-  lessee:   { label: 'Арендатор',    color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
+  buyer:        { label: 'Покупатель',   color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.10)', border: 'rgba(59, 130, 246, 0.25)' },
+  seller:       { label: 'Продавец',     color: '#10b981', bg: 'rgba(16, 185, 129, 0.10)', border: 'rgba(16, 185, 129, 0.25)' },
+  legal_entity: { label: 'Юр. лицо',     color: '#0284c7', bg: 'rgba(2, 132, 199, 0.10)', border: 'rgba(2, 132, 199, 0.25)' },
+  landlord:     { label: 'Наймодатель',  color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
+  tenant:       { label: 'Наниматель',   color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
+  lessor:       { label: 'Арендодатель', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.10)', border: 'rgba(139, 92, 246, 0.25)' },
+  lessee:       { label: 'Арендатор',    color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.10)', border: 'rgba(245, 158, 11, 0.25)' },
 };
 
 const SEGMENTS = [
-  { id: 'all',    label: 'Все клиенты' },
-  { id: 'buyer',  label: 'Покупатели' },
-  { id: 'seller', label: 'Продавцы' },
-  { id: 'rent',   label: 'Аренда / Найм' },
+  { id: 'all',          label: 'Все клиенты' },
+  { id: 'buyer',        label: 'Покупатели' },
+  { id: 'seller',       label: 'Продавцы' },
+  { id: 'legal_entity', label: 'Юрлица' },
+  { id: 'rent',         label: 'Аренда / Найм' },
 ];
 
 export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
@@ -142,6 +144,12 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
       return dealClients.filter(c => {
         const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
         return types.includes('seller');
+      });
+    }
+    if (activeSegment === 'legal_entity') {
+      return dealClients.filter(c => {
+        const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+        return types.includes('legal_entity');
       });
     }
     if (activeSegment === 'rent') {

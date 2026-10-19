@@ -213,6 +213,7 @@ export const AGENCY_CONTRACT_TYPES = [
 export const CLIENT_TYPES = [
     { id: 'buyer', label: 'Покупатель' },
     { id: 'seller', label: 'Продавец' },
+    { id: 'legal_entity', label: 'Юридическое лицо' },
     { id: 'developer', label: 'Застройщик' },
     { id: 'agent', label: 'Агент' },
     { id: 'landlord', label: 'Наймодатель' },
@@ -225,6 +226,7 @@ export const CLIENT_TYPES = [
 export const CLIENT_TYPE_LABELS = {
     buyer: 'Покупатель',
     seller: 'Продавец',
+    legal_entity: 'Юридическое лицо',
     developer: 'Застройщик',
     agent: 'Агент',
     landlord: 'Наймодатель',
@@ -234,6 +236,7 @@ export const CLIENT_TYPE_LABELS = {
     lawyer: 'Юрист',
     'Покупатель': 'Покупатель',
     'Продавец': 'Продавец',
+    'Юридическое лицо': 'Юридическое лицо',
     'Застройщик': 'Застройщик',
     'Агент': 'Агент',
     'Наймодатель': 'Наймодатель',

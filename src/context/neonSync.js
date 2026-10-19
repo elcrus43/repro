@@ -19,7 +19,7 @@ import { hasPassedDealStage } from '../utils/matching';
  * Рекурсивно заменяет пустые строки на null перед отправкой в БД.
  */
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const UUID_KEYS = new Set(['id', 'realtor_id', 'client_id', 'agent_id', 'lawyer_id', 'property_id', 'seller_id', 'buyer_id', 'user_id', 'match_id', 'request_id']);
+const UUID_KEYS = new Set(['id', 'realtor_id', 'client_id', 'agent_id', 'lawyer_id', 'property_id', 'seller_id', 'buyer_id', 'user_id', 'match_id', 'request_id', 'authorized_person_id']);
 
 export function sanitizeObj(obj) {
   if (obj === '') return null;
@@ -232,6 +232,14 @@ export async function loadUserData(userId, role) {
     if (typeof passport === 'string') {
       try { passport = JSON.parse(passport); } catch { passport = {}; }
     }
+    let company = c.company_details;
+    if (typeof company === 'string') {
+      try { company = JSON.parse(company); } catch { company = {}; }
+    }
+    let authPerson = c.authorized_person;
+    if (typeof authPerson === 'string') {
+      try { authPerson = JSON.parse(authPerson); } catch { authPerson = {}; }
+    }
     let contracts = c.agency_contracts;
     if (typeof contracts === 'string') {
       try { contracts = JSON.parse(contracts); } catch { contracts = []; }
@@ -249,6 +257,9 @@ export async function loadUserData(userId, role) {
       ...c,
       additional_contacts: Array.isArray(addContacts) ? addContacts : [],
       passport_details: passport || {},
+      company_details: company || {},
+      authorized_person: authPerson || {},
+      authorized_person_id: c.authorized_person_id || authPerson?.client_id || null,
       agency_contracts: Array.isArray(contracts) ? contracts : []
     };
   });
@@ -350,6 +361,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           status: action.client.status || 'active',
           notes: action.client.notes || null,
           passport_details: action.client.passport_details ? (typeof action.client.passport_details === 'string' ? action.client.passport_details : JSON.stringify(action.client.passport_details)) : null,
+          company_details: action.client.company_details ? (typeof action.client.company_details === 'string' ? action.client.company_details : JSON.stringify(action.client.company_details)) : '{}',
+          authorized_person: action.client.authorized_person ? (typeof action.client.authorized_person === 'string' ? action.client.authorized_person : JSON.stringify(action.client.authorized_person)) : '{}',
+          authorized_person_id: action.client.authorized_person_id || action.client.authorized_person?.client_id || null,
           agency_contracts: JSON.stringify(contracts),
           agency_contract_date: (primaryDate && String(primaryDate).trim()) ? primaryDate : null,
           agency_contract_property_id: (primaryPropId && String(primaryPropId).trim()) ? primaryPropId : null,
@@ -387,6 +401,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           status: action.client.status || 'active',
           notes: action.client.notes || null,
           passport_details: action.client.passport_details ? (typeof action.client.passport_details === 'string' ? action.client.passport_details : JSON.stringify(action.client.passport_details)) : null,
+          company_details: action.client.company_details ? (typeof action.client.company_details === 'string' ? action.client.company_details : JSON.stringify(action.client.company_details)) : '{}',
+          authorized_person: action.client.authorized_person ? (typeof action.client.authorized_person === 'string' ? action.client.authorized_person : JSON.stringify(action.client.authorized_person)) : '{}',
+          authorized_person_id: action.client.authorized_person_id || action.client.authorized_person?.client_id || null,
           agency_contracts: JSON.stringify(contracts),
           agency_contract_date: (primaryDate && String(primaryDate).trim()) ? primaryDate : null,
           agency_contract_property_id: (primaryPropId && String(primaryPropId).trim()) ? primaryPropId : null,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -7,16 +7,40 @@ import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
 import { CLIENT_SOURCES, CLIENT_TYPES } from '../../data/constants';
-import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake, Calendar } from 'lucide-react';
+import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake, Calendar, Building2, Search, UserCheck, Link2, Unlink2 } from 'lucide-react';
 
 const DADATA_TOKEN = import.meta.env.VITE_DADATA_TOKEN;
+
+const defaultCompanyDetails = {
+    name: '',
+    short_name: '',
+    inn: '',
+    kpp: '',
+    ogrn: '',
+    legal_address: '',
+    actual_address: '',
+    director_name: '',
+    director_position: 'Генеральный директор'
+};
+
+const defaultAuthorizedPerson = {
+    client_id: null,
+    name: '',
+    phone: '',
+    email: '',
+    position: 'Генеральный директор',
+    basis_document: 'Устав'
+};
 
 const defaultClient = {
     full_name: '', phone: '', email: '', inn: '', birth_date: '', reg_address: '',
     client_types: ['buyer'], additional_contacts: [], source: '', status: 'new', notes: '',
     agency_contract_date: '', agency_contract_property_id: '', has_agency_contract: false,
     passport_details: { series: '', number: '', issued_by: '', unit_code: '', issue_date: '', registration_address: '', inn: '', birth_date: '', snils: '' },
-    bank_details: { bank_name: '', bik: '', account: '', corr_account: '', inn: '', kpp: '', beneficiary: '' }
+    bank_details: { bank_name: '', bik: '', account: '', corr_account: '', inn: '', kpp: '', beneficiary: '' },
+    company_details: defaultCompanyDetails,
+    authorized_person: defaultAuthorizedPerson,
+    authorized_person_id: null
 };
 
 export function FormPage() {
@@ -36,15 +60,18 @@ export function FormPage() {
 
     const initialForm = existing ? {
         ...existing,
-        inn: existing.inn || existing.passport_details?.inn || '',
+        inn: existing.inn || existing.company_details?.inn || existing.passport_details?.inn || '',
         birth_date: existing.birth_date || existing.passport_details?.birth_date || '',
-        reg_address: existing.reg_address || existing.passport_details?.registration_address || '',
+        reg_address: existing.reg_address || existing.company_details?.legal_address || existing.passport_details?.registration_address || '',
         agency_contract_date: existing.agency_contract_date ? existing.agency_contract_date.split('T')[0] : '',
         agency_contract_property_id: existing.agency_contract_property_id || '',
         has_agency_contract: existing.has_agency_contract || Boolean(existing.agency_contract_date),
         phones: initialPhones,
         passport_details: existing.passport_details || defaultClient.passport_details,
-        bank_details: existing.bank_details || existing.passport_details?.bank_details || defaultClient.bank_details
+        bank_details: existing.bank_details || existing.passport_details?.bank_details || defaultClient.bank_details,
+        company_details: existing.company_details || defaultClient.company_details,
+        authorized_person: existing.authorized_person || defaultClient.authorized_person,
+        authorized_person_id: existing.authorized_person_id || existing.authorized_person?.client_id || null
     } : {
         ...defaultClient,
         realtor_id: state.currentUser?.id,
@@ -67,23 +94,38 @@ export function FormPage() {
     const [duplicateModalMatch, setDuplicateModalMatch] = useState(null);
     const bikTimerRef = useRef(null);
 
+    // Состояние для юридического лица
+    const isLegalEntity = form.client_types?.includes('legal_entity');
+    const [companySearchQuery, setCompanySearchQuery] = useState('');
+    const [companyLoading, setCompanyLoading] = useState(false);
+    const [companyFound, setCompanyFound] = useState(false);
+    const [authPersonMode, setAuthPersonMode] = useState(form.authorized_person_id ? 'select' : 'manual');
+    const [authPersonSearch, setAuthPersonSearch] = useState('');
+    const [createAuthPersonAsClient, setCreateAuthPersonAsClient] = useState(true);
+
     // Если данные клиента подгрузились асинхронно после маунта формы
     useEffect(() => {
         if (existing && (!form.id || form.id !== existing.id)) {
             setForm({
                 ...existing,
-                inn: existing.inn || existing.passport_details?.inn || '',
+                inn: existing.inn || existing.company_details?.inn || existing.passport_details?.inn || '',
                 birth_date: existing.birth_date || existing.passport_details?.birth_date || '',
-                reg_address: existing.reg_address || existing.passport_details?.registration_address || '',
+                reg_address: existing.reg_address || existing.company_details?.legal_address || existing.passport_details?.registration_address || '',
                 agency_contract_date: existing.agency_contract_date ? existing.agency_contract_date.split('T')[0] : '',
                 agency_contract_property_id: existing.agency_contract_property_id || '',
                 has_agency_contract: existing.has_agency_contract || Boolean(existing.agency_contract_date),
                 phones: existing.phones ? formatPhones(existing.phones) : (existing.phone ? [formatPhone(existing.phone, true)] : ['']),
                 passport_details: existing.passport_details || defaultClient.passport_details,
-                bank_details: existing.bank_details || existing.passport_details?.bank_details || defaultClient.bank_details
+                bank_details: existing.bank_details || existing.passport_details?.bank_details || defaultClient.bank_details,
+                company_details: existing.company_details || defaultClient.company_details,
+                authorized_person: existing.authorized_person || defaultClient.authorized_person,
+                authorized_person_id: existing.authorized_person_id || existing.authorized_person?.client_id || null
             });
             setShowPassport(!!(existing.passport_details?.series || existing.inn || existing.birth_date));
             setShowBank(!!(existing.bank_details?.bik || existing.bank_details?.account || existing.passport_details?.bank_details?.bik));
+            if (existing.authorized_person_id || existing.authorized_person?.client_id) {
+                setAuthPersonMode('select');
+            }
         }
     }, [existing]);
 
@@ -214,20 +256,171 @@ export function FormPage() {
         setBank('kpp', raw.replace(/\D/g, '').slice(0, 9));
     }
 
-    function buildClientPayload(targetId = id) {
+    // ── Юридическое лицо & Уполномоченное лицо ──────────────────────────
+    function setCompany(key, val) {
+        setForm(f => ({
+            ...f,
+            company_details: { ...(f.company_details || defaultCompanyDetails), [key]: val }
+        }));
+    }
+
+    function setAuthPerson(key, val) {
+        setForm(f => ({
+            ...f,
+            authorized_person: { ...(f.authorized_person || defaultAuthorizedPerson), [key]: val }
+        }));
+    }
+
+    const fetchCompanyByInn = useCallback(async (query) => {
+        const clean = (query || '').trim();
+        if (!DADATA_TOKEN || clean.length < 5) {
+            toast.error('Введите минимум 5 цифр ИНН или ОГРН');
+            return;
+        }
+        setCompanyLoading(true);
+        setCompanyFound(false);
+        try {
+            const res = await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    Authorization: `Token ${DADATA_TOKEN}`,
+                },
+                body: JSON.stringify({ query: clean }),
+            });
+            if (!res.ok) throw new Error(`DaData: ${res.status}`);
+            const json = await res.json();
+            const s = json.suggestions?.[0];
+            if (!s) {
+                toast.error('Организация не найдена по ИНН/ОГРН');
+                return;
+            }
+            const d = s.data || {};
+            const shortName = d.name?.short_with_opf || s.value || '';
+            const fullName = d.name?.full_with_opf || s.unrestricted_value || s.value || '';
+            const legalAddress = d.address?.value || '';
+            const inn = d.inn || '';
+            const kpp = d.kpp || '';
+            const ogrn = d.ogrn || '';
+            const directorName = d.management?.name || '';
+            const directorPost = d.management?.post || 'Генеральный директор';
+
+            setForm(f => {
+                const updatedComp = {
+                    ...(f.company_details || defaultCompanyDetails),
+                    name: fullName,
+                    short_name: shortName,
+                    inn,
+                    kpp,
+                    ogrn,
+                    legal_address: legalAddress,
+                    actual_address: f.company_details?.actual_address || legalAddress,
+                    director_name: directorName,
+                    director_position: directorPost
+                };
+                const updatedAuth = {
+                    ...(f.authorized_person || defaultAuthorizedPerson),
+                    name: (f.authorized_person?.name && f.authorized_person.name !== defaultAuthorizedPerson.name) ? f.authorized_person.name : directorName,
+                    position: (f.authorized_person?.position && f.authorized_person.position !== defaultAuthorizedPerson.position) ? f.authorized_person.position : directorPost,
+                    basis_document: f.authorized_person?.basis_document || 'Устав'
+                };
+                return {
+                    ...f,
+                    full_name: (!f.full_name || f.full_name === defaultClient.full_name) ? shortName : f.full_name,
+                    inn: inn || f.inn,
+                    reg_address: legalAddress || f.reg_address,
+                    company_details: updatedComp,
+                    authorized_person: updatedAuth
+                };
+            });
+            setCompanyFound(true);
+            toast.success(`Найдено: ${shortName}`);
+        } catch (err) {
+            console.warn('[Company lookup]', err.message);
+            toast.error('Не удалось найти организацию');
+        } finally {
+            setCompanyLoading(false);
+        }
+    }, [toast]);
+
+    function handleSelectAuthPerson(client) {
+        if (!client) return;
+        setForm(f => ({
+            ...f,
+            authorized_person_id: client.id,
+            authorized_person: {
+                ...(f.authorized_person || defaultAuthorizedPerson),
+                client_id: client.id,
+                name: client.full_name,
+                phone: client.phone || '',
+                email: client.email || '',
+                position: f.authorized_person?.position || 'Генеральный директор',
+                basis_document: f.authorized_person?.basis_document || 'Устав'
+            }
+        }));
+        setAuthPersonMode('select');
+        toast.success(`Выбрано уполномоченное лицо: ${client.full_name}`);
+    }
+
+    function handleClearAuthPerson() {
+        setForm(f => ({
+            ...f,
+            authorized_person_id: null,
+            authorized_person: {
+                ...defaultAuthorizedPerson,
+                name: '',
+                phone: '',
+                email: ''
+            }
+        }));
+        setAuthPersonMode('manual');
+    }
+
+    const physicalClients = useMemo(() => {
+        return (state.clients || []).filter(c => {
+            if (c.id === id) return false;
+            const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
+            return !types.every(t => t === 'legal_entity');
+        });
+    }, [state.clients, id]);
+
+    const filteredAuthClients = useMemo(() => {
+        if (!authPersonSearch.trim()) return physicalClients.slice(0, 10);
+        const q = authPersonSearch.toLowerCase();
+        return physicalClients.filter(c => 
+            c.full_name?.toLowerCase().includes(q) || 
+            c.phone?.includes(q) || 
+            c.email?.toLowerCase().includes(q)
+        ).slice(0, 10);
+    }, [physicalClients, authPersonSearch]);
+
+    const selectedAuthClient = useMemo(() => {
+        const cid = form.authorized_person_id || form.authorized_person?.client_id;
+        if (!cid) return null;
+        return state.clients?.find(c => c.id === cid) || null;
+    }, [state.clients, form.authorized_person_id, form.authorized_person?.client_id]);
+
+    function buildClientPayload(targetId = id, customAuthPersonId = null) {
         const phones = (form.phones || [form.phone || '']).map(p => stripPhone(p)).filter(Boolean);
         
-        // Синхронизация верхнеуровневых полей с паспортом для госреестров
+        // Синхронизация верхнеуровневых полей с паспортом / компанией
         const pDetails = form.passport_details || {};
         const passportStr = (pDetails.series && pDetails.number) 
             ? `${pDetails.series} ${pDetails.number}` 
             : (form.passport || '');
         const birthDateStr = form.birth_date || pDetails.birth_date || '';
-        const innStr = form.inn || pDetails.inn || '';
-        const regAddressStr = form.reg_address || pDetails.registration_address || '';
+        const innStr = form.inn || form.company_details?.inn || pDetails.inn || '';
+        const regAddressStr = form.reg_address || form.company_details?.legal_address || pDetails.registration_address || '';
         const contractDateStr = form.agency_contract_date && form.agency_contract_date.trim()
             ? (form.agency_contract_date.includes('T') ? form.agency_contract_date : `${form.agency_contract_date}T00:00:00.000Z`) 
             : null;
+
+        const effectiveAuthId = customAuthPersonId !== null ? customAuthPersonId : (form.authorized_person_id || form.authorized_person?.client_id || null);
+        const effectiveAuthPerson = {
+            ...(form.authorized_person || defaultAuthorizedPerson),
+            client_id: effectiveAuthId
+        };
 
         return {
             ...form,
@@ -241,6 +434,9 @@ export function FormPage() {
             agency_contract_date: contractDateStr,
             agency_contract_property_id: (form.agency_contract_property_id && String(form.agency_contract_property_id).trim()) ? form.agency_contract_property_id : null,
             has_agency_contract: Boolean(contractDateStr || form.has_agency_contract),
+            company_details: form.company_details || defaultCompanyDetails,
+            authorized_person: effectiveAuthPerson,
+            authorized_person_id: effectiveAuthId,
             passport_details: {
                 ...pDetails,
                 inn: innStr,
@@ -255,9 +451,37 @@ export function FormPage() {
         };
     }
 
+    async function ensureRepresentativeCreated() {
+        let authId = form.authorized_person_id || form.authorized_person?.client_id || null;
+        if (isLegalEntity && createAuthPersonAsClient && !authId && form.authorized_person?.name?.trim()) {
+            try {
+                const repPhone = stripPhone(form.authorized_person.phone || '');
+                const repName = form.authorized_person.name.trim();
+                const newPerson = {
+                    full_name: repName,
+                    phone: repPhone || (form.phone ? stripPhone(form.phone) : ''),
+                    email: form.authorized_person.email?.trim() || null,
+                    client_types: ['buyer'],
+                    source: form.source || 'Уполномоченное лицо юрлица',
+                    status: 'active',
+                    notes: `Уполномоченное лицо организации «${form.company_details?.short_name || form.full_name}» (${form.authorized_person.position || 'Представитель'}). Основание: ${form.authorized_person.basis_document || 'Устав'}`
+                };
+                const createdPerson = await dispatch({ type: 'ADD_CLIENT', client: newPerson });
+                if (createdPerson && createdPerson.id) {
+                    authId = createdPerson.id;
+                    toast.success(`Создана карточка физлица для представителя: ${repName}`);
+                }
+            } catch (err) {
+                console.warn('[Auto-create auth person error]', err);
+            }
+        }
+        return authId;
+    }
+
     async function handleReplaceExisting(targetClient) {
         try {
-            const clientPayload = buildClientPayload(targetClient.id);
+            const authId = await ensureRepresentativeCreated();
+            const clientPayload = buildClientPayload(targetClient.id, authId);
             const merged = {
                 ...targetClient,
                 ...clientPayload,
@@ -277,7 +501,8 @@ export function FormPage() {
 
     async function saveNewClient() {
         try {
-            const client = buildClientPayload();
+            const authId = await ensureRepresentativeCreated();
+            const client = buildClientPayload(undefined, authId);
             const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
             if (ok !== false) {
                 toast.success('Клиент создан');
@@ -295,7 +520,8 @@ export function FormPage() {
         e.preventDefault();
         try {
             if (id) {
-                const client = buildClientPayload(id);
+                const authId = await ensureRepresentativeCreated();
+                const client = buildClientPayload(id, authId);
                 const ok = await dispatch({ type: 'UPDATE_CLIENT', client: { ...client, id } });
                 if (ok !== false) {
                     toast.success('Клиент сохранён');
@@ -375,10 +601,19 @@ export function FormPage() {
                     >
 
                         <div className="form-group">
-                            <label className="form-label">ФИО клиента</label>
+                            <label className="form-label">{isLegalEntity ? 'Наименование организации' : 'ФИО клиента'}</label>
                             <div style={{ position: 'relative' }}>
-                                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><User size={18} /></span>
-                                <input className="form-input" style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={form.full_name} onChange={e => setF('full_name', e.target.value)} required placeholder="Иванов Иван Иванович" />
+                                <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                                    {isLegalEntity ? <Building2 size={18} /> : <User size={18} />}
+                                </span>
+                                <input 
+                                    className="form-input" 
+                                    style={{ paddingLeft: 46, height: 54, borderRadius: 16, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} 
+                                    value={form.full_name} 
+                                    onChange={e => setF('full_name', e.target.value)} 
+                                    required 
+                                    placeholder={isLegalEntity ? 'ООО «Альфа» или ИП Иванов И.И.' : 'Иванов Иван Иванович'} 
+                                />
                             </div>
                         </div>
 
@@ -514,6 +749,438 @@ export function FormPage() {
                             </div>
                         </div>
                     </FormCard>
+
+                    {/* ── Секция для Юридического Лица ── */}
+                    {isLegalEntity && (
+                        <>
+                            <FormCard 
+                                title="Реквизиты юридического лица"
+                                action={
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#0284c7', background: 'rgba(2, 132, 199, 0.08)', padding: '4px 10px', borderRadius: 8, fontWeight: 600 }}>
+                                        <Building2 size={14} /> Юр. лицо
+                                    </div>
+                                }
+                            >
+                                {/* Быстрый поиск в DaData по ИНН / ОГРН */}
+                                <div style={{ background: 'var(--bg-light)', padding: 16, borderRadius: 20, marginBottom: 16 }}>
+                                    <label className="form-label" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <Search size={14} color="#0284c7" />
+                                        Автозаполнение по ИНН или ОГРН (DaData)
+                                    </label>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                        <input 
+                                            type="text"
+                                            className="form-input"
+                                            style={{ height: 46, borderRadius: 12, background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 13 }}
+                                            placeholder="Введите ИНН (10 или 12 цифр) или ОГРН"
+                                            value={companySearchQuery || form.company_details?.inn || ''}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setCompanySearchQuery(val);
+                                                setCompany('inn', val);
+                                            }}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => fetchCompanyByInn(companySearchQuery || form.company_details?.inn)}
+                                            disabled={companyLoading}
+                                            className="card-clickable"
+                                            style={{
+                                                height: 46,
+                                                padding: '0 18px',
+                                                borderRadius: 12,
+                                                border: 'none',
+                                                background: '#0284c7',
+                                                color: '#fff',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                cursor: 'pointer',
+                                                whiteSpace: 'nowrap',
+                                                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                            }}
+                                        >
+                                            {companyLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                                            <span>Найти</span>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Наименования */}
+                                <div className="form-group">
+                                    <label className="form-label">Краткое наименование организации</label>
+                                    <input 
+                                        className="form-input" 
+                                        style={{ height: 48, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontSize: 14 }}
+                                        value={form.company_details?.short_name || ''} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setCompany('short_name', val);
+                                            if (!form.full_name || form.full_name === defaultClient.full_name) {
+                                                setF('full_name', val);
+                                            }
+                                        }} 
+                                        placeholder="ООО «Альфа-Строй»" 
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Полное наименование организации</label>
+                                    <textarea 
+                                        className="form-textarea" 
+                                        style={{ minHeight: 60, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: 12 }}
+                                        value={form.company_details?.name || ''} 
+                                        onChange={e => setCompany('name', e.target.value)} 
+                                        placeholder="Общество с ограниченной ответственностью «Альфа-Строй»" 
+                                        rows={2}
+                                    />
+                                </div>
+
+                                {/* ИНН · КПП · ОГРН */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ИНН</label>
+                                        <input 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                            value={form.company_details?.inn || form.inn || ''} 
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+                                                setCompany('inn', val);
+                                                setF('inn', val);
+                                            }} 
+                                            placeholder="10 или 12 цифр" 
+                                            maxLength={12} 
+                                            inputMode="numeric" 
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>КПП</label>
+                                        <input 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                            value={form.company_details?.kpp || ''} 
+                                            onChange={e => setCompany('kpp', e.target.value.replace(/\D/g, '').slice(0, 9))} 
+                                            placeholder="9 цифр" 
+                                            maxLength={9} 
+                                            inputMode="numeric" 
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ОГРН / ОГРНИП</label>
+                                        <input 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                            value={form.company_details?.ogrn || ''} 
+                                            onChange={e => setCompany('ogrn', e.target.value.replace(/\D/g, '').slice(0, 15))} 
+                                            placeholder="13 или 15 цифр" 
+                                            maxLength={15} 
+                                            inputMode="numeric" 
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Юридический адрес */}
+                                <div className="form-group" style={{ marginTop: 12 }}>
+                                    <label className="form-label">Юридический адрес</label>
+                                    <textarea 
+                                        className="form-textarea" 
+                                        style={{ minHeight: 56, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: 12 }}
+                                        value={form.company_details?.legal_address || ''} 
+                                        onChange={e => {
+                                            const val = e.target.value;
+                                            setCompany('legal_address', val);
+                                            setF('reg_address', val);
+                                        }} 
+                                        placeholder="г. Москва, ул. Арбат, д. 1" 
+                                        rows={2}
+                                    />
+                                </div>
+
+                                {/* Фактический адрес */}
+                                <div className="form-group">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                        <label className="form-label" style={{ marginBottom: 0 }}>Фактический адрес</label>
+                                        {form.company_details?.legal_address && form.company_details.legal_address !== form.company_details?.actual_address && (
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setCompany('actual_address', form.company_details.legal_address)}
+                                                style={{ background: 'none', border: 'none', color: '#0284c7', fontSize: 11, cursor: 'pointer', padding: 0 }}
+                                            >
+                                                Скопировать из юридического
+                                            </button>
+                                        )}
+                                    </div>
+                                    <textarea 
+                                        className="form-textarea" 
+                                        style={{ minHeight: 56, borderRadius: 14, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: 12 }}
+                                        value={form.company_details?.actual_address || ''} 
+                                        onChange={e => setCompany('actual_address', e.target.value)} 
+                                        placeholder="г. Москва, ул. Ленина, д. 10..." 
+                                        rows={2}
+                                    />
+                                </div>
+
+                                {/* Руководитель */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ФИО руководителя</label>
+                                        <input 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                            value={form.company_details?.director_name || ''} 
+                                            onChange={e => setCompany('director_name', e.target.value)} 
+                                            placeholder="Иванов Петр Сергеевич" 
+                                        />
+                                    </div>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Должность руководителя</label>
+                                        <input 
+                                            className="form-input" 
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                            value={form.company_details?.director_position || ''} 
+                                            onChange={e => setCompany('director_position', e.target.value)} 
+                                            placeholder="Генеральный директор" 
+                                        />
+                                    </div>
+                                </div>
+                            </FormCard>
+
+                            {/* Карточка уполномоченного лица (физлица) */}
+                            <FormCard 
+                                title="Уполномоченное лицо (представитель)"
+                                action={
+                                    selectedAuthClient ? (
+                                        <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: '#ecfdf5', color: '#059669', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                            <Link2 size={12} /> Привязано физлицо
+                                        </span>
+                                    ) : null
+                                }
+                            >
+                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 14, lineHeight: 1.4 }}>
+                                    Физическое лицо, уполномоченное действовать от имени организации при сделках и заключении договоров.
+                                </div>
+
+                                {/* Переключатель режима: Выбрать из базы / Ввести вручную */}
+                                <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 14, gap: 4, marginBottom: 14 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAuthPersonMode('select')}
+                                        style={{
+                                            flex: 1, padding: '8px 12px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 500,
+                                            background: authPersonMode === 'select' ? 'var(--surface)' : 'transparent',
+                                            boxShadow: authPersonMode === 'select' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                            color: authPersonMode === 'select' ? 'var(--text)' : 'var(--text-secondary)',
+                                            cursor: 'pointer', transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Выбрать из базы (физлицо)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setAuthPersonMode('manual')}
+                                        style={{
+                                            flex: 1, padding: '8px 12px', borderRadius: 10, border: 'none', fontSize: 12, fontWeight: 500,
+                                            background: authPersonMode === 'manual' ? 'var(--surface)' : 'transparent',
+                                            boxShadow: authPersonMode === 'manual' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                            color: authPersonMode === 'manual' ? 'var(--text)' : 'var(--text-secondary)',
+                                            cursor: 'pointer', transition: 'all 0.2s'
+                                        }}
+                                    >
+                                        Ввести вручную
+                                    </button>
+                                </div>
+
+                                {authPersonMode === 'select' ? (
+                                    <div>
+                                        {selectedAuthClient ? (
+                                            <div style={{ padding: 14, borderRadius: 16, background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.25)', marginBottom: 14 }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(16, 185, 129, 0.15)', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
+                                                            <UserCheck size={20} />
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+                                                                {selectedAuthClient.full_name}
+                                                            </div>
+                                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                                                {selectedAuthClient.phone ? formatPhone(selectedAuthClient.phone) : 'Телефон не указан'}
+                                                                {selectedAuthClient.email ? ` · ${selectedAuthClient.email}` : ''}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleClearAuthPerson}
+                                                        style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                            padding: '6px 10px', borderRadius: 10, border: '1px solid rgba(239, 68, 68, 0.2)',
+                                                            background: 'rgba(239, 68, 68, 0.05)', color: '#ef4444', fontSize: 11, fontWeight: 500, cursor: 'pointer'
+                                                        }}
+                                                        title="Отвязать представителя"
+                                                    >
+                                                        <Unlink2 size={13} /> Отвязать
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div style={{ marginBottom: 14 }}>
+                                                <div style={{ position: 'relative', marginBottom: 8 }}>
+                                                    <span style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Search size={16} /></span>
+                                                    <input
+                                                        type="text"
+                                                        className="form-input"
+                                                        style={{ paddingLeft: 42, height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                        placeholder="Поиск по имени или телефону среди физлиц..."
+                                                        value={authPersonSearch}
+                                                        onChange={e => setAuthPersonSearch(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 180, overflowY: 'auto', border: '1px solid var(--border-light)', borderRadius: 14, padding: 6 }}>
+                                                    {filteredAuthClients.length === 0 ? (
+                                                        <div style={{ padding: '16px', textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+                                                            Физлица не найдены. Переключитесь на «Ввести вручную».
+                                                        </div>
+                                                    ) : (
+                                                        filteredAuthClients.map(c => (
+                                                            <div
+                                                                key={c.id}
+                                                                style={{
+                                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                                    padding: '8px 12px', borderRadius: 10, background: 'var(--surface)',
+                                                                    border: '1px solid var(--border-light)'
+                                                                }}
+                                                            >
+                                                                <div style={{ minWidth: 0, flex: 1 }}>
+                                                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                        {c.full_name}
+                                                                    </div>
+                                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                                        {c.phone ? formatPhone(c.phone) : 'Без тел.'}
+                                                                    </div>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleSelectAuthPerson(c)}
+                                                                    className="card-clickable"
+                                                                    style={{
+                                                                        padding: '5px 12px', borderRadius: 8, border: 'none',
+                                                                        background: 'var(--primary-light)', color: 'var(--primary)',
+                                                                        fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                                                    }}
+                                                                >
+                                                                    Выбрать
+                                                                </button>
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Полномочия (Должность и Основание) */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Должность представителя</label>
+                                                <input
+                                                    className="form-input"
+                                                    style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                    value={form.authorized_person?.position || ''}
+                                                    onChange={e => setAuthPerson('position', e.target.value)}
+                                                    placeholder="Генеральный директор / Представитель"
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Документ-основание</label>
+                                                <input
+                                                    className="form-input"
+                                                    style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                    value={form.authorized_person?.basis_document || ''}
+                                                    onChange={e => setAuthPerson('basis_document', e.target.value)}
+                                                    placeholder="Устав / Доверенность №12 от ..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                        <div className="form-group" style={{ marginBottom: 0 }}>
+                                            <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>ФИО представителя</label>
+                                            <input
+                                                className="form-input"
+                                                style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                value={form.authorized_person?.name || ''}
+                                                onChange={e => setAuthPerson('name', e.target.value)}
+                                                placeholder="Иванов Петр Сергеевич"
+                                            />
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Телефон представителя</label>
+                                                <input
+                                                    type="tel"
+                                                    className="form-input"
+                                                    style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                    value={form.authorized_person?.phone || ''}
+                                                    onChange={e => setAuthPerson('phone', formatPhone(e.target.value, true))}
+                                                    placeholder="+7 (___) ___-__-__"
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Email представителя</label>
+                                                <input
+                                                    type="email"
+                                                    className="form-input"
+                                                    style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                    value={form.authorized_person?.email || ''}
+                                                    onChange={e => setAuthPerson('email', e.target.value)}
+                                                    placeholder="representative@mail.ru"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Должность</label>
+                                                <input
+                                                    className="form-input"
+                                                    style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                    value={form.authorized_person?.position || ''}
+                                                    onChange={e => setAuthPerson('position', e.target.value)}
+                                                    placeholder="Генеральный директор"
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Основание полномочий</label>
+                                                <input
+                                                    className="form-input"
+                                                    style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13 }}
+                                                    value={form.authorized_person?.basis_document || ''}
+                                                    onChange={e => setAuthPerson('basis_document', e.target.value)}
+                                                    placeholder="Устав / Доверенность №..."
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', marginTop: 4 }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={createAuthPersonAsClient}
+                                                onChange={e => setCreateAuthPersonAsClient(e.target.checked)}
+                                                style={{ width: 16, height: 16, accentColor: 'var(--primary)' }}
+                                            />
+                                            Создать карточку клиента в базе для этого представителя (физлицо)
+                                        </label>
+                                    </div>
+                                )}
+                            </FormCard>
+                        </>
+                    )}
 
                     <FormCard title="Дополнительно">
                         <div className="form-group">

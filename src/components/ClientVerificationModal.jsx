@@ -123,7 +123,7 @@ export function ClientVerificationModal({ isOpen, onClose, client }) {
   const clientName = client.full_name || client.name || 'Клиент';
   const birthDate = client.birth_date || client.birthday || 'Не указана';
   const passport = client.passport || client.passport_data || 'Не указан';
-  const inn = client.inn || 'Не указан';
+  const inn = client.inn || client.company_details?.inn || client.passport_details?.inn || 'Не указан';
   const phone = client.phone || 'Не указан';
   const currentDate = new Date().toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 

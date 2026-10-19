@@ -22,7 +22,14 @@ import {
     Pencil,
     Trash2,
     ShieldCheck,
-    AlertTriangle
+    AlertTriangle,
+    Building2,
+    Copy,
+    UserCheck,
+    Link2,
+    Unlink2,
+    MapPin,
+    Landmark
 } from 'lucide-react';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed', 'deal'];
@@ -73,6 +80,20 @@ export function DetailsPage() {
 
     const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated'), [clientContracts]);
 
+    // Состояние для юридического лица и уполномоченного лица
+    const isLegalEntity = client?.client_types?.includes('legal_entity');
+    const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+    const [authModalMode, setAuthModalMode] = useState('select'); // 'select' | 'manual'
+    const [authModalSearch, setAuthModalSearch] = useState('');
+    const [authModalForm, setAuthModalForm] = useState({
+        client_id: null,
+        name: '',
+        phone: '',
+        email: '',
+        position: 'Генеральный директор',
+        basis_document: 'Устав'
+    });
+
     if (!client) return (
         <div className="page">
             <div className="topbar" style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)' }}>
@@ -83,6 +104,31 @@ export function DetailsPage() {
     );
 
     /* ─── Данные клиента ─────────────────────────────── */
+    const authPersonClient = useMemo(() => {
+        if (!client) return null;
+        const targetId = client.authorized_person_id || client.authorized_person?.client_id;
+        if (targetId) {
+            return state.clients.find(c => c.id === targetId) || null;
+        }
+        return null;
+    }, [client?.authorized_person_id, client?.authorized_person?.client_id, state.clients]);
+
+    const representedCompanies = useMemo(() => {
+        if (!client) return [];
+        return state.clients.filter(c => {
+            if (!c.client_types?.includes('legal_entity')) return false;
+            if (c.id === client.id) return false;
+            if (c.authorized_person_id && c.authorized_person_id === client.id) return true;
+            if (c.authorized_person?.client_id && c.authorized_person.client_id === client.id) return true;
+            if (client.phone && c.authorized_person?.phone && stripPhone(client.phone) === stripPhone(c.authorized_person.phone)) return true;
+            return false;
+        });
+    }, [client?.id, client?.phone, state.clients]);
+
+    const availablePhysicalClients = useMemo(() => {
+        return state.clients.filter(c => c.id !== client?.id && !c.client_types?.includes('legal_entity'));
+    }, [state.clients, client?.id]);
+
     const myProperties = state.properties.filter(p =>
         p.client_id === id || (p.client_ids || []).includes(id)
     );
@@ -570,6 +616,96 @@ export function DetailsPage() {
         }
     }
 
+    function copyToClipboard(text, label = 'Скопировано в буфер') {
+        if (!text) return;
+        navigator.clipboard.writeText(String(text))
+            .then(() => toast.success(label))
+            .catch(() => toast.error('Не удалось скопировать'));
+    }
+
+    function openEditAuthModal() {
+        const ap = client.authorized_person || {};
+        const existingClientId = client.authorized_person_id || ap.client_id || (authPersonClient?.id) || null;
+        setAuthModalMode(existingClientId ? 'select' : (ap.name ? 'manual' : 'select'));
+        setAuthModalSearch('');
+        setAuthModalForm({
+            client_id: existingClientId,
+            name: ap.name || authPersonClient?.full_name || '',
+            phone: ap.phone || (authPersonClient?.phone ? formatPhone(authPersonClient.phone, true) : ''),
+            email: ap.email || authPersonClient?.email || '',
+            position: ap.position || 'Генеральный директор',
+            basis_document: ap.basis_document || 'Устав'
+        });
+        setIsAuthModalOpen(true);
+    }
+
+    function handleSaveAuthPerson(e) {
+        e.preventDefault();
+        let newAuthPersonId = null;
+        let newAuthPerson = {
+            position: authModalForm.position || 'Генеральный директор',
+            basis_document: authModalForm.basis_document || 'Устав'
+        };
+
+        if (authModalMode === 'select' && authModalForm.client_id) {
+            const selected = state.clients.find(c => c.id === authModalForm.client_id);
+            if (!selected) {
+                toast.error('Выбранный клиент не найден');
+                return;
+            }
+            newAuthPersonId = selected.id;
+            newAuthPerson = {
+                ...newAuthPerson,
+                client_id: selected.id,
+                name: selected.full_name,
+                phone: selected.phone,
+                email: selected.email || ''
+            };
+        } else {
+            if (!authModalForm.name.trim()) {
+                toast.error('Укажите ФИО уполномоченного лица');
+                return;
+            }
+            newAuthPersonId = null;
+            newAuthPerson = {
+                ...newAuthPerson,
+                client_id: null,
+                name: authModalForm.name.trim(),
+                phone: stripPhone(authModalForm.phone),
+                email: authModalForm.email.trim()
+            };
+        }
+
+        const updatedClient = {
+            ...client,
+            authorized_person_id: newAuthPersonId,
+            authorized_person: newAuthPerson
+        };
+
+        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+        toast.success('Уполномоченное лицо сохранено');
+        setIsAuthModalOpen(false);
+    }
+
+    function handleUnlinkAuthPerson() {
+        if (window.confirm('Отвязать уполномоченное лицо от этой организации?')) {
+            const updatedClient = {
+                ...client,
+                authorized_person_id: null,
+                authorized_person: {
+                    client_id: null,
+                    name: '',
+                    phone: '',
+                    email: '',
+                    position: '',
+                    basis_document: ''
+                }
+            };
+            dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+            toast.success('Уполномоченное лицо отвязано');
+        }
+    }
+
     const initial  = client.full_name?.charAt(0).toUpperCase() || '?';
     const colors   = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
     const avatarBg = colors[initial.charCodeAt(0) % colors.length];
@@ -645,6 +781,7 @@ export function DetailsPage() {
                             <>
                                 {client.client_types?.map(t => {
                                     const isAgent = t === 'agent';
+                                    const isLegal = t === 'legal_entity';
                                     return (
                                         <button
                                             key={t}
@@ -654,10 +791,10 @@ export function DetailsPage() {
                                                 padding: '6px 12px',
                                                 borderRadius: 10,
                                                 fontSize: 11,
-                                                fontWeight: isAgent ? 600 : 300,
-                                                background: isAgent ? '#ecfdf5' : 'var(--primary-light)',
-                                                color: isAgent ? '#059669' : 'var(--primary)',
-                                                border: isAgent ? '1px solid #10b981' : 'none',
+                                                fontWeight: (isAgent || isLegal) ? 600 : 300,
+                                                background: isAgent ? '#ecfdf5' : (isLegal ? 'rgba(2, 132, 199, 0.1)' : 'var(--primary-light)'),
+                                                color: isAgent ? '#059669' : (isLegal ? '#0284c7' : 'var(--primary)'),
+                                                border: isAgent ? '1px solid #10b981' : (isLegal ? '1px solid rgba(2, 132, 199, 0.3)' : 'none'),
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s'
                                             }}
@@ -848,6 +985,562 @@ export function DetailsPage() {
                         >
                             <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#10b981', lineHeight: 1 }}>{myDeals.length}</div>
                             <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Сделок</div>
+                        </div>
+                    </div>
+                )}
+
+                {/* ── Реквизиты организации (для юридических лиц) ── */}
+                {isLegalEntity && (
+                    <div className="card" style={{
+                        padding: '22px 24px',
+                        border: 'none',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                        borderRadius: 28,
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{
+                                    width: 44, height: 44, borderRadius: 14,
+                                    background: 'rgba(2, 132, 199, 0.1)',
+                                    color: '#0284c7',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <Building2 size={22} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                            Реквизиты организации
+                                        </span>
+                                        <span style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            padding: '3px 8px',
+                                            borderRadius: 8,
+                                            background: 'rgba(2, 132, 199, 0.1)',
+                                            color: '#0284c7',
+                                            border: '1px solid rgba(2, 132, 199, 0.25)'
+                                        }}>
+                                            Юрлицо
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {client.company_details?.short_name || client.full_name}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => navigate(`/clients/${id}/edit`)}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    padding: '8px 14px',
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--bg-light)',
+                                    color: 'var(--text)',
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <Pencil size={13} /> Редактировать
+                            </button>
+                        </div>
+
+                        {/* Сетка реквизитов */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                            gap: 12,
+                            padding: 16,
+                            background: 'var(--bg-light)',
+                            borderRadius: 18
+                        }}>
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    ИНН
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                        {client.company_details?.inn || client.inn || '—'}
+                                    </span>
+                                    {(client.company_details?.inn || client.inn) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(client.company_details?.inn || client.inn, 'ИНН скопирован')}
+                                            title="Скопировать ИНН"
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    КПП
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                        {client.company_details?.kpp || '—'}
+                                    </span>
+                                    {client.company_details?.kpp && (
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(client.company_details?.kpp, 'КПП скопирован')}
+                                            title="Скопировать КПП"
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    ОГРН / ОГРНИП
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                        {client.company_details?.ogrn || '—'}
+                                    </span>
+                                    {client.company_details?.ogrn && (
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(client.company_details?.ogrn, 'ОГРН скопирован')}
+                                            title="Скопировать ОГРН"
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    Руководитель
+                                </div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 4 }}>
+                                    {client.company_details?.director_name || '—'}
+                                </div>
+                                {client.company_details?.director_position && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {client.company_details.director_position}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Адреса */}
+                        {((client.company_details?.legal_address || client.reg_address) || client.company_details?.actual_address) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                                {(client.company_details?.legal_address || client.reg_address) && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--text)' }}>
+                                        <MapPin size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Юр. адрес: </span>
+                                            <span>{client.company_details?.legal_address || client.reg_address}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {client.company_details?.actual_address && client.company_details.actual_address !== (client.company_details?.legal_address || client.reg_address) && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--text)' }}>
+                                        <MapPin size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Факт. адрес: </span>
+                                            <span>{client.company_details.actual_address}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Банковские реквизиты */}
+                        {(client.bank_details?.bank_name || client.bank_details?.bik || client.bank_details?.account) && (
+                            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                    <Landmark size={14} color="var(--primary)" /> Банковские реквизиты
+                                </div>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                    gap: 10,
+                                    fontSize: 12,
+                                    background: 'var(--bg-light)',
+                                    padding: 12,
+                                    borderRadius: 14
+                                }}>
+                                    {client.bank_details.bank_name && (
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>Банк: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.bank_name}</span>
+                                        </div>
+                                    )}
+                                    {client.bank_details.bik && (
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>БИК: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.bik}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(client.bank_details.bik, 'БИК скопирован')}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 6 }}
+                                            >
+                                                <Copy size={11} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {client.bank_details.account && (
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>Р/с: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.account}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(client.bank_details.account, 'Расчетный счет скопирован')}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 6 }}
+                                            >
+                                                <Copy size={11} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {client.bank_details.corr_account && (
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>К/с: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.corr_account}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Уполномоченное лицо / Представитель (для юрлиц) ── */}
+                {isLegalEntity && (
+                    <div className="card" style={{
+                        padding: '22px 24px',
+                        border: 'none',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                        borderRadius: 28,
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div style={{
+                                    width: 44, height: 44, borderRadius: 14,
+                                    background: (authPersonClient || client.authorized_person?.name) ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-light)',
+                                    color: (authPersonClient || client.authorized_person?.name) ? '#0284c7' : 'var(--text-muted)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <UserCheck size={22} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                            Уполномоченное лицо
+                                        </span>
+                                        {(authPersonClient || client.authorized_person?.name) ? (
+                                            <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 600,
+                                                padding: '3px 8px',
+                                                borderRadius: 8,
+                                                background: 'rgba(2, 132, 199, 0.1)',
+                                                color: '#0284c7',
+                                                border: '1px solid rgba(2, 132, 199, 0.25)'
+                                            }}>
+                                                {authPersonClient ? 'Привязано физлицо' : 'Указано вручную'}
+                                            </span>
+                                        ) : (
+                                            <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 500,
+                                                padding: '3px 8px',
+                                                borderRadius: 8,
+                                                background: 'var(--bg-light)',
+                                                color: 'var(--text-muted)',
+                                                border: '1px solid var(--border-light)'
+                                            }}>
+                                                Не указано
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        Представитель организации с правом подписи договоров
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    type="button"
+                                    onClick={openEditAuthModal}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        padding: '8px 14px',
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                        color: '#fff',
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                    }}
+                                >
+                                    <Pencil size={13} /> {(authPersonClient || client.authorized_person?.name) ? 'Изменить' : 'Назначить'}
+                                </button>
+                                {(authPersonClient || client.authorized_person?.name) && (
+                                    <button
+                                        type="button"
+                                        onClick={handleUnlinkAuthPerson}
+                                        title="Отвязать представителя"
+                                        style={{
+                                            width: 36,
+                                            height: 36,
+                                            borderRadius: 12,
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            color: '#ef4444',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Unlink2 size={16} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {(authPersonClient || client.authorized_person?.name) ? (
+                            <div style={{
+                                background: 'var(--bg-light)',
+                                borderRadius: 18,
+                                padding: 16,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 12
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{
+                                            width: 42,
+                                            height: 42,
+                                            borderRadius: 14,
+                                            background: '#0284c7',
+                                            color: '#fff',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontWeight: 600,
+                                            fontSize: 15
+                                        }}>
+                                            {(authPersonClient?.full_name || client.authorized_person?.name || '?').charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                                    {authPersonClient?.full_name || client.authorized_person?.name}
+                                                </span>
+                                                {authPersonClient && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => navigate(`/clients/${authPersonClient.id}`)}
+                                                        title="Открыть карточку физлица"
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            color: '#0284c7',
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            fontSize: 12,
+                                                            fontWeight: 500,
+                                                            padding: 0
+                                                        }}
+                                                    >
+                                                        Профиль <ExternalLink size={12} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                {client.authorized_person?.position || 'Генеральный директор'}
+                                                {client.authorized_person?.basis_document && (
+                                                    <span style={{ color: 'var(--text-muted)' }}> • на основании: {client.authorized_person.basis_document}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {(authPersonClient?.phone || client.authorized_person?.phone) && (
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <a
+                                                href={`tel:+${stripPhone(authPersonClient?.phone || client.authorized_person?.phone)}`}
+                                                className="card-clickable"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    padding: '8px 14px',
+                                                    borderRadius: 12,
+                                                    background: 'var(--surface)',
+                                                    color: 'var(--text)',
+                                                    textDecoration: 'none',
+                                                    fontSize: 12,
+                                                    fontWeight: 500,
+                                                    border: '1px solid var(--border-light)'
+                                                }}
+                                            >
+                                                <Phone size={14} color="var(--primary)" />
+                                                {formatPhone(authPersonClient?.phone || client.authorized_person?.phone)}
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{
+                                background: 'var(--bg-light)',
+                                borderRadius: 16,
+                                padding: '20px',
+                                textAlign: 'center',
+                                color: 'var(--text-muted)',
+                                fontSize: 13
+                            }}>
+                                Уполномоченное лицо еще не привязано к организации.
+                                <div style={{ marginTop: 10 }}>
+                                    <button
+                                        type="button"
+                                        onClick={openEditAuthModal}
+                                        style={{
+                                            padding: '8px 16px',
+                                            borderRadius: 12,
+                                            border: '1px dashed #0284c7',
+                                            background: 'rgba(2, 132, 199, 0.06)',
+                                            color: '#0284c7',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        + Привязать уполномоченное лицо
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* ── Представитель в организациях (для физлиц, уполномоченных за юрлица) ── */}
+                {representedCompanies.length > 0 && (
+                    <div className="card" style={{
+                        padding: '22px 24px',
+                        border: 'none',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                        borderRadius: 28,
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                                width: 44, height: 44, borderRadius: 14,
+                                background: 'rgba(2, 132, 199, 0.12)',
+                                color: '#0284c7',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                <Building2 size={22} />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        Представитель организаций
+                                    </span>
+                                    <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        padding: '3px 8px',
+                                        borderRadius: 8,
+                                        background: 'rgba(2, 132, 199, 0.1)',
+                                        color: '#0284c7',
+                                        border: '1px solid rgba(2, 132, 199, 0.25)'
+                                    }}>
+                                        {representedCompanies.length} {representedCompanies.length === 1 ? 'компания' : 'компаний'}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                    Данный клиент является уполномоченным лицом в следующих организациях:
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {representedCompanies.map(comp => (
+                                <div
+                                    key={comp.id}
+                                    className="card-clickable"
+                                    onClick={() => navigate(`/clients/${comp.id}`)}
+                                    style={{
+                                        padding: '14px 16px',
+                                        borderRadius: 16,
+                                        background: 'var(--bg-light)',
+                                        border: '1px solid var(--border-light)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 12,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                                        <div style={{
+                                            width: 38,
+                                            height: 38,
+                                            borderRadius: 12,
+                                            background: 'rgba(2, 132, 199, 0.15)',
+                                            color: '#0284c7',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                            <Building2 size={20} />
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {comp.company_details?.short_name || comp.full_name}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                {(comp.company_details?.inn || comp.inn) && `ИНН: ${comp.company_details?.inn || comp.inn}`}
+                                                {comp.authorized_person?.position && ` • ${comp.authorized_person.position}`}
+                                                {comp.authorized_person?.basis_document && ` (${comp.authorized_person.basis_document})`}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -1811,6 +2504,248 @@ export function DetailsPage() {
                                         background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                         color: '#fff', fontWeight: 600, cursor: 'pointer',
                                         boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                                    }}
+                                >
+                                    Сохранить
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Модальное окно назначения/редактирования уполномоченного лица */}
+            {isAuthModalOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1000,
+                    background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+                }}>
+                    <div style={{
+                        background: 'var(--surface)', borderRadius: 24, width: '100%', maxWidth: 520,
+                        maxHeight: '90vh', overflowY: 'auto',
+                        padding: 24, boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                        border: '1px solid var(--border-light)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{ width: 38, height: 38, borderRadius: 12, background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <UserCheck size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="font-oswald" style={{ margin: 0, fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        Уполномоченное лицо
+                                    </h3>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                        {client.company_details?.short_name || client.full_name}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setIsAuthModalOpen(false)}
+                                style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Переключатель способа привязки */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 16, background: 'var(--bg-light)', padding: 4, borderRadius: 12 }}>
+                            <button
+                                type="button"
+                                onClick={() => setAuthModalMode('select')}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    background: authModalMode === 'select' ? 'var(--surface)' : 'transparent',
+                                    color: authModalMode === 'select' ? '#0284c7' : 'var(--text-secondary)',
+                                    fontWeight: authModalMode === 'select' ? 600 : 400,
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                    boxShadow: authModalMode === 'select' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                <Link2 size={14} /> Из базы клиентов
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setAuthModalMode('manual')}
+                                style={{
+                                    padding: '8px 12px',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    background: authModalMode === 'manual' ? 'var(--surface)' : 'transparent',
+                                    color: authModalMode === 'manual' ? '#0284c7' : 'var(--text-secondary)',
+                                    fontWeight: authModalMode === 'manual' ? 600 : 400,
+                                    fontSize: 12,
+                                    cursor: 'pointer',
+                                    boxShadow: authModalMode === 'manual' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                Ввести вручную
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveAuthPerson} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {authModalMode === 'select' ? (
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Физическое лицо из базы *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Поиск по ФИО или телефону..."
+                                        value={authModalSearch}
+                                        onChange={e => setAuthModalSearch(e.target.value)}
+                                        style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13, marginBottom: 8 }}
+                                    />
+                                    <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 6, border: '1px solid var(--border-light)', borderRadius: 12, padding: 8, background: 'var(--bg-light)' }}>
+                                        {availablePhysicalClients
+                                            .filter(c => {
+                                                if (!authModalSearch) return true;
+                                                const q = authModalSearch.toLowerCase();
+                                                return (c.full_name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+                                            })
+                                            .slice(0, 30)
+                                            .map(c => {
+                                                const isSelected = authModalForm.client_id === c.id;
+                                                return (
+                                                    <div
+                                                        key={c.id}
+                                                        onClick={() => setAuthModalForm(prev => ({
+                                                            ...prev,
+                                                            client_id: c.id,
+                                                            name: c.full_name,
+                                                            phone: c.phone || '',
+                                                            email: c.email || ''
+                                                        }))}
+                                                        style={{
+                                                            padding: '8px 12px',
+                                                            borderRadius: 10,
+                                                            background: isSelected ? 'rgba(2, 132, 199, 0.15)' : 'var(--surface)',
+                                                            border: isSelected ? '1px solid #0284c7' : '1px solid var(--border-light)',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between'
+                                                        }}
+                                                    >
+                                                        <div>
+                                                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                                                {c.full_name}
+                                                            </div>
+                                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                                {c.phone ? formatPhone(c.phone) : 'Без телефона'}
+                                                            </div>
+                                                        </div>
+                                                        {isSelected && <Check size={16} color="#0284c7" />}
+                                                    </div>
+                                                );
+                                            })}
+                                        {availablePhysicalClients.length === 0 && (
+                                            <div style={{ padding: 12, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+                                                Нет доступных физических лиц
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    <div>
+                                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                            ФИО представителя *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="Иванов Иван Иванович"
+                                            value={authModalForm.name}
+                                            onChange={e => setAuthModalForm({ ...authModalForm, name: e.target.value })}
+                                            style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13 }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Телефон
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                placeholder="+7 (999) 000-00-00"
+                                                value={authModalForm.phone}
+                                                onChange={e => setAuthModalForm({ ...authModalForm, phone: e.target.value })}
+                                                style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13 }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                placeholder="director@company.ru"
+                                                value={authModalForm.email}
+                                                onChange={e => setAuthModalForm({ ...authModalForm, email: e.target.value })}
+                                                style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13 }}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Должность
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Генеральный директор"
+                                        value={authModalForm.position}
+                                        onChange={e => setAuthModalForm({ ...authModalForm, position: e.target.value })}
+                                        style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13 }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Основание полномочий
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="Устав / Доверенность"
+                                        value={authModalForm.basis_document}
+                                        onChange={e => setAuthModalForm({ ...authModalForm, basis_document: e.target.value })}
+                                        style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13 }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAuthModalOpen(false)}
+                                    style={{ flex: 1, height: 44, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
+                                >
+                                    Отмена
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={authModalMode === 'select' && !authModalForm.client_id}
+                                    style={{
+                                        flex: 1.5, height: 44, borderRadius: 14, border: 'none',
+                                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                        color: '#fff', fontWeight: 600, cursor: 'pointer',
+                                        boxShadow: '0 4px 12px rgba(2, 132, 199, 0.25)',
+                                        opacity: (authModalMode === 'select' && !authModalForm.client_id) ? 0.5 : 1
                                     }}
                                 >
                                     Сохранить
