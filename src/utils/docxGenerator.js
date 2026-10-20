@@ -1532,14 +1532,66 @@ export function buildServicesRent3PartyContract(data) {
 
 /* ─── Карта шаблонов ─────────────────────────────────────────────────────── */
 
+export const DOCUMENT_CATEGORIES = [
+    { id: 'all', label: 'Все' },
+    { id: 'buy', label: 'Покупка' },
+    { id: 'sale', label: 'Продажа' },
+    { id: 'rent', label: 'Аренда' },
+    { id: 'hire', label: 'Найм' },
+    { id: 'other', label: 'Иные' },
+];
+
+export const CATEGORY_LABELS = {
+    buy: 'Покупка',
+    sale: 'Продажа',
+    rent: 'Аренда',
+    hire: 'Найм',
+    other: 'Иные',
+};
+
 const TEMPLATES = {
-    yuss_buy_1: { title: 'ЮСС Покупка (1 принципал)', builder: buildYussBuy1Contract },
-    agency_sale_1: { title: 'Агентский договор — Продажа (1 принципал)', builder: buildAgencySale1Contract },
-    agency_rent_landlord_1: { title: 'АД Найм с наймодателем', builder: buildAgencyRentLandlord1Contract },
-    services_rent_3party: { title: 'ДОУ Аренда и найм (3-сторонний)', builder: buildServicesRent3PartyContract },
-    sale: { title: 'Договор купли-продажи', builder: buildSaleContract },
-    rent: { title: 'Договор аренды', builder: buildRentContract },
-    act: { title: 'Акт приема-передачи', builder: buildHandoverAct },
+    yuss_buy_1: {
+        title: 'ЮСС Покупка (1 принципал)',
+        builder: buildYussBuy1Contract,
+        category: 'buy',
+        categories: ['buy'],
+    },
+    agency_sale_1: {
+        title: 'Агентский договор — Продажа (1 принципал)',
+        builder: buildAgencySale1Contract,
+        category: 'sale',
+        categories: ['sale'],
+    },
+    agency_rent_landlord_1: {
+        title: 'АД Найм с наймодателем',
+        builder: buildAgencyRentLandlord1Contract,
+        category: 'hire',
+        categories: ['hire'],
+    },
+    services_rent_3party: {
+        title: 'ДОУ Аренда и найм (3-сторонний)',
+        builder: buildServicesRent3PartyContract,
+        category: 'rent',
+        categories: ['rent', 'hire'],
+    },
+    sale: {
+        title: 'Договор купли-продажи',
+        builder: buildSaleContract,
+        category: 'sale',
+        categories: ['sale', 'buy'],
+    },
+    rent: {
+        title: 'Договор аренды',
+        builder: buildRentContract,
+        category: 'rent',
+        categories: ['rent'],
+    },
+    act: {
+        title: 'Акт приема-передачи',
+        builder: buildHandoverAct,
+        category: 'other',
+        categories: ['other'],
+    },
 };
 
 /**
@@ -1758,6 +1810,11 @@ export async function generateAndDownloadDocx(templateKey, data, editedDomElemen
  * Возвращает список доступных шаблонов.
  */
 export function getDocumentTemplates() {
-    return Object.entries(TEMPLATES).map(([key, t]) => ({ key, title: t.title }));
+    return Object.entries(TEMPLATES).map(([key, t]) => ({
+        key,
+        title: t.title,
+        category: t.category || 'other',
+        categories: t.categories || [t.category || 'other'],
+    }));
 }
 

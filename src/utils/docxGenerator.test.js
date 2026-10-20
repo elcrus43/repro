@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { numberToWordsRu, getDocumentTemplates } from './docxGenerator';
+import { numberToWordsRu, getDocumentTemplates, DOCUMENT_CATEGORIES } from './docxGenerator';
 
 describe('docxGenerator - numberToWordsRu', () => {
     it('correctly converts small numbers', () => {
@@ -51,6 +51,50 @@ describe('docxGenerator - getDocumentTemplates', () => {
         const rent3PartyTpl = templates.find(t => t.key === 'services_rent_3party');
         expect(rent3PartyTpl).toBeDefined();
         expect(rent3PartyTpl.title).toBe('ДОУ Аренда и найм (3-сторонний)');
+    });
+
+    it('defines required document categories: Покупка, Продажа, Аренда, Найм, Иные', () => {
+        const labels = DOCUMENT_CATEGORIES.map(c => c.label);
+        expect(labels).toContain('Все');
+        expect(labels).toContain('Покупка');
+        expect(labels).toContain('Продажа');
+        expect(labels).toContain('Аренда');
+        expect(labels).toContain('Найм');
+        expect(labels).toContain('Иные');
+    });
+
+    it('maps all templates into valid categories', () => {
+        const templates = getDocumentTemplates();
+        const validCategoryIds = DOCUMENT_CATEGORIES.map(c => c.id).filter(id => id !== 'all');
+
+        templates.forEach(t => {
+            expect(t.category).toBeDefined();
+            expect(validCategoryIds).toContain(t.category);
+            expect(Array.isArray(t.categories)).toBe(true);
+            t.categories.forEach(catId => {
+                expect(validCategoryIds).toContain(catId);
+            });
+        });
+
+        // Specific category mappings
+        const buyTemplates = templates.filter(t => t.categories.includes('buy')).map(t => t.key);
+        expect(buyTemplates).toContain('yuss_buy_1');
+        expect(buyTemplates).toContain('sale');
+
+        const saleTemplates = templates.filter(t => t.categories.includes('sale')).map(t => t.key);
+        expect(saleTemplates).toContain('agency_sale_1');
+        expect(saleTemplates).toContain('sale');
+
+        const rentTemplates = templates.filter(t => t.categories.includes('rent')).map(t => t.key);
+        expect(rentTemplates).toContain('rent');
+        expect(rentTemplates).toContain('services_rent_3party');
+
+        const hireTemplates = templates.filter(t => t.categories.includes('hire')).map(t => t.key);
+        expect(hireTemplates).toContain('agency_rent_landlord_1');
+        expect(hireTemplates).toContain('services_rent_3party');
+
+        const otherTemplates = templates.filter(t => t.categories.includes('other')).map(t => t.key);
+        expect(otherTemplates).toContain('act');
     });
 });
 

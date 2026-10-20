@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Search, Save, CheckCircle2, AlertCircle, Sparkles, Check, Loader2,
     UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
-import { generateAndDownloadDocx, getDocumentTemplates, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
+import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
@@ -404,6 +404,10 @@ export function DocumentsPage() {
     // Если открыли со страницы клиента/сделки — получаем prefill
     const prefill = location.state?.docPrefill || {};
 
+    const [selectedCategory, setSelectedCategory] = useState(() => {
+        if (prefill.category) return prefill.category;
+        return 'all';
+    });
     const [selectedTemplate, setSelectedTemplate] = useState(prefill.template || 'yuss_buy_1');
     const [sourceMode, setSourceMode] = useState(prefill.dealId ? 'deal' : 'manual'); // 'deal' | 'manual'
     const [hideOtherTemplates, setHideOtherTemplates] = useState(() => Boolean(prefill.hideOtherTemplates));
@@ -469,12 +473,14 @@ export function DocumentsPage() {
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         const qTemplate = params.get('template');
+        const qCategory = params.get('category');
         const qClient = params.get('clientId');
         const qDeal = params.get('dealId');
         const qProperty = params.get('propertyId');
         const qHide = params.get('hideOther');
 
         if (qTemplate) setSelectedTemplate(qTemplate);
+        if (qCategory) setSelectedCategory(qCategory);
         if (qHide !== null) setHideOtherTemplates(qHide === 'true');
         if (qDeal) {
             setSourceMode('deal');
@@ -517,11 +523,32 @@ export function DocumentsPage() {
     };
 
     const displayedTemplates = useMemo(() => {
-        if (hideOtherTemplates) {
-            return templates.filter(t => t.key === selectedTemplate);
+        let list = templates;
+        if (selectedCategory && selectedCategory !== 'all') {
+            list = list.filter(t => (t.categories || [t.category]).includes(selectedCategory));
         }
-        return templates;
-    }, [templates, hideOtherTemplates, selectedTemplate]);
+        if (hideOtherTemplates) {
+            return list.filter(t => t.key === selectedTemplate);
+        }
+        return list;
+    }, [templates, selectedCategory, hideOtherTemplates, selectedTemplate]);
+
+    const handleCategoryChange = (catId) => {
+        setSelectedCategory(catId);
+        if (hideOtherTemplates) {
+            setHideOtherTemplates(false);
+        }
+        if (catId === 'all') return;
+
+        const curr = templates.find(t => t.key === selectedTemplate);
+        const inCat = curr && (curr.categories || [curr.category]).includes(catId);
+        if (!inCat) {
+            const first = templates.find(t => (t.categories || [t.category]).includes(catId));
+            if (first) {
+                setSelectedTemplate(first.key);
+            }
+        }
+    };
 
     /* ── Выбранный клиент для редактирования реквизитов ────────────────────── */
     const isAgencyRentLandlord = selectedTemplate === 'agency_rent_landlord_1';
@@ -582,6 +609,10 @@ export function DocumentsPage() {
                 tpl = 'rent';
             }
             setSelectedTemplate(tpl);
+            const tplObj = templates.find(t => t.key === tpl);
+            if (selectedCategory !== 'all' && tplObj && !(tplObj.categories || [tplObj.category]).includes(selectedCategory)) {
+                setSelectedCategory(tplObj.category || 'all');
+            }
             setHideOtherTemplates(true);
             if (c.property_id) {
                 setPropertyId(c.property_id);
@@ -1378,58 +1409,112 @@ export function DocumentsPage() {
 
             <div className="page-content" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
-                {/* Выбор шаблона */}
-                <div className="no-print" style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-                    {displayedTemplates.map(t => (
-                        <button
-                            key={t.key}
-                            className={`tab-filter ${selectedTemplate === t.key ? 'active' : ''}`}
-                            onClick={() => setSelectedTemplate(t.key)}
-                            style={{
-                                whiteSpace: 'nowrap', padding: '10px 18px', borderRadius: 14, border: 'none',
-                                background: selectedTemplate === t.key ? 'var(--primary)' : 'var(--surface)',
-                                color: selectedTemplate === t.key ? 'white' : 'var(--text-secondary)',
-                                fontSize: 13, fontWeight: 500,
-                                boxShadow: selectedTemplate === t.key ? '0 4px 12px rgba(0,82,255,0.2)' : 'none',
-                                display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0
-                            }}
-                        >
-                            {TEMPLATE_ICONS[t.key]}
-                            {TEMPLATE_LABELS[t.key] || t.title}
-                        </button>
-                    ))}
-                    {hideOtherTemplates && (
-                        <button
-                            type="button"
-                            onClick={() => setHideOtherTemplates(false)}
-                            title="Показать все доступные шаблоны"
-                            style={{
-                                whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
-                                border: '1px dashed var(--border)', background: 'var(--surface)',
-                                color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
-                                display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <span>Показать все ({templates.length})</span>
-                        </button>
-                    )}
-                    {!hideOtherTemplates && selectedContractId && (
-                        <button
-                            type="button"
-                            onClick={() => setHideOtherTemplates(true)}
-                            title="Скрыть остальные шаблоны"
-                            style={{
-                                whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
-                                border: '1px dashed var(--border)', background: 'transparent',
-                                color: 'var(--text-secondary)', fontSize: 12,
-                                display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <span>Скрыть остальные</span>
-                        </button>
-                    )}
+                {/* Категории и выбор шаблона */}
+                <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {/* Фильтр по категориям */}
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
+                        {DOCUMENT_CATEGORIES.map(cat => {
+                            const isActive = selectedCategory === cat.id;
+                            const count = cat.id === 'all'
+                                ? templates.length
+                                : templates.filter(t => (t.categories || [t.category]).includes(cat.id)).length;
+
+                            return (
+                                <button
+                                    key={cat.id}
+                                    type="button"
+                                    onClick={() => handleCategoryChange(cat.id)}
+                                    style={{
+                                        whiteSpace: 'nowrap',
+                                        padding: '7px 14px',
+                                        borderRadius: 12,
+                                        border: '1px solid',
+                                        borderColor: isActive ? 'var(--primary)' : 'var(--border)',
+                                        background: isActive ? 'var(--primary)' : 'var(--surface)',
+                                        color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                                        fontSize: 13,
+                                        fontWeight: isActive ? 600 : 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease',
+                                        boxShadow: isActive ? '0 2px 8px rgba(0,82,255,0.22)' : 'none',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    <span>{cat.label}</span>
+                                    <span style={{
+                                        fontSize: 10,
+                                        padding: '1px 6px',
+                                        borderRadius: 8,
+                                        background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg)',
+                                        color: isActive ? '#ffffff' : 'var(--text-muted)',
+                                        fontWeight: 600
+                                    }}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Выбор шаблона */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                        {displayedTemplates.map(t => (
+                            <button
+                                key={t.key}
+                                className={`tab-filter ${selectedTemplate === t.key ? 'active' : ''}`}
+                                onClick={() => setSelectedTemplate(t.key)}
+                                style={{
+                                    whiteSpace: 'nowrap', padding: '10px 18px', borderRadius: 14, border: 'none',
+                                    background: selectedTemplate === t.key ? 'var(--primary)' : 'var(--surface)',
+                                    color: selectedTemplate === t.key ? 'white' : 'var(--text-secondary)',
+                                    fontSize: 13, fontWeight: 500,
+                                    boxShadow: selectedTemplate === t.key ? '0 4px 12px rgba(0,82,255,0.2)' : 'none',
+                                    display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0
+                                }}
+                            >
+                                {TEMPLATE_ICONS[t.key]}
+                                {TEMPLATE_LABELS[t.key] || t.title}
+                            </button>
+                        ))}
+                        {hideOtherTemplates && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setHideOtherTemplates(false);
+                                    setSelectedCategory('all');
+                                }}
+                                title="Показать все доступные шаблоны"
+                                style={{
+                                    whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
+                                    border: '1px dashed var(--border)', background: 'var(--surface)',
+                                    color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
+                                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span>Показать все ({templates.length})</span>
+                            </button>
+                        )}
+                        {!hideOtherTemplates && selectedContractId && (
+                            <button
+                                type="button"
+                                onClick={() => setHideOtherTemplates(true)}
+                                title="Скрыть остальные шаблоны"
+                                style={{
+                                    whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
+                                    border: '1px dashed var(--border)', background: 'transparent',
+                                    color: 'var(--text-secondary)', fontSize: 12,
+                                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span>Скрыть остальные</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Режим источника данных */}
