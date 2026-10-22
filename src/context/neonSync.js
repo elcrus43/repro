@@ -170,7 +170,7 @@ export async function loadUserData(userId, role) {
       SELECT json_build_object(
         'clients', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "clients" t WHERE t."realtor_id" = $1),
         'properties', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "properties" t),
-        'requests', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "requests" t),
+        'requests', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "requests" t WHERE t."realtor_id" = $1),
         'matches', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "matches" t WHERE t."realtor_id" = $1),
         'showings', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "showings" t WHERE t."realtor_id" = $1),
         'tasks', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "tasks" t WHERE t."realtor_id" = $1),

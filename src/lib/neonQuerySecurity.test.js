@@ -265,4 +265,34 @@ describe('Pipeline Security Filter: transformAndValidateQuery (P0-1 ... P0-6)', 
     expect(res.error).toMatch(/only admins can modify pricelist/i);
     expect(res.status).toBe(403);
   });
+
+  it('allows full user data loading query when all private subqueries filter by realtor_id', () => {
+    const query = `
+      SELECT json_build_object(
+        'clients', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "clients" t WHERE t."realtor_id" = $1),
+        'properties', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "properties" t),
+        'requests', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "requests" t WHERE t."realtor_id" = $1),
+        'matches', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "matches" t WHERE t."realtor_id" = $1),
+        'showings', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "showings" t WHERE t."realtor_id" = $1),
+        'tasks', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "tasks" t WHERE t."realtor_id" = $1),
+        'pricelist', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "pricelist" t),
+        'deals', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "deals" t WHERE t."realtor_id" = $1),
+        'profiles', (SELECT COALESCE(json_agg(json_build_object(
+          'id', t.id,
+          'email', t.email,
+          'full_name', t.full_name,
+          'phone', t.phone,
+          'agency_name', t.agency_name,
+          'inn', t.inn,
+          'role', t.role,
+          'status', t.status,
+          'created_at', t.created_at,
+          'passport_details', CASE WHEN t.id = $1 THEN t.passport_details ELSE NULL END
+        )), '[]'::json) FROM "profiles" t),
+        'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t WHERE t."realtor_id" = $1)
+      ) as data
+    `;
+    const res = transformAndValidateQuery(query, ['realtor-uuid-1'], realtorPayload);
+    expect(res.error).toBeNull();
+  });
 });

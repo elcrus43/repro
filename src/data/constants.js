@@ -181,9 +181,13 @@ export const VENTILATION_TYPES = {
 };
 
 export const CLIENT_SOURCES = [
+    'Вх. звонок по объявлению',
     'Авито',
-    'лидген',
+    'Циан',
+    'Домклик',
     'сайт',
+    'баннер на объекте',
+    'лидген',
     'дежурство в офисе',
     'Лид руководства',
     'Лид РГ',
@@ -211,6 +215,7 @@ export const AGENCY_CONTRACT_TYPES = [
 ];
 
 export const CLIENT_TYPES = [
+    { id: 'lead', label: 'Лид' },
     { id: 'buyer', label: 'Покупатель' },
     { id: 'seller', label: 'Продавец' },
     { id: 'legal_entity', label: 'Юридическое лицо' },
@@ -224,6 +229,7 @@ export const CLIENT_TYPES = [
 ];
 
 export const CLIENT_TYPE_LABELS = {
+    lead: 'Лид',
     buyer: 'Покупатель',
     seller: 'Продавец',
     legal_entity: 'Юридическое лицо',
@@ -234,6 +240,7 @@ export const CLIENT_TYPE_LABELS = {
     lessor: 'Арендодатель',
     lessee: 'Арендатор',
     lawyer: 'Юрист',
+    'Лид': 'Лид',
     'Покупатель': 'Покупатель',
     'Продавец': 'Продавец',
     'Юридическое лицо': 'Юридическое лицо',

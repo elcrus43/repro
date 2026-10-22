@@ -1,16 +1,18 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatNumber } from '../../utils/format';
+import { formatNumber, formatPhone, stripPhone, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
 import { isDealTypeCompatible } from '../../utils/matching';
 import { getToken } from '../../lib/neon';
+import { nanoid } from '../../utils/nanoid';
 import { 
     Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
-    TrendingDown, Star, User, Handshake, Copy, ExternalLink, Check, Zap, Store, DoorOpen
+    TrendingDown, Star, User, Handshake, Copy, ExternalLink, Check, Zap, Store, DoorOpen,
+    Phone, PhoneCall, MessageSquare, Plus, Clock, UserCheck, Flame, UserPlus, Search
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -98,7 +100,8 @@ import {
     BUILDING_TYPES, PROPERTY_TYPES, RENOVATION_LABELS,
     HOUSE_MATERIALS, HOUSE_CONDITIONS, LAND_CATEGORIES, ROAD_ACCESS,
     FENCE_TYPES, WATER_TYPES, GAS_TYPES, SEWAGE_TYPES,
-    COMMERCIAL_TYPES, ENTRANCE_TYPES, COMMERCIAL_LAYOUTS, LOCATION_LINES, VENTILATION_TYPES
+    COMMERCIAL_TYPES, ENTRANCE_TYPES, COMMERCIAL_LAYOUTS, LOCATION_LINES, VENTILATION_TYPES,
+    CLIENT_SOURCES, CLIENT_TYPES, CLIENT_TYPE_LABELS
 } from '../../data/constants';
 
 import { PortfolioSection } from '../../components/PortfolioSection';
@@ -486,6 +489,306 @@ export function DetailsPage() {
             };
         })
         .sort((a, b) => (b.dateObj?.getTime() || 0) - (a.dateObj?.getTime() || 0));
+
+    const [isAddLeadModalOpen, setIsAddLeadModalOpen] = useState(false);
+    const [leadFilterStatus, setLeadFilterStatus] = useState('all');
+    const [leadSearchQuery, setLeadSearchQuery] = useState('');
+    const [expandedLeadId, setExpandedLeadId] = useState(null);
+    const [copiedLeadPhoneId, setCopiedLeadPhoneId] = useState(null);
+
+    const initialLeadForm = {
+        mode: 'new', // 'new' | 'select'
+        clientId: '',
+        name: '',
+        phone: '',
+        source: 'Вх. звонок по объявлению',
+        eventType: 'call',
+        status: 'Новый лид',
+        date: toLocalISOString(new Date()),
+        comment: '',
+        hasReminder: false,
+        reminderDate: toLocalISOString(new Date(Date.now() + 86400000)),
+        reminderNote: '',
+    };
+    const [leadForm, setLeadForm] = useState(initialLeadForm);
+
+    const LEAD_STATUS_CONFIG = {
+        'Новый лид': { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: 'rgba(59, 130, 246, 0.25)', label: 'Новый лид' },
+        'Вх. звонок': { bg: 'rgba(14, 165, 233, 0.1)', color: '#0284c7', border: 'rgba(14, 165, 233, 0.25)', label: 'Вх. звонок' },
+        'Назначен показ': { bg: 'rgba(139, 92, 246, 0.1)', color: '#7c3aed', border: 'rgba(139, 92, 246, 0.25)', label: 'Назначен показ' },
+        'Думает': { bg: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: 'rgba(245, 158, 11, 0.25)', label: 'Думает' },
+        'Думает / консультация': { bg: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: 'rgba(245, 158, 11, 0.25)', label: 'Думает' },
+        'Предложил торг': { bg: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: 'rgba(249, 115, 22, 0.25)', label: 'Предложил торг' },
+        'Готов к сделке': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Готов к сделке' },
+        'Сделка': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Сделка' },
+        'Отказ': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Отказ' },
+        'Отказ / не подошло': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Отказ' },
+        'Завершён': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Завершён' },
+        'Запланирован': { bg: 'rgba(139, 92, 246, 0.1)', color: '#7c3aed', border: 'rgba(139, 92, 246, 0.25)', label: 'Запланирован' },
+        'Отменён': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Отменён' },
+    };
+
+    // Calculate Leads for this property
+    const leads = useMemo(() => {
+        if (!prop) return [];
+        const ownerIds = new Set(clientIds.map(String));
+        const leadMap = new Map();
+
+        // 1. From showings (all showings with s.property_id === id)
+        showings.forEach(s => {
+            const cIds = [];
+            if (s.client_id) cIds.push(String(s.client_id));
+            if (Array.isArray(s.client_ids)) {
+                s.client_ids.forEach(cid => {
+                    if (cid && !cIds.includes(String(cid))) cIds.push(String(cid));
+                });
+            }
+            cIds.forEach(cid => {
+                if (ownerIds.has(cid)) return;
+                const client = state.clients.find(c => String(c.id) === cid);
+                if (!client) return;
+                if (!leadMap.has(cid)) {
+                    leadMap.set(cid, { client, events: [], tasks: [], deals: [] });
+                }
+                leadMap.get(cid).events.push(s);
+            });
+        });
+
+        // 2. From tasks (tasks with t.property_id === id)
+        (state.tasks || []).forEach(t => {
+            if (t.property_id === id && t.client_id && !ownerIds.has(String(t.client_id))) {
+                const cid = String(t.client_id);
+                const client = state.clients.find(c => String(c.id) === cid);
+                if (!client) return;
+                if (!leadMap.has(cid)) {
+                    leadMap.set(cid, { client, events: [], tasks: [], deals: [] });
+                }
+                leadMap.get(cid).tasks.push(t);
+            }
+        });
+
+        // 3. From deals
+        (state.deals || []).forEach(d => {
+            if (d.property_id === id && d.buyer_id && !ownerIds.has(String(d.buyer_id))) {
+                const cid = String(d.buyer_id);
+                const client = state.clients.find(c => String(c.id) === cid);
+                if (!client) return;
+                if (!leadMap.has(cid)) {
+                    leadMap.set(cid, { client, events: [], tasks: [], deals: [] });
+                }
+                leadMap.get(cid).deals.push(d);
+            }
+        });
+
+        // 4. From clients linked to property
+        (state.clients || []).forEach(c => {
+            if (c.agency_contract_property_id === id && !ownerIds.has(String(c.id))) {
+                const cid = String(c.id);
+                if (!leadMap.has(cid)) {
+                    leadMap.set(cid, { client: c, events: [], tasks: [], deals: [] });
+                }
+            }
+        });
+
+        return Array.from(leadMap.values()).map(item => {
+            const sortedEvents = [...item.events].sort((a, b) => {
+                const da = a.showing_date ? new Date(a.showing_date).getTime() : 0;
+                const db = b.showing_date ? new Date(b.showing_date).getTime() : 0;
+                return db - da;
+            });
+            const latestEvent = sortedEvents[0] || null;
+            const latestTask = [...item.tasks].sort((a, b) => new Date(b.due_date || 0) - new Date(a.due_date || 0))[0] || null;
+
+            const lastDate = latestEvent?.showing_date || latestTask?.due_date || item.client.created_at;
+            const status = latestEvent?.client_feedback || (latestEvent?.event_type === 'call' ? 'Вх. звонок' : latestEvent?.status === 'planned' ? 'Запланирован' : latestEvent?.status === 'completed' ? 'Завершён' : latestEvent?.status === 'cancelled' ? 'Отказ' : 'Новый лид');
+            const comment = latestEvent?.feedback_comment || latestTask?.description || item.client.notes || '';
+            const source = item.client.source || (latestEvent?.event_type === 'call' ? 'Вх. звонок' : 'Лид');
+
+            return {
+                ...item,
+                sortedEvents,
+                latestEvent,
+                latestTask,
+                lastDate,
+                status,
+                comment,
+                source
+            };
+        }).sort((a, b) => new Date(b.lastDate || 0) - new Date(a.lastDate || 0));
+    }, [prop, clientIds, showings, state.clients, state.tasks, state.deals, id]);
+
+    const filteredLeads = useMemo(() => {
+        return leads.filter(l => {
+            if (leadFilterStatus !== 'all') {
+                if (leadFilterStatus === 'Думает') {
+                    if (l.status !== 'Думает' && l.status !== 'Думает / консультация') return false;
+                } else if (leadFilterStatus === 'Отказ') {
+                    if (l.status !== 'Отказ' && l.status !== 'Отказ / не подошло' && l.status !== 'Отменён') return false;
+                } else if (l.status !== leadFilterStatus) {
+                    return false;
+                }
+            }
+            if (leadSearchQuery.trim()) {
+                const q = leadSearchQuery.toLowerCase().trim();
+                const name = (l.client.full_name || '').toLowerCase();
+                const phone = (l.client.phone || '').toLowerCase();
+                const comment = (l.comment || '').toLowerCase();
+                const src = (l.source || '').toLowerCase();
+                if (!name.includes(q) && !phone.includes(q) && !comment.includes(q) && !src.includes(q)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }, [leads, leadFilterStatus, leadSearchQuery]);
+
+    function handleOpenAddLead(prefillClient = null) {
+        if (prefillClient) {
+            setLeadForm({
+                ...initialLeadForm,
+                mode: 'select',
+                clientId: prefillClient.id,
+                name: prefillClient.full_name || '',
+                phone: prefillClient.phone || '',
+                source: prefillClient.source || 'Вх. звонок по объявлению',
+                date: toLocalISOString(new Date()),
+            });
+        } else {
+            setLeadForm({
+                ...initialLeadForm,
+                date: toLocalISOString(new Date()),
+            });
+        }
+        setIsAddLeadModalOpen(true);
+    }
+
+    function handleSaveLead(e) {
+        e?.preventDefault();
+        let targetClient = null;
+
+        if (leadForm.mode === 'new') {
+            if (!leadForm.name.trim()) {
+                toast.error('Введите имя клиента');
+                return;
+            }
+            if (!leadForm.phone.trim()) {
+                toast.error('Введите номер телефона');
+                return;
+            }
+            const cleanPhone = stripPhone(leadForm.phone);
+            
+            const existingClient = cleanPhone ? state.clients.find(c => {
+                const cp = stripPhone(c.phone);
+                const cps = (c.phones || []).map(p => stripPhone(p));
+                return cp === cleanPhone || cps.includes(cleanPhone);
+            }) : null;
+
+            if (existingClient) {
+                targetClient = existingClient;
+                const currentTypes = Array.isArray(targetClient.client_types) ? targetClient.client_types : [];
+                if (!currentTypes.includes('lead')) {
+                    dispatch({
+                        type: 'UPDATE_CLIENT',
+                        client: {
+                            ...targetClient,
+                            client_types: [...currentTypes, 'lead'],
+                            updated_at: new Date().toISOString()
+                        }
+                    });
+                }
+            } else {
+                targetClient = {
+                    id: nanoid(),
+                    realtor_id: state.currentUser?.id,
+                    full_name: leadForm.name.trim(),
+                    phone: cleanPhone,
+                    client_types: ['lead', 'buyer'],
+                    source: leadForm.source || 'Вх. звонок по объявлению',
+                    status: 'active',
+                    notes: leadForm.comment ? `Интерес к ${prop?.address || 'объекту'}: ${leadForm.comment}` : '',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                };
+                dispatch({ type: 'ADD_CLIENT', client: targetClient });
+            }
+        } else {
+            if (!leadForm.clientId) {
+                toast.error('Выберите клиента из базы');
+                return;
+            }
+            targetClient = state.clients.find(c => c.id === leadForm.clientId);
+            if (!targetClient) {
+                toast.error('Клиент не найден');
+                return;
+            }
+            const currentTypes = Array.isArray(targetClient.client_types) ? targetClient.client_types : [];
+            if (!currentTypes.includes('lead')) {
+                dispatch({
+                    type: 'UPDATE_CLIENT',
+                    client: {
+                        ...targetClient,
+                        client_types: [...currentTypes, 'lead'],
+                        updated_at: new Date().toISOString()
+                    }
+                });
+            }
+        }
+
+        const showingDate = parseLocalDateTime(leadForm.date)?.toISOString() || new Date().toISOString();
+        const newShowing = {
+            id: nanoid(),
+            realtor_id: state.currentUser?.id,
+            property_id: id,
+            client_id: targetClient.id,
+            client_ids: [targetClient.id],
+            showing_date: showingDate,
+            event_type: leadForm.eventType,
+            status: (leadForm.status === 'Отказ' || leadForm.status === 'Отказ / не подошло') ? 'cancelled' : 'completed',
+            client_feedback: leadForm.status,
+            feedback_comment: leadForm.comment || '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+
+        if (leadForm.hasReminder && leadForm.reminderDate) {
+            const taskDue = parseLocalDateTime(leadForm.reminderDate)?.toISOString() || new Date(Date.now() + 86400000).toISOString();
+            const newTask = {
+                id: nanoid(),
+                realtor_id: state.currentUser?.id,
+                client_id: targetClient.id,
+                property_id: id,
+                title: `Перезвонить по объекту — ${targetClient.full_name}`,
+                description: leadForm.reminderNote || leadForm.comment || `Интересовался объектом ${prop?.address || ''}`,
+                due_date: taskDue,
+                priority: 'medium',
+                status: 'pending',
+                task_type: 'Позвонить',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            dispatch({ type: 'ADD_TASK', task: newTask });
+        }
+
+        toast.success(`Лид «${targetClient.full_name}» зафиксирован по объекту!`);
+        setIsAddLeadModalOpen(false);
+        setLeadForm(initialLeadForm);
+    }
+
+    const openWhatsApp = (phone, name = '') => {
+        const clean = stripPhone(phone);
+        if (!clean) return;
+        const text = encodeURIComponent(`Здравствуйте, ${name ? name : ''}! Вы интересовались объектом по адресу: ${prop?.address || ''}.`);
+        window.open(`https://wa.me/${clean}?text=${text}`, '_blank', 'noopener,noreferrer');
+    };
+
+    const copyLeadPhone = (leadId, phone) => {
+        if (!phone) return;
+        navigator.clipboard.writeText(formatPhone(phone));
+        setCopiedLeadPhoneId(leadId);
+        toast.success('Телефон скопирован');
+        setTimeout(() => setCopiedLeadPhoneId(null), 2000);
+    };
 
     if (!prop) return (
         <div className="page" style={{ background: 'var(--bg)' }}>
@@ -2043,10 +2346,599 @@ export function DetailsPage() {
                     </div>
                 )}
 
+                {/* Лиды по объекту (боковой виджет) */}
+                <div className="card">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <PhoneCall size={16} style={{ color: 'var(--primary)' }} />
+                            <div className="section-title" style={{ margin: 0, fontSize: 15 }}>
+                                Лиды ({leads.length})
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => handleOpenAddLead()}
+                            style={{
+                                background: 'var(--primary-light)',
+                                color: 'var(--primary)',
+                                border: 'none',
+                                borderRadius: 8,
+                                padding: '4px 10px',
+                                fontSize: 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                            title="Зафиксировать звонок / лид"
+                        >
+                            <Plus size={13} />
+                            <span>+ Лид</span>
+                        </button>
+                    </div>
+
+                    {leads.length === 0 ? (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
+                            Пока нет обращений
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {leads.slice(0, 4).map(l => {
+                                const cfg = LEAD_STATUS_CONFIG[l.status] || { bg: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'transparent', label: l.status };
+                                return (
+                                    <div
+                                        key={l.client.id}
+                                        onClick={() => {
+                                            const el = document.getElementById('leads-section');
+                                            if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                            setExpandedLeadId(l.client.id);
+                                        }}
+                                        style={{
+                                            padding: '8px 10px',
+                                            borderRadius: 10,
+                                            background: 'var(--bg-light)',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 4
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
+                                                {l.client.full_name}
+                                            </span>
+                                            <span style={{
+                                                fontSize: 10,
+                                                padding: '2px 6px',
+                                                borderRadius: 6,
+                                                background: cfg.bg,
+                                                color: cfg.color,
+                                                fontWeight: 500
+                                            }}>
+                                                {cfg.label}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
+                                            <span>{formatPhone(l.client.phone) || 'Без тел.'}</span>
+                                            <span>{l.source}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {leads.length > 4 && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const el = document.getElementById('leads-section');
+                                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                                    }}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--primary)',
+                                        fontSize: 12,
+                                        cursor: 'pointer',
+                                        padding: '4px 0',
+                                        textAlign: 'center'
+                                    }}
+                                >
+                                    Все обращения ({leads.length}) ↓
+                                </button>
+                            )}
+                        </div>
+                    )}
+                </div>
+
                 {/* New Construction Collection (Temporarily removed per user request) */}
                 {/* <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} /> */}
 
                     </div>
+                </div>
+
+                {/* ── ЛИДЫ / ИНТЕРЕСОВАВШИЕСЯ КЛИЕНТЫ ── */}
+                <div id="leads-section" className="card" style={{ padding: '24px 28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)', marginTop: 24 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                                width: 40, height: 40, borderRadius: 12,
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#2563eb',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <PhoneCall size={22} />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <h3 className="font-oswald" style={{ margin: 0, fontWeight: 400, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                                        Интересовавшиеся клиенты (Лиды)
+                                    </h3>
+                                    <span style={{
+                                        background: 'var(--primary-light)',
+                                        color: 'var(--primary)',
+                                        padding: '2px 10px',
+                                        borderRadius: 12,
+                                        fontSize: 13,
+                                        fontWeight: 600
+                                    }}>
+                                        {leads.length}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                    Клиенты, звонившие по объявлению, запрашивавшие показ или интересовавшиеся этим объектом
+                                </div>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            className="card-clickable"
+                            onClick={() => handleOpenAddLead()}
+                            style={{
+                                height: 40,
+                                padding: '0 16px',
+                                borderRadius: 12,
+                                border: 'none',
+                                background: 'var(--primary)',
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                fontSize: 13,
+                                fontWeight: 500,
+                                cursor: 'pointer',
+                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                            }}
+                        >
+                            <UserPlus size={16} />
+                            <span>Зафиксировать звонок / лид</span>
+                        </button>
+                    </div>
+
+                    {/* Filter Pills and Search */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            {[
+                                { id: 'all', label: `Все (${leads.length})` },
+                                { id: 'Новый лид', label: 'Новые' },
+                                { id: 'Вх. звонок', label: 'Звонки' },
+                                { id: 'Назначен показ', label: 'Показы' },
+                                { id: 'Думает', label: 'Думают' },
+                                { id: 'Готов к сделке', label: 'Готовы к сделке' },
+                                { id: 'Отказ', label: 'Отказы' },
+                            ].map(filter => {
+                                const active = leadFilterStatus === filter.id;
+                                return (
+                                    <button
+                                        key={filter.id}
+                                        type="button"
+                                        onClick={() => setLeadFilterStatus(filter.id)}
+                                        style={{
+                                            padding: '6px 14px',
+                                            borderRadius: 20,
+                                            fontSize: 12,
+                                            fontWeight: 500,
+                                            border: active ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                            background: active ? 'var(--primary-light)' : 'transparent',
+                                            color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        {filter.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div style={{ position: 'relative', minWidth: 220, flex: '1 1 220px', maxWidth: 360 }}>
+                            <input
+                                type="text"
+                                placeholder="Поиск по имени, номеру, комментарию..."
+                                value={leadSearchQuery}
+                                onChange={e => setLeadSearchQuery(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '8px 12px 8px 34px',
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg-light)',
+                                    color: 'var(--text)',
+                                    fontSize: 12,
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                            {leadSearchQuery && (
+                                <button
+                                    type="button"
+                                    onClick={() => setLeadSearchQuery('')}
+                                    style={{
+                                        position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                                        background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                                        cursor: 'pointer', padding: 2, display: 'flex'
+                                    }}
+                                >
+                                    <X size={13} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Leads List / Grid */}
+                    {filteredLeads.length === 0 ? (
+                        <div style={{
+                            fontSize: 13,
+                            color: 'var(--text-secondary)',
+                            textAlign: 'center',
+                            padding: '36px 16px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 18,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 12
+                        }}>
+                            <PhoneCall size={32} style={{ opacity: 0.35, color: 'var(--primary)' }} />
+                            <div>
+                                {leads.length === 0
+                                    ? 'По этому объекту пока нет зафиксированных звонков и обращений'
+                                    : 'По выбранным критериям обращений не найдено'}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleOpenAddLead()}
+                                style={{
+                                    marginTop: 4,
+                                    padding: '8px 16px',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    background: 'var(--primary-light)',
+                                    color: 'var(--primary)',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6
+                                }}
+                            >
+                                <Plus size={14} />
+                                <span>Зафиксировать обращение</span>
+                            </button>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+                            {filteredLeads.map(lead => {
+                                const cfg = LEAD_STATUS_CONFIG[lead.status] || { bg: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'transparent', label: lead.status };
+                                const isExpanded = expandedLeadId === lead.client.id;
+                                const isPhoneCopied = copiedLeadPhoneId === lead.client.id;
+                                const cleanPhone = stripPhone(lead.client.phone);
+
+                                return (
+                                    <div
+                                        key={lead.client.id}
+                                        style={{
+                                            borderRadius: 18,
+                                            border: '1px solid var(--border)',
+                                            background: 'var(--surface)',
+                                            padding: '16px 18px',
+                                            boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 12,
+                                            transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
+                                        }}
+                                    >
+                                        {/* Header: Client Info & Status Badge */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                                                <div
+                                                    onClick={() => navigate(`/clients/${lead.client.id}`)}
+                                                    style={{
+                                                        width: 42,
+                                                        height: 42,
+                                                        borderRadius: '50%',
+                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                        color: 'var(--primary)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: 15,
+                                                        fontWeight: 600,
+                                                        flexShrink: 0,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Перейти в карточку клиента"
+                                                >
+                                                    {initials(lead.client.full_name)}
+                                                </div>
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div
+                                                        onClick={() => navigate(`/clients/${lead.client.id}`)}
+                                                        style={{
+                                                            fontSize: 15,
+                                                            fontWeight: 600,
+                                                            color: 'var(--text)',
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis'
+                                                        }}
+                                                        title={lead.client.full_name}
+                                                    >
+                                                        {lead.client.full_name}
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
+                                                        <span style={{
+                                                            fontSize: 10,
+                                                            padding: '1px 6px',
+                                                            borderRadius: 4,
+                                                            background: 'rgba(59, 130, 246, 0.1)',
+                                                            color: '#2563eb',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            Лид
+                                                        </span>
+                                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                            {lead.source}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <span style={{
+                                                fontSize: 11,
+                                                padding: '4px 8px',
+                                                borderRadius: 8,
+                                                background: cfg.bg,
+                                                color: cfg.color,
+                                                border: `1px solid ${cfg.border || 'transparent'}`,
+                                                fontWeight: 600,
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                                {cfg.label}
+                                            </span>
+                                        </div>
+
+                                        {/* Phone & Quick communication actions */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            background: 'var(--bg-light)',
+                                            padding: '8px 12px',
+                                            borderRadius: 12
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <Phone size={14} style={{ color: 'var(--text-secondary)' }} />
+                                                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                                    {formatPhone(lead.client.phone) || 'Номер не указан'}
+                                                </span>
+                                            </div>
+                                            {cleanPhone && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copyLeadPhone(lead.client.id, lead.client.phone)}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            cursor: 'pointer',
+                                                            padding: 4,
+                                                            color: isPhoneCopied ? 'var(--success)' : 'var(--text-secondary)',
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                        title="Скопировать номер"
+                                                    >
+                                                        {isPhoneCopied ? <Check size={14} /> : <Copy size={14} />}
+                                                    </button>
+                                                    <a
+                                                        href={`tel:+${cleanPhone}`}
+                                                        style={{
+                                                            padding: '4px 8px',
+                                                            borderRadius: 8,
+                                                            background: 'var(--surface)',
+                                                            color: 'var(--primary)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            textDecoration: 'none'
+                                                        }}
+                                                        title="Позвонить"
+                                                    >
+                                                        <PhoneCall size={13} />
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openWhatsApp(lead.client.phone, lead.client.full_name)}
+                                                        style={{
+                                                            border: 'none',
+                                                            padding: '4px 8px',
+                                                            borderRadius: 8,
+                                                            background: '#25D366',
+                                                            color: '#fff',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        title="Написать в WhatsApp"
+                                                    >
+                                                        <MessageSquare size={13} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Latest note / comment */}
+                                        {lead.comment && (
+                                            <div style={{
+                                                fontSize: 12,
+                                                color: 'var(--text-secondary)',
+                                                lineHeight: 1.45,
+                                                background: 'rgba(0,0,0,0.015)',
+                                                padding: '8px 10px',
+                                                borderRadius: 8,
+                                                borderLeft: '3px solid var(--primary-light)'
+                                            }}>
+                                                {lead.comment}
+                                            </div>
+                                        )}
+
+                                        {/* Touchpoints Summary & Expand Toggle */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            fontSize: 11,
+                                            color: 'var(--text-muted)',
+                                            marginTop: 'auto',
+                                            paddingTop: 4
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <Clock size={12} />
+                                                <span>
+                                                    {lead.lastDate ? formatDate(lead.lastDate) : 'Не указана'}
+                                                </span>
+                                                <span>•</span>
+                                                <span>{lead.sortedEvents.length} касаний</span>
+                                            </div>
+
+                                            {lead.sortedEvents.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExpandedLeadId(isExpanded ? null : lead.client.id)}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: 'var(--primary)',
+                                                        fontSize: 11,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 2,
+                                                        padding: 0
+                                                    }}
+                                                >
+                                                    <span>{isExpanded ? 'Скрыть историю' : 'История'}</span>
+                                                    {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Expanded history details */}
+                                        {isExpanded && lead.sortedEvents.length > 0 && (
+                                            <div style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 8,
+                                                marginTop: 4,
+                                                paddingTop: 8,
+                                                borderTop: '1px dashed var(--border)'
+                                            }}>
+                                                {lead.sortedEvents.map(evt => (
+                                                    <div key={evt.id} style={{ fontSize: 11, background: 'var(--bg-light)', padding: '6px 8px', borderRadius: 8 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: 2 }}>
+                                                            <span style={{ fontWeight: 600 }}>
+                                                                {evt.event_type === 'call' ? '📞 Входящий звонок' : evt.event_type === 'showing' ? '🏠 Показ' : evt.event_type === 'meeting' ? '🤝 Встреча' : '📋 Событие'}
+                                                            </span>
+                                                            <span>{formatDate(evt.showing_date)}</span>
+                                                        </div>
+                                                        {evt.client_feedback && (
+                                                            <div style={{ color: 'var(--primary)', fontWeight: 500 }}>
+                                                                Статус: {evt.client_feedback}
+                                                            </div>
+                                                        )}
+                                                        {evt.feedback_comment && (
+                                                            <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                {evt.feedback_comment}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Action buttons footer */}
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: 8,
+                                            paddingTop: 8,
+                                            borderTop: '1px solid var(--border)',
+                                            marginTop: 2
+                                        }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenAddLead(lead.client)}
+                                                style={{
+                                                    flex: 1,
+                                                    height: 32,
+                                                    borderRadius: 8,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--surface)',
+                                                    color: 'var(--text)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 4,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Добавить новый звонок или показ для этого клиента"
+                                            >
+                                                <Plus size={12} />
+                                                <span>Новый контакт</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(`/tasks/new?property_id=${id}&client_id=${lead.client.id}`)}
+                                                style={{
+                                                    height: 32,
+                                                    padding: '0 10px',
+                                                    borderRadius: 8,
+                                                    border: 'none',
+                                                    background: 'var(--primary-light)',
+                                                    color: 'var(--primary)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 4,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Поставить задачу по клиенту"
+                                            >
+                                                <Clock size={12} />
+                                                <span>Задача</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* ── ИСТОРИЯ ПОКАЗОВ И СОБЫТИЙ (В САМОМ НИЗУ СТРАНИЦЫ) ── */}
@@ -2176,6 +3068,431 @@ export function DetailsPage() {
                             });
                         }}
                     />
+                )}
+
+                {/* ── MODAL: ЗАФИКСИРОВАТЬ ЛИД / ВХОДЯЩИЙ ЗВОНОК ── */}
+                {isAddLeadModalOpen && (
+                    <div style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'rgba(0, 0, 0, 0.5)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000,
+                        padding: 16
+                    }}>
+                        <div
+                            className="card"
+                            style={{
+                                width: '100%',
+                                maxWidth: 540,
+                                maxHeight: '90vh',
+                                overflowY: 'auto',
+                                borderRadius: 24,
+                                padding: 24,
+                                background: 'var(--surface)',
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 16
+                            }}
+                        >
+                            {/* Modal Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        width: 36, height: 36, borderRadius: 10,
+                                        background: 'rgba(59, 130, 246, 0.1)',
+                                        color: '#2563eb',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <PhoneCall size={18} />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>
+                                            Зафиксировать лид / звонок
+                                        </h3>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            {prop.address || 'Объект недвижимости'}
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAddLeadModalOpen(false)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        color: 'var(--text-muted)',
+                                        cursor: 'pointer',
+                                        padding: 4,
+                                        display: 'flex'
+                                    }}
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleSaveLead} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                {/* Mode Switch: Новый клиент / Выбрать из базы */}
+                                <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 12 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLeadForm(f => ({ ...f, mode: 'new' }))}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            borderRadius: 9,
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 500,
+                                            background: leadForm.mode === 'new' ? 'var(--surface)' : 'transparent',
+                                            color: leadForm.mode === 'new' ? 'var(--text)' : 'var(--text-secondary)',
+                                            boxShadow: leadForm.mode === 'new' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        Новый клиент
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLeadForm(f => ({ ...f, mode: 'select' }))}
+                                        style={{
+                                            flex: 1,
+                                            padding: '8px 12px',
+                                            borderRadius: 9,
+                                            border: 'none',
+                                            cursor: 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 500,
+                                            background: leadForm.mode === 'select' ? 'var(--surface)' : 'transparent',
+                                            color: leadForm.mode === 'select' ? 'var(--text)' : 'var(--text-secondary)',
+                                            boxShadow: leadForm.mode === 'select' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        Выбрать из базы
+                                    </button>
+                                </div>
+
+                                {leadForm.mode === 'new' ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                                Имя клиента *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                placeholder="Иван Петров"
+                                                value={leadForm.name}
+                                                onChange={e => setLeadForm(f => ({ ...f, name: e.target.value }))}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 12px',
+                                                    borderRadius: 10,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--bg-light)',
+                                                    color: 'var(--text)',
+                                                    fontSize: 13,
+                                                    boxSizing: 'border-box'
+                                                }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                                Телефон *
+                                            </label>
+                                            <input
+                                                type="tel"
+                                                required
+                                                placeholder="+7 (999) 000-00-00"
+                                                value={leadForm.phone}
+                                                onChange={e => setLeadForm(f => ({ ...f, phone: e.target.value }))}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px 12px',
+                                                    borderRadius: 10,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--bg-light)',
+                                                    color: 'var(--text)',
+                                                    fontSize: 13,
+                                                    boxSizing: 'border-box'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                            Выберите клиента *
+                                        </label>
+                                        <select
+                                            required
+                                            value={leadForm.clientId}
+                                            onChange={e => {
+                                                const cid = e.target.value;
+                                                const cl = state.clients.find(c => c.id === cid);
+                                                setLeadForm(f => ({
+                                                    ...f,
+                                                    clientId: cid,
+                                                    name: cl?.full_name || '',
+                                                    phone: cl?.phone || ''
+                                                }));
+                                            }}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg-light)',
+                                                color: 'var(--text)',
+                                                fontSize: 13,
+                                                boxSizing: 'border-box'
+                                            }}
+                                        >
+                                            <option value="">-- Выберите клиента из списка --</option>
+                                            {state.clients.map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.full_name} {c.phone ? `(${c.phone})` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                            Источник обращения
+                                        </label>
+                                        <select
+                                            value={leadForm.source}
+                                            onChange={e => setLeadForm(f => ({ ...f, source: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg-light)',
+                                                color: 'var(--text)',
+                                                fontSize: 13,
+                                                boxSizing: 'border-box'
+                                            }}
+                                        >
+                                            {CLIENT_SOURCES.map(src => (
+                                                <option key={src} value={src}>{src}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                            Тип контакта
+                                        </label>
+                                        <select
+                                            value={leadForm.eventType}
+                                            onChange={e => setLeadForm(f => ({ ...f, eventType: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg-light)',
+                                                color: 'var(--text)',
+                                                fontSize: 13,
+                                                boxSizing: 'border-box'
+                                            }}
+                                        >
+                                            <option value="call">📞 Входящий звонок</option>
+                                            <option value="showing">🏠 Показ объекта</option>
+                                            <option value="meeting">🤝 Встреча</option>
+                                            <option value="other">💬 Сообщение / Заявка</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                            Статус интереса
+                                        </label>
+                                        <select
+                                            value={leadForm.status}
+                                            onChange={e => setLeadForm(f => ({ ...f, status: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg-light)',
+                                                color: 'var(--text)',
+                                                fontSize: 13,
+                                                boxSizing: 'border-box'
+                                            }}
+                                        >
+                                            <option value="Новый лид">Новый лид</option>
+                                            <option value="Вх. звонок">Вх. звонок</option>
+                                            <option value="Назначен показ">Назначен показ</option>
+                                            <option value="Думает">Думает</option>
+                                            <option value="Предложил торг">Предложил торг</option>
+                                            <option value="Готов к сделке">Готов к сделке</option>
+                                            <option value="Отказ">Отказ / не подошло</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                            Дата и время
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            value={leadForm.date}
+                                            onChange={e => setLeadForm(f => ({ ...f, date: e.target.value }))}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg-light)',
+                                                color: 'var(--text)',
+                                                fontSize: 13,
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
+                                        Комментарий / Что обсуждали
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        placeholder="Спрашивал про торг, готов смотреть в субботу..."
+                                        value={leadForm.comment}
+                                        onChange={e => setLeadForm(f => ({ ...f, comment: e.target.value }))}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            borderRadius: 10,
+                                            border: '1px solid var(--border)',
+                                            background: 'var(--bg-light)',
+                                            color: 'var(--text)',
+                                            fontSize: 13,
+                                            boxSizing: 'border-box',
+                                            resize: 'vertical'
+                                        }}
+                                    />
+                                </div>
+
+                                {/* Callback reminder task toggle */}
+                                <div style={{
+                                    border: '1px solid var(--border)',
+                                    borderRadius: 12,
+                                    padding: 12,
+                                    background: leadForm.hasReminder ? 'var(--primary-light)' : 'transparent',
+                                    transition: 'all 0.15s ease'
+                                }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={leadForm.hasReminder}
+                                            onChange={e => setLeadForm(f => ({ ...f, hasReminder: e.target.checked }))}
+                                            style={{ cursor: 'pointer' }}
+                                        />
+                                        <span>Поставить напоминание / задачу перезвонить</span>
+                                    </label>
+
+                                    {leadForm.hasReminder && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                                                    Когда напомнить
+                                                </label>
+                                                <input
+                                                    type="datetime-local"
+                                                    value={leadForm.reminderDate}
+                                                    onChange={e => setLeadForm(f => ({ ...f, reminderDate: e.target.value }))}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px 10px',
+                                                        borderRadius: 8,
+                                                        border: '1px solid var(--border)',
+                                                        background: 'var(--surface)',
+                                                        color: 'var(--text)',
+                                                        fontSize: 12,
+                                                        boxSizing: 'border-box'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2 }}>
+                                                    Заметка к задаче
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="Уточнить решение по показу"
+                                                    value={leadForm.reminderNote}
+                                                    onChange={e => setLeadForm(f => ({ ...f, reminderNote: e.target.value }))}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px 10px',
+                                                        borderRadius: 8,
+                                                        border: '1px solid var(--border)',
+                                                        background: 'var(--surface)',
+                                                        color: 'var(--text)',
+                                                        fontSize: 12,
+                                                        boxSizing: 'border-box'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Modal Actions */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddLeadModalOpen(false)}
+                                        style={{
+                                            padding: '10px 16px',
+                                            borderRadius: 10,
+                                            border: '1px solid var(--border)',
+                                            background: 'transparent',
+                                            color: 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 500
+                                        }}
+                                    >
+                                        Отмена
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        style={{
+                                            padding: '10px 20px',
+                                            borderRadius: 10,
+                                            border: 'none',
+                                            background: 'var(--primary)',
+                                            color: '#fff',
+                                            cursor: 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                                        }}
+                                    >
+                                        Сохранить лид
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
                 )}
                 </div>
             </div>
