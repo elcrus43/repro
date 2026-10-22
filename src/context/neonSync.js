@@ -681,18 +681,29 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         const showingData = mapShowingToDb(sanitizeObj(rawShowing));
         
         let showingResult = await neonDb.upsert('showings', showingData);
-        // FK constraint recovery: if property_id or match_id does not exist in DB, retry with null
-        if (showingResult?.error && (showingResult.error?.code === '23503' || String(showingResult.error?.message).includes('23503'))) {
+        // FK constraint recovery: if property_id, match_id, or client_id does not exist in DB, retry with null
+        let addRetryCount = 0;
+        while (showingResult?.error && (showingResult.error?.code === '23503' || String(showingResult.error?.message).includes('23503')) && addRetryCount < 3) {
+          addRetryCount++;
           const detail = String(showingResult.error?.message || '');
+          let changed = false;
           if (detail.includes('property_id') && showingData.property_id) {
             console.warn('[neonSync ADD_SHOWING] property_id FK failed, retrying without property_id...');
             showingData.property_id = null;
-            showingResult = await neonDb.upsert('showings', showingData);
-          } else if (detail.includes('match_id') && showingData.match_id) {
+            changed = true;
+          }
+          if (detail.includes('match_id') && showingData.match_id) {
             console.warn('[neonSync ADD_SHOWING] match_id FK failed, retrying without match_id...');
             showingData.match_id = null;
-            showingResult = await neonDb.upsert('showings', showingData);
+            changed = true;
           }
+          if (detail.includes('client_id') && showingData.client_id) {
+            console.warn('[neonSync ADD_SHOWING] client_id FK failed, retrying without client_id...');
+            showingData.client_id = null;
+            changed = true;
+          }
+          if (!changed) break;
+          showingResult = await neonDb.upsert('showings', showingData);
         }
         if (showingResult?.error) {
           handleError(`Ошибка сохранения события: ${showingResult.error?.message || showingResult.error}`);

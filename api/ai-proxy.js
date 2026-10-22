@@ -92,7 +92,8 @@ export default async function handler(req, res) {
         return res.status(401).json({ error: 'Сессия была отозвана или истекла' });
       }
     } catch (e) {
-      console.warn('[ai-proxy] Session check warning:', e.message);
+      console.error('[ai-proxy] Session verification error:', e.message);
+      return res.status(500).json({ error: 'Сервис авторизации временно недоступен' });
     }
   }
 

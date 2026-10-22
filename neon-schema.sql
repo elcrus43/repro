@@ -414,6 +414,9 @@ CREATE TABLE IF NOT EXISTS deal_messages (
   sender_name TEXT NOT NULL,
   sender_role TEXT NOT NULL,
   text        TEXT NOT NULL,
+  file_url    TEXT,
+  file_name   TEXT,
+  file_type   TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 

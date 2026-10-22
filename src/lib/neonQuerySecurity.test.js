@@ -1,12 +1,13 @@
 /**
  * neonQuerySecurity.test.js
  *
- * Тесты безопасности серверного шлюза api/neon-query.js:
+ * Тесты безопасности серверного шлюза api/neon-query.js и api/deal-chat.js:
  * Проверка защиты от обходов (P0-1 ... P0-6).
  */
 
 import { describe, it, expect } from 'vitest';
-import { isPublicQuery } from '../../api/neon-query.js';
+import { isPublicQuery, stripSensitiveFields } from '../../api/neon-query.js';
+import { isValidDealToken } from '../../api/deal-chat.js';
 
 describe('neon-query isPublicQuery security filter', () => {
   it('blocks wildcard deal dumps (P0-4)', () => {
@@ -39,5 +40,47 @@ describe('neon-query isPublicQuery security filter', () => {
     expect(isPublicQuery("DROP TABLE users")).toBe(false);
     expect(isPublicQuery("UPDATE profiles SET role = 'admin'")).toBe(false);
     expect(isPublicQuery("DELETE FROM deals")).toBe(false);
+  });
+
+  it('blocks matches query with m.* to prevent leaking realtor comments', () => {
+    expect(isPublicQuery(`SELECT m.*, json_build_object('id', pr.id) as properties FROM matches m JOIN properties pr ON m.property_id = pr.id WHERE m.request_id = ANY($1)`)).toBe(false);
+  });
+
+  it('allows matches query with safe explicit columns without realtor comments', () => {
+    const safeMatches = `SELECT m.id, m.request_id, m.property_id, m.score, m.match_level, m.matched_params, m.mismatched_params, m.status, json_build_object('id', pr.id, 'price', pr.price) as properties FROM matches m JOIN properties pr ON m.property_id = pr.id WHERE m.request_id = ANY($1)`;
+    expect(isPublicQuery(safeMatches)).toBe(true);
+  });
+});
+
+describe('Defense-in-depth stripSensitiveFields (P0-2)', () => {
+  it('recursively removes password_hash from objects and nested arrays', () => {
+    const raw = {
+      id: 'u-1',
+      full_name: 'Agent',
+      password_hash: '$2b$10$abcdef123456',
+      profiles: [
+        { id: 'u-2', password_hash: '$2b$10$secret', name: 'Other' }
+      ]
+    };
+    const cleaned = stripSensitiveFields(raw);
+    expect(cleaned.password_hash).toBeUndefined();
+    expect(cleaned.profiles[0].password_hash).toBeUndefined();
+    expect(cleaned.full_name).toBe('Agent');
+  });
+});
+
+describe('deal-chat token security (P0-5)', () => {
+  it('rejects bare deal UUID as token', () => {
+    const dealId = '123e4567-e89b-12d3-a456-426614174000';
+    expect(isValidDealToken(dealId, 'buyer', dealId)).toBe(false);
+  });
+
+  it('validates secret token matching deterministic hash', () => {
+    const dealId = '123e4567-e89b-12d3-a456-426614174000';
+    const hash = Math.abs(dealId.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0)).toString(36);
+    const validToken = `t_sec_buyer_${dealId.substring(0, 8)}_${hash}`;
+    expect(isValidDealToken(dealId, 'buyer', validToken)).toBe(true);
+    expect(isValidDealToken(dealId, 'seller', validToken)).toBe(false);
+    expect(isValidDealToken('different-id', 'buyer', validToken)).toBe(false);
   });
 });

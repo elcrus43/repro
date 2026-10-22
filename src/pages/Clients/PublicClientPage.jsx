@@ -38,10 +38,10 @@ export function PublicClientPage() {
             if (reqErr) throw reqErr;
 
             if (requestsData && requestsData.length > 0) {
-                // 3. Fetch matches for these requests
+                // 3. Fetch matches for these requests (без внутренних комментариев риелтора)
                 const reqIds = requestsData.map(r => r.id);
                 const { data: matchesData, error: matchErr } = await neonDb.query(
-                    `SELECT m.*, json_build_object('id', pr.id, 'price', pr.price, 'address', pr.address, 'city', pr.city, 'rooms', pr.rooms, 'area_total', pr.area_total, 'floor', pr.floor, 'floors_total', pr.floors_total, 'cover_image', pr.cover_image, 'property_type', pr.property_type, 'images', pr.images) as properties FROM matches m JOIN properties pr ON m.property_id = pr.id WHERE m.request_id = ANY($1)`,
+                    `SELECT m.id, m.request_id, m.property_id, m.score, m.match_level, m.matched_params, m.mismatched_params, m.status, json_build_object('id', pr.id, 'price', pr.price, 'address', pr.address, 'city', pr.city, 'rooms', pr.rooms, 'area_total', pr.area_total, 'floor', pr.floor, 'floors_total', pr.floors_total, 'cover_image', pr.cover_image, 'property_type', pr.property_type, 'images', pr.images) as properties FROM matches m JOIN properties pr ON m.property_id = pr.id WHERE m.request_id = ANY($1)`,
                     [reqIds]
                 );
 
@@ -67,8 +67,8 @@ export function PublicClientPage() {
         try {
             const updatedAt = new Date().toISOString();
             const { error: updateErr } = await neonDb.query(
-                'UPDATE matches SET status = $1, updated_at = $2 WHERE id = $3',
-                [newStatus, updatedAt, match.id]
+                'UPDATE matches SET status = $1, updated_at = $2 WHERE id = $3 AND request_id = $4',
+                [newStatus, updatedAt, match.id, match.request_id]
             );
 
             if (updateErr) throw updateErr;
