@@ -6,7 +6,14 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { isPublicQuery, stripSensitiveFields, extractTableAndAlias, hasProfilesWildcard } from '../../api/neon-query.js';
+import {
+  isPublicQuery,
+  stripSensitiveFields,
+  extractTableAndAlias,
+  hasProfilesWildcard,
+  extractSubqueries,
+  transformAndValidateQuery
+} from '../../api/neon-query.js';
 import { isValidDealToken } from '../../api/deal-chat.js';
 
 describe('neon-query isPublicQuery security filter', () => {
@@ -117,14 +124,145 @@ describe('Profiles wildcard query detector (P0-3, P0-4)', () => {
     expect(hasProfilesWildcard('SELECT * FROM profiles')).toBe(true);
   });
 
-  it('detects table-prefixed asterisk like profiles.* or p.*', () => {
+  it('detects table-prefixed asterisk like profiles.* or p.* (including quotes)', () => {
     expect(hasProfilesWildcard('SELECT profiles.* FROM profiles WHERE id = $1')).toBe(true);
+    expect(hasProfilesWildcard('SELECT "profiles".* FROM "profiles" WHERE id = $1')).toBe(true);
     expect(hasProfilesWildcard('SELECT p.* FROM "profiles" p WHERE p.id = $1')).toBe(true);
+    expect(hasProfilesWildcard('SELECT "p".* FROM "profiles" "p" WHERE "p".id = $1')).toBe(true);
     expect(hasProfilesWildcard('SELECT p.* FROM profiles AS p WHERE p.id = $1')).toBe(true);
   });
 
   it('allows safe explicit column lists for profiles', () => {
     expect(hasProfilesWildcard('SELECT id, full_name, email, role FROM profiles WHERE id = $1')).toBe(false);
     expect(hasProfilesWildcard('SELECT p.id, p.full_name, p.role FROM "profiles" p WHERE p.id = $1')).toBe(false);
+  });
+});
+
+describe('Precise Subquery Extractor (P0-2, P0-3)', () => {
+  it('extracts multiple independent subqueries without merging them into a single span', () => {
+    const sql = `SELECT json_build_object(
+      'a', (SELECT id FROM "requests" WHERE realtor_id = $1),
+      'b', (SELECT * FROM "clients")
+    )`;
+    const sqs = extractSubqueries(sql);
+    expect(sqs.length).toBe(2);
+    expect(sqs[0]).toContain('FROM "requests"');
+    expect(sqs[1]).toContain('FROM "clients"');
+  });
+
+  it('extracts nested subqueries correctly', () => {
+    const sql = `SELECT * FROM properties WHERE client_id IN (SELECT id FROM clients WHERE status = (SELECT val FROM config))`;
+    const sqs = extractSubqueries(sql);
+    expect(sqs.length).toBe(2);
+  });
+});
+
+describe('Pipeline Security Filter: transformAndValidateQuery (P0-1 ... P0-6)', () => {
+  const realtorPayload = { sub: 'realtor-uuid-1', role: 'realtor', status: 'approved' };
+  const adminPayload = { sub: 'admin-uuid-9', role: 'admin', status: 'approved' };
+
+  it('P0-1: blocks UNION / UNION ALL queries for non-admins', () => {
+    const attack = `SELECT * FROM "clients" UNION ALL SELECT * FROM "clients"`;
+    const res = transformAndValidateQuery(attack, [], realtorPayload);
+    expect(res.error).toMatch(/UNION queries are forbidden/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('P0-1: allows admin to execute complex queries', () => {
+    const query = `SELECT * FROM "clients" UNION ALL SELECT * FROM "clients"`;
+    const res = transformAndValidateQuery(query, [], adminPayload);
+    expect(res.error).toBeNull();
+  });
+
+  it('P0-2: blocks subqueries in SELECT projection targeting private tables without realtor_id', () => {
+    const attack = `SELECT (SELECT row_to_json(t) FROM "clients") AS data FROM "properties" p`;
+    const res = transformAndValidateQuery(attack, [], realtorPayload);
+    expect(res.error).toMatch(/subquery to clients must filter by realtor_id/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('P0-3: blocks multi-subquery aggregate when decoy subquery is used', () => {
+    const attack = `SELECT json_build_object(
+      'a', (SELECT id FROM "requests" t WHERE t."realtor_id" = $1),
+      'b', (SELECT * FROM "clients")
+    ) as data`;
+    const res = transformAndValidateQuery(attack, ['realtor-uuid-1'], realtorPayload);
+    expect(res.error).toMatch(/subquery to clients must filter by realtor_id/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('P0-4: blocks mass read of profiles without WHERE clause', () => {
+    const attack = `SELECT id, email, inn, passport_details FROM "profiles"`;
+    const res = transformAndValidateQuery(attack, [], realtorPayload);
+    expect(res.error).toMatch(/profile query must specify own id in WHERE/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('P0-4: blocks read of another user profile', () => {
+    const attack = `SELECT id, email, phone FROM "profiles" WHERE id = $1`;
+    const res = transformAndValidateQuery(attack, ['another-user-uuid'], realtorPayload);
+    expect(res.error).toMatch(/cannot query another user profile/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('P0-4: allows reading own profile by own id', () => {
+    const safe = `SELECT id, email, phone FROM "profiles" WHERE id = $1`;
+    const res = transformAndValidateQuery(safe, ['realtor-uuid-1'], realtorPayload);
+    expect(res.error).toBeNull();
+  });
+
+  it('P0-5: isolates deal_messages SELECT via deals ownership without breaking schema (no realtor_id in deal_messages)', () => {
+    const query = `SELECT * FROM "deal_messages" WHERE "deal_id" = $1 AND "side" = $2 ORDER BY "created_at" ASC`;
+    const res = transformAndValidateQuery(query, ['deal-uuid-10', 'buyer'], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toContain(`"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $3)`);
+    expect(res.params).toEqual(['deal-uuid-10', 'buyer', 'realtor-uuid-1']);
+  });
+
+  it('P0-5: isolates deal_messages DISTINCT ON query in DealsPage', () => {
+    const query = `SELECT DISTINCT ON (deal_id, side) deal_id, side, sender_id, created_at FROM deal_messages ORDER BY deal_id, side, created_at DESC`;
+    const res = transformAndValidateQuery(query, [], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toContain(`WHERE "deal_id" IN (SELECT id FROM deals WHERE realtor_id = $1)`);
+    expect(res.params).toEqual(['realtor-uuid-1']);
+  });
+
+  it('P0-5: isolates deal_messages DELETE via deals ownership', () => {
+    const query = `DELETE FROM "deal_messages" WHERE id = $1`;
+    const res = transformAndValidateQuery(query, ['msg-uuid-55'], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toMatch(/WHERE "deal_id" IN \(SELECT id FROM deals WHERE realtor_id = \$2\)\s+AND\s+id = \$1/);
+    expect(res.params).toEqual(['msg-uuid-55', 'realtor-uuid-1']);
+  });
+
+  it('P0-6: isolates clients SELECT with realtor_id', () => {
+    const query = `SELECT * FROM "clients" WHERE id = $1`;
+    const res = transformAndValidateQuery(query, ['c-1'], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toContain(`"realtor_id" = $2`);
+    expect(res.params).toEqual(['c-1', 'realtor-uuid-1']);
+  });
+
+  it('P0-6: isolates clients UPDATE with realtor_id', () => {
+    const query = `UPDATE "clients" SET full_name = $1 WHERE id = $2`;
+    const res = transformAndValidateQuery(query, ['New Name', 'c-1'], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toContain(`"realtor_id" = $3`);
+    expect(res.params).toEqual(['New Name', 'c-1', 'realtor-uuid-1']);
+  });
+
+  it('P0-6: isolates clients DELETE with realtor_id', () => {
+    const query = `DELETE FROM "clients" WHERE id = $1`;
+    const res = transformAndValidateQuery(query, ['c-1'], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toContain(`"realtor_id" = $2`);
+    expect(res.params).toEqual(['c-1', 'realtor-uuid-1']);
+  });
+
+  it('blocks non-admin from modifying pricelist', () => {
+    const query = `UPDATE "pricelist" SET price = $1 WHERE id = $2`;
+    const res = transformAndValidateQuery(query, [1000, 'p-1'], realtorPayload);
+    expect(res.error).toMatch(/only admins can modify pricelist/i);
+    expect(res.status).toBe(403);
   });
 });

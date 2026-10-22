@@ -55,7 +55,7 @@ export function hasProfilesWildcard(query) {
   const alias = rawAlias && !SQL_RESERVED.has(rawAlias.toLowerCase()) ? rawAlias.toLowerCase() : null;
 
   if (/\bSELECT\s+\*\s+FROM/i.test(query)) return true;
-  const wcMatch = query.match(/\b([a-zA-Z0-9_]+)\.\*/i);
+  const wcMatch = query.match(/["']?([a-zA-Z0-9_]+)["']?\s*\.\s*\*/i);
   if (wcMatch) {
     const target = wcMatch[1].toLowerCase();
     if (target === 'profiles' || (alias && target === alias)) {
@@ -63,6 +63,279 @@ export function hasProfilesWildcard(query) {
     }
   }
   return false;
+}
+
+/**
+ * Точный парсинг вложенных подзапросов (SELECT ...) с учётом строк и скобочного стека.
+ * Предотвращает объединение нескольких подзапросов в один span (защита от "приманок", P0-3).
+ */
+export function extractSubqueries(sql) {
+  if (!sql || typeof sql !== 'string') return [];
+  const subqueries = [];
+  let inString = false;
+  let stringChar = '';
+
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i];
+    if (inString) {
+      if (char === stringChar) {
+        if (sql[i + 1] === stringChar) {
+          i++; // экранированная кавычка
+        } else {
+          inString = false;
+        }
+      }
+      continue;
+    }
+
+    if (char === "'" || char === '"') {
+      inString = true;
+      stringChar = char;
+      continue;
+    }
+
+    if (char === '(') {
+      const rest = sql.slice(i + 1).trimStart();
+      if (/^SELECT\b/i.test(rest)) {
+        let depth = 1;
+        let j = i + 1;
+        let subInString = false;
+        let subStrChar = '';
+        for (; j < sql.length; j++) {
+          const c = sql[j];
+          if (subInString) {
+            if (c === subStrChar) {
+              if (sql[j + 1] === subStrChar) j++;
+              else subInString = false;
+            }
+            continue;
+          }
+          if (c === "'" || c === '"') {
+            subInString = true;
+            subStrChar = c;
+            continue;
+          }
+          if (c === '(') depth++;
+          else if (c === ')') {
+            depth--;
+            if (depth === 0) break;
+          }
+        }
+        if (depth === 0) {
+          subqueries.push(sql.slice(i, j + 1));
+        }
+      }
+    }
+  }
+  return subqueries;
+}
+
+/**
+ * Единый сквозной конвейер валидации и трансформации SQL для изоляции данных (P0-1 ... P0-6).
+ * Экспортируется для прямого тестирования серверного пайплайна без расхождений с production.
+ */
+export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload = {}) {
+  let query = rawQuery;
+  const params = [...rawParams];
+
+  // 1. Пароли
+  if (/\bpassword_hash\b/i.test(query)) {
+    return { error: 'Access denied: cannot access password_hash', status: 403 };
+  }
+
+  // 2. Создание профилей только через auth
+  if (/\bINSERT\s+INTO\s+["']?profiles["']?\b/i.test(query)) {
+    return { error: 'Access denied: profile creation is only permitted via auth endpoint', status: 403 };
+  }
+
+  // Администратор — полный доступ без добавления фильтров изоляции
+  if (jwtPayload.role === 'admin') {
+    return { query, params, error: null };
+  }
+
+  // ─── Правила для не-админов (риелторов) ───
+
+  // P0-1: Запрет UNION / UNION ALL
+  if (/\bUNION\b/i.test(query)) {
+    return { error: 'Access denied: UNION queries are forbidden', status: 403 };
+  }
+
+  // P0-4: Контроль доступа к profiles
+  if (/\bprofiles\b/i.test(query)) {
+    if (hasProfilesWildcard(query)) {
+      return { error: 'Access denied: wildcard SELECT from profiles is forbidden', status: 403 };
+    }
+    if (/\bDELETE\s+FROM\b/i.test(query)) {
+      return { error: 'Access denied: only admins can delete profiles', status: 403 };
+    }
+    if (/\bUPDATE\b/i.test(query)) {
+      if (/\b(role|status|password_hash|email)\b/i.test(query)) {
+        return { error: 'Access denied: cannot modify role, status, password_hash or email', status: 403 };
+      }
+      if (/\bOR\b/i.test(query)) {
+        return { error: 'Access denied: OR condition forbidden in profile update', status: 403 };
+      }
+      const whereIdMatch = query.match(/WHERE\s+(?:[a-zA-Z0-9_]+\.)?["']?id["']?\s*=\s*\$(\d+)/i);
+      if (!whereIdMatch) {
+        return { error: 'Access denied: profile update must target own ID specifically', status: 403 };
+      }
+      const paramIdx = parseInt(whereIdMatch[1], 10) - 1;
+      if (params[paramIdx] !== jwtPayload.sub) {
+        return { error: 'Access denied: cannot modify another user profile', status: 403 };
+      }
+    }
+    // Прямой SELECT по профилю: обязателен фильтр по собственному id
+    if (/\bSELECT\b/i.test(query) && !query.trim().startsWith('SELECT json_build_object(')) {
+      const fromProfiles = /\bFROM\s+(?:ONLY\s+)?["']?profiles["']?\b/i.test(query);
+      if (fromProfiles) {
+        const whereIdMatch = query.match(/WHERE\s+(?:[a-zA-Z0-9_]+\.)?["']?id["']?\s*=\s*\$(\d+)/i);
+        if (!whereIdMatch) {
+          return { error: 'Access denied: profile query must specify own id in WHERE', status: 403 };
+        }
+        const paramIdx = parseInt(whereIdMatch[1], 10) - 1;
+        if (params[paramIdx] !== jwtPayload.sub) {
+          return { error: 'Access denied: cannot query another user profile', status: 403 };
+        }
+      }
+    }
+  }
+
+  // Защита pricelist: только админ может модифицировать
+  if (/\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?["']?pricelist["']?\b/i.test(query)) {
+    return { error: 'Access denied: only admins can modify pricelist', status: 403 };
+  }
+
+  const trimmedQuery = query.trim();
+
+  // P0-2, P0-3: Валидация ВСЕХ подзапросов в запросе (включая SELECT-проекции и json_build_object)
+  const subqueries = extractSubqueries(query);
+  const privateTablesList = ['clients', 'deals', 'tasks', 'showings', 'selection_items', 'matches', 'requests'];
+  for (const sq of subqueries) {
+    for (const tbl of privateTablesList) {
+      const fromPattern = new RegExp(`\\bFROM\\s+(?:ONLY\\s+)?["']?${tbl}["']?\\b`, 'i');
+      if (fromPattern.test(sq)) {
+        if (!/\brealtor_id\b/i.test(sq)) {
+          return { error: `Access denied: subquery to ${tbl} must filter by realtor_id`, status: 403 };
+        }
+      }
+    }
+    if (/\bFROM\s+(?:ONLY\\s+)?["']?deal_messages["']?\\b/i.test(sq)) {
+      if (!/\bdeal_id\b/i.test(sq)) {
+        return { error: 'Access denied: subquery to deal_messages must filter by deal_id', status: 403 };
+      }
+    }
+  }
+
+  // 1. Защита INSERT
+  const insertMatch = trimmedQuery.match(/^INSERT\s+INTO\s+["']?([a-zA-Z0-9_]+)["']?\s*\(([\s\S]*?)\)\s*VALUES\s*\(([\s\S]*?)\)/i);
+  if (insertMatch) {
+    const targetTable = insertMatch[1].toLowerCase();
+    const realtorTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches']);
+    if (realtorTables.has(targetTable)) {
+      const colList = insertMatch[2].split(',').map(c => c.trim().replace(/["']/g, '').toLowerCase());
+      const valList = insertMatch[3].split(',').map(v => v.trim());
+      if (colList.length !== valList.length) {
+        return { error: 'Column and value counts mismatch in INSERT', status: 400 };
+      }
+      for (const val of valList) {
+        if (!/^\$\d+$/.test(val)) {
+          return { error: 'Literal values or expressions forbidden in INSERT: use placeholders ($1, $2, ...)', status: 400 };
+        }
+      }
+      const realtorColIdx = colList.indexOf('realtor_id');
+      if (realtorColIdx !== -1) {
+        const phMatch = valList[realtorColIdx].match(/^\$(\d+)$/);
+        if (phMatch) {
+          const pIdx = parseInt(phMatch[1], 10) - 1;
+          params[pIdx] = jwtPayload.sub;
+        }
+      }
+    }
+  }
+
+  // 2. Защита DELETE (P0-5 deal_messages)
+  const { table: delTable, alias: delAlias } = extractTableAndAlias(query, 'FROM');
+  if (delTable && /^\s*DELETE\b/i.test(query)) {
+    if (delTable === 'deal_messages') {
+      const nextIdx = params.length + 1;
+      params.push(jwtPayload.sub);
+      const cond = `"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $${nextIdx})`;
+      if (/\bWHERE\b/i.test(query)) {
+        query = query.replace(/\bWHERE\b/i, () => `WHERE ${cond} AND `);
+      } else {
+        query = query.replace(/(RETURNING|$)/i, (m) => ` WHERE ${cond} ${m}`);
+      }
+    } else {
+      const personalTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches']);
+      if (personalTables.has(delTable)) {
+        const prefix = delAlias ? `"${delAlias}".` : '';
+        const nextIdx = params.length + 1;
+        params.push(jwtPayload.sub);
+        if (/\bWHERE\b/i.test(query)) {
+          query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
+        } else {
+          query = query.replace(/(RETURNING|$)/i, (m) => ` WHERE ${prefix}"realtor_id" = $${nextIdx} ${m}`);
+        }
+      }
+    }
+  }
+
+  // 3. Защита UPDATE
+  const { table: updTable, alias: updAlias } = extractTableAndAlias(query, 'UPDATE');
+  if (updTable && /^\s*UPDATE\b/i.test(query)) {
+    const strictlyIsolated = new Set(['clients', 'tasks', 'showings', 'selection_items', 'deals', 'requests', 'matches']);
+    const prefix = updAlias ? `"${updAlias}".` : '';
+    if (strictlyIsolated.has(updTable)) {
+      const nextIdx = params.length + 1;
+      params.push(jwtPayload.sub);
+      if (/\bWHERE\b/i.test(query)) {
+        query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
+      } else {
+        query = query.replace(/(RETURNING|$)/i, (m) => ` WHERE ${prefix}"realtor_id" = $${nextIdx} ${m}`);
+      }
+    } else if (updTable === 'properties') {
+      const isStatusOnly = /SET\s+("?[a-zA-Z0-9_.]*status"?\s*=\s*\$\d+|"?[a-zA-Z0-9_.]*updated_at"?\s*=\s*\$\d+|,|\s)+\s+WHERE/i.test(query);
+      if (!isStatusOnly) {
+        const nextIdx = params.length + 1;
+        params.push(jwtPayload.sub);
+        if (/\bWHERE\b/i.test(query)) {
+          query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
+        }
+      }
+    }
+  }
+
+  // 4. Защита SELECT (P0-5 deal_messages)
+  if (/^\s*SELECT\b/i.test(query) && !trimmedQuery.startsWith('SELECT json_build_object(')) {
+    const { table: selTable, alias: selAlias } = extractTableAndAlias(query, 'FROM');
+    if (selTable) {
+      if (selTable === 'deal_messages') {
+        const prefix = selAlias ? `"${selAlias}".` : '';
+        const nextIdx = params.length + 1;
+        params.push(jwtPayload.sub);
+        const cond = `${prefix}"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $${nextIdx})`;
+        if (/\bWHERE\b/i.test(query)) {
+          query = query.replace(/\bWHERE\b/i, () => `WHERE ${cond} AND `);
+        } else {
+          query = query.replace(/(ORDER\s+BY|LIMIT|$)/i, (m) => ` WHERE ${cond} ${m}`);
+        }
+      } else {
+        const privateTables = new Set(['clients', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches']);
+        if (privateTables.has(selTable)) {
+          const prefix = selAlias ? `"${selAlias}".` : '';
+          const nextIdx = params.length + 1;
+          params.push(jwtPayload.sub);
+          if (/\bWHERE\b/i.test(query)) {
+            query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
+          } else {
+            query = query.replace(/(ORDER\s+BY|LIMIT|$)/i, (m) => ` WHERE ${prefix}"realtor_id" = $${nextIdx} ${m}`);
+          }
+        }
+      }
+    }
+  }
+
+  return { query, params, error: null };
 }
 
 // Серверная очистка конфиденциальных полей из ответов БД (Defense-in-Depth)
@@ -222,161 +495,14 @@ export default async function handler(req, res) {
       return res.status(403).json({ data: null, error: 'Access denied: userId mismatch' });
     }
 
-    // ─── Строгий контроль доступа к profiles (P0-1, P0-2, P0-3, P0-4) ───
-    if (/\bprofiles\b/i.test(query)) {
-      if (jwtPayload.role !== 'admin') {
-        // Запрет прямого wildcard (SELECT *, SELECT p.*, SELECT "profiles".*)
-        if (hasProfilesWildcard(query)) {
-          console.warn('[neon-query] Wildcard SELECT from profiles blocked');
-          return res.status(403).json({ data: null, error: 'Access denied: wildcard SELECT from profiles is forbidden' });
-        }
-        // Запрет удаления профилей
-        if (/\bDELETE\s+FROM\b/i.test(query)) {
-          return res.status(403).json({ data: null, error: 'Access denied: only admins can delete profiles' });
-        }
-        // Защита UPDATE:
-        if (/\bUPDATE\b/i.test(query)) {
-          if (/\b(role|status|password_hash|email)\b/i.test(query)) {
-            console.warn('[neon-query] Unauthorized privilege escalation attempt on profiles');
-            return res.status(403).json({ data: null, error: 'Access denied: cannot modify role, status, password_hash or email' });
-          }
-          if (/\bOR\b/i.test(query)) {
-            return res.status(403).json({ data: null, error: 'Access denied: OR condition forbidden in profile update' });
-          }
-          const whereIdMatch = query.match(/WHERE\s+(?:[a-zA-Z0-9_]+\.)?["']?id["']?\s*=\s*\$(\d+)/i);
-          if (!whereIdMatch) {
-            return res.status(403).json({ data: null, error: 'Access denied: profile update must target own ID specifically' });
-          }
-          const paramIdx = parseInt(whereIdMatch[1], 10) - 1;
-          if (params[paramIdx] !== jwtPayload.sub) {
-            return res.status(403).json({ data: null, error: 'Access denied: cannot modify another user profile' });
-          }
-        }
-        // Прямой SELECT по профилю: разрешён только собственный профиль
-        if (/\bSELECT\b/i.test(query) && !query.trim().startsWith('SELECT json_build_object(')) {
-          const whereIdMatch = query.match(/WHERE\s+(?:[a-zA-Z0-9_]+\.)?["']?id["']?\s*=\s*\$(\d+)/i);
-          if (whereIdMatch) {
-            const paramIdx = parseInt(whereIdMatch[1], 10) - 1;
-            if (params[paramIdx] !== jwtPayload.sub) {
-              return res.status(403).json({ data: null, error: 'Access denied: cannot query another user profile' });
-            }
-          }
-        }
-      }
+    // ─── Сквозная фильтрация и валидация запроса (P0-1 ... P0-6) ───
+    const transformed = transformAndValidateQuery(query, params, jwtPayload);
+    if (transformed.error) {
+      console.warn('[neon-query] Security validation failed:', transformed.error);
+      return res.status(transformed.status || 403).json({ data: null, error: transformed.error });
     }
-
-    // ─── Защита pricelist: только админ может модифицировать ──────
-    if (/\b(INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?["']?pricelist["']?\b/i.test(query)) {
-      if (jwtPayload.role !== 'admin') {
-        return res.status(403).json({ data: null, error: 'Access denied: only admins can modify pricelist' });
-      }
-    }
-
-    // ─── BOLA / IDOR Защита для не-админов (P0-1, P0-2, P0-5, P0-6) ───
-    if (jwtPayload.role !== 'admin') {
-      const trimmedQuery = query.trim();
-
-      // 1. Защита INSERT: сопоставление колонки realtor_id с номером плейсхолдера ($N)
-      const insertMatch = trimmedQuery.match(/^INSERT\s+INTO\s+["']?([a-zA-Z0-9_]+)["']?\s*\(([\s\S]*?)\)\s*VALUES\s*\(([\s\S]*?)\)/i);
-      if (insertMatch) {
-        const targetTable = insertMatch[1].toLowerCase();
-        const realtorTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches']);
-        if (realtorTables.has(targetTable)) {
-          const colList = insertMatch[2].split(',').map(c => c.trim().replace(/["']/g, '').toLowerCase());
-          const valList = insertMatch[3].split(',').map(v => v.trim());
-          if (colList.length !== valList.length) {
-            return res.status(400).json({ data: null, error: 'Column and value counts mismatch in INSERT' });
-          }
-          for (const val of valList) {
-            if (!/^\$\d+$/.test(val)) {
-              return res.status(400).json({ data: null, error: 'Literal values or expressions forbidden in INSERT: use placeholders ($1, $2, ...)' });
-            }
-          }
-          const realtorColIdx = colList.indexOf('realtor_id');
-          if (realtorColIdx !== -1) {
-            const phMatch = valList[realtorColIdx].match(/^\$(\d+)$/);
-            if (phMatch) {
-              const pIdx = parseInt(phMatch[1], 10) - 1;
-              params[pIdx] = jwtPayload.sub;
-            }
-          }
-        }
-      }
-
-      // 2. Защита DELETE: извлечение имени таблицы и корректного алиаса
-      const { table: delTable, alias: delAlias } = extractTableAndAlias(query, 'FROM');
-      if (delTable && /^\s*DELETE\b/i.test(query)) {
-        const personalTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'deal_messages']);
-        if (personalTables.has(delTable)) {
-          const prefix = delAlias ? `"${delAlias}".` : '';
-          const nextIdx = params.length + 1;
-          params.push(jwtPayload.sub);
-          if (/\bWHERE\b/i.test(query)) {
-            query = query.replace(/\bWHERE\b/i, `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-          } else {
-            query = query.replace(/(RETURNING|$)/i, ` WHERE ${prefix}"realtor_id" = $${nextIdx} $1`);
-          }
-        }
-      }
-
-      // 3. Защита UPDATE с корректным распознаванием алиасов таблицы
-      const { table: updTable, alias: updAlias } = extractTableAndAlias(query, 'UPDATE');
-      if (updTable && /^\s*UPDATE\b/i.test(query)) {
-        const strictlyIsolated = new Set(['clients', 'tasks', 'showings', 'selection_items', 'deals', 'requests', 'matches']);
-        const prefix = updAlias ? `"${updAlias}".` : '';
-        if (strictlyIsolated.has(updTable)) {
-          const nextIdx = params.length + 1;
-          params.push(jwtPayload.sub);
-          if (/\bWHERE\b/i.test(query)) {
-            query = query.replace(/\bWHERE\b/i, `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-          } else {
-            query = query.replace(/(RETURNING|$)/i, ` WHERE ${prefix}"realtor_id" = $${nextIdx} $1`);
-          }
-        } else if (updTable === 'properties') {
-          // Для properties: если меняются поля кроме status/updated_at, требовать владения объектом
-          const isStatusOnly = /SET\s+("?[a-zA-Z0-9_.]*status"?\s*=\s*\$\d+|"?[a-zA-Z0-9_.]*updated_at"?\s*=\s*\$\d+|,|\s)+\s+WHERE/i.test(query);
-          if (!isStatusOnly) {
-            const nextIdx = params.length + 1;
-            params.push(jwtPayload.sub);
-            if (/\bWHERE\b/i.test(query)) {
-              query = query.replace(/\bWHERE\b/i, `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-            }
-          }
-        }
-      }
-
-      // 4. Защита SELECT: прямое добавление фильтра realtor_id и проверка вложенных подзапросов
-      if (!trimmedQuery.startsWith('SELECT json_build_object(')) {
-        const { table: selTable, alias: selAlias } = extractTableAndAlias(query, 'FROM');
-        if (selTable) {
-          const privateTables = new Set(['clients', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'deal_messages']);
-          if (privateTables.has(selTable)) {
-            const prefix = selAlias ? `"${selAlias}".` : '';
-            const nextIdx = params.length + 1;
-            params.push(jwtPayload.sub);
-            if (/\bWHERE\b/i.test(query)) {
-              query = query.replace(/\bWHERE\b/i, `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-            } else {
-              query = query.replace(/(ORDER\s+BY|LIMIT|$)/i, ` WHERE ${prefix}"realtor_id" = $${nextIdx} $1`);
-            }
-          }
-        }
-      } else {
-        // Проверка вложенных подзапросов в агрегатном запросе:
-        // Любой подзапрос к приватной таблице ОБЯЗАН содержать realtor_id
-        const privateTables = ['clients', 'deals', 'tasks', 'showings', 'selection_items', 'matches', 'requests'];
-        for (const tbl of privateTables) {
-          const subqueryPattern = new RegExp(`\\(SELECT[\\s\\S]*?FROM\\s+["']?${tbl}["']?[\\s\\S]*?\\)`, 'gi');
-          const subqueries = query.match(subqueryPattern) || [];
-          for (const sq of subqueries) {
-            if (!/\brealtor_id\b/i.test(sq)) {
-              console.warn(`[neon-query] Subquery to ${tbl} lacks realtor_id filter:`, sq.slice(0, 100));
-              return res.status(403).json({ data: null, error: `Access denied: subquery to ${tbl} must filter by realtor_id` });
-            }
-          }
-        }
-      }
-    }
+    query = transformed.query;
+    params = transformed.params;
   } else {
     // Для публичных запросов на обновление статуса мэтча разрешены только допустимые статусы
     if (/^UPDATE\s+"?matches"?/i.test(query.trim())) {
