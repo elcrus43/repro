@@ -722,7 +722,30 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             if (action.task[col] !== undefined) rawTask[col] = action.task[col];
           });
           const taskData = sanitizeObj(rawTask);
-          const taskResult = await neonDb.upsert('tasks', taskData);
+          let taskResult = await neonDb.upsert('tasks', taskData);
+          let taskRetry = 0;
+          while (taskResult?.error && (taskResult.error?.code === '23503' || String(taskResult.error?.message).includes('23503')) && taskRetry < 3) {
+            taskRetry++;
+            const detail = String(taskResult.error?.message || '');
+            let changed = false;
+            if (detail.includes('client_id') && taskData.client_id) {
+              console.warn('[neonSync ADD_SHOWING task] client_id FK failed, retrying without client_id...');
+              taskData.client_id = null;
+              changed = true;
+            }
+            if (detail.includes('seller_id') && taskData.seller_id) {
+              console.warn('[neonSync ADD_SHOWING task] seller_id FK failed, retrying without seller_id...');
+              taskData.seller_id = null;
+              changed = true;
+            }
+            if (detail.includes('property_id') && taskData.property_id) {
+              console.warn('[neonSync ADD_SHOWING task] property_id FK failed, retrying without property_id...');
+              taskData.property_id = null;
+              changed = true;
+            }
+            if (!changed) break;
+            taskResult = await neonDb.upsert('tasks', taskData);
+          }
           if (taskResult?.error) console.error('[neonSync ADD_SHOWING task error]', taskResult.error);
         }
         if (action.matches && action.showing.match_id) {
@@ -755,15 +778,33 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           showingResult = await neonDb.upsert('showings', showingData);
         }
         // FK constraint recovery
-        if (showingResult?.error && (showingResult.error?.code === '23503' || String(showingResult.error?.message).includes('23503'))) {
+        let updateRetryCount = 0;
+        while (showingResult?.error && (showingResult.error?.code === '23503' || String(showingResult.error?.message).includes('23503')) && updateRetryCount < 3) {
+          updateRetryCount++;
           const detail = String(showingResult.error?.message || '');
-          if (detail.includes('property_id') && dataToUpdate.property_id) {
+          let changed = false;
+          if (detail.includes('property_id') && (dataToUpdate.property_id || showingData.property_id)) {
+            console.warn('[neonSync UPDATE_SHOWING] property_id FK failed, retrying without property_id...');
             dataToUpdate.property_id = null;
             showingData.property_id = null;
-            showingResult = await neonDb.update('showings', sId, dataToUpdate);
-            if (showingResult?.error || !showingResult?.data || showingResult.data.length === 0) {
-              showingResult = await neonDb.upsert('showings', showingData);
-            }
+            changed = true;
+          }
+          if (detail.includes('match_id') && (dataToUpdate.match_id || showingData.match_id)) {
+            console.warn('[neonSync UPDATE_SHOWING] match_id FK failed, retrying without match_id...');
+            dataToUpdate.match_id = null;
+            showingData.match_id = null;
+            changed = true;
+          }
+          if (detail.includes('client_id') && (dataToUpdate.client_id || showingData.client_id)) {
+            console.warn('[neonSync UPDATE_SHOWING] client_id FK failed, retrying without client_id...');
+            dataToUpdate.client_id = null;
+            showingData.client_id = null;
+            changed = true;
+          }
+          if (!changed) break;
+          showingResult = await neonDb.update('showings', sId, dataToUpdate);
+          if (showingResult?.error || !showingResult?.data || showingResult.data.length === 0) {
+            showingResult = await neonDb.upsert('showings', showingData);
           }
         }
         if (showingResult?.error) {
@@ -796,6 +837,29 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         });
         const taskData = sanitizeObj(rawTask);
         result = await neonDb.upsert('tasks', taskData);
+        let taskRetry = 0;
+        while (result?.error && (result.error?.code === '23503' || String(result.error?.message).includes('23503')) && taskRetry < 3) {
+          taskRetry++;
+          const detail = String(result.error?.message || '');
+          let changed = false;
+          if (detail.includes('client_id') && taskData.client_id) {
+            console.warn('[neonSync TASK] client_id FK failed, retrying without client_id...');
+            taskData.client_id = null;
+            changed = true;
+          }
+          if (detail.includes('seller_id') && taskData.seller_id) {
+            console.warn('[neonSync TASK] seller_id FK failed, retrying without seller_id...');
+            taskData.seller_id = null;
+            changed = true;
+          }
+          if (detail.includes('property_id') && taskData.property_id) {
+            console.warn('[neonSync TASK] property_id FK failed, retrying without property_id...');
+            taskData.property_id = null;
+            changed = true;
+          }
+          if (!changed) break;
+          result = await neonDb.upsert('tasks', taskData);
+        }
         break;
       }
 

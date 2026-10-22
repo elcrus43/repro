@@ -266,10 +266,10 @@ CREATE TABLE IF NOT EXISTS matches (
 -- ─── TABLE: showings ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS showings (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  realtor_id       UUID REFERENCES profiles(id),
-  match_id         UUID REFERENCES matches(id),
-  property_id      UUID REFERENCES properties(id),
-  client_id        UUID REFERENCES clients(id),
+  realtor_id       UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  match_id         UUID REFERENCES matches(id) ON DELETE SET NULL,
+  property_id      UUID REFERENCES properties(id) ON DELETE SET NULL,
+  client_id        UUID REFERENCES clients(id) ON DELETE SET NULL,
   client_ids       UUID[] DEFAULT '{}',
   showing_date     TIMESTAMPTZ,
   status           TEXT DEFAULT 'planned',
@@ -285,9 +285,9 @@ CREATE TABLE IF NOT EXISTS showings (
 CREATE TABLE IF NOT EXISTS tasks (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   realtor_id      UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  client_id       UUID REFERENCES clients(id),
-  seller_id       UUID REFERENCES clients(id),
-  property_id     UUID REFERENCES properties(id),
+  client_id       UUID REFERENCES clients(id) ON DELETE SET NULL,
+  seller_id       UUID REFERENCES clients(id) ON DELETE SET NULL,
+  property_id     UUID REFERENCES properties(id) ON DELETE SET NULL,
   title           TEXT NOT NULL,
   description     TEXT,
   task_type       TEXT,
