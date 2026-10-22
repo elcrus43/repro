@@ -151,7 +151,18 @@ export async function loadUserData(userId, role) {
         'tasks', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "tasks" t),
         'pricelist', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "pricelist" t),
         'deals', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "deals" t),
-        'profiles', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "profiles" t),
+        'profiles', (SELECT COALESCE(json_agg(json_build_object(
+          'id', t.id,
+          'email', t.email,
+          'full_name', t.full_name,
+          'phone', t.phone,
+          'agency_name', t.agency_name,
+          'inn', t.inn,
+          'role', t.role,
+          'status', t.status,
+          'created_at', t.created_at,
+          'passport_details', t.passport_details
+        )), '[]'::json) FROM "profiles" t),
         'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t)
       ) as data
     `
@@ -165,7 +176,18 @@ export async function loadUserData(userId, role) {
         'tasks', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "tasks" t WHERE t."realtor_id" = $1),
         'pricelist', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "pricelist" t),
         'deals', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "deals" t WHERE t."realtor_id" = $1),
-        'profiles', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "profiles" t),
+        'profiles', (SELECT COALESCE(json_agg(json_build_object(
+          'id', t.id,
+          'email', t.email,
+          'full_name', t.full_name,
+          'phone', t.phone,
+          'agency_name', t.agency_name,
+          'inn', t.inn,
+          'role', t.role,
+          'status', t.status,
+          'created_at', t.created_at,
+          'passport_details', CASE WHEN t.id = $1 THEN t.passport_details ELSE NULL END
+        )), '[]'::json) FROM "profiles" t),
         'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t WHERE t."realtor_id" = $1)
       ) as data
     `;
@@ -368,6 +390,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           agency_contract_date: (primaryDate && String(primaryDate).trim()) ? primaryDate : null,
           agency_contract_property_id: (primaryPropId && String(primaryPropId).trim()) ? primaryPropId : null,
           has_agency_contract: hasContract,
+          public_token: action.client.public_token || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : null),
         };
         if (action.client.id) clientData.id = action.client.id;
         if (action.client.created_at) clientData.created_at = action.client.created_at;
@@ -408,6 +431,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           agency_contract_date: (primaryDate && String(primaryDate).trim()) ? primaryDate : null,
           agency_contract_property_id: (primaryPropId && String(primaryPropId).trim()) ? primaryPropId : null,
           has_agency_contract: hasContract,
+          public_token: action.client.public_token || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : null),
         };
         if (action.client.created_at) normalizedData.created_at = action.client.created_at;
         if (action.client.updated_at) normalizedData.updated_at = action.client.updated_at;
@@ -801,7 +825,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'id', 'realtor_id', 'title', 'seller_id', 'buyer_id', 'property_id',
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deal_location', 'registration_date',
-          'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
+          'deposit_date', 'deposit_amount', 'deposit_paid', 'mortgage', 'mortgage_bank',
           'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
           'handover_date', 'handover_amount', 'has_agency_contract', 'agency_contract_date'
@@ -815,6 +839,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         dealData.registration_date =  dealData.registration_date || null;
         dealData.deposit_date =       dealData.deposit_date || null;
         dealData.deposit_amount =     dealData.deposit_amount || 0;
+        dealData.deposit_paid =       action.deal.deposit_paid ? true : false;
         dealData.handover_date =      dealData.handover_date || null;
         dealData.handover_amount =    dealData.handover_amount || 0;
         dealData.seller_ids =         dealData.seller_ids || [];
@@ -863,7 +888,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'realtor_id', 'title', 'seller_id', 'buyer_id', 'property_id',
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deal_location', 'registration_date',
-          'deposit_date', 'deposit_amount', 'mortgage', 'mortgage_bank',
+          'deposit_date', 'deposit_amount', 'deposit_paid', 'mortgage', 'mortgage_bank',
           'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
           'handover_date', 'handover_amount', 'has_agency_contract', 'agency_contract_date'
@@ -877,6 +902,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         updateData.registration_date =  updateData.registration_date || null;
         updateData.deposit_date =       updateData.deposit_date || null;
         updateData.deposit_amount =     updateData.deposit_amount ?? 0;
+        if (action.deal.deposit_paid !== undefined) {
+          updateData.deposit_paid = Boolean(action.deal.deposit_paid);
+        }
         updateData.handover_date =      updateData.handover_date || null;
         updateData.handover_amount =    updateData.handover_amount ?? 0;
         updateData.seller_ids =     updateData.seller_ids || [];

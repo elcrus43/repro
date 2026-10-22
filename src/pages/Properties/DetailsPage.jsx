@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatNumber } from '../../utils/format';
 import { isDealTypeCompatible } from '../../utils/matching';
+import { getToken } from '../../lib/neon';
 import { 
     Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
@@ -128,9 +129,13 @@ function NewBuildsSelection({ currentProp, allProperties, onNavigate }) {
                 const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
                 const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
                 
+                const token = getToken();
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const res = await fetch(proxyUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({
                         action: 'getNewBuildAnalogs',
                         property: currentProp

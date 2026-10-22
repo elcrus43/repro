@@ -4,28 +4,22 @@ import { neonDb } from '../../lib/neon';
 import { MapPin, Home, Maximize, Layers, Phone, MessageCircle } from 'lucide-react';
 import { formatNumber, stripPhone } from '../../utils/format';
 import { PROPERTY_TYPES } from '../../data/constants';
-import { API_BASE } from '../../config';
 
 export function PublicPropertyPage() {
     const { slug } = useParams();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [linkData, setLinkData] = useState(null);
     const [property, setProperty] = useState(null);
     const [agent, setAgent] = useState(null);
 
     const fetchData = useCallback(async () => {
         try {
-            // 1. Get link info from FastAPI
-            const res = await fetch(`${API_BASE}/p/${slug}`);
-            if (!res.ok) throw new Error('Ссылка не найдена или неактивна');
-            const data = await res.json();
-            setLinkData(data);
+            if (!slug) throw new Error('Идентификатор объекта не указан');
 
-            // 2. Get property details from Neon
+            // Get property details from Neon (только безопасные публичные поля)
             const { data: props, error: propErr } = await neonDb.query(
-                `SELECT p.*, json_build_object('full_name', prof.full_name, 'phone', prof.phone, 'agency_name', prof.agency_name) as profiles FROM properties p LEFT JOIN profiles prof ON p.realtor_id = prof.id WHERE p.id = $1`,
-                [data.property_id]
+                `SELECT p.id, p.title, p.price, p.address, p.city, p.rooms, p.area_total, p.floor, p.floors_total, p.property_type, p.building_type, p.description, p.images, p.cover_image, json_build_object('full_name', prof.full_name, 'phone', prof.phone, 'agency_name', prof.agency_name) as profiles FROM properties p LEFT JOIN profiles prof ON p.realtor_id = prof.id WHERE p.id = $1`,
+                [slug]
             );
 
             if (propErr) throw propErr;
@@ -34,17 +28,9 @@ export function PublicPropertyPage() {
             const prop = props[0];
             setProperty(prop);
             setAgent(prop.profiles);
-
-            // Track view (Fire and forget)
-            fetch(`${API_BASE}/p/${slug}/track`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'view' })
-            }).catch(() => {});
-
         } catch (e) {
             console.error(e);
-            setError(e.message);
+            setError(e.message || 'Ошибка загрузки объекта');
         } finally {
             setLoading(false);
         }
@@ -62,15 +48,22 @@ export function PublicPropertyPage() {
         </div>
     );
 
-    const price = linkData.show_price ? property.price : null;
-    const address = linkData.show_address ? property.address : property.city;
+    const price = property.price;
+    const address = property.address || property.city;
+    const coverImg = property.cover_image || (Array.isArray(property.images) && property.images[0]);
 
     return (
         <div className="public-property-page" style={{ background: '#F9FAFB', minHeight: '100vh', paddingBottom: 80 }}>
             {/* Gallery Placeholder */}
-            <div style={{ width: '100%', aspectRatio: '16/9', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Home size={64} color="#9CA3AF" />
-            </div>
+            {coverImg ? (
+                <div style={{ width: '100%', maxHeight: 360, overflow: 'hidden', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img src={coverImg} alt={property.title || 'Объект'} style={{ width: '100%', maxHeight: 360, objectFit: 'cover' }} />
+                </div>
+            ) : (
+                <div style={{ width: '100%', aspectRatio: '16/9', background: '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Home size={64} color="#9CA3AF" />
+                </div>
+            )}
 
             <div style={{ padding: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -122,7 +115,7 @@ export function PublicPropertyPage() {
                 <div style={{ marginBottom: 24 }}>
                     <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 10 }}>Описание</h3>
                     <p style={{ color: '#4B5563', lineHeight: 1.6, fontSize: 15 }}>
-                        {linkData.custom_note || property.description || 'Описание уточняйте у агента.'}
+                        {property.description || 'Описание уточняйте у агента.'}
                     </p>
                 </div>
 

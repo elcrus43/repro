@@ -86,10 +86,12 @@ export const neonAuthService = {
     }
 
     const { user, session } = res.data;
-    _saveSession(user, session);
-    _notifyListeners('SIGNED_IN', { user, access_token: session.access_token });
+    if (session?.access_token) {
+      _saveSession(user, session);
+      _notifyListeners('SIGNED_IN', { user, access_token: session.access_token });
+    }
 
-    return { data: { user }, error: null };
+    return { data: { user, pending: res.data?.pending }, error: null };
   },
 
   /**
@@ -104,10 +106,12 @@ export const neonAuthService = {
     }
 
     const { user, session } = res.data;
-    _saveSession(user, session);
-    _notifyListeners('SIGNED_IN', { user, access_token: session.access_token });
+    if (session?.access_token) {
+      _saveSession(user, session);
+      _notifyListeners('SIGNED_IN', { user, access_token: session.access_token });
+    }
 
-    return { data: { user }, error: null };
+    return { data: { user, pending: res.data?.pending }, error: null };
   },
 
   /**

@@ -32,6 +32,7 @@ export async function loadUserData(userId, role) {
             requests: getList('requests'),
             matches: getList('matches'),
             tasks: getList('tasks'),
+            deals: getList('deals'),
             pricelist: getList('pricelist'),
             profiles: profiles
         };
@@ -45,6 +46,7 @@ export async function loadUserData(userId, role) {
             requests: [],
             matches: [],
             tasks: [],
+            deals: [],
             pricelist: [],
             profiles: []
         };
@@ -133,6 +135,14 @@ export async function syncAction(action, { onError } = {}) {
                 break;
             case 'DELETE_TASK':
                 deleteItem('tasks', action.id);
+                break;
+
+            case 'ADD_DEAL':
+            case 'UPDATE_DEAL':
+                updateItem('deals', action.deal);
+                break;
+            case 'DELETE_DEAL':
+                deleteItem('deals', action.id);
                 break;
 
             case 'ADD_PRICELIST_ITEM':

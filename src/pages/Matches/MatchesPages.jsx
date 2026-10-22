@@ -252,13 +252,7 @@ export function MatchDetailPage() {
         if (!prop) return;
         setIsGeneratingLink(true);
         try {
-            const res = await fetch(`${API_BASE}/p/generate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ property_id: prop.id, user_id: user?.id })
-            });
-            const data = await res.json();
-            const link = `${window.location.origin}/p/${data.slug}`;
+            const link = `${window.location.origin}/#/p/${prop.id}`;
             setPublicLink(link);
             navigator.clipboard.writeText(link);
             toast.success('Публичная ссылка скопирована!');

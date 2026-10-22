@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, User, Home, ChevronRight } from 'lucide-react';
 import { useToastContext } from './Toast';
+import { getToken } from '../lib/neon';
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -150,9 +151,13 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
       );
       const proxyUrl = isCapacitor ? 'https://reacrm.ru/api/ai-proxy' : '/api/ai-proxy';
       
+      const token = getToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(proxyUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           action: 'scanEgrn',
           fileBase64,

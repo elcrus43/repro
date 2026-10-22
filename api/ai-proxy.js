@@ -10,11 +10,14 @@
  *   3. Gemini (резерв, может быть недоступен из РФ)
  */
 import { neon } from '@neondatabase/serverless';
+import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || process.env.VITE_ZHIPU_API_KEY;
 const OPENMODEL_API_KEY = process.env.OPENMODEL_API_KEY || process.env.VITE_OPENMODEL_API_KEY;
 const NEON_DATABASE_URL = process.env.NEON_DATABASE_URL;
+const NEON_JWT_SECRET = process.env.NEON_JWT_SECRET;
 
 export const config = {
   api: {
@@ -29,7 +32,7 @@ export default async function handler(req, res) {
   // CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -44,15 +47,56 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing action parameter' });
   }
 
+  // Публичный healthcheck без утечки информации о провайдерах
+  if (action === 'health') {
+    return res.status(200).json({ ok: true });
+  }
+
+  // ─── Проверка JWT-авторизации: AI доступен только авторизованным подтвержденным пользователям ───
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authorization token required for AI requests' });
+  }
+
+  if (!NEON_JWT_SECRET) {
+    console.error('[ai-proxy] NEON_JWT_SECRET not configured');
+    return res.status(500).json({ error: 'Server authentication misconfigured' });
+  }
+
+  let jwtPayload;
   try {
-    if (action === 'health') {
-      return res.status(200).json({
-        ok: true,
-        gemini: !!GEMINI_API_KEY,
-        openmodel: !!OPENMODEL_API_KEY,
-        zhipu: !!ZHIPU_API_KEY
-      });
+    jwtPayload = jwt.verify(token, NEON_JWT_SECRET);
+  } catch (err) {
+    const isExpired = err.name === 'TokenExpiredError';
+    return res.status(401).json({
+      error: isExpired ? 'Token expired' : 'Invalid authorization token'
+    });
+  }
+
+  if (jwtPayload.status === 'pending' || jwtPayload.status === 'rejected') {
+    return res.status(403).json({ error: 'Account pending approval or disabled' });
+  }
+
+  // ─── Проверка активности сессии в БД (Session Revocation) ───
+  if (NEON_DATABASE_URL) {
+    try {
+      const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+      const sql = neon(NEON_DATABASE_URL);
+      const activeSessions = await sql.query(
+        'SELECT id FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW() LIMIT 1',
+        [tokenHash]
+      );
+      if (!activeSessions || activeSessions.length === 0) {
+        return res.status(401).json({ error: 'Сессия была отозвана или истекла' });
+      }
+    } catch (e) {
+      console.warn('[ai-proxy] Session check warning:', e.message);
     }
+  }
+
+  try {
 
     if (action === 'generateAd') {
       const { prompt } = req.body;

@@ -191,7 +191,8 @@ export function useDbDispatch(state, dispatch, onError) {
           ...action.deal,
           id: action.deal.id || nanoid(),
           created_at: now,
-          status: 'active',
+          status: action.deal.status || 'active',
+          deposit_paid: action.deal.deposit_paid ? true : false,
         };
         break;
 
@@ -307,6 +308,32 @@ export function useDbDispatch(state, dispatch, onError) {
       const nextClients = (stateRef.current.clients || []).filter(c => c.id !== enhancedAction.id);
       stateRef.current = { ...stateRef.current, clients: nextClients };
     }
+    if (enhancedAction.type === 'UPDATE_TASK' || enhancedAction.type === 'ADD_TASK') {
+      const nextTasks = (stateRef.current.tasks || []).map(t =>
+        t.id === enhancedAction.task.id ? enhancedAction.task : t
+      );
+      if (!nextTasks.find(t => t.id === enhancedAction.task.id)) {
+        nextTasks.push(enhancedAction.task);
+      }
+      stateRef.current = { ...stateRef.current, tasks: nextTasks };
+    }
+    if (enhancedAction.type === 'DELETE_TASK') {
+      const nextTasks = (stateRef.current.tasks || []).filter(t => t.id !== enhancedAction.id);
+      stateRef.current = { ...stateRef.current, tasks: nextTasks };
+    }
+    if (enhancedAction.type === 'UPDATE_DEAL' || enhancedAction.type === 'ADD_DEAL') {
+      const nextDeals = (stateRef.current.deals || []).map(d =>
+        d.id === enhancedAction.deal.id ? enhancedAction.deal : d
+      );
+      if (!nextDeals.find(d => d.id === enhancedAction.deal.id)) {
+        nextDeals.push(enhancedAction.deal);
+      }
+      stateRef.current = { ...stateRef.current, deals: nextDeals };
+    }
+    if (enhancedAction.type === 'DELETE_DEAL') {
+      const nextDeals = (stateRef.current.deals || []).filter(d => d.id !== enhancedAction.id);
+      stateRef.current = { ...stateRef.current, deals: nextDeals };
+    }
 
     /* ── Supabase sync ────────────────────────────────────────────────── */
     // onRollback вызывается при критической ошибке БД, чтобы откатить
@@ -370,6 +397,15 @@ export function useDbDispatch(state, dispatch, onError) {
                 parsed.data.properties = (parsed.data.properties || []).map(p =>
                   p.id === enhancedAction.patch.id ? { ...p, ...enhancedAction.patch } : p
                 );
+              }
+              // Deals
+              if (enhancedAction.type === 'DELETE_DEAL') {
+                if (parsed.data.deals) parsed.data.deals = parsed.data.deals.filter(d => d.id !== enhancedAction.id);
+              } else if (enhancedAction.type === 'UPDATE_DEAL' || enhancedAction.type === 'ADD_DEAL') {
+                parsed.data.deals = parsed.data.deals || [];
+                const idx = parsed.data.deals.findIndex(d => d.id === enhancedAction.deal.id);
+                if (idx >= 0) parsed.data.deals[idx] = enhancedAction.deal;
+                else parsed.data.deals.push(enhancedAction.deal);
               }
               parsed.ts = Date.now();
               localStorage.setItem(cacheKey, JSON.stringify(parsed));

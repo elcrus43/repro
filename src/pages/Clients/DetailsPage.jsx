@@ -363,11 +363,15 @@ export function DetailsPage() {
         toast.success('Звонок зарегистрирован');
     }
 
-    function handleShareLink() {
-        if (!client.public_token) { toast.error('У клиента нет публичного токена'); return; }
-        const link = window.location.origin + '/c/' + client.public_token;
+    async function handleShareLink() {
+        let pubToken = client.public_token;
+        if (!pubToken) {
+            pubToken = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `pt-${Date.now()}`;
+            dispatch({ type: 'UPDATE_CLIENT', client: { ...client, public_token: pubToken } });
+        }
+        const link = `${window.location.origin}/#/c/${pubToken}`;
         navigator.clipboard.writeText(link)
-            .then(() => toast.success('Ссылка скопирована'))
+            .then(() => toast.success('Публичная ссылка скопирована!'))
             .catch(() => toast.error('Не удалось скопировать ссылку'));
     }
 

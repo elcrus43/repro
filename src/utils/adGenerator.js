@@ -1,5 +1,6 @@
 import { BUILDING_TYPES, PROPERTY_TYPES, BALCONY_LABELS, RENOVATION_LABELS, MARKET_LABELS } from '../data/constants.js';
 import { parseHouseFromAddress } from './houseParser.js';
+import { getToken } from '../lib/neon.js';
 
 const ZHIPU_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env)
     ? import.meta.env.VITE_ZHIPU_API_KEY
@@ -159,11 +160,13 @@ ${contactsPrompt}
     const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
 
     try {
+        const token = getToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch(proxyUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify({
                 action: 'generateAd',
                 prompt

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Loader, ExternalLink, ShieldCheck, HelpCircle, ArrowRight, TrendingUp, AlertTriangle } from 'lucide-react';
 import { API_BASE } from '../config';
 import { useToastContext } from './Toast';
+import { getToken } from '../lib/neon';
 
 export function CmaReport({ property, onClose, onApplyPrice }) {
     const { toast } = useToastContext();
@@ -45,11 +46,15 @@ export function CmaReport({ property, onClose, onApplyPrice }) {
                     building_type: property.building_type || null
                 };
 
+                const token = getToken();
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
                 const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
                 const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
                 const res = await fetch(proxyUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers,
                     body: JSON.stringify({
                         action: 'runCma',
                         property: body

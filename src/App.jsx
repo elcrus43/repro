@@ -313,7 +313,7 @@ function AppRoutes() {
           <Route path="/chat/:dealId/:side" element={<PublicChatPage />} />
           <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
-          <Route path="/debug" element={<DebugPage />} />
+          <Route path="/debug" element={<RequireAdmin><DebugPage /></RequireAdmin>} />
 
           {/* Profile — доступно всем, но админские функции защищены внутри компонента */}
           <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />

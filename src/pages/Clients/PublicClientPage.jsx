@@ -18,7 +18,7 @@ export function PublicClientPage() {
             setLoading(true);
             // 1. Fetch client by public_token
             const { data: clients, error: clientErr } = await neonDb.query(
-                'SELECT * FROM clients WHERE public_token = $1 LIMIT 1',
+                'SELECT id, full_name, realtor_id FROM clients WHERE public_token = $1 LIMIT 1',
                 [token]
             );
 

@@ -213,8 +213,8 @@ function ChatMessage({ msg, isOwn, canManage, onDelete }) {
   );
 }
 
-export function DealChat({ dealId, side, currentUser, title, accentColor }) {
-  const { messages, loading, sending, error, sendMessage, deleteMessage, refetch } = useDealChat(dealId, side);
+export function DealChat({ dealId, side, currentUser, title, accentColor, token = null }) {
+  const { messages, loading, sending, error, sendMessage, deleteMessage, refetch } = useDealChat(dealId, side, token);
   const [text, setText] = useState('');
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);

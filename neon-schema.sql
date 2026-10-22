@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS clients (
   agency_contract_property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
   has_agency_contract BOOLEAN DEFAULT false,
   agency_contracts    JSONB DEFAULT '[]',
+  public_token        UUID DEFAULT gen_random_uuid(),
   created_at          TIMESTAMPTZ DEFAULT NOW(),
   updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
@@ -336,6 +337,7 @@ CREATE TABLE IF NOT EXISTS deals (
   -- Задаток (мигр. 029)
   deposit_date    TIMESTAMPTZ,
   deposit_amount  NUMERIC DEFAULT 0,
+  deposit_paid    BOOLEAN DEFAULT false,
 
   -- Ипотека
   mortgage        BOOLEAN DEFAULT false,

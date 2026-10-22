@@ -87,6 +87,7 @@ export function DealsPage() {
         registration_date: prefillData.registration_date || '',
         deposit_date: prefillData.deposit_date || '',
         deposit_amount: prefillData.deposit_amount || '',
+        deposit_paid: prefillData.deposit_paid || false,
         commission: prefillData.commission || '',
         notes: prefillData.notes || '',
         mortgage: prefillData.mortgage || false,
@@ -466,6 +467,7 @@ export function DealsPage() {
             deal_location: newDeal.deal_location ? newDeal.deal_location.trim() : null,
             registration_date: newDeal.registration_date ? parseLocalDateTime(newDeal.registration_date)?.toISOString() : null,
             deposit_date: newDeal.deposit_date ? parseLocalDateTime(newDeal.deposit_date)?.toISOString() : null,
+            deposit_paid: Boolean(newDeal.deposit_paid),
             handover_date: newDeal.handover_date ? parseLocalDateTime(newDeal.handover_date)?.toISOString() : null,
             handover_amount: Number(parsePriceInput(String(newDeal.handover_amount))) || 0,
             status: newDeal.status || 'active',
@@ -568,6 +570,7 @@ export function DealsPage() {
             deal_location: deal.deal_location || '',
             registration_date: deal.registration_date ? toLocalISOString(deal.registration_date) : '',
             deposit_date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
+            deposit_paid: Boolean(deal.deposit_paid),
             mortgage_amount: deal.mortgage_amount ? deal.mortgage_amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : '',
             lawyer: deal.lawyer || '',
             lawyer_id: deal.lawyer_id || '',
@@ -1339,13 +1342,15 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 type: 'deposit',
                 date: deal.deposit_date || null,
                 title: 'Задаток',
-                icon: <DollarSign size={14} color="#d97706" />,
-                badgeText: deal.deposit_date 
-                    ? `${new Date(deal.deposit_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-                    : null,
-                badgeColor: 'var(--text-secondary)',
-                badgeBg: 'var(--surface, #ffffff)',
-                badgeBorder: '1px solid rgba(245,158,11,0.25)',
+                icon: <DollarSign size={14} color={deal.deposit_paid ? "#10b981" : "#d97706"} />,
+                badgeText: deal.deposit_paid
+                    ? '✓ Внесён'
+                    : (deal.deposit_date 
+                        ? `${new Date(deal.deposit_date).toLocaleDateString('ru-RU')} в ${new Date(deal.deposit_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+                        : null),
+                badgeColor: deal.deposit_paid ? '#10b981' : 'var(--text-secondary)',
+                badgeBg: deal.deposit_paid ? 'rgba(16, 185, 129, 0.08)' : 'var(--surface, #ffffff)',
+                badgeBorder: deal.deposit_paid ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(245,158,11,0.25)',
                 amount: deal.deposit_amount > 0 ? `${Number(deal.deposit_amount).toLocaleString()} ₽` : null,
             });
         }
@@ -1508,7 +1513,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             setQuickEventData({
                 date: deal.deposit_date ? toLocalISOString(deal.deposit_date) : '',
                 location: '',
-                amount: deal.deposit_amount ? formatPriceInput(String(deal.deposit_amount)) : ''
+                amount: deal.deposit_amount ? formatPriceInput(String(deal.deposit_amount)) : '',
+                deposit_paid: Boolean(deal.deposit_paid)
             });
         } else if (type === 'registration') {
             setQuickEventData({
@@ -1561,7 +1567,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             }
             updates = {
                 deposit_date: quickEventData.date ? parseLocalDateTime(quickEventData.date)?.toISOString() : null,
-                deposit_amount: Number(parsePriceInput(String(quickEventData.amount))) || 0
+                deposit_amount: Number(parsePriceInput(String(quickEventData.amount))) || 0,
+                deposit_paid: Boolean(quickEventData.deposit_paid)
             };
         } else if (quickEventType === 'registration') {
             if (!quickEventData.date) {
@@ -1611,7 +1618,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
         if (quickEventType === 'deal') {
             updates = { deal_date: null, deal_location: null };
         } else if (quickEventType === 'deposit') {
-            updates = { deposit_date: null, deposit_amount: 0 };
+            updates = { deposit_date: null, deposit_amount: 0, deposit_paid: false };
         } else if (quickEventType === 'registration') {
             updates = { registration_date: null };
         } else if (quickEventType === 'handover') {
@@ -2304,31 +2311,44 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         )}
 
                         {quickEventType === 'deposit' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
-                                <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
-                                        Дата задатка
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        className="form-input"
-                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
-                                        value={quickEventData.date}
-                                        onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
-                                    />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                                    <div>
+                                        <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                            Дата задатка
+                                        </label>
+                                        <input
+                                            type="datetime-local"
+                                            className="form-input"
+                                            style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                            value={quickEventData.date}
+                                            onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                            Сумма задатка
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Сумма (₽)"
+                                            className="form-input"
+                                            style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 10px', width: '100%' }}
+                                            value={quickEventData.amount}
+                                            onChange={e => setQuickEventData(prev => ({ ...prev, amount: formatPriceInput(e.target.value) }))}
+                                        />
+                                    </div>
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
-                                        Сумма задатка
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text)', userSelect: 'none' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(quickEventData.deposit_paid)}
+                                            onChange={e => setQuickEventData(prev => ({ ...prev, deposit_paid: e.target.checked }))}
+                                            style={{ cursor: 'pointer', accentColor: '#10b981', width: 15, height: 15 }}
+                                        />
+                                        <span>Задаток внесён (выполнен)</span>
                                     </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Сумма (₽)"
-                                        className="form-input"
-                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 10px', width: '100%' }}
-                                        value={quickEventData.amount}
-                                        onChange={e => setQuickEventData(prev => ({ ...prev, amount: formatPriceInput(e.target.value) }))}
-                                    />
                                 </div>
                             </div>
                         )}

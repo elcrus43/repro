@@ -4,6 +4,8 @@
  * Возвращает структурированный объект, совместимый с полями формы объекта.
  */
 
+import { getToken } from '../lib/neon.js';
+
 const ZHIPU_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env)
     ? (import.meta.env.VITE_ZHIPU_API_KEY || import.meta.env.VITE_GEMINI_API_KEY)
     : (process.env.VITE_ZHIPU_API_KEY || process.env.VITE_GEMINI_API_KEY);
@@ -257,11 +259,13 @@ ${urlHints ? `\nПрямые ссылки для поиска:\n${urlHints}\n\n�
     const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
 
     try {
+        const token = getToken();
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const response = await fetch(proxyUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers,
             body: JSON.stringify({
                 action: 'parseHouse',
                 prompt

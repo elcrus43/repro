@@ -204,6 +204,7 @@ export function DashboardPage() {
             }
             if (d.deposit_date && toDateStr(d.deposit_date) !== toDateStr(d.deal_date)) {
                 const dateStr = toDateStr(d.deposit_date);
+                const isDepositDone = Boolean(d.deposit_paid || d.status === 'closed');
                 dealItems.push({
                     id: `${d.id}-deposit`,
                     dealId: d.id,
@@ -214,8 +215,8 @@ export function DashboardPage() {
                     description: d.deposit_amount ? `Сумма: ${Number(d.deposit_amount).toLocaleString('ru-RU')} ₽` : (d.notes || ''),
                     dateStr,
                     rawDate: d.deposit_date,
-                    status: d.status || 'active',
-                    isDone: d.status === 'closed',
+                    status: isDepositDone ? 'closed' : 'active',
+                    isDone: isDepositDone,
                     type: 'Задаток',
                     client_id,
                     property_id: d.property_id,
@@ -284,15 +285,28 @@ export function DashboardPage() {
     const handleToggleTask = (item, e) => {
         e?.stopPropagation();
         if (item.isDeal) {
-            const nextStatus = item.isDone ? 'active' : 'closed';
-            dispatch({
-                type: 'UPDATE_DEAL',
-                deal: { ...item.raw, status: nextStatus },
-            });
-            if (nextStatus === 'closed') {
-                toast.success('✓ Сделка завершена!');
+            if (item.isDeposit) {
+                const nextPaid = !item.isDone;
+                dispatch({
+                    type: 'UPDATE_DEAL',
+                    deal: { ...item.raw, deposit_paid: nextPaid, updated_at: new Date().toISOString() },
+                });
+                if (nextPaid) {
+                    toast.success('✓ Задаток внесён!');
+                } else {
+                    toast.info('Задаток возвращён в работу');
+                }
             } else {
-                toast.info('Сделка возвращена в работу');
+                const nextStatus = item.isDone ? 'active' : 'closed';
+                dispatch({
+                    type: 'UPDATE_DEAL',
+                    deal: { ...item.raw, status: nextStatus, updated_at: new Date().toISOString() },
+                });
+                if (nextStatus === 'closed') {
+                    toast.success('✓ Сделка завершена!');
+                } else {
+                    toast.info('Сделка возвращена в работу');
+                }
             }
         } else if (item.isShowing) {
             const nextStatus = item.isDone ? 'scheduled' : 'completed';
@@ -374,12 +388,14 @@ export function DashboardPage() {
             id: item.id,
             dealId: item.dealId || (item.isDeal ? item.raw?.id : null),
             title: item.title || '',
-            task_type: item.type || (item.isShowing ? 'Показ' : item.isDeal ? 'Сделка' : 'Позвонить'),
+            task_type: item.type || (item.isShowing ? 'Показ' : item.isDeal ? (item.isDeposit ? 'Задаток' : 'Сделка') : 'Позвонить'),
             due_date: localDue,
             client_id: item.client_id || '',
             property_id: item.property_id || '',
             description: item.description || item.raw?.notes || item.raw?.feedback_comment || '',
-            status: item.isDone ? (item.isShowing ? 'completed' : item.isDeal ? 'closed' : 'done') : (item.isShowing ? 'scheduled' : item.isDeal ? 'active' : 'pending'),
+            status: item.isDone
+                ? (item.isShowing ? 'completed' : item.isDeposit ? 'done' : item.isDeal ? 'closed' : 'done')
+                : (item.isShowing ? 'scheduled' : item.isDeposit ? 'pending' : item.isDeal ? 'active' : 'pending'),
             isShowing: Boolean(item.isShowing),
             isDeal: Boolean(item.isDeal),
             isDeposit: Boolean(item.isDeposit),
@@ -417,22 +433,41 @@ export function DashboardPage() {
 
         if (taskModal.isDeal) {
             const rawDeal = taskModal.item.raw;
-            const updatedDeal = {
-                ...rawDeal,
-                title: taskModal.title.replace(/^Сделка:\s*|^Задаток:\s*/i, '').trim() || rawDeal.title,
-                notes: taskModal.description?.trim() || rawDeal.notes,
-                status: (taskModal.status === 'done' || taskModal.status === 'closed' || taskModal.status === 'completed') ? 'closed' : 'active',
-                deal_date: taskModal.isDeposit ? rawDeal.deal_date : (isoDate || rawDeal.deal_date),
-                deposit_date: taskModal.isDeposit ? (isoDate || rawDeal.deposit_date) : rawDeal.deposit_date,
-                client_id: taskModal.client_id || rawDeal.client_id,
-                property_id: taskModal.property_id || rawDeal.property_id,
-                updated_at: new Date().toISOString(),
-            };
-            dispatch({
-                type: 'UPDATE_DEAL',
-                deal: updatedDeal,
-            });
-            toast.success('Сделка сохранена');
+            if (taskModal.isDeposit) {
+                const isPaid = (taskModal.status === 'done' || taskModal.status === 'closed' || taskModal.status === 'completed');
+                const updatedDeal = {
+                    ...rawDeal,
+                    title: taskModal.title.replace(/^Сделка:\s*|^Задаток:\s*/i, '').trim() || rawDeal.title,
+                    notes: taskModal.description?.trim() || rawDeal.notes,
+                    deposit_paid: isPaid,
+                    deposit_date: isoDate || rawDeal.deposit_date,
+                    client_id: taskModal.client_id || rawDeal.client_id,
+                    property_id: taskModal.property_id || rawDeal.property_id,
+                    updated_at: new Date().toISOString(),
+                };
+                dispatch({
+                    type: 'UPDATE_DEAL',
+                    deal: updatedDeal,
+                });
+                toast.success('Задаток сохранён');
+            } else {
+                const isClosed = (taskModal.status === 'done' || taskModal.status === 'closed' || taskModal.status === 'completed');
+                const updatedDeal = {
+                    ...rawDeal,
+                    title: taskModal.title.replace(/^Сделка:\s*|^Задаток:\s*/i, '').trim() || rawDeal.title,
+                    notes: taskModal.description?.trim() || rawDeal.notes,
+                    status: isClosed ? 'closed' : 'active',
+                    deal_date: isoDate || rawDeal.deal_date,
+                    client_id: taskModal.client_id || rawDeal.client_id,
+                    property_id: taskModal.property_id || rawDeal.property_id,
+                    updated_at: new Date().toISOString(),
+                };
+                dispatch({
+                    type: 'UPDATE_DEAL',
+                    deal: updatedDeal,
+                });
+                toast.success('Сделка сохранена');
+            }
         } else if (taskModal.isShowing) {
             const updatedShowing = {
                 ...taskModal.item.raw,
@@ -493,8 +528,30 @@ export function DashboardPage() {
         const id = typeof itemOrId === 'string' ? itemOrId : itemOrId?.id;
         const isDeal = typeof itemOrId === 'object' ? itemOrId?.isDeal : (isShowing === 'deal');
         const showing = typeof itemOrId === 'object' ? itemOrId?.isShowing : isShowing;
+        const isDeposit = typeof itemOrId === 'object' ? itemOrId?.isDeposit : taskModal.isDeposit;
 
         if (isDeal || taskModal.isDeal) {
+            if (isDeposit) {
+                if (!window.confirm('Удалить задаток из этой сделки?')) {
+                    return;
+                }
+                const rawDeal = (typeof itemOrId === 'object' ? itemOrId?.raw : null) || taskModal.item?.raw;
+                if (rawDeal) {
+                    dispatch({
+                        type: 'UPDATE_DEAL',
+                        deal: {
+                            ...rawDeal,
+                            deposit_date: null,
+                            deposit_amount: 0,
+                            deposit_paid: false,
+                            updated_at: new Date().toISOString(),
+                        }
+                    });
+                    toast.success('Задаток удален');
+                    setTaskModal(prev => ({ ...prev, isOpen: false }));
+                    return;
+                }
+            }
             if (!window.confirm('Удалить эту сделку?')) {
                 return;
             }
@@ -1559,7 +1616,7 @@ export function DashboardPage() {
                                 <div style={{ display: 'flex', gap: 6 }}>
                                     <button
                                         type="button"
-                                        onClick={() => handleModalFieldChange('status', taskModal.isDeal ? 'active' : (taskModal.isShowing ? 'scheduled' : 'pending'))}
+                                        onClick={() => handleModalFieldChange('status', taskModal.isShowing ? 'scheduled' : taskModal.isDeal ? (taskModal.isDeposit ? 'pending' : 'active') : 'pending')}
                                         style={{
                                             padding: '4px 10px',
                                             borderRadius: 6,
@@ -1575,7 +1632,7 @@ export function DashboardPage() {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={() => handleModalFieldChange('status', taskModal.isDeal ? 'closed' : (taskModal.isShowing ? 'completed' : 'done'))}
+                                        onClick={() => handleModalFieldChange('status', taskModal.isShowing ? 'completed' : taskModal.isDeal ? (taskModal.isDeposit ? 'done' : 'closed') : 'done')}
                                         style={{
                                             padding: '4px 10px',
                                             borderRadius: 6,
@@ -1587,7 +1644,7 @@ export function DashboardPage() {
                                             color: (taskModal.status === 'done' || taskModal.status === 'completed' || taskModal.status === 'closed') ? 'white' : 'var(--text-muted)',
                                         }}
                                     >
-                                        {taskModal.isDeal ? 'Завершена' : 'Выполнено'}
+                                        {taskModal.isDeposit ? 'Внесён' : (taskModal.isDeal ? 'Завершена' : 'Выполнено')}
                                     </button>
                                 </div>
                             </div>

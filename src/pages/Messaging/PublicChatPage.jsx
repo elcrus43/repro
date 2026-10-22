@@ -26,46 +26,26 @@ export function PublicChatPage() {
   useEffect(() => {
     async function loadDeal() {
       try {
-        let fetchedDeal = null;
-        let activeSide = routeSide || 'buyer';
-
-        // Разрешение по секретному токену безопасности
-        if (token && token.startsWith('t_sec_')) {
-          const isSeller = token.startsWith('t_sec_seller_');
-          activeSide = isSeller ? 'seller' : 'buyer';
-          
-          const res = await neonDb.query(
-            'SELECT id, title, status, lawyer FROM deals'
-          );
-          if (res.data) {
-            fetchedDeal = res.data.find(d => {
-              const hash = Math.abs(d.id.split('').reduce((a,b)=>((a<<5)-a)+b.charCodeAt(0),0)).toString(36);
-              const expected = `t_sec_${activeSide}_${d.id.substring(0,8)}_${hash}`;
-              return token === expected || d.id === token;
-            });
-          }
-        } else {
-          // Загрузка по стандартному ID сделки
-          const targetId = routeDealId || token;
-          if (targetId) {
-            const res = await neonDb.query(
-              'SELECT id, title, status, lawyer FROM deals WHERE id = $1 LIMIT 1',
-              [targetId]
-            );
-            if (res.data && res.data.length > 0) {
-              fetchedDeal = res.data[0];
-            }
-          }
+        const queryParams = new URLSearchParams({
+          action: 'deal_info',
+          token: token || '',
+          dealId: routeDealId || '',
+          side: routeSide || ''
+        });
+        const res = await fetch(`/api/deal-chat?${queryParams.toString()}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Доступ ограничен. Чатовая ссылка недействительна.');
         }
-
-        if (fetchedDeal) {
-          setDeal(fetchedDeal);
-          setResolvedSide(activeSide);
+        const data = await res.json();
+        if (data.deal) {
+          setDeal(data.deal);
+          setResolvedSide(data.side || routeSide || 'buyer');
         } else {
           setError('Доступ ограничен. Чатовая ссылка недействительна или не существует.');
         }
       } catch (e) {
-        setError('Ошибка безопасности при проверке доступа');
+        setError(e.message || 'Ошибка безопасности при проверке доступа');
       } finally {
         setLoading(false);
       }
@@ -254,6 +234,7 @@ export function PublicChatPage() {
               currentUser={guestUser}
               title={sideTitle}
               accentColor={accentColor}
+              token={token || deal.id}
             />
           </div>
         )}

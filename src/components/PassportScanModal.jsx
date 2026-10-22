@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { Camera, Upload, X, Loader2, CheckCircle, AlertTriangle, Eye, RefreshCw, ChevronRight, Info, Sparkles } from 'lucide-react';
 import { useToastContext } from './Toast';
+import { getToken } from '../lib/neon';
 
 /**
  * Конвертирует File в base64-строку (без data URI-префикса)
@@ -99,9 +100,13 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
       const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
       const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
 
+      const token = getToken();
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
       const response = await fetch(proxyUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           action: 'scanPassport',
           imageBase64,

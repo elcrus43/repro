@@ -25,6 +25,7 @@ import {
 } from '../../data/developmentsData';
 import { KIROV_DISTRICTS } from '../../data/location';
 import { DevelopmentsMap } from '../../components/Map/DevelopmentsMap';
+import { DevelopmentsYandexMap } from '../../components/Map/DevelopmentsYandexMap';
 import { DevelopmentCard } from './DevelopmentCard';
 import { DevelopmentDetailModal } from './DevelopmentDetailModal';
 import { DevelopmentFormModal } from './DevelopmentFormModal';
@@ -44,6 +45,8 @@ export default function DevelopmentsPage() {
 
   // View Mode: 'split' | 'grid' | 'map'
   const [viewMode, setViewMode] = useState('split');
+  // Map Provider: 'yandex' (Яндекс.Карты) | 'osm' (OpenStreetMap)
+  const [mapProvider, setMapProvider] = useState('yandex');
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -434,16 +437,55 @@ export default function DevelopmentsPage() {
           </div>
         )}
 
-        {/* Right Column: Interactive Leaflet Map */}
+        {/* Right Column: Interactive Map (Яндекс.Карты / OSM) */}
         {viewMode !== 'grid' && (
           <div className={`dev-map-column ${viewMode === 'map' ? 'fullscreen' : ''}`}>
-            <DevelopmentsMap
-              developments={filteredDevelopments}
-              selectedId={selectedDevId}
-              onSelect={(id) => setSelectedDevId(id)}
-              onOpenDetail={(dev) => setDetailModalDev(dev)}
-              height="100%"
-            />
+            {/* Map Provider Selector */}
+            <div className="dev-map-provider-bar">
+              <div className="provider-info">
+                <span className="provider-label">Движок карты:</span>
+              </div>
+              <div className="dev-map-provider-pills">
+                <button
+                  type="button"
+                  className={`provider-pill ${mapProvider === 'yandex' ? 'active' : ''}`}
+                  onClick={() => setMapProvider('yandex')}
+                  title="Яндекс.Карты г. Кирова с номерами домов и 3D зданиями"
+                >
+                  <span className="pill-dot yandex" />
+                  <span>Яндекс.Карты</span>
+                </button>
+                <button
+                  type="button"
+                  className={`provider-pill ${mapProvider === 'osm' ? 'active' : ''}`}
+                  onClick={() => setMapProvider('osm')}
+                  title="OpenStreetMap"
+                >
+                  <span className="pill-dot osm" />
+                  <span>OpenStreetMap</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="dev-map-embed-wrapper">
+              {mapProvider === 'yandex' ? (
+                <DevelopmentsYandexMap
+                  developments={filteredDevelopments}
+                  selectedId={selectedDevId}
+                  onSelect={(id) => setSelectedDevId(id)}
+                  onOpenDetail={(dev) => setDetailModalDev(dev)}
+                  height="100%"
+                />
+              ) : (
+                <DevelopmentsMap
+                  developments={filteredDevelopments}
+                  selectedId={selectedDevId}
+                  onSelect={(id) => setSelectedDevId(id)}
+                  onOpenDetail={(dev) => setDetailModalDev(dev)}
+                  height="100%"
+                />
+              )}
+            </div>
           </div>
         )}
 
@@ -806,6 +848,70 @@ export default function DevelopmentsPage() {
           border: 1px solid var(--border, #e2e8f0);
           position: sticky;
           top: 0;
+          display: flex;
+          flex-direction: column;
+        }
+        .dev-map-provider-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 14px;
+          background: var(--surface, #ffffff);
+          border-bottom: 1px solid var(--border, #e2e8f0);
+          z-index: 10;
+        }
+        .provider-label {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--text-muted, #94a3b8);
+        }
+        .dev-map-provider-pills {
+          display: flex;
+          gap: 6px;
+        }
+        .provider-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          border: 1px solid var(--border, #e2e8f0);
+          background: var(--bg, #f8fafc);
+          color: var(--text-secondary, #475569);
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .provider-pill.active {
+          background: var(--primary-light, #eef4ff);
+          color: var(--primary, #0052FF);
+          border-color: var(--primary, #0052FF);
+          box-shadow: 0 1px 4px rgba(0, 82, 255, 0.15);
+        }
+        .dark .provider-pill.active {
+          background: #1e3a8a;
+          color: #93c5fd;
+          border-color: #3b82f6;
+        }
+        .pill-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+        .pill-dot.yandex {
+          background: #ef4444;
+        }
+        .pill-dot.osm {
+          background: #3b82f6;
+        }
+        .dev-map-embed-wrapper {
+          flex: 1;
+          position: relative;
+          width: 100%;
+          min-height: 440px;
         }
         .dev-content-layout.grid .dev-list-column {
           width: 100%;
@@ -822,6 +928,8 @@ export default function DevelopmentsPage() {
           border-radius: var(--radius-lg, 16px);
           overflow: hidden;
           border: 1px solid var(--border, #e2e8f0);
+          display: flex;
+          flex-direction: column;
         }
         .dev-cards-grid {
           display: grid;

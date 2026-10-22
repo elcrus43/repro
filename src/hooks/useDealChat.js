@@ -5,19 +5,9 @@ import { io } from 'socket.io-client';
 const SOCKET_SERVER_URL = 'http://78.154.103.37:14070';
 let schemaMigrated = false;
 
-// Автомиграция таблицы deal_messages в Neon DB
+// Схема deal_messages зафиксирована в neon-schema.sql
 async function ensureDealMessagesSchema() {
-  if (schemaMigrated) return;
-  try {
-    await neonDb.query(`
-      ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_url" TEXT;
-      ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_name" TEXT;
-      ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_type" TEXT;
-    `);
-    schemaMigrated = true;
-  } catch (e) {
-    console.warn('Neon DB schema auto-migration notice:', e);
-  }
+  // no-op: схема управляется через миграции
 }
 
 // Звуковое оповещение Telegram chime
@@ -53,7 +43,7 @@ function sendWebPushNotification(title, body) {
   }
 }
 
-export function useDealChat(dealId, side) {
+export function useDealChat(dealId, side, token = null) {
   const [messages, setMessages]   = useState([]);
   const [loading, setLoading]     = useState(true);
   const [sending, setSending]     = useState(false);
@@ -63,9 +53,8 @@ export function useDealChat(dealId, side) {
 
   const roomName = dealId && side ? `deal_${dealId}_${side}` : null;
 
-  // Запрос разрешения на уведомления и миграция схемы Neon DB
+  // Запрос разрешения на уведомления
   useEffect(() => {
-    ensureDealMessagesSchema();
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission().catch(() => {});
     }
@@ -74,7 +63,17 @@ export function useDealChat(dealId, side) {
   const fetchMessages = useCallback(async () => {
     if (!dealId || !side) return;
     try {
-      await ensureDealMessagesSchema();
+      if (token) {
+        const queryParams = new URLSearchParams({ token, dealId, side });
+        const res = await fetch(`/api/deal-chat?${queryParams.toString()}`);
+        if (!res.ok) throw new Error('Ошибка загрузки сообщений');
+        const data = await res.json();
+        if (!isMountedRef.current) return;
+        setMessages(data.messages || []);
+        setError(null);
+        return;
+      }
+
       const res = await neonDb.query(
         `SELECT * FROM "deal_messages"
          WHERE "deal_id" = $1 AND "side" = $2
@@ -93,7 +92,7 @@ export function useDealChat(dealId, side) {
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
-  }, [dealId, side]);
+  }, [dealId, side, token]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -217,24 +216,20 @@ export function useDealChat(dealId, side) {
         insertPayload.file_type = file_type;
       }
 
-      let res = await neonDb.insert('deal_messages', insertPayload);
-
-      // Если возникла ошибка из-за отсутствия колонок, мигрируем таблицу и повторяем запрос
-      if (res.error && (res.error.message?.includes('file_url') || res.error.message?.includes('does not exist'))) {
-        await neonDb.query(`
-          ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_url" TEXT;
-          ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_name" TEXT;
-          ALTER TABLE "deal_messages" ADD COLUMN IF NOT EXISTS "file_type" TEXT;
-        `);
-        res = await neonDb.insert('deal_messages', insertPayload);
-      }
-
-      // Если все еще есть ошибка схемы, делаем fallback через инлайновый URL в тексте
-      if (res.error && file_url) {
-        delete insertPayload.file_url;
-        delete insertPayload.file_name;
-        delete insertPayload.file_type;
-        insertPayload.text = `${insertPayload.text}\n[FILE]:${file_url}`;
+      let res;
+      if (token) {
+        const postRes = await fetch('/api/deal-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...insertPayload, token })
+        });
+        if (!postRes.ok) {
+          const errData = await postRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Ошибка отправки');
+        }
+        const data = await postRes.json();
+        res = { data: [data.message], error: null };
+      } else {
         res = await neonDb.insert('deal_messages', insertPayload);
       }
 
