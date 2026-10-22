@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { isPublicQuery, stripSensitiveFields } from '../../api/neon-query.js';
+import { isPublicQuery, stripSensitiveFields, extractTableAndAlias, hasProfilesWildcard } from '../../api/neon-query.js';
 import { isValidDealToken } from '../../api/deal-chat.js';
 
 describe('neon-query isPublicQuery security filter', () => {
@@ -82,5 +82,49 @@ describe('deal-chat token security (P0-5)', () => {
     expect(isValidDealToken(dealId, 'buyer', validToken)).toBe(true);
     expect(isValidDealToken(dealId, 'seller', validToken)).toBe(false);
     expect(isValidDealToken('different-id', 'buyer', validToken)).toBe(false);
+  });
+});
+
+describe('SQL alias and keyword collision guards (P0-2, P0-5)', () => {
+  it('correctly ignores SQL reserved words like WHERE or SET as aliases in FROM clause', () => {
+    const res = extractTableAndAlias('SELECT * FROM "clients" WHERE id = $1', 'FROM');
+    expect(res.table).toBe('clients');
+    expect(res.alias).toBeNull();
+  });
+
+  it('correctly extracts explicit aliases in FROM clause', () => {
+    const res = extractTableAndAlias('SELECT * FROM "clients" c WHERE c.id = $1', 'FROM');
+    expect(res.table).toBe('clients');
+    expect(res.alias).toBe('c');
+  });
+
+  it('correctly extracts table and alias in UPDATE clause ignoring SET', () => {
+    const res = extractTableAndAlias('UPDATE "clients" SET status = $1 WHERE id = $2', 'UPDATE');
+    expect(res.table).toBe('clients');
+    expect(res.alias).toBeNull();
+  });
+
+  it('correctly extracts alias in UPDATE clause when AS is provided', () => {
+    const res = extractTableAndAlias('UPDATE "clients" AS c SET status = $1 WHERE c.id = $2', 'UPDATE');
+    expect(res.table).toBe('clients');
+    expect(res.alias).toBe('c');
+  });
+});
+
+describe('Profiles wildcard query detector (P0-3, P0-4)', () => {
+  it('detects bare asterisk in SELECT * FROM profiles', () => {
+    expect(hasProfilesWildcard('SELECT * FROM "profiles" WHERE id = $1')).toBe(true);
+    expect(hasProfilesWildcard('SELECT * FROM profiles')).toBe(true);
+  });
+
+  it('detects table-prefixed asterisk like profiles.* or p.*', () => {
+    expect(hasProfilesWildcard('SELECT profiles.* FROM profiles WHERE id = $1')).toBe(true);
+    expect(hasProfilesWildcard('SELECT p.* FROM "profiles" p WHERE p.id = $1')).toBe(true);
+    expect(hasProfilesWildcard('SELECT p.* FROM profiles AS p WHERE p.id = $1')).toBe(true);
+  });
+
+  it('allows safe explicit column lists for profiles', () => {
+    expect(hasProfilesWildcard('SELECT id, full_name, email, role FROM profiles WHERE id = $1')).toBe(false);
+    expect(hasProfilesWildcard('SELECT p.id, p.full_name, p.role FROM "profiles" p WHERE p.id = $1')).toBe(false);
   });
 });

@@ -202,7 +202,14 @@ export const neonDb = {
     try {
       assertValidIdentifier(table, 'table');
       const { clause, params } = buildWhere(filters);
-      let q = `SELECT * FROM "${table}" ${clause}`;
+      let colList = '*';
+      if (opts.columns && Array.isArray(opts.columns) && opts.columns.length > 0) {
+        opts.columns.forEach(c => assertValidIdentifier(c, 'column'));
+        colList = opts.columns.map(c => `"${c}"`).join(', ');
+      } else if (table === 'profiles') {
+        colList = '"id", "full_name", "email", "phone", "agency_name", "inn", "role", "status", "created_at", "passport_details"';
+      }
+      let q = `SELECT ${colList} FROM "${table}" ${clause}`;
       if (opts.orderBy) {
         const safeOrderBy = sanitizeOrderBy(opts.orderBy);
         if (safeOrderBy) q += ` ORDER BY ${safeOrderBy}`;
