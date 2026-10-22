@@ -1245,54 +1245,165 @@ function buildRentContract(data) {
     ];
 }
 
-/* ─── Шаблон: Акт приема-передачи ───────────────────────────────────────── */
+/* ─── Шаблон: Акт приема-передачи квартиры ───────────────────────────────── */
 
-function buildHandoverAct(data) {
-    const { seller, buyer, property, realtor, agencyName, deal } = data;
+export function buildHandoverAct(data) {
+    const { seller, buyer, property, deal } = data;
 
     const sellerName = fmt(seller?.full_name);
     const buyerName = fmt(buyer?.full_name);
+    const sellerPassport = fmtPassport(seller);
+    const buyerPassport = fmtPassport(buyer);
     const address = fmt(property?.address || property?.city);
-    const dealDate = fmtDate(deal?.deal_date);
-    const handoverDate = fmtDate(deal?.handover_date || deal?.deal_date);
-    const realtorName = fmt(realtor?.full_name);
-    const agency = fmt(agencyName || realtor?.agency_name);
+    const actDate = fmtDate(data.actDate || deal?.handover_date || deal?.deal_date || new Date().toISOString());
+    const movableProperty = fmt(data.movableProperty || property?.movable_property, '__________________________________________________________________________________________');
+    const sellerShort = toShortName(seller?.full_name);
+    const buyerShort = toShortName(buyer?.full_name);
+
+    const isSellerLegal = Boolean(
+        seller?.is_legal_entity ||
+        seller?.client_types?.includes('legal_entity') ||
+        seller?.company_name ||
+        seller?.company_details?.inn ||
+        /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(seller?.full_name || '')
+    );
+    const sellerLeg = isSellerLegal ? extractLegalEntityDetails(seller) : null;
+
+    const isBuyerLegal = Boolean(
+        buyer?.is_legal_entity ||
+        buyer?.client_types?.includes('legal_entity') ||
+        buyer?.company_name ||
+        buyer?.company_details?.inn ||
+        /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(buyer?.full_name || '')
+    );
+    const buyerLeg = isBuyerLegal ? extractLegalEntityDetails(buyer) : null;
+
+    const sellerDesc = isSellerLegal
+        ? `${sellerLeg.name}, ИНН ${sellerLeg.inn}, ОГРН ${sellerLeg.ogrn}, адрес: ${sellerLeg.legalAddress}, в лице ${sellerLeg.position} ${sellerLeg.authName}, действующего(ей) на основании ${sellerLeg.basis}`
+        : `${sellerName}${sellerPassport !== '________________________' ? `, ${sellerPassport}` : ''}`;
+
+    const buyerDesc = isBuyerLegal
+        ? `${buyerLeg.name}, ИНН ${buyerLeg.inn}, ОГРН ${buyerLeg.ogrn}, адрес: ${buyerLeg.legalAddress}, в лице ${buyerLeg.position} ${buyerLeg.authName}, действующего(ей) на основании ${buyerLeg.basis}`
+        : `${buyerName}${buyerPassport !== '________________________' ? `, ${buyerPassport}` : ''}`;
+
+    const meters = [
+        'Счетчик потребления электроэнергии',
+        'Счетчик потребления ХВС',
+        'Счетчик потребления ХВС',
+        'Счетчик потребления ГВС',
+        'Счетчик потребления ГВС',
+        'Счетчик потребления газа',
+    ];
+
+    const metersTable = new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+            top: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            bottom: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            left: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            right: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+            insideVertical: { style: BorderStyle.SINGLE, size: 4, color: '000000' },
+        },
+        rows: meters.map(meterName => new TableRow({
+            children: [
+                new TableCell({
+                    width: { size: 40, type: WidthType.PERCENTAGE },
+                    children: [para([normalRun(meterName)], { indent: false, beforePt: 2, afterPt: 2 })],
+                }),
+                new TableCell({
+                    width: { size: 60, type: WidthType.PERCENTAGE },
+                    children: [para([normalRun('Серийный номер  __________________  Показания ________________________')], { indent: false, beforePt: 2, afterPt: 2 })],
+                }),
+            ],
+        })),
+    });
 
     return [
-        para([boldRun('АКТ ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА НЕДВИЖИМОСТИ')], { alignment: AlignmentType.CENTER }),
+        para([boldRun('Акт')], { alignment: AlignmentType.CENTER, afterPt: 2 }),
+        para([boldRun('Приема-передачи квартиры')], { alignment: AlignmentType.CENTER, afterPt: 12 }),
+
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+                insideHorizontal: { style: BorderStyle.NONE },
+                insideVertical: { style: BorderStyle.NONE },
+            },
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: { size: 50, type: WidthType.PERCENTAGE },
+                            children: [para([normalRun('г. Киров')], { indent: false, afterPt: 6 })],
+                        }),
+                        new TableCell({
+                            width: { size: 50, type: WidthType.PERCENTAGE },
+                            children: [para([normalRun(actDate)], { alignment: AlignmentType.RIGHT, indent: false, afterPt: 6 })],
+                        }),
+                    ],
+                }),
+            ],
+        }),
+
+        para([boldRun('Продавец: '), normalRun(sellerDesc)], { afterPt: 4 }),
+        para([boldRun('Покупатель: '), normalRun(buyerDesc)], { afterPt: 8 }),
+        para([normalRun('составили настоящий акт о нижеследующем:')], { afterPt: 6 }),
+
         para([
-            normalRun('г. Москва                                                                 '),
-            normalRun(`«${handoverDate}»`),
-        ], { alignment: AlignmentType.LEFT }),
-        para(''),
-        para([
-            normalRun('Мы, нижеподписавшиеся, '),
-            normalRun('Гр. '),
-            boldRun(sellerName),
-            normalRun(' (Продавец/Наймодатель), с одной стороны, и Гр. '),
-            boldRun(buyerName),
-            normalRun(' (Покупатель/Наниматель), с другой стороны, составили настоящий Акт о том, что в соответствии с Договором от '),
-            normalRun(`«${dealDate}»:`),
-        ]),
-        para(''),
-        para([
-            normalRun('1. Продавец/Наймодатель передал, а Покупатель/Наниматель принял недвижимое имущество по адресу: '),
+            normalRun('Продавцы передали Покупателю квартиру, расположенную по адресу: '),
             boldRun(address),
             normalRun('.'),
-        ], { indent: true }),
-        para([
-            normalRun('2. Состояние имущества соответствует условиям договора. Стороны претензий друг к другу не имеют.'),
-        ], { indent: true }),
-        para([
-            normalRun(`3. Передачу осуществил в присутствии риелтора `),
-            boldRun(realtorName),
-            normalRun(` (Агентство недвижимости «${agency}»).`),
-        ], { indent: true }),
+        ], { indent: true, afterPt: 6 }),
 
-        sectionTitle('ПОДПИСИ СТОРОН'),
-        sigLine('Передал', sellerName),
-        sigLine('Принял', buyerName),
-        sigLine('Риелтор', realtorName),
+        para([
+            normalRun('Продавцы передали Покупателю квартиру в полном соответствии со всеми условиями договора. Иные условия в ходе приема-передачи недвижимости, о которых покупатель не был уведомлен заранее, не выявлены.'),
+        ], { indent: true, afterPt: 6 }),
+
+        para([
+            normalRun('Квартира передается с неотделимым оборудованием, коммуникациями, а также движимым имуществом: '),
+            normalRun(movableProperty),
+            normalRun('.'),
+        ], { indent: true, afterPt: 6 }),
+
+        para([
+            normalRun('На момент подписания настоящего акта в Квартире имеются следующие счетчики учета потребления с соответствующими показаниями:'),
+        ], { indent: true, afterPt: 6 }),
+
+        metersTable,
+
+        para([
+            normalRun('Обязательства Продавцов передать Квартиру Покупателю считается исполненным, претензий Покупатель к Продавцам о состоянии Квартиры не имеет.'),
+        ], { indent: true, beforePt: 8, afterPt: 6 }),
+
+        para([
+            normalRun('С момента подписания настоящего акта Покупатель принимает на себя все обязательства по содержанию Квартиры, в том числе по оплате коммунальных услуг и капитальному ремонту, риск случайной гибели или случайного повреждения имущества.'),
+        ], { indent: true, afterPt: 6 }),
+
+        para([
+            normalRun('Настоящий акт составлен в 2-х экземплярах, имеющих равную юридическую силу, по одному у каждой из сторон.'),
+        ], { indent: true, afterPt: 6 }),
+
+        para([
+            normalRun('Особые условия: _________________________________________________________________________'),
+        ], { indent: true, afterPt: 4 }),
+        para([
+            normalRun('__________________________________________________________________________________________'),
+        ], { indent: true, afterPt: 4 }),
+        para([
+            normalRun('__________________________________________________________________________________________'),
+        ], { indent: true, afterPt: 12 }),
+
+        para([boldRun('Продавец:')], { afterPt: 2 }),
+        para([normalRun(`____________________ / ${sellerShort} /                  (подпись, ФИО)`)], { afterPt: 8 }),
+        para([normalRun('__________________________________________________________________________________________')], { afterPt: 12 }),
+
+        para([boldRun('Покупатель:')], { afterPt: 2 }),
+        para([normalRun(`____________________ / ${buyerShort} /                  (подпись, ФИО)`)], { afterPt: 8 }),
+        para([normalRun('__________________________________________________________________________________________')], { afterPt: 6 }),
     ];
 }
 
@@ -1668,7 +1779,9 @@ export function collectDocxBlocksFromDom(domElement, isAgencyContract = false) {
                 const tdList = Array.from(tr.querySelectorAll('td, th'));
                 const tableCells = tdList.map((td, idx) => {
                     const runs = extractRuns(td, font, fontSize);
-                    const widthPercent = idx === 0 ? 30 : 70;
+                    const styleWidth = td.style?.width;
+                    const parsedWidth = styleWidth ? parseInt(styleWidth, 10) : null;
+                    const widthPercent = (parsedWidth && !isNaN(parsedWidth)) ? parsedWidth : (idx === 0 ? 35 : 65);
                     return new TableCell({
                         width: { size: widthPercent, type: WidthType.PERCENTAGE },
                         children: [

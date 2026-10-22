@@ -163,7 +163,7 @@ describe('docxGenerator - collectDocxBlocksFromDom', () => {
     });
 });
 
-import { buildServicesRent3PartyContract } from './docxGenerator';
+import { buildServicesRent3PartyContract, buildHandoverAct } from './docxGenerator';
 
 describe('docxGenerator - buildServicesRent3PartyContract', () => {
     it('generates contract sections for 3-party rental agreement', () => {
@@ -214,6 +214,55 @@ describe('docxGenerator - buildServicesRent3PartyContract', () => {
         const fullPhysText = JSON.stringify(blocksPhys[3]);
         expect(fullPhysText).toContain('Гр.');
         expect(fullPhysText).not.toContain('Самозанятый');
+    });
+});
+
+describe('docxGenerator - buildHandoverAct', () => {
+    it('generates apartment handover act with parties, address and meters table', () => {
+        const data = {
+            seller: {
+                full_name: 'Смирнов Алексей Викторович',
+                passport_details: {
+                    series: '33 14',
+                    number: '987654',
+                    registration_address: 'г. Киров, ул. Ленина, 10'
+                }
+            },
+            buyer: {
+                full_name: 'Ковалева Елена Сергеевна',
+                passport_details: {
+                    series: '45 10',
+                    number: '123456',
+                    registration_address: 'г. Киров, ул. Карла Маркса, 25'
+                }
+            },
+            property: {
+                address: 'г. Киров, Октябрьский проспект, д. 50, кв. 12',
+                movable_property: 'кухонный гарнитур, газовая плита'
+            },
+            deal: {
+                handover_date: '2026-10-25'
+            }
+        };
+
+        const blocks = buildHandoverAct(data);
+        expect(Array.isArray(blocks)).toBe(true);
+        expect(blocks.length).toBeGreaterThan(15);
+
+        const allText = JSON.stringify(blocks);
+        expect(allText).toContain('Приема-передачи квартиры');
+        expect(allText).toContain('г. Киров');
+        expect(allText).toContain('Смирнов Алексей Викторович');
+        expect(allText).toContain('Ковалева Елена Сергеевна');
+        expect(allText).toContain('г. Киров, Октябрьский проспект, д. 50, кв. 12');
+        expect(allText).toContain('кухонный гарнитур, газовая плита');
+        expect(allText).toContain('Счетчик потребления электроэнергии');
+        expect(allText).toContain('Счетчик потребления ХВС');
+        expect(allText).toContain('Счетчик потребления ГВС');
+        expect(allText).toContain('Счетчик потребления газа');
+        expect(allText).toContain('Особые условия');
+        expect(allText).toContain('Смирнов А.В.');
+        expect(allText).toContain('Ковалева Е.С.');
     });
 });
 

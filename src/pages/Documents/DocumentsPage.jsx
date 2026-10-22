@@ -437,6 +437,7 @@ export function DocumentsPage() {
     const [service1Cost, setService1Cost] = useState(() => prefill.service1Cost ? String(prefill.service1Cost) : '5 000');
     const [service2Cost, setService2Cost] = useState(() => prefill.service2Cost ? String(prefill.service2Cost) : (prefill.commission ? String(prefill.commission) : '15 000'));
     const [actDate, setActDate] = useState(() => prefill.actDate || new Date().toISOString().split('T')[0]);
+    const [movableProperty, setMovableProperty] = useState(() => prefill.movableProperty || '');
     const [realtorTaxStatus, setRealtorTaxStatus] = useState(() => prefill.realtorTaxStatus || state.currentUser?.tax_status || state.currentUser?.passport_details?.tax_status || 'Самозанятый');
 
     const [isGenerating, setIsGenerating] = useState(false);
@@ -1109,11 +1110,12 @@ export function DocumentsPage() {
             realtor: { ...(realtor || {}), tax_status: realtorTaxStatus },
             agencyName, deal, contractEndDate,
             service1Cost, service2Cost, actDate,
+            movableProperty,
             realtorTaxStatus,
             isRealtorSelfEmployed,
             isLegalEntity: Boolean(clientDraft.is_legal_entity)
         };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, clientDraft.is_legal_entity, realtorTaxStatus]);
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, movableProperty, clientDraft.is_legal_entity, realtorTaxStatus]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -2751,6 +2753,68 @@ export function DocumentsPage() {
                                         В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
                                     </div>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                ) : selectedTemplate === 'act' ? (
+                    <div className="no-print" style={{
+                        background: 'var(--surface)', borderRadius: 20, padding: 20,
+                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <FileText size={16} style={{ color: 'var(--primary)' }} />
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                    Параметры акта приема-передачи квартиры
+                                </span>
+                            </div>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                <CheckCircle2 size={13} />
+                                <span>Готов к печати и выгрузке</span>
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            Акт приема-передачи фиксирует передачу квартиры от Продавца к Покупателю, показания счетчиков учета ресурсов и отсутствие взаимных претензий.
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+                            {/* Дата составления акта */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Дата составления акта
+                                    </span>
+                                </div>
+                                <input
+                                    id="doc-input-act-date"
+                                    type="date"
+                                    className="form-input"
+                                    value={actDate}
+                                    onChange={e => setActDate(e.target.value)}
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
+                                {actDate && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Неотделимое оборудование и движимое имущество */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                        Оборудование и движимое имущество (опционально)
+                                    </span>
+                                </div>
+                                <input
+                                    className="form-input"
+                                    value={movableProperty}
+                                    onChange={e => setMovableProperty(e.target.value)}
+                                    placeholder="кухонный гарнитур, встроенная техника..."
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
                             </div>
                         </div>
                     </div>
@@ -4671,36 +4735,133 @@ function DocumentPreview({ template, data, highlight = true }) {
         );
     }
 
-    /* ── Шаблон: Акт приема-передачи ───────────────────────────────────────── */
+    /* ── Шаблон: Акт приема-передачи квартиры ───────────────────────────────── */
     if (template === 'act') {
+        const customActDate = fDate(data.actDate || deal?.handover_date || deal?.deal_date) || today;
+        const sellerShort = toShortName(seller?.full_name);
+        const buyerShort = toShortName(buyer?.full_name);
+        const movable = data.movableProperty || property?.movable_property || '';
+
         return (
             <div>
-                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 16, textTransform: 'uppercase' }}>
-                    АКТ ПРИЕМА-ПЕРЕДАЧИ ОБЪЕКТА НЕДВИЖИМОСТИ
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginBottom: 2 }}>
+                    Акт
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 16, marginBottom: 16 }}>
+                    Приема-передачи квартиры
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
                     <span>г. Киров</span>
-                    <span>«<Slot slotId="deal_date" value={fDate(deal?.handover_date || deal?.deal_date) || today} label="Дата акта" highlight={highlight} />»</span>
+                    <span>«<Slot slotId="act_date" value={customActDate} label="Дата акта" inputId="doc-input-act-date" highlight={highlight} />»</span>
                 </div>
-                <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                    Мы, нижеподписавшиеся, Гр. <Slot slotId="seller_name" value={sellerName} label="Передал" highlight={highlight} />, с одной стороны,<br/>
-                    и Гр. <Slot slotId="buyer_name" value={buyerName} label="Принял" highlight={highlight} />, с другой стороны, составили настоящий Акт о том, что в соответствии с Договором от «<Slot slotId="deal_date" value={dealDate || today} label="Дата договора" highlight={highlight} />»:
+
+                <div style={{ marginBottom: 10, lineHeight: 1.6, textAlign: 'justify' }}>
+                    <strong>Продавец: </strong>
+                    <Slot slotId="seller_name" value={sellerName} label="ФИО Продавца" fallback="________________________" highlight={highlight} />
+                    {seller ? (
+                        <span>, {renderPassportDetails(seller, highlight)}</span>
+                    ) : (
+                        <span>: __________________________________________________________________________________________</span>
+                    )}
+                </div>
+
+                <div style={{ marginBottom: 10, lineHeight: 1.6, textAlign: 'justify' }}>
+                    <strong>Покупатель: </strong>
+                    <Slot slotId="buyer_name" value={buyerName} label="ФИО Покупателя" fallback="________________________" highlight={highlight} />
+                    {buyer ? (
+                        <span>, {renderPassportDetails(buyer, highlight)}</span>
+                    ) : (
+                        <span>: __________________________________________________________________________________________</span>
+                    )}
+                </div>
+
+                <p style={{ marginBottom: 10 }}>
+                    составили настоящий акт о нижеследующем:
                 </p>
-                <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 8 }}>1. ПРЕДМЕТ АКТА</div>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 10, textAlign: 'justify' }}>
+                    Продавцы передали Покупателю квартиру, расположенную по адресу: <strong><Slot slotId="address" value={address} label="Адрес квартиры" fallback="__________________________________________________" highlight={highlight} /></strong>.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 10, textAlign: 'justify' }}>
+                    Продавцы передали Покупателю квартиру в полном соответствии со всеми условиями договора. Иные условия в ходе приема-передачи недвижимости, о которых покупатель не был уведомлен заранее, не выявлены.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 10, textAlign: 'justify' }}>
+                    Квартира передается с неотделимым оборудованием, коммуникациями, а также движимым имуществом: <Slot slotId="movable_property" value={movable} label="Движимое имущество" fallback="__________________________________________________________________________________________" highlight={highlight} />.
+                </p>
+
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    1.1. Продавец/Наймодатель передал, а Покупатель/Наниматель принял недвижимое имущество по адресу: <Slot slotId="address" value={address} label="Адрес объекта" highlight={highlight} />.<br/>
-                    1.2. Состояние имущества соответствует условиям договора. Стороны претензий друг к другу не имеют.<br/>
-                    1.3. Передачу осуществил в присутствии риелтора <Slot slotId="realtor_name" value={realtorName} label="Риелтор" highlight={highlight} /> (Агентство «<Slot slotId="agency_name" value={agency} label="Агентство" highlight={highlight} />»).
+                    На момент подписания настоящего акта в Квартире имеются следующие счетчики учета потребления с соответствующими показаниями:
                 </p>
-                <div style={{ fontWeight: 'bold', marginTop: 16, marginBottom: 12 }}>ПОДПИСИ СТОРОН</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginTop: 12 }}>
+
+                <table style={{ width: '100%', borderCollapse: 'collapse', margin: '10px 0 14px', border: '1px solid #000' }}>
+                    <tbody>
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '40%', fontSize: 13, fontWeight: 500 }}>Счетчик потребления электроэнергии</td>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '60%', fontSize: 13 }}>Серийный номер __________________ Показания ________________________</td>
+                        </tr>
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '40%', fontSize: 13, fontWeight: 500 }}>Счетчик потребления ХВС</td>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '60%', fontSize: 13 }}>Серийный номер __________________ Показания ________________________</td>
+                        </tr>
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '40%', fontSize: 13, fontWeight: 500 }}>Счетчик потребления ХВС</td>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '60%', fontSize: 13 }}>Серийный номер __________________ Показания ________________________</td>
+                        </tr>
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '40%', fontSize: 13, fontWeight: 500 }}>Счетчик потребления ГВС</td>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '60%', fontSize: 13 }}>Серийный номер __________________ Показания ________________________</td>
+                        </tr>
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '40%', fontSize: 13, fontWeight: 500 }}>Счетчик потребления ГВС</td>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '60%', fontSize: 13 }}>Серийный номер __________________ Показания ________________________</td>
+                        </tr>
+                        <tr>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '40%', fontSize: 13, fontWeight: 500 }}>Счетчик потребления газа</td>
+                            <td style={{ border: '1px solid #000', padding: '6px 10px', width: '60%', fontSize: 13 }}>Серийный номер __________________ Показания ________________________</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 10, textAlign: 'justify' }}>
+                    Обязательства Продавцов передать Квартиру Покупателю считается исполненным, претензий Покупатель к Продавцам о состоянии Квартиры не имеет.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 10, textAlign: 'justify' }}>
+                    С момента подписания настоящего акта Покупатель принимает на себя все обязательства по содержанию Квартиры, в том числе по оплате коммунальных услуг и капитальному ремонту, риск случайной гибели или случайного повреждения имущества.
+                </p>
+
+                <p style={{ textIndent: '2.5em', marginBottom: 10, textAlign: 'justify' }}>
+                    Настоящий акт составлен в 2-х экземплярах, имеющих равную юридическую силу, по одному у каждой из сторон.
+                </p>
+
+                <div style={{ marginTop: 14, marginBottom: 14 }}>
+                    <p style={{ marginBottom: 4 }}>
+                        Особые условия: _________________________________________________________________________
+                    </p>
+                    <p style={{ marginBottom: 4 }}>
+                        __________________________________________________________________________________________
+                    </p>
+                    <p style={{ marginBottom: 4 }}>
+                        __________________________________________________________________________________________
+                    </p>
+                </div>
+
+                <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
                     <div>
-                        <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Передал:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="seller_name" value={sellerName} label="Передал" highlight={highlight} /> /</p>
+                        <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Продавец:</p>
+                        <p style={{ marginBottom: 4 }}>
+                            ____________________ / <Slot slotId="seller_short" value={sellerShort} label="Подпись продавца" fallback="____________________" highlight={highlight} /> /                  (подпись, ФИО)
+                        </p>
+                        <p style={{ color: 'var(--text-secondary)' }}>__________________________________________________________________________________________</p>
                     </div>
                     <div>
-                        <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Принял:</p>
-                        <p style={{ marginBottom: 16 }}>____________________ / <Slot slotId="buyer_name" value={buyerName} label="Принял" highlight={highlight} /> /</p>
+                        <p style={{ fontWeight: 'bold', marginBottom: 4 }}>Покупатель:</p>
+                        <p style={{ marginBottom: 4 }}>
+                            ____________________ / <Slot slotId="buyer_short" value={buyerShort} label="Подпись покупателя" fallback="____________________" highlight={highlight} /> /                  (подпись, ФИО)
+                        </p>
+                        <p style={{ color: 'var(--text-secondary)' }}>__________________________________________________________________________________________</p>
                     </div>
                 </div>
             </div>
