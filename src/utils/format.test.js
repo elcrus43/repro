@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime } from '../utils/format'
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, parsePgArray } from '../utils/format'
 import { formatDate, formatDateTime, cleanPrice, formatPrice, getLevelLabel } from '../utils/matching'
 
 // ─── Date Formatting ────────────────────────────────────────────────────────
@@ -269,5 +269,29 @@ describe('parseLocalDateTime', () => {
     expect(parsed.getFullYear()).toBe(2026);
     expect(parsed.getMonth()).toBe(4);
     expect(parsed.getDate()).toBe(27);
+  })
+})
+
+describe('parsePgArray', () => {
+  it('parses postgres array strings "{uuid1,uuid2}" correctly', () => {
+    expect(parsePgArray('{abc,def}')).toEqual(['abc', 'def']);
+    expect(parsePgArray('{"abc","def"}')).toEqual(['abc', 'def']);
+    expect(parsePgArray('{single}')).toEqual(['single']);
+  })
+
+  it('handles empty postgres arrays "{}" as empty array', () => {
+    expect(parsePgArray('{}')).toEqual([]);
+    expect(parsePgArray('{ }')).toEqual([]);
+  })
+
+  it('passes through JS arrays', () => {
+    expect(parsePgArray(['id-1', 'id-2'])).toEqual(['id-1', 'id-2']);
+    expect(parsePgArray([])).toEqual([]);
+  })
+
+  it('handles null and undefined', () => {
+    expect(parsePgArray(null)).toEqual([]);
+    expect(parsePgArray(undefined)).toEqual([]);
+    expect(parsePgArray('')).toEqual([]);
   })
 })

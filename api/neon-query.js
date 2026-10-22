@@ -65,6 +65,18 @@ export function hasProfilesWildcard(query) {
   return false;
 }
 
+export function injectWhereCondition(sql, cond) {
+  if (/\bWHERE\b/i.test(sql)) {
+    return sql.replace(/\bWHERE\s+([\s\S]+?)(\s+(?:ORDER\s+BY|GROUP\s+BY|HAVING|WINDOW|LIMIT|OFFSET|RETURNING)|$)/i, (match, whereBody, trailing) => {
+      return `WHERE ${cond} AND (${whereBody.trim()})${trailing || ''}`;
+    });
+  } else {
+    return sql.replace(/(\s+(?:ORDER\s+BY|GROUP\s+BY|HAVING|WINDOW|LIMIT|OFFSET|RETURNING)|$)/i, (match) => {
+      return ` WHERE ${cond}${match}`;
+    });
+  }
+}
+
 /**
  * Точный парсинг вложенных подзапросов (SELECT ...) с учётом строк и скобочного стека.
  * Предотвращает объединение нескольких подзапросов в один span (защита от "приманок", P0-3).
@@ -96,7 +108,7 @@ export function extractSubqueries(sql) {
 
     if (char === '(') {
       const rest = sql.slice(i + 1).trimStart();
-      if (/^SELECT\b/i.test(rest)) {
+      if (/^(?:SELECT|WITH)\b/i.test(rest)) {
         let depth = 1;
         let j = i + 1;
         let subInString = false;
@@ -207,19 +219,25 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
 
   const trimmedQuery = query.trim();
 
-  // P0-2, P0-3: Валидация ВСЕХ подзапросов в запросе (включая SELECT-проекции и json_build_object)
+  // P0-2, P0-3, SQLi-2, SQLi-5: Валидация ВСЕХ подзапросов в запросе
   const subqueries = extractSubqueries(query);
   const privateTablesList = ['clients', 'deals', 'tasks', 'showings', 'selection_items', 'matches', 'requests'];
   for (const sq of subqueries) {
     for (const tbl of privateTablesList) {
       const fromPattern = new RegExp(`\\bFROM\\s+(?:ONLY\\s+)?["']?${tbl}["']?\\b`, 'i');
       if (fromPattern.test(sq)) {
-        if (!/\brealtor_id\b/i.test(sq)) {
-          return { error: `Access denied: subquery to ${tbl} must filter by realtor_id`, status: 403 };
+        // Подзапрос к приватной таблице обязан фильтровать по realtor_id = $N, совпадающим с текущим пользователем
+        const realtorMatch = sq.match(/(?:[a-zA-Z0-9_]+\.)?["']?realtor_id["']?\s*=\s*\$(\d+)/i);
+        if (!realtorMatch) {
+          return { error: `Access denied: subquery to ${tbl} must filter by realtor_id = $N`, status: 403 };
+        }
+        const paramIdx = parseInt(realtorMatch[1], 10) - 1;
+        if (params[paramIdx] !== jwtPayload.sub) {
+          return { error: `Access denied: subquery to ${tbl} realtor_id parameter does not match current user`, status: 403 };
         }
       }
     }
-    if (/\bFROM\s+(?:ONLY\\s+)?["']?deal_messages["']?\\b/i.test(sq)) {
+    if (/\bFROM\s+(?:ONLY\s+)?["']?deal_messages["']?\b/i.test(sq)) {
       if (!/\bdeal_id\b/i.test(sq)) {
         return { error: 'Access denied: subquery to deal_messages must filter by deal_id', status: 403 };
       }
@@ -253,59 +271,56 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
     }
   }
 
-  // 2. Защита DELETE (P0-5 deal_messages)
+  // 2. Защита DELETE (P0-5 deal_messages, SQLi-1 скобочная изоляция)
   const { table: delTable, alias: delAlias } = extractTableAndAlias(query, 'FROM');
   if (delTable && /^\s*DELETE\b/i.test(query)) {
     if (delTable === 'deal_messages') {
       const nextIdx = params.length + 1;
       params.push(jwtPayload.sub);
       const cond = `"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $${nextIdx})`;
-      if (/\bWHERE\b/i.test(query)) {
-        query = query.replace(/\bWHERE\b/i, () => `WHERE ${cond} AND `);
-      } else {
-        query = query.replace(/(RETURNING|$)/i, (m) => ` WHERE ${cond} ${m}`);
-      }
+      query = injectWhereCondition(query, cond);
     } else {
       const personalTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches']);
       if (personalTables.has(delTable)) {
         const prefix = delAlias ? `"${delAlias}".` : '';
         const nextIdx = params.length + 1;
         params.push(jwtPayload.sub);
-        if (/\bWHERE\b/i.test(query)) {
-          query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-        } else {
-          query = query.replace(/(RETURNING|$)/i, (m) => ` WHERE ${prefix}"realtor_id" = $${nextIdx} ${m}`);
-        }
+        query = injectWhereCondition(query, `${prefix}"realtor_id" = $${nextIdx}`);
       }
     }
   }
 
-  // 3. Защита UPDATE
+  // 3. Защита UPDATE (SQLi-1 скобочная изоляция, снятие регрессии matches)
   const { table: updTable, alias: updAlias } = extractTableAndAlias(query, 'UPDATE');
   if (updTable && /^\s*UPDATE\b/i.test(query)) {
-    const strictlyIsolated = new Set(['clients', 'tasks', 'showings', 'selection_items', 'deals', 'requests', 'matches']);
+    const strictlyIsolated = new Set(['clients', 'tasks', 'showings', 'selection_items', 'deals', 'requests']);
     const prefix = updAlias ? `"${updAlias}".` : '';
     if (strictlyIsolated.has(updTable)) {
       const nextIdx = params.length + 1;
       params.push(jwtPayload.sub);
-      if (/\bWHERE\b/i.test(query)) {
-        query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
+      query = injectWhereCondition(query, `${prefix}"realtor_id" = $${nextIdx}`);
+    } else if (updTable === 'matches') {
+      const isMatchesStatusRejectOnly = /SET\s+("?[a-zA-Z0-9_.]*status"?\s*=\s*(?:'rejected'|\$\d+)|"?[a-zA-Z0-9_.]*updated_at"?\s*=\s*(?:NOW\(\)|\$\d+)|,|[ ]|\s)+\s+WHERE/i.test(query);
+      const nextIdx = params.length + 1;
+      params.push(jwtPayload.sub);
+      if (isMatchesStatusRejectOnly) {
+        // Разрешено отклонение мэтчей для своих объектов или своих заявок
+        const cond = `(${prefix}"realtor_id" = $${nextIdx} OR ${prefix}"property_id" IN (SELECT id FROM properties WHERE realtor_id = $${nextIdx}) OR ${prefix}"request_id" IN (SELECT id FROM requests WHERE realtor_id = $${nextIdx}))`;
+        query = injectWhereCondition(query, cond);
       } else {
-        query = query.replace(/(RETURNING|$)/i, (m) => ` WHERE ${prefix}"realtor_id" = $${nextIdx} ${m}`);
+        query = injectWhereCondition(query, `${prefix}"realtor_id" = $${nextIdx}`);
       }
     } else if (updTable === 'properties') {
       const isStatusOnly = /SET\s+("?[a-zA-Z0-9_.]*status"?\s*=\s*\$\d+|"?[a-zA-Z0-9_.]*updated_at"?\s*=\s*\$\d+|,|\s)+\s+WHERE/i.test(query);
       if (!isStatusOnly) {
         const nextIdx = params.length + 1;
         params.push(jwtPayload.sub);
-        if (/\bWHERE\b/i.test(query)) {
-          query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-        }
+        query = injectWhereCondition(query, `${prefix}"realtor_id" = $${nextIdx}`);
       }
     }
   }
 
-  // 4. Защита SELECT (P0-5 deal_messages)
+  // 4. Защита SELECT (P0-5 deal_messages, SQLi-1 скобочная изоляция)
   if (/^\s*SELECT\b/i.test(query) && !trimmedQuery.startsWith('SELECT json_build_object(')) {
     const { table: selTable, alias: selAlias } = extractTableAndAlias(query, 'FROM');
     if (selTable) {
@@ -314,22 +329,14 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
         const nextIdx = params.length + 1;
         params.push(jwtPayload.sub);
         const cond = `${prefix}"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $${nextIdx})`;
-        if (/\bWHERE\b/i.test(query)) {
-          query = query.replace(/\bWHERE\b/i, () => `WHERE ${cond} AND `);
-        } else {
-          query = query.replace(/(ORDER\s+BY|LIMIT|$)/i, (m) => ` WHERE ${cond} ${m}`);
-        }
+        query = injectWhereCondition(query, cond);
       } else {
         const privateTables = new Set(['clients', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches']);
         if (privateTables.has(selTable)) {
           const prefix = selAlias ? `"${selAlias}".` : '';
           const nextIdx = params.length + 1;
           params.push(jwtPayload.sub);
-          if (/\bWHERE\b/i.test(query)) {
-            query = query.replace(/\bWHERE\b/i, () => `WHERE ${prefix}"realtor_id" = $${nextIdx} AND `);
-          } else {
-            query = query.replace(/(ORDER\s+BY|LIMIT|$)/i, (m) => ` WHERE ${prefix}"realtor_id" = $${nextIdx} ${m}`);
-          }
+          query = injectWhereCondition(query, `${prefix}"realtor_id" = $${nextIdx}`);
         }
       }
     }
@@ -359,8 +366,8 @@ export function isPublicQuery(query) {
   // 1. SELECT 1 (healthcheck)
   if (/^SELECT\s+1$/i.test(cleanQuery)) return true;
 
-  // 2. Public Property mini-site details (строгий белый список безопасных публичных полей, без p.*)
-  if (/^SELECT\s+p\.id,\s*p\.title,\s*p\.price,\s*p\.address,\s*p\.city,\s*p\.rooms,\s*p\.area_total,\s*p\.floor,\s*p\.floors_total,\s*p\.property_type,\s*p\.building_type,\s*p\.description,\s*p\.images,\s*p\.cover_image,\s*json_build_object\([\s\S]*?\)\s+as\s+profiles\s+FROM\s+"?properties"?\s+p\s+LEFT\s+JOIN\s+"?profiles"?\s+prof\s+ON\s+p\.\"?realtor_id\"?\s*=\s*prof\.id\s+WHERE\s+p\.id\s*=\s*\$1$/i.test(cleanQuery)) {
+  // 2. Public Property mini-site details (строгий белый список безопасных публичных полей, без p.* и без произвольных выражений)
+  if (/^SELECT\s+p\.id,\s*p\.title,\s*p\.price,\s*p\.address,\s*p\.city,\s*p\.rooms,\s*p\.area_total,\s*p\.floor,\s*p\.floors_total,\s*p\.property_type,\s*p\.building_type,\s*p\.description,\s*p\.images,\s*p\.cover_image,\s*json_build_object\('full_name',\s*prof\.full_name,\s*'phone',\s*prof\.phone,\s*'agency_name',\s*prof\.agency_name\)\s+as\s+profiles\s+FROM\s+"?properties"?\s+p\s+LEFT\s+JOIN\s+"?profiles"?\s+prof\s+ON\s+p\.\"?realtor_id\"?\s*=\s*prof\.id\s+WHERE\s+p\.id\s*=\s*\$1$/i.test(cleanQuery)) {
     return true;
   }
 
@@ -374,8 +381,8 @@ export function isPublicQuery(query) {
     return true;
   }
 
-  // 5. Public Client matches fetching (строго безопасные поля без комментариев риелтора)
-  if (/^SELECT\s+m\.id,\s*m\.request_id,\s*m\.property_id,\s*m\.score,\s*m\.match_level,\s*m\.matched_params,\s*m\.mismatched_params,\s*m\.status,\s*json_build_object\([\s\S]*?\)\s+as\s+properties\s+FROM\s+"?matches"?\s+m\s+JOIN\s+"?properties"?\s+pr\s+ON\s+m\.\"?property_id\"?\s*=\s*pr\.id\s+WHERE\s+m\.\"?request_id\"?\s*=\s*ANY\(\$1\)$/i.test(cleanQuery)) {
+  // 5. Public Client matches fetching (строго безопасные поля без комментариев риелтора, без вложенных SQL-выражений)
+  if (/^SELECT\s+m\.id,\s*m\.request_id,\s*m\.property_id,\s*m\.score,\s*m\.match_level,\s*m\.matched_params,\s*m\.mismatched_params,\s*m\.status,\s*json_build_object\((?:'[^']+',\s*pr\.(?:id|price|address|city|rooms|area_total|floor|floors_total|cover_image|property_type|images)(?:,\s*)?)+\)\s+as\s+properties\s+FROM\s+"?matches"?\s+m\s+JOIN\s+"?properties"?\s+pr\s+ON\s+m\.\"?property_id\"?\s*=\s*pr\.id\s+WHERE\s+m\.\"?request_id\"?\s*=\s*ANY\(\$1\)$/i.test(cleanQuery)) {
     return true;
   }
 
@@ -533,7 +540,7 @@ export default async function handler(req, res) {
   }
 
   // 4. Блокировка DDL, системных каталогов PostgreSQL и процедур выполнения
-  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|EXECUTE|PREPARE|DEALLOCATE|VACUUM|ANALYZE|REINDEX|pg_|information_schema|current_setting|set_config|lo_import|lo_export|lo_create|lo_unlink|dblink|crosstab)\b/i;
+  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|EXECUTE|PREPARE|DEALLOCATE|VACUUM|ANALYZE|REINDEX|information_schema|current_setting|set_config|lo_import|lo_export|lo_create|lo_unlink|dblink|crosstab)\b|\bpg_[a-zA-Z0-9_]+/i;
   if (dangerousPattern.test(query)) {
     console.warn('[neon-query] Dangerous query blocked:', query.slice(0, 100));
     return res.status(403).json({ data: null, error: 'Query not allowed: forbidden keyword or catalog access' });

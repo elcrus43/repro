@@ -11,17 +11,8 @@ import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
 import { DealLocationSelect, saveDealLocation } from '../../components/DealLocationSelect';
 import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
-import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone } from '../../utils/format';
+import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone, parsePgArray } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
-
-function parsePgArray(arr) {
-    if (!arr) return [];
-    if (Array.isArray(arr)) return arr;
-    if (typeof arr === 'string') {
-        return arr.replace(/{|}/g, '').split(',').filter(Boolean);
-    }
-    return [];
-}
 
 function parseExpenses(exp) {
     if (!exp) return [];

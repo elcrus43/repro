@@ -8,7 +8,7 @@ import {
     UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
 import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
-import { formatPhone, stripPhone } from '../../utils/format';
+import { formatPhone, stripPhone, parsePgArray } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
 
@@ -497,7 +497,7 @@ export function DocumentsPage() {
     // Подгрузка условий сделки при смене сделки
     useEffect(() => {
         if (sourceMode === 'deal' && selectedDealId) {
-            const d = state.deals.find(deal => deal.id === selectedDealId);
+            const d = state.deals.find(deal => String(deal.id) === String(selectedDealId));
             if (d) {
                 if (d.commission && !commission) {
                     setCommission(Number(d.commission).toLocaleString('ru-RU'));
@@ -505,9 +505,18 @@ export function DocumentsPage() {
                 if (d.contract_end_date) {
                     setContractEndDate(d.contract_end_date.split('T')[0]);
                 }
+                if (d.handover_date) {
+                    setActDate(d.handover_date.split('T')[0]);
+                } else if (d.deal_date) {
+                    setActDate(d.deal_date.split('T')[0]);
+                }
+                const prop = state.properties.find(p => String(p.id) === String(d.property_id));
+                if (prop?.movable_property) {
+                    setMovableProperty(prop.movable_property);
+                }
             }
         }
-    }, [sourceMode, selectedDealId, state.deals]);
+    }, [sourceMode, selectedDealId, state.deals, state.properties]);
 
     const templates = getDocumentTemplates();
     const realtor = state.currentUser;
@@ -559,16 +568,18 @@ export function DocumentsPage() {
 
     const activeClient = useMemo(() => {
         if (sourceMode === 'deal' && selectedDealId) {
-            const d = state.deals.find(deal => deal.id === selectedDealId);
+            const d = state.deals.find(deal => String(deal.id) === String(selectedDealId));
             if (d) {
-                const buyerIds = d.buyer_ids || (d.buyer_id ? [d.buyer_id] : []);
-                const sellerIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
+                const bList = parsePgArray(d.buyer_ids);
+                const buyerIds = bList.length > 0 ? bList : (d.buyer_id ? [String(d.buyer_id)] : []);
+                const sList = parsePgArray(d.seller_ids);
+                const sellerIds = sList.length > 0 ? sList : (d.seller_id ? [String(d.seller_id)] : []);
                 const cId = isAgencySale ? (sellerIds[0] || buyerIds[0]) : (buyerIds[0] || sellerIds[0]);
-                return state.clients.find(c => c.id === cId) || null;
+                return state.clients.find(c => String(c.id) === String(cId)) || null;
             }
         }
         const targetId = isAgencySale ? (sellerId || buyerId) : (buyerId || sellerId);
-        return state.clients.find(c => c.id === targetId) || null;
+        return state.clients.find(c => String(c.id) === String(targetId)) || null;
     }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, state.deals, state.clients]);
 
     // Список договоров выбранного клиента
@@ -1054,18 +1065,28 @@ export function DocumentsPage() {
         let deal = null;
 
         if (sourceMode === 'deal' && selectedDealId) {
-            deal = state.deals.find(d => d.id === selectedDealId);
+            deal = state.deals.find(d => String(d.id) === String(selectedDealId));
             if (deal) {
-                const sellerIds = deal.seller_ids || (deal.seller_id ? [deal.seller_id] : []);
-                const buyerIds = deal.buyer_ids || (deal.buyer_id ? [deal.buyer_id] : []);
-                seller = state.clients.find(c => sellerIds.includes(c.id)) || null;
-                buyer = state.clients.find(c => buyerIds.includes(c.id)) || null;
-                property = state.properties.find(p => p.id === deal.property_id) || null;
+                const sList = parsePgArray(deal.seller_ids);
+                const sellerIds = sList.length > 0 ? sList : (deal.seller_id ? [String(deal.seller_id)] : []);
+                const bList = parsePgArray(deal.buyer_ids);
+                const buyerIds = bList.length > 0 ? bList : (deal.buyer_id ? [String(deal.buyer_id)] : []);
+
+                seller = state.clients.find(c => sellerIds.includes(String(c.id))) || null;
+                buyer = state.clients.find(c => buyerIds.includes(String(c.id))) || null;
+                property = state.properties.find(p => String(p.id) === String(deal.property_id)) || null;
+
+                // Если продавца нет прямо в сделке, но есть объект недвижимости — берем собственника объекта
+                if (!seller && property) {
+                    const propOwners = parsePgArray(property.client_ids);
+                    const ownerIds = propOwners.length > 0 ? propOwners : (property.client_id ? [String(property.client_id)] : []);
+                    seller = state.clients.find(c => ownerIds.includes(String(c.id))) || null;
+                }
             }
         } else {
-            seller = state.clients.find(c => c.id === sellerId) || null;
-            buyer = state.clients.find(c => c.id === buyerId) || null;
-            property = state.properties.find(p => p.id === propertyId) || null;
+            seller = state.clients.find(c => String(c.id) === String(sellerId)) || null;
+            buyer = state.clients.find(c => String(c.id) === String(buyerId)) || null;
+            property = state.properties.find(p => String(p.id) === String(propertyId)) || null;
         }
 
         // Подменяем клиента обогащенными данными из черновика
@@ -1110,7 +1131,7 @@ export function DocumentsPage() {
             realtor: { ...(realtor || {}), tax_status: realtorTaxStatus },
             agencyName, deal, contractEndDate,
             service1Cost, service2Cost, actDate,
-            movableProperty,
+            movableProperty: movableProperty || property?.movable_property || '',
             realtorTaxStatus,
             isRealtorSelfEmployed,
             isLegalEntity: Boolean(clientDraft.is_legal_entity)
@@ -1789,7 +1810,15 @@ export function DocumentsPage() {
                                 <ClientSearch
                                     clients={propertyOptions}
                                     value={propertyId}
-                                    onChange={setPropertyId}
+                                    onChange={(pId) => {
+                                        setPropertyId(pId);
+                                        if (pId) {
+                                            const p = state.properties.find(item => item.id === pId);
+                                            if (p?.movable_property && !movableProperty) {
+                                                setMovableProperty(p.movable_property);
+                                            }
+                                        }
+                                    }}
                                     placeholder="Выберите объект"
                                 />
                             </div>
@@ -3085,6 +3114,7 @@ export function DocumentsPage() {
                                         <DataPreview label="Адрес объекта" value={property.address || property.city} />
                                         {property.area_total && <DataPreview label="Площадь" value={`${property.area_total} кв.м.`} />}
                                         {property.price && <DataPreview label="Стоимость" value={`${Number(property.price).toLocaleString('ru-RU')} ₽`} />}
+                                        {(movableProperty || property.movable_property) && <DataPreview label="Список имущества" value={movableProperty || property.movable_property} />}
                                     </>
                                 )}
                                 {deal && (

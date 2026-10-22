@@ -231,7 +231,7 @@ describe('Pipeline Security Filter: transformAndValidateQuery (P0-1 ... P0-6)', 
     const query = `DELETE FROM "deal_messages" WHERE id = $1`;
     const res = transformAndValidateQuery(query, ['msg-uuid-55'], realtorPayload);
     expect(res.error).toBeNull();
-    expect(res.query).toMatch(/WHERE "deal_id" IN \(SELECT id FROM deals WHERE realtor_id = \$2\)\s+AND\s+id = \$1/);
+    expect(res.query).toMatch(/WHERE "deal_id" IN \(SELECT id FROM deals WHERE realtor_id = \$2\)\s+AND\s+\(id = \$1\)/);
     expect(res.params).toEqual(['msg-uuid-55', 'realtor-uuid-1']);
   });
 
@@ -294,5 +294,64 @@ describe('Pipeline Security Filter: transformAndValidateQuery (P0-1 ... P0-6)', 
     `;
     const res = transformAndValidateQuery(query, ['realtor-uuid-1'], realtorPayload);
     expect(res.error).toBeNull();
+  });
+
+  // ─── Тесты на векторы уязвимостей SQLi-1 ... SQLi-6 и регрессий ───
+
+  it('SQLi-1: wraps existing WHERE conditions in parens to prevent AND/OR precedence bypass', () => {
+    const attackQuery = `SELECT * FROM "clients" WHERE id = $1 OR 1=1`;
+    const res = transformAndValidateQuery(attackQuery, ['c-1'], realtorPayload);
+    expect(res.error).toBeNull();
+    // Изоляция конъюнктивно объединяется с обёрнутым в скобки предикатом
+    expect(res.query).toContain(`WHERE "realtor_id" = $2 AND (id = $1 OR 1=1)`);
+    expect(res.params).toEqual(['c-1', 'realtor-uuid-1']);
+  });
+
+  it('SQLi-2: blocks subqueries to private tables that use dummy strings or non-equality realtor_id checks', () => {
+    const attack1 = `SELECT (SELECT json_agg(c) FROM "clients" c WHERE 'realtor_id' IS NOT NULL) FROM properties`;
+    const res1 = transformAndValidateQuery(attack1, [], realtorPayload);
+    expect(res1.error).toMatch(/must filter by realtor_id = \$N/i);
+    expect(res1.status).toBe(403);
+
+    const attack2 = `SELECT (SELECT json_agg(c) FROM "clients" c WHERE c.realtor_id IS NOT NULL) FROM properties`;
+    const res2 = transformAndValidateQuery(attack2, [], realtorPayload);
+    expect(res2.error).toMatch(/must filter by realtor_id = \$N/i);
+    expect(res2.status).toBe(403);
+
+    const attack3 = `SELECT (SELECT json_agg(c) FROM "clients" c WHERE c.realtor_id = $1) FROM properties`;
+    // Параметр $1 указывает на чужой UUID, а не на realtorPayload.sub
+    const res3 = transformAndValidateQuery(attack3, ['victim-uuid'], realtorPayload);
+    expect(res3.error).toMatch(/realtor_id parameter does not match current user/i);
+    expect(res3.status).toBe(403);
+  });
+
+  it('SQLi-3: CTE WITH subqueries are extracted and validated', () => {
+    const attackCTE = `SELECT (WITH x AS (SELECT 1) SELECT * FROM "clients") FROM properties`;
+    const res = transformAndValidateQuery(attackCTE, [], realtorPayload);
+    expect(res.error).toMatch(/must filter by realtor_id = \$N/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('SQLi-4: blocks unauthenticated query injection into public property/matches templates', () => {
+    const maliciousPublicProp = `SELECT p.id, p.title, p.price, p.address, p.city, p.rooms, p.area_total, p.floor, p.floors_total, p.property_type, p.building_type, p.description, p.images, p.cover_image, json_build_object('dump', (SELECT json_agg(c) FROM clients c)) as profiles FROM properties p LEFT JOIN profiles prof ON p.realtor_id = prof.id WHERE p.id = $1`;
+    expect(isPublicQuery(maliciousPublicProp)).toBe(false);
+
+    const maliciousPublicMatch = `SELECT m.id, m.request_id, m.property_id, m.score, m.match_level, m.matched_params, m.mismatched_params, m.status, json_build_object('dump', (SELECT json_agg(c) FROM clients c)) as properties FROM matches m JOIN properties pr ON m.property_id = pr.id WHERE m.request_id = ANY($1)`;
+    expect(isPublicQuery(maliciousPublicMatch)).toBe(false);
+  });
+
+  it('SQLi-5: validates subqueries to deal_messages for deal_id presence', () => {
+    const attack = `SELECT (SELECT json_agg(dm) FROM deal_messages dm) FROM properties`;
+    const res = transformAndValidateQuery(attack, [], realtorPayload);
+    expect(res.error).toMatch(/must filter by deal_id/i);
+    expect(res.status).toBe(403);
+  });
+
+  it('Matches status rejection: allows bulk rejection of matches by property_id for property owner', () => {
+    const query = `UPDATE matches SET status = 'rejected', updated_at = NOW() WHERE property_id = $1 AND status != 'rejected'`;
+    const res = transformAndValidateQuery(query, ['prop-uuid-1'], realtorPayload);
+    expect(res.error).toBeNull();
+    expect(res.query).toContain(`("realtor_id" = $2 OR "property_id" IN (SELECT id FROM properties WHERE realtor_id = $2) OR "request_id" IN (SELECT id FROM requests WHERE realtor_id = $2))`);
+    expect(res.params).toEqual(['prop-uuid-1', 'realtor-uuid-1']);
   });
 });

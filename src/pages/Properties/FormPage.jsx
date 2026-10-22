@@ -21,7 +21,7 @@ import {
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
     Upload, Calculator, Ruler, ArrowUpCircle, Briefcase,
-    Calendar, Users, Zap, User, AlertTriangle
+    Calendar, Users, Zap, User, AlertTriangle, Package
 } from 'lucide-react';
 
 // Cloudinary конфигурация
@@ -261,6 +261,7 @@ export function FormPage() {
         cadastral_number: '',
         urgency: 'medium',
         notes: '',
+        movable_property: '',
         images: [],
         floorplan_images: [],
         contact_name: '',
@@ -2087,6 +2088,23 @@ export function FormPage() {
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Заметки риэлтора</label>
                         <textarea className="form-textarea" rows={3} value={form.notes ?? ''} onChange={e => setF('notes', e.target.value)} placeholder="Нюансы сделки..." style={{ borderRadius: 16, resize: 'none' }} />
+                    </div>
+                    <div className="form-group" style={{ marginTop: 12 }}>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Package size={15} style={{ color: 'var(--primary)' }} />
+                            <span>Список имущества</span>
+                        </label>
+                        <textarea
+                            className="form-textarea"
+                            rows={3}
+                            value={form.movable_property ?? ''}
+                            onChange={e => setF('movable_property', e.target.value)}
+                            placeholder="Кухонный гарнитур, газовая плита, встроенная мебель, кондиционер, стиральная машина..."
+                            style={{ borderRadius: 16, resize: 'vertical' }}
+                        />
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                            Перечень мебели, техники и оборудования для автоматической подстановки в Акт приема-передачи.
+                        </div>
                     </div>
                 </FormCard>
 

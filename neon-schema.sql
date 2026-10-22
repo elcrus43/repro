@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS properties (
   urgency                  TEXT DEFAULT 'medium',
   description              TEXT,
   notes                    TEXT,
+  movable_property         TEXT,
   deal_type                TEXT DEFAULT 'sale',
   commission               NUMERIC DEFAULT 0,
   commission_buyer         NUMERIC DEFAULT 0,

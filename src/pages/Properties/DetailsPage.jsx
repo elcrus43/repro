@@ -12,7 +12,7 @@ import {
     Wind, Droplets, ParkingCircle, Sofa, CheckCircle2, AlertCircle, 
     Construction, Briefcase, FileText, ArrowUpCircle, Image as ImageIcon, X, RefreshCw, Loader, ChevronLeft,
     TrendingDown, Star, User, Handshake, Copy, ExternalLink, Check, Zap, Store, DoorOpen,
-    Phone, PhoneCall, MessageSquare, Plus, Clock, UserCheck, Flame, UserPlus, Search
+    Phone, PhoneCall, MessageSquare, Plus, Clock, UserCheck, Flame, UserPlus, Search, Package
 } from 'lucide-react';
 
 /* ─── InlinePriceEditor ──────────────────────────────────────────────────── */
@@ -429,6 +429,17 @@ export function DetailsPage() {
     const [showGallery, setShowGallery] = useState(false);
     const [coverSet, setCoverSet] = useState(false);
     const [copiedField, setCopiedField] = useState(null);
+    const [isEditingMovable, setIsEditingMovable] = useState(false);
+    const [movableDraft, setMovableDraft] = useState('');
+
+    const handleSaveMovableProperty = () => {
+        dispatch({
+            type: 'UPDATE_PROPERTY',
+            property: { ...prop, movable_property: movableDraft.trim() }
+        });
+        toast?.success?.('Список имущества сохранён');
+        setIsEditingMovable(false);
+    };
 
     const copyToClipboard = (text, fieldName) => {
         if (!text) return;
@@ -2014,6 +2025,102 @@ export function DetailsPage() {
                 })()}
 
 
+
+                {/* ── СПИСОК ИМУЩЕСТВА ── */}
+                <div className="card" style={{ padding: '24px 28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                                width: 36, height: 36, borderRadius: 12,
+                                background: 'rgba(0, 82, 255, 0.08)', color: 'var(--primary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
+                            }}>
+                                <Package size={18} />
+                            </div>
+                            <div>
+                                <div className="font-oswald" style={{ fontWeight: 400, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                                    Список имущества
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Мебель, техника и оборудование для Акта приема-передачи
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (isEditingMovable) {
+                                    setIsEditingMovable(false);
+                                } else {
+                                    setMovableDraft(prop.movable_property || '');
+                                    setIsEditingMovable(true);
+                                }
+                            }}
+                            className="card-clickable"
+                            style={{
+                                background: isEditingMovable ? 'var(--bg-light)' : 'rgba(0, 82, 255, 0.08)',
+                                border: 'none', color: 'var(--primary)',
+                                fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '6px 14px', borderRadius: 12
+                            }}
+                        >
+                            <Pencil size={12} /> {isEditingMovable ? 'Отмена' : (prop.movable_property ? 'Изменить' : 'Заполнить')}
+                        </button>
+                    </div>
+
+                    {isEditingMovable ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <textarea
+                                className="form-textarea"
+                                rows={3}
+                                value={movableDraft}
+                                onChange={e => setMovableDraft(e.target.value)}
+                                placeholder="Например: кухонный гарнитур, газовая плита, вытяжка, встроенный шкаф в прихожей, стиральная машина, водонагреватель..."
+                                style={{ borderRadius: 16, width: '100%', resize: 'vertical', fontSize: 14, background: 'var(--bg)' }}
+                                autoFocus
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Перечень имущества автоматически подставится в Акт приема-передачи квартиры
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveMovableProperty}
+                                    style={{
+                                        padding: '7px 20px', borderRadius: 12, border: 'none',
+                                        background: 'var(--primary)', color: '#fff', fontSize: 13, fontWeight: 600,
+                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                                        boxShadow: '0 2px 8px rgba(0,82,255,0.25)'
+                                    }}
+                                >
+                                    <Check size={14} /> Сохранить
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            {prop.movable_property ? (
+                                <div style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text)', whiteSpace: 'pre-wrap', background: 'var(--bg-light)', padding: '14px 16px', borderRadius: 16 }}>
+                                    {prop.movable_property}
+                                </div>
+                            ) : (
+                                <div
+                                    onClick={() => {
+                                        setMovableDraft('');
+                                        setIsEditingMovable(true);
+                                    }}
+                                    style={{
+                                        fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic',
+                                        background: 'var(--bg-light)', padding: '14px 16px', borderRadius: 16,
+                                        cursor: 'pointer', border: '1px dashed var(--border)'
+                                    }}
+                                >
+                                    Список имущества не заполнен. Нажмите, чтобы указать мебель, бытовую технику и оборудование, передаваемые с квартирой.
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
 
                 {prop.notes && (
                     <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>

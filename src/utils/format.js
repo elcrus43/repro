@@ -172,6 +172,23 @@ export function formatDate(dateOrStr) {
     return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
 }
 
+/**
+ * Safely parses a PostgreSQL array representation, JS array, or single string ID into an array of strings
+ * Handles "{uuid1,uuid2}", "{}", null, undefined, ["uuid1"], etc.
+ * @param {Array|string|null|undefined} arr
+ * @returns {string[]}
+ */
+export function parsePgArray(arr) {
+    if (!arr) return [];
+    if (Array.isArray(arr)) return arr.map(String).filter(Boolean);
+    if (typeof arr === 'string') {
+        const cleaned = arr.replace(/[{}"']/g, '').trim();
+        if (!cleaned) return [];
+        return cleaned.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    return [String(arr)];
+}
+
 
 
 
