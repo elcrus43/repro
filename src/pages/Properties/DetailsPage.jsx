@@ -508,8 +508,11 @@ export function DetailsPage() {
     const [copiedLeadPhoneId, setCopiedLeadPhoneId] = useState(null);
 
     const initialLeadForm = {
-        mode: 'new', // 'new' | 'select'
+        mode: 'new', // 'new' | 'select' | 'edit'
+        leadId: null,
         clientId: '',
+        eventId: null,
+        taskId: null,
         name: '',
         phone: '',
         source: 'Вх. звонок по объявлению',
@@ -525,18 +528,30 @@ export function DetailsPage() {
 
     const LEAD_STATUS_CONFIG = {
         'Новый лид': { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: 'rgba(59, 130, 246, 0.25)', label: 'Новый лид' },
+        'new': { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: 'rgba(59, 130, 246, 0.25)', label: 'Новый лид' },
         'Вх. звонок': { bg: 'rgba(14, 165, 233, 0.1)', color: '#0284c7', border: 'rgba(14, 165, 233, 0.25)', label: 'Вх. звонок' },
         'Назначен показ': { bg: 'rgba(139, 92, 246, 0.1)', color: '#7c3aed', border: 'rgba(139, 92, 246, 0.25)', label: 'Назначен показ' },
+        'Запланирован': { bg: 'rgba(139, 92, 246, 0.1)', color: '#7c3aed', border: 'rgba(139, 92, 246, 0.25)', label: 'Назначен показ' },
         'Думает': { bg: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: 'rgba(245, 158, 11, 0.25)', label: 'Думает' },
+        'thinking': { bg: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: 'rgba(245, 158, 11, 0.25)', label: 'Думает' },
         'Думает / консультация': { bg: 'rgba(245, 158, 11, 0.1)', color: '#d97706', border: 'rgba(245, 158, 11, 0.25)', label: 'Думает' },
+        'interested': { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: 'rgba(59, 130, 246, 0.25)', label: 'Заинтересован' },
+        'Заинтересован': { bg: 'rgba(59, 130, 246, 0.1)', color: '#2563eb', border: 'rgba(59, 130, 246, 0.25)', label: 'Заинтересован' },
         'Предложил торг': { bg: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: 'rgba(249, 115, 22, 0.25)', label: 'Предложил торг' },
+        'offer': { bg: 'rgba(249, 115, 22, 0.1)', color: '#ea580c', border: 'rgba(249, 115, 22, 0.25)', label: 'Предложил торг' },
         'Готов к сделке': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Готов к сделке' },
+        'ready': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Готов к сделке' },
         'Сделка': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Сделка' },
-        'Отказ': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Отказ' },
-        'Отказ / не подошло': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Отказ' },
+        'deal': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Сделка' },
         'Завершён': { bg: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: 'rgba(16, 185, 129, 0.25)', label: 'Завершён' },
-        'Запланирован': { bg: 'rgba(139, 92, 246, 0.1)', color: '#7c3aed', border: 'rgba(139, 92, 246, 0.25)', label: 'Запланирован' },
+        'Отказ': { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: 'rgba(239, 68, 68, 0.25)', label: 'Отказ' },
+        'Отказ / не подошло': { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: 'rgba(239, 68, 68, 0.25)', label: 'Отказ' },
         'Отменён': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Отменён' },
+        'condition_bad': { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: 'rgba(239, 68, 68, 0.25)', label: 'Плохое состояние' },
+        'price_high': { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: 'rgba(239, 68, 68, 0.25)', label: 'Дорого' },
+        'layout_bad': { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: 'rgba(239, 68, 68, 0.25)', label: 'Не подошла планировка' },
+        'location_bad': { bg: 'rgba(239, 68, 68, 0.1)', color: '#dc2626', border: 'rgba(239, 68, 68, 0.25)', label: 'Не то расположение' },
+        'other_options': { bg: 'rgba(107, 114, 128, 0.1)', color: '#4b5563', border: 'rgba(107, 114, 128, 0.25)', label: 'Ищет другие' },
     };
 
     // Calculate Leads for this property
@@ -632,9 +647,18 @@ export function DetailsPage() {
         return leads.filter(l => {
             if (leadFilterStatus !== 'all') {
                 if (leadFilterStatus === 'Думает') {
-                    if (l.status !== 'Думает' && l.status !== 'Думает / консультация') return false;
+                    if (l.status !== 'Думает' && l.status !== 'Думает / консультация' && l.status !== 'thinking' && l.status !== 'interested' && l.status !== 'Заинтересован') return false;
                 } else if (leadFilterStatus === 'Отказ') {
-                    if (l.status !== 'Отказ' && l.status !== 'Отказ / не подошло' && l.status !== 'Отменён') return false;
+                    const isReject = l.status === 'Отказ' || l.status === 'Отказ / не подошло' || l.status === 'Отменён' || l.status === 'cancelled' || l.status === 'condition_bad' || l.status === 'price_high' || l.status === 'layout_bad' || l.status === 'location_bad' || l.status === 'other_options' || String(l.status).toLowerCase().includes('отказ');
+                    if (!isReject) return false;
+                } else if (leadFilterStatus === 'Новый лид') {
+                    if (l.status !== 'Новый лид' && l.status !== 'new') return false;
+                } else if (leadFilterStatus === 'Вх. звонок') {
+                    if (l.status !== 'Вх. звонок' && l.latestEvent?.event_type !== 'call') return false;
+                } else if (leadFilterStatus === 'Назначен показ') {
+                    if (l.status !== 'Назначен показ' && l.status !== 'Запланирован' && l.latestEvent?.event_type !== 'showing') return false;
+                } else if (leadFilterStatus === 'Готов к сделке') {
+                    if (l.status !== 'Готов к сделке' && l.status !== 'Сделка' && l.status !== 'ready' && l.status !== 'deal') return false;
                 } else if (l.status !== leadFilterStatus) {
                     return false;
                 }
@@ -661,7 +685,7 @@ export function DetailsPage() {
                 clientId: prefillClient.id,
                 name: prefillClient.full_name || '',
                 phone: prefillClient.phone || '',
-                source: prefillClient.source || 'Вх. звонок по объявлению',
+                source: (prefillClient.source && prefillClient.source.toLowerCase() !== 'лид' && prefillClient.source.toLowerCase() !== 'lead') ? prefillClient.source : 'Вх. звонок по объявлению',
                 date: toLocalISOString(new Date()),
             });
         } else {
@@ -673,9 +697,138 @@ export function DetailsPage() {
         setIsAddLeadModalOpen(true);
     }
 
+    function handleEditLead(lead, eventToEdit = null) {
+        const targetEvent = eventToEdit || lead.latestEvent || null;
+        setLeadForm({
+            mode: 'edit',
+            leadId: lead.client.id,
+            clientId: lead.client.id,
+            eventId: targetEvent ? targetEvent.id : null,
+            taskId: lead.latestTask ? lead.latestTask.id : null,
+            name: lead.client.full_name || '',
+            phone: lead.client.phone || '',
+            source: (lead.source && lead.source.toLowerCase() !== 'лид' && lead.source.toLowerCase() !== 'lead')
+                ? lead.source
+                : (lead.client.source || 'Вх. звонок по объявлению'),
+            eventType: targetEvent?.event_type || 'call',
+            status: targetEvent?.client_feedback || lead.status || 'Новый лид',
+            date: targetEvent?.showing_date ? toLocalISOString(new Date(targetEvent.showing_date)) : toLocalISOString(new Date()),
+            comment: targetEvent?.feedback_comment || lead.comment || '',
+            hasReminder: Boolean(lead.latestTask && lead.latestTask.status === 'pending'),
+            reminderDate: lead.latestTask?.due_date ? toLocalISOString(new Date(lead.latestTask.due_date)) : toLocalISOString(new Date(Date.now() + 86400000)),
+            reminderNote: lead.latestTask?.description || '',
+        });
+        setIsAddLeadModalOpen(true);
+    }
+
     function handleSaveLead(e) {
         e?.preventDefault();
         let targetClient = null;
+
+        if (leadForm.mode === 'edit') {
+            if (!leadForm.name.trim()) {
+                toast.error('Введите имя клиента');
+                return;
+            }
+            const cleanPhone = stripPhone(leadForm.phone);
+            
+            // 1. Update client in state
+            const existingClient = state.clients.find(c => c.id === leadForm.clientId);
+            if (existingClient) {
+                const currentTypes = Array.isArray(existingClient.client_types) ? existingClient.client_types : [];
+                const updatedTypes = currentTypes.includes('lead') ? currentTypes : [...currentTypes, 'lead'];
+                dispatch({
+                    type: 'UPDATE_CLIENT',
+                    client: {
+                        ...existingClient,
+                        full_name: leadForm.name.trim(),
+                        phone: cleanPhone || existingClient.phone,
+                        source: leadForm.source || existingClient.source,
+                        client_types: updatedTypes,
+                        notes: leadForm.comment ? leadForm.comment : existingClient.notes,
+                        updated_at: new Date().toISOString()
+                    }
+                });
+            }
+
+            // 2. Update or create showing / event
+            const showingDate = parseLocalDateTime(leadForm.date)?.toISOString() || new Date().toISOString();
+            const isCancelled = (leadForm.status === 'Отказ' || leadForm.status === 'Отказ / не подошло' || leadForm.status === 'condition_bad' || leadForm.status === 'price_high' || leadForm.status === 'layout_bad' || leadForm.status === 'location_bad' || leadForm.status === 'other_options');
+
+            if (leadForm.eventId) {
+                const existingShowing = state.showings.find(s => s.id === leadForm.eventId);
+                if (existingShowing) {
+                    dispatch({
+                        type: 'UPDATE_SHOWING',
+                        showing: {
+                            ...existingShowing,
+                            showing_date: showingDate,
+                            event_type: leadForm.eventType,
+                            client_feedback: leadForm.status,
+                            feedback_comment: leadForm.comment || '',
+                            status: isCancelled ? 'cancelled' : existingShowing.status,
+                            updated_at: new Date().toISOString()
+                        }
+                    });
+                }
+            } else if (leadForm.clientId) {
+                const newShowing = {
+                    id: nanoid(),
+                    realtor_id: state.currentUser?.id,
+                    property_id: id,
+                    client_id: leadForm.clientId,
+                    client_ids: [leadForm.clientId],
+                    showing_date: showingDate,
+                    event_type: leadForm.eventType,
+                    status: isCancelled ? 'cancelled' : 'completed',
+                    client_feedback: leadForm.status,
+                    feedback_comment: leadForm.comment || '',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
+                dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+            }
+
+            // 3. Callback reminder
+            if (leadForm.hasReminder && leadForm.reminderDate) {
+                const taskDue = parseLocalDateTime(leadForm.reminderDate)?.toISOString() || new Date(Date.now() + 86400000).toISOString();
+                if (leadForm.taskId) {
+                    const existingTask = (state.tasks || []).find(t => t.id === leadForm.taskId);
+                    if (existingTask) {
+                        dispatch({
+                            type: 'UPDATE_TASK',
+                            task: {
+                                ...existingTask,
+                                due_date: taskDue,
+                                description: leadForm.reminderNote || leadForm.comment || existingTask.description,
+                                updated_at: new Date().toISOString()
+                            }
+                        });
+                    }
+                } else {
+                    const newTask = {
+                        id: nanoid(),
+                        realtor_id: state.currentUser?.id,
+                        client_id: leadForm.clientId,
+                        property_id: id,
+                        title: `Перезвонить по объекту — ${leadForm.name}`,
+                        description: leadForm.reminderNote || leadForm.comment || `Интересовался объектом ${prop?.address || ''}`,
+                        due_date: taskDue,
+                        priority: 'medium',
+                        status: 'pending',
+                        task_type: 'Позвонить',
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    };
+                    dispatch({ type: 'ADD_TASK', task: newTask });
+                }
+            }
+
+            toast.success(`Лид «${leadForm.name}» обновлён!`);
+            setIsAddLeadModalOpen(false);
+            setLeadForm(initialLeadForm);
+            return;
+        }
 
         if (leadForm.mode === 'new') {
             if (!leadForm.name.trim()) {
@@ -754,7 +907,7 @@ export function DetailsPage() {
             client_ids: [targetClient.id],
             showing_date: showingDate,
             event_type: leadForm.eventType,
-            status: (leadForm.status === 'Отказ' || leadForm.status === 'Отказ / не подошло') ? 'cancelled' : 'completed',
+            status: (leadForm.status === 'Отказ' || leadForm.status === 'Отказ / не подошло' || leadForm.status === 'condition_bad' || leadForm.status === 'price_high' || leadForm.status === 'layout_bad' || leadForm.status === 'location_bad') ? 'cancelled' : 'completed',
             client_feedback: leadForm.status,
             feedback_comment: leadForm.comment || '',
             created_at: new Date().toISOString(),
@@ -2453,110 +2606,6 @@ export function DetailsPage() {
                     </div>
                 )}
 
-                {/* Лиды по объекту (боковой виджет) */}
-                <div className="card">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <PhoneCall size={16} style={{ color: 'var(--primary)' }} />
-                            <div className="section-title" style={{ margin: 0, fontSize: 15 }}>
-                                Лиды ({leads.length})
-                            </div>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => handleOpenAddLead()}
-                            style={{
-                                background: 'var(--primary-light)',
-                                color: 'var(--primary)',
-                                border: 'none',
-                                borderRadius: 8,
-                                padding: '4px 10px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}
-                            title="Зафиксировать звонок / лид"
-                        >
-                            <Plus size={13} />
-                            <span>+ Лид</span>
-                        </button>
-                    </div>
-
-                    {leads.length === 0 ? (
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '12px 0' }}>
-                            Пока нет обращений
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {leads.slice(0, 4).map(l => {
-                                const cfg = LEAD_STATUS_CONFIG[l.status] || { bg: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'transparent', label: l.status };
-                                return (
-                                    <div
-                                        key={l.client.id}
-                                        onClick={() => {
-                                            const el = document.getElementById('leads-section');
-                                            if (el) el.scrollIntoView({ behavior: 'smooth' });
-                                            setExpandedLeadId(l.client.id);
-                                        }}
-                                        style={{
-                                            padding: '8px 10px',
-                                            borderRadius: 10,
-                                            background: 'var(--bg-light)',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: 4
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '140px' }}>
-                                                {l.client.full_name}
-                                            </span>
-                                            <span style={{
-                                                fontSize: 10,
-                                                padding: '2px 6px',
-                                                borderRadius: 6,
-                                                background: cfg.bg,
-                                                color: cfg.color,
-                                                fontWeight: 500
-                                            }}>
-                                                {cfg.label}
-                                            </span>
-                                        </div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
-                                            <span>{formatPhone(l.client.phone) || 'Без тел.'}</span>
-                                            <span>{l.source}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {leads.length > 4 && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const el = document.getElementById('leads-section');
-                                        if (el) el.scrollIntoView({ behavior: 'smooth' });
-                                    }}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        color: 'var(--primary)',
-                                        fontSize: 12,
-                                        cursor: 'pointer',
-                                        padding: '4px 0',
-                                        textAlign: 'center'
-                                    }}
-                                >
-                                    Все обращения ({leads.length}) ↓
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
-
                 {/* New Construction Collection (Temporarily removed per user request) */}
                 {/* <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} /> */}
 
@@ -2808,25 +2857,49 @@ export function DetailsPage() {
                                                         }}>
                                                             Лид
                                                         </span>
-                                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                            {lead.source}
-                                                        </span>
+                                                        {lead.source && lead.source.toLowerCase() !== 'лид' && lead.source.toLowerCase() !== 'lead' && (
+                                                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                                {lead.source}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <span style={{
-                                                fontSize: 11,
-                                                padding: '4px 8px',
-                                                borderRadius: 8,
-                                                background: cfg.bg,
-                                                color: cfg.color,
-                                                border: `1px solid ${cfg.border || 'transparent'}`,
-                                                fontWeight: 600,
-                                                whiteSpace: 'nowrap'
-                                            }}>
-                                                {cfg.label}
-                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{
+                                                    fontSize: 11,
+                                                    padding: '4px 8px',
+                                                    borderRadius: 8,
+                                                    background: cfg.bg,
+                                                    color: cfg.color,
+                                                    border: `1px solid ${cfg.border || 'transparent'}`,
+                                                    fontWeight: 600,
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {cfg.label}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditLead(lead)}
+                                                    style={{
+                                                        width: 28,
+                                                        height: 28,
+                                                        borderRadius: 8,
+                                                        border: '1px solid var(--border)',
+                                                        background: 'var(--surface)',
+                                                        color: 'var(--text-secondary)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    title="Редактировать лид"
+                                                >
+                                                    <Pencil size={13} />
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {/* Phone & Quick communication actions */}
@@ -2966,15 +3039,36 @@ export function DetailsPage() {
                                             }}>
                                                 {lead.sortedEvents.map(evt => (
                                                     <div key={evt.id} style={{ fontSize: 11, background: 'var(--bg-light)', padding: '6px 8px', borderRadius: 8 }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', marginBottom: 2 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-secondary)', marginBottom: 2 }}>
                                                             <span style={{ fontWeight: 600 }}>
                                                                 {evt.event_type === 'call' ? '📞 Входящий звонок' : evt.event_type === 'showing' ? '🏠 Показ' : evt.event_type === 'meeting' ? '🤝 Встреча' : '📋 Событие'}
                                                             </span>
-                                                            <span>{formatDate(evt.showing_date)}</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span>{formatDate(evt.showing_date)}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleEditLead(lead, evt)}
+                                                                    style={{
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        color: 'var(--primary)',
+                                                                        cursor: 'pointer',
+                                                                        padding: '1px 4px',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 2,
+                                                                        fontSize: 10
+                                                                    }}
+                                                                    title="Редактировать контакт"
+                                                                >
+                                                                    <Pencil size={10} />
+                                                                    <span>изм.</span>
+                                                                </button>
+                                                            </div>
                                                         </div>
                                                         {evt.client_feedback && (
                                                             <div style={{ color: 'var(--primary)', fontWeight: 500 }}>
-                                                                Статус: {evt.client_feedback}
+                                                                Статус: {LEAD_STATUS_CONFIG[evt.client_feedback]?.label || evt.client_feedback}
                                                             </div>
                                                         )}
                                                         {evt.feedback_comment && (
@@ -3017,6 +3111,28 @@ export function DetailsPage() {
                                             >
                                                 <Plus size={12} />
                                                 <span>Новый контакт</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEditLead(lead)}
+                                                style={{
+                                                    height: 32,
+                                                    padding: '0 10px',
+                                                    borderRadius: 8,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--surface)',
+                                                    color: 'var(--text)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 4,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Редактировать данные лида"
+                                            >
+                                                <Pencil size={12} />
+                                                <span>Редактировать</span>
                                             </button>
                                             <button
                                                 type="button"
@@ -3218,11 +3334,11 @@ export function DetailsPage() {
                                         color: '#2563eb',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center'
                                     }}>
-                                        <PhoneCall size={18} />
+                                        {leadForm.mode === 'edit' ? <Pencil size={18} /> : <PhoneCall size={18} />}
                                     </div>
                                     <div>
                                         <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>
-                                            Зафиксировать лид / звонок
+                                            {leadForm.mode === 'edit' ? 'Редактировать лид / обращение' : 'Зафиксировать лид / звонок'}
                                         </h3>
                                         <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                                             {prop.address || 'Объект недвижимости'}
@@ -3246,49 +3362,51 @@ export function DetailsPage() {
                             </div>
 
                             <form onSubmit={handleSaveLead} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                {/* Mode Switch: Новый клиент / Выбрать из базы */}
-                                <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 12 }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setLeadForm(f => ({ ...f, mode: 'new' }))}
-                                        style={{
-                                            flex: 1,
-                                            padding: '8px 12px',
-                                            borderRadius: 9,
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            fontSize: 13,
-                                            fontWeight: 500,
-                                            background: leadForm.mode === 'new' ? 'var(--surface)' : 'transparent',
-                                            color: leadForm.mode === 'new' ? 'var(--text)' : 'var(--text-secondary)',
-                                            boxShadow: leadForm.mode === 'new' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        Новый клиент
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setLeadForm(f => ({ ...f, mode: 'select' }))}
-                                        style={{
-                                            flex: 1,
-                                            padding: '8px 12px',
-                                            borderRadius: 9,
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            fontSize: 13,
-                                            fontWeight: 500,
-                                            background: leadForm.mode === 'select' ? 'var(--surface)' : 'transparent',
-                                            color: leadForm.mode === 'select' ? 'var(--text)' : 'var(--text-secondary)',
-                                            boxShadow: leadForm.mode === 'select' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        Выбрать из базы
-                                    </button>
-                                </div>
+                                {/* Mode Switch: Новый клиент / Выбрать из базы (только при создании) */}
+                                {leadForm.mode !== 'edit' && (
+                                    <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 4, borderRadius: 12 }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setLeadForm(f => ({ ...f, mode: 'new' }))}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px 12px',
+                                                borderRadius: 9,
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                background: leadForm.mode === 'new' ? 'var(--surface)' : 'transparent',
+                                                color: leadForm.mode === 'new' ? 'var(--text)' : 'var(--text-secondary)',
+                                                boxShadow: leadForm.mode === 'new' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            Новый клиент
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setLeadForm(f => ({ ...f, mode: 'select' }))}
+                                            style={{
+                                                flex: 1,
+                                                padding: '8px 12px',
+                                                borderRadius: 9,
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                fontSize: 13,
+                                                fontWeight: 500,
+                                                background: leadForm.mode === 'select' ? 'var(--surface)' : 'transparent',
+                                                color: leadForm.mode === 'select' ? 'var(--text)' : 'var(--text-secondary)',
+                                                boxShadow: leadForm.mode === 'select' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none',
+                                                transition: 'all 0.15s ease'
+                                            }}
+                                        >
+                                            Выбрать из базы
+                                        </button>
+                                    </div>
+                                )}
 
-                                {leadForm.mode === 'new' ? (
+                                {leadForm.mode === 'new' || leadForm.mode === 'edit' ? (
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                                         <div>
                                             <label style={{ display: 'block', fontSize: 12, fontWeight: 500, marginBottom: 4, color: 'var(--text-secondary)' }}>
@@ -3447,9 +3565,15 @@ export function DetailsPage() {
                                             <option value="Вх. звонок">Вх. звонок</option>
                                             <option value="Назначен показ">Назначен показ</option>
                                             <option value="Думает">Думает</option>
+                                            <option value="interested">Заинтересован</option>
                                             <option value="Предложил торг">Предложил торг</option>
                                             <option value="Готов к сделке">Готов к сделке</option>
                                             <option value="Отказ">Отказ / не подошло</option>
+                                            <option value="condition_bad">Плохое состояние</option>
+                                            <option value="price_high">Дорого</option>
+                                            <option value="layout_bad">Не подошла планировка</option>
+                                            <option value="location_bad">Не то расположение</option>
+                                            <option value="other_options">Ищет другие варианты</option>
                                         </select>
                                     </div>
                                     <div>
@@ -3594,7 +3718,7 @@ export function DetailsPage() {
                                             boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
                                         }}
                                     >
-                                        Сохранить лид
+                                        {leadForm.mode === 'edit' ? 'Сохранить изменения' : 'Сохранить лид'}
                                     </button>
                                 </div>
                             </form>

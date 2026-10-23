@@ -258,8 +258,8 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                                 padding: 20,
                                 textAlign: 'center'
                             }}>
-                                <div style={{ color: '#ef4444', fontSize: 15, fontWeight: 500 }}>
-                                    Ошибка: {error}
+                                <div style={{ color: '#ef4444', fontSize: 14, fontWeight: 500, whiteSpace: 'pre-line', maxWidth: 520, lineHeight: 1.5, textAlign: 'left' }}>
+                                    {error}
                                 </div>
                                 <button
                                     onClick={handleGenerate}

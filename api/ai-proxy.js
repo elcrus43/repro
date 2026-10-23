@@ -161,12 +161,35 @@ export default async function handler(req, res) {
   }
 }
 
+export function formatAiError(errors) {
+  if (!errors || errors.length === 0) return 'Все модели ИИ недоступны или не сконфигурированы.';
+
+  const allText = errors.join(' ');
+  const isSpendingCap = allText.includes('spending cap') || allText.includes('RESOURCE_EXHAUSTED');
+  const isInsufficientBalance = allText.includes('insufficient balance') || allText.includes('余额不足') || allText.includes('1113') || allText.includes('402');
+
+  if (isSpendingCap || isInsufficientBalance) {
+    const list = [];
+    if (errors.some(e => e.includes('Gemini'))) {
+      list.push('• Google Gemini: исчерпан месячный лимит расходов (Spend Cap) в Google AI Studio. Увеличьте лимит на https://ai.studio/spend');
+    }
+    if (errors.some(e => e.includes('OpenModel'))) {
+      list.push('• OpenModel (DeepSeek): нулевой баланс на аккаунте openmodel.ai (требуется пополнение).');
+    }
+    if (errors.some(e => e.includes('Zhipu'))) {
+      list.push('• Zhipu AI (GLM): исчерпан баланс токенов на open.bigmodel.cn (требуется пополнение).');
+    }
+    return `Лимиты всех подключенных ИИ-провайдеров исчерпаны:\n\n${list.join('\n')}\n\nДля возобновления работы пополните баланс одного из сервисов или увеличьте лимит расходов в Google AI Studio.`;
+  }
+  return errors.join(' | ');
+}
+
 async function handleGenerateAd(prompt) {
   const providerErrors = [];
 
   // 1. Сначала пробуем Gemini (быстро, надежно и прямое подключение из Vercel US)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+    const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini (${modelName})...`);
@@ -193,6 +216,9 @@ async function handleGenerateAd(prompt) {
           const errText = await response.text();
           console.warn(`[ai-proxy] Gemini (${modelName}) returned status ${response.status}:`, errText);
           providerErrors.push(`Gemini ${modelName} (${response.status}): ${errText}`);
+          if (response.status === 429 && (errText.includes('spending cap') || errText.includes('RESOURCE_EXHAUSTED'))) {
+            break;
+          }
         }
       } catch (err) {
         console.warn(`[ai-proxy] Gemini (${modelName}) error:`, err.message);
@@ -236,7 +262,7 @@ async function handleGenerateAd(prompt) {
           const errText = await response.text();
           console.warn(`[ai-proxy] OpenModel (${modelName}) returned status ${response.status}:`, errText);
           providerErrors.push(`OpenModel ${modelName} (${response.status}): ${errText}`);
-          if (response.status === 402) break;
+          if (response.status === 402 || errText.includes('insufficient balance')) break;
         }
       } catch (err) {
         console.warn(`[ai-proxy] OpenModel (${modelName}) error:`, err.message);
@@ -281,7 +307,7 @@ async function handleGenerateAd(prompt) {
           const errText = await response.text();
           console.warn(`[ai-proxy] Zhipu (${modelName}) returned status ${response.status}:`, errText);
           providerErrors.push(`Zhipu ${modelName} (${response.status}): ${errText}`);
-          if (response.status === 429 || response.status === 401) break;
+          if (response.status === 429 || response.status === 401 || errText.includes('1113') || errText.includes('余额不足')) break;
         }
       } catch (err) {
         console.warn(`[ai-proxy] Zhipu (${modelName}) error:`, err.message);
@@ -292,7 +318,7 @@ async function handleGenerateAd(prompt) {
     providerErrors.push('ZHIPU_API_KEY is not configured');
   }
 
-  throw new Error(providerErrors.join(' | ') || 'Все модели ИИ недоступны или не сконфигурированы.');
+  throw new Error(formatAiError(providerErrors));
 }
 
 async function handleParseHouse(prompt) {

@@ -273,8 +273,19 @@ ${urlHints ? `\nПрямые ссылки для поиска:\n${urlHints}\n\n�
         });
 
         if (!response.ok) {
-            const errText = await response.text();
-            throw new Error(`Ошибка AI прокси: ${response.status} - ${errText}`);
+            let errorMsg = `Ошибка AI прокси (${response.status})`;
+            try {
+                const errData = await response.json();
+                if (errData?.error) {
+                    errorMsg = errData.error;
+                }
+            } catch {
+                try {
+                    const errText = await response.text();
+                    if (errText) errorMsg += `: ${errText}`;
+                } catch {}
+            }
+            throw new Error(errorMsg);
         }
 
         const parsed = await response.json();

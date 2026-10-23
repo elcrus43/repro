@@ -5,19 +5,23 @@ import { useToastContext } from '../../components/Toast';
 import {
     Sparkles, Users, Home, Search, Target, ArrowRight, Cake,
     Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight,
-    Pencil, Trash2, X, Handshake, FileCheck
+    ChevronLeft, Pencil, Trash2, X, Handshake, FileCheck, UserPlus
 } from 'lucide-react';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { nanoid } from '../../utils/nanoid';
-import { toLocalISOString, parseLocalDateTime } from '../../utils/format';
+import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone } from '../../utils/format';
 
 export function DashboardPage() {
     const { state, dispatch } = useApp();
     const { toast } = useToastContext();
     const navigate = useNavigate();
 
-    const [plannerFilter, setPlannerFilter] = useState('today'); // 'today' | 'week' | 'overdue' | 'selectedDay'
+    const [plannerFilter, setPlannerFilter] = useState('today'); // 'today' | 'week' | 'month' | 'overdue' | 'selectedDay'
     const [selectedDayStr, setSelectedDayStr] = useState(null);
+    const [plannerViewMode, setPlannerViewMode] = useState('week'); // 'week' | 'month'
+    const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = текущая неделя, -1 = прошлая, +1 = следующая
+    const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+    const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
 
     const myProperties = useMemo(() =>
         state.properties.filter(p => state.currentUser?.role === 'admin' || p.realtor_id === state.currentUser?.id),
@@ -74,12 +78,12 @@ export function DashboardPage() {
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }, []);
 
-    // 7 дней текущей недели (Пн – Вс)
+    // 7 дней выбранной недели (Пн – Вс) с учетом currentWeekOffset
     const weekDays = useMemo(() => {
         const now = new Date();
         const currentDay = now.getDay(); // 0 - Вс, 1 - Пн ... 6 - Сб
         const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
-        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distanceToMonday);
+        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + distanceToMonday + currentWeekOffset * 7);
 
         const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
         const days = [];
@@ -95,7 +99,7 @@ export function DashboardPage() {
             });
         }
         return days;
-    }, [todayStr]);
+    }, [todayStr, currentWeekOffset]);
 
     const weekStartStr = weekDays[0]?.dateStr;
     const weekEndStr = weekDays[6]?.dateStr;
@@ -111,6 +115,36 @@ export function DashboardPage() {
         }
         return `${start.getDate()} ${startMonth} – ${end.getDate()} ${endMonth}`;
     }, [weekDays]);
+
+    // Месячная сетка
+    const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+    const currentMonthLabel = `${MONTH_NAMES[calMonth]} ${calYear}`;
+    const selectedMonthPrefix = `${calYear}-${String(calMonth + 1).padStart(2, '0')}`;
+
+    const monthDaysGrid = useMemo(() => {
+        const firstDay = new Date(calYear, calMonth, 1);
+        const lastDay = new Date(calYear, calMonth + 1, 0);
+        const totalDays = lastDay.getDate();
+        // Пн = 0, Вс = 6
+        const startPad = (firstDay.getDay() + 6) % 7;
+        const cells = [];
+        for (let i = 0; i < startPad; i++) {
+            cells.push(null);
+        }
+        for (let d = 1; d <= totalDays; d++) {
+            const dateObj = new Date(calYear, calMonth, d);
+            const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dow = dateObj.getDay();
+            const isWeekend = dow === 0 || dow === 6;
+            cells.push({
+                dayNumber: d,
+                dateStr,
+                isToday: dateStr === todayStr,
+                isWeekend,
+            });
+        }
+        return cells;
+    }, [calYear, calMonth, todayStr]);
 
     // Все задачи и события для планировщика
     const plannerItems = useMemo(() => {
@@ -224,6 +258,48 @@ export function DashboardPage() {
                     raw: d,
                 });
             }
+            if (d.registration_date && toDateStr(d.registration_date) !== toDateStr(d.deal_date) && toDateStr(d.registration_date) !== toDateStr(d.deposit_date)) {
+                const dateStr = toDateStr(d.registration_date);
+                dealItems.push({
+                    id: `${d.id}-registration`,
+                    dealId: d.id,
+                    isDeal: true,
+                    isDeposit: false,
+                    isShowing: false,
+                    title: d.title ? `Регистрация: ${d.title}` : 'Регистрация',
+                    description: d.notes || '',
+                    dateStr,
+                    rawDate: d.registration_date,
+                    status: d.status || 'active',
+                    isDone: d.status === 'closed',
+                    type: 'Документы',
+                    client_id,
+                    property_id: d.property_id,
+                    price: null,
+                    raw: d,
+                });
+            }
+            if (d.handover_date && toDateStr(d.handover_date) !== toDateStr(d.deal_date) && toDateStr(d.handover_date) !== toDateStr(d.deposit_date)) {
+                const dateStr = toDateStr(d.handover_date);
+                dealItems.push({
+                    id: `${d.id}-handover`,
+                    dealId: d.id,
+                    isDeal: true,
+                    isDeposit: false,
+                    isShowing: false,
+                    title: d.title ? `Передача объекта: ${d.title}` : 'Передача объекта',
+                    description: d.handover_amount ? `Сумма: ${Number(d.handover_amount).toLocaleString('ru-RU')} ₽` : (d.notes || ''),
+                    dateStr,
+                    rawDate: d.handover_date,
+                    status: d.status || 'active',
+                    isDone: d.status === 'closed',
+                    type: 'Показ',
+                    client_id,
+                    property_id: d.property_id,
+                    price: d.handover_amount,
+                    raw: d,
+                });
+            }
         });
 
         return [...taskItems, ...showingItems, ...dealItems];
@@ -271,6 +347,8 @@ export function DashboardPage() {
             list = plannerItems.filter(i => i.dateStr === todayStr);
         } else if (plannerFilter === 'overdue') {
             list = plannerItems.filter(i => i.dateStr && i.dateStr < todayStr && !i.isDone);
+        } else if (plannerFilter === 'month') {
+            list = plannerItems.filter(i => i.dateStr && i.dateStr.startsWith(selectedMonthPrefix));
         } else {
             // 'week'
             list = plannerItems.filter(i => i.dateStr >= weekStartStr && i.dateStr <= weekEndStr);
@@ -279,7 +357,7 @@ export function DashboardPage() {
             if (a.isDone !== b.isDone) return a.isDone ? 1 : -1;
             return (a.dateStr || '').localeCompare(b.dateStr || '');
         });
-    }, [plannerItems, plannerFilter, selectedDayStr, todayStr, weekStartStr, weekEndStr]);
+    }, [plannerItems, plannerFilter, selectedDayStr, todayStr, weekStartStr, weekEndStr, selectedMonthPrefix]);
 
     // Выполнение задачи в 1 клик
     const handleToggleTask = (item, e) => {
@@ -352,7 +430,59 @@ export function DashboardPage() {
         isDeposit: false,
     });
 
+    // Быстрое создание клиента внутри модального окна задачи
+    const [showNewTaskClient, setShowNewTaskClient] = useState(false);
+    const [newTaskClientName, setNewTaskClientName] = useState('');
+    const [newTaskClientPhone, setNewTaskClientPhone] = useState('');
+
+    const handleCreateTaskClient = () => {
+        if (!newTaskClientName.trim()) {
+            toast.error('Введите имя клиента');
+            return;
+        }
+        const cleanPhone = stripPhone(newTaskClientPhone);
+        const existing = cleanPhone ? state.clients.find(c => {
+            const cPhone = stripPhone(c.phone);
+            const cPhones = (c.phones || []).map(p => stripPhone(p));
+            return cPhone === cleanPhone || cPhones.includes(cleanPhone);
+        }) : null;
+
+        if (existing) {
+            const updated = {
+                ...existing,
+                full_name: newTaskClientName.trim() || existing.full_name,
+                phone: cleanPhone || existing.phone,
+                updated_at: new Date().toISOString()
+            };
+            dispatch({ type: 'UPDATE_CLIENT', client: updated });
+            handleModalFieldChange('client_id', existing.id);
+            toast.info(`Контакт «${existing.full_name}» обновлён и выбран`);
+        } else {
+            const newClient = {
+                id: nanoid(),
+                realtor_id: state.currentUser?.id,
+                full_name: newTaskClientName.trim(),
+                phone: cleanPhone,
+                client_types: ['buyer'],
+                status: 'active',
+                additional_contacts: [],
+                notes: '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+            dispatch({ type: 'ADD_CLIENT', client: newClient });
+            handleModalFieldChange('client_id', newClient.id);
+            toast.success('Клиент создан и выбран');
+        }
+        setShowNewTaskClient(false);
+        setNewTaskClientName('');
+        setNewTaskClientPhone('');
+    };
+
     const handleOpenCreateModal = (defaultDateStr) => {
+        setShowNewTaskClient(false);
+        setNewTaskClientName('');
+        setNewTaskClientPhone('');
         const targetDate = defaultDateStr || selectedDayStr || todayStr;
         const initialDue = `${targetDate}T10:00`;
         setTaskModal({
@@ -859,7 +989,7 @@ export function DashboardPage() {
                     </div>
                 </div>
 
-                {/* Elevated Weekly Planner Card */}
+                {/* Elevated Planner Card (Week / Month) */}
                 <div style={{
                     background: 'var(--surface)',
                     borderRadius: 20,
@@ -870,7 +1000,7 @@ export function DashboardPage() {
                     flexDirection: 'column',
                     gap: 10,
                 }}>
-                    {/* Header: Title + Week Range + Tabs + Add Button */}
+                    {/* Header: Title + Range + View switcher (Неделя/Месяц) + Nav buttons + Add Button */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{
@@ -882,16 +1012,135 @@ export function DashboardPage() {
                             </div>
                             <div>
                                 <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', lineHeight: 1.1 }}>
-                                    Планы на неделю
+                                    {plannerViewMode === 'month' ? 'Планы на месяц' : 'Планы на неделю'}
                                 </div>
                                 <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500, marginTop: 1 }}>
-                                    {weekRangeLabel}
+                                    {plannerViewMode === 'month' ? currentMonthLabel : weekRangeLabel}
                                 </div>
                             </div>
                         </div>
 
-                        {/* Tabs + Add Button */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {/* Navigation arrows (prev/today/next) + Mode switcher + Add button */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            {/* Arrows for week / month shifting */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'var(--bg-light)', padding: 2, borderRadius: 8 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (plannerViewMode === 'month') {
+                                            if (calMonth === 0) {
+                                                setCalMonth(11);
+                                                setCalYear(y => y - 1);
+                                            } else {
+                                                setCalMonth(m => m - 1);
+                                            }
+                                        } else {
+                                            setCurrentWeekOffset(o => o - 1);
+                                        }
+                                        setSelectedDayStr(null);
+                                    }}
+                                    title={plannerViewMode === 'month' ? 'Предыдущий месяц' : 'Предыдущая неделя'}
+                                    style={{
+                                        width: 26, height: 26, border: 'none', background: 'transparent',
+                                        borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', color: 'var(--text)'
+                                    }}
+                                >
+                                    <ChevronLeft size={14} />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const now = new Date();
+                                        setCalYear(now.getFullYear());
+                                        setCalMonth(now.getMonth());
+                                        setCurrentWeekOffset(0);
+                                        setSelectedDayStr(todayStr);
+                                        setPlannerFilter('today');
+                                    }}
+                                    title="Текущая дата"
+                                    style={{
+                                        padding: '0 6px', height: 26, border: 'none', background: 'transparent',
+                                        borderRadius: 6, fontSize: 10, fontWeight: 600,
+                                        cursor: 'pointer', color: 'var(--text-secondary)'
+                                    }}
+                                >
+                                    Сегодня
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (plannerViewMode === 'month') {
+                                            if (calMonth === 11) {
+                                                setCalMonth(0);
+                                                setCalYear(y => y + 1);
+                                            } else {
+                                                setCalMonth(m => m + 1);
+                                            }
+                                        } else {
+                                            setCurrentWeekOffset(o => o + 1);
+                                        }
+                                        setSelectedDayStr(null);
+                                    }}
+                                    title={plannerViewMode === 'month' ? 'Следующий месяц' : 'Следующая неделя'}
+                                    style={{
+                                        width: 26, height: 26, border: 'none', background: 'transparent',
+                                        borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        cursor: 'pointer', color: 'var(--text)'
+                                    }}
+                                >
+                                    <ChevronRight size={14} />
+                                </button>
+                            </div>
+
+                            {/* View Switcher: Неделя / Месяц */}
+                            <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 2, borderRadius: 8, gap: 2 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPlannerViewMode('week');
+                                        if (plannerFilter === 'month') {
+                                            setPlannerFilter('week');
+                                        }
+                                    }}
+                                    style={{
+                                        padding: '4px 8px',
+                                        borderRadius: 6,
+                                        border: 'none',
+                                        background: plannerViewMode === 'week' ? 'var(--surface)' : 'transparent',
+                                        color: plannerViewMode === 'week' ? 'var(--primary)' : 'var(--text-muted)',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        boxShadow: plannerViewMode === 'week' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    }}
+                                >
+                                    Неделя
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPlannerViewMode('month');
+                                        setPlannerFilter('month');
+                                        setSelectedDayStr(null);
+                                    }}
+                                    style={{
+                                        padding: '4px 8px',
+                                        borderRadius: 6,
+                                        border: 'none',
+                                        background: plannerViewMode === 'month' ? 'var(--surface)' : 'transparent',
+                                        color: plannerViewMode === 'month' ? 'var(--primary)' : 'var(--text-muted)',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        boxShadow: plannerViewMode === 'month' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                    }}
+                                >
+                                    Месяц
+                                </button>
+                            </div>
+
+                            {/* Filter quick tabs */}
                             <div style={{ display: 'flex', background: 'var(--bg-light)', padding: 2, borderRadius: 8, gap: 2 }}>
                                 <button
                                     type="button"
@@ -909,23 +1158,6 @@ export function DashboardPage() {
                                     }}
                                 >
                                     Сегодня {todayPending > 0 ? `(${todayPending})` : ''}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => { setPlannerFilter('week'); setSelectedDayStr(null); }}
-                                    style={{
-                                        padding: '4px 8px',
-                                        borderRadius: 6,
-                                        border: 'none',
-                                        background: (plannerFilter === 'week' && !selectedDayStr) ? 'var(--surface)' : 'transparent',
-                                        color: (plannerFilter === 'week' && !selectedDayStr) ? 'var(--primary)' : 'var(--text-muted)',
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        boxShadow: (plannerFilter === 'week' && !selectedDayStr) ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                                    }}
-                                >
-                                    Неделя
                                 </button>
                                 {overdueCount > 0 && (
                                     <button
@@ -968,98 +1200,211 @@ export function DashboardPage() {
                         </div>
                     </div>
 
-                    {/* Week Strip (Пн - Вс) with Calendar track */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(7, 1fr)',
-                        gap: 4,
-                        padding: '6px 4px',
-                        background: 'var(--bg-light)',
-                        borderRadius: 12,
-                    }}>
-                        {weekDays.map(d => {
-                            const isSelected = selectedDayStr === d.dateStr || (plannerFilter === 'today' && d.isToday && !selectedDayStr);
-                            const dayCounts = dayTaskCounts[d.dateStr] || { total: 0, pending: 0, done: 0 };
-                            return (
-                                <button
-                                    key={d.dateStr}
-                                    type="button"
-                                    onClick={() => {
-                                        if (selectedDayStr === d.dateStr) {
-                                            setSelectedDayStr(null);
-                                            setPlannerFilter('week');
-                                        } else {
-                                            setSelectedDayStr(d.dateStr);
-                                            setPlannerFilter('selectedDay');
-                                        }
-                                    }}
-                                    style={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        padding: '6px 2px',
-                                        borderRadius: 8,
-                                        border: isSelected
-                                            ? 'none'
-                                            : d.isToday
-                                                ? '1.5px solid var(--primary)'
-                                                : '1px solid transparent',
-                                        background: isSelected
-                                            ? 'var(--primary)'
-                                            : d.isToday
-                                                ? 'var(--surface)'
-                                                : 'transparent',
-                                        color: isSelected
-                                            ? 'white'
-                                            : d.isToday
+                    {/* View mode 1: Week Strip (Пн - Вс) */}
+                    {plannerViewMode === 'week' && (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(7, 1fr)',
+                            gap: 4,
+                            padding: '6px 4px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 12,
+                        }}>
+                            {weekDays.map(d => {
+                                const isSelected = selectedDayStr === d.dateStr || (plannerFilter === 'today' && d.isToday && !selectedDayStr);
+                                const dayCounts = dayTaskCounts[d.dateStr] || { total: 0, pending: 0, done: 0 };
+                                return (
+                                    <button
+                                        key={d.dateStr}
+                                        type="button"
+                                        onClick={() => {
+                                            if (selectedDayStr === d.dateStr) {
+                                                setSelectedDayStr(null);
+                                                setPlannerFilter('week');
+                                            } else {
+                                                setSelectedDayStr(d.dateStr);
+                                                setPlannerFilter('selectedDay');
+                                            }
+                                        }}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            padding: '6px 2px',
+                                            borderRadius: 8,
+                                            border: isSelected
+                                                ? 'none'
+                                                : d.isToday
+                                                    ? '1.5px solid var(--primary)'
+                                                    : '1px solid transparent',
+                                            background: isSelected
                                                 ? 'var(--primary)'
-                                                : 'var(--text)',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s ease',
-                                        minWidth: 0,
-                                        boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
-                                    }}
-                                >
-                                    <span style={{
-                                        fontSize: 9,
-                                        fontWeight: 600,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.02em',
-                                        opacity: isSelected ? 0.9 : 0.6,
-                                    }}>
-                                        {d.dayName}
-                                    </span>
-                                    <span className="font-oswald" style={{
-                                        fontSize: 14,
-                                        fontWeight: isSelected || d.isToday ? 600 : 400,
-                                        marginTop: 1,
-                                        lineHeight: 1.1,
-                                    }}>
-                                        {d.dayNumber}
-                                    </span>
-                                    <div style={{ height: 4, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        {dayCounts.pending > 0 ? (
-                                            <span style={{
-                                                width: 4,
-                                                height: 4,
-                                                borderRadius: '50%',
-                                                background: isSelected ? 'white' : 'var(--primary)',
-                                            }} />
-                                        ) : dayCounts.done > 0 ? (
-                                            <span style={{
-                                                width: 4,
-                                                height: 4,
-                                                borderRadius: '50%',
-                                                background: isSelected ? 'white' : '#10b981',
-                                                opacity: 0.8,
-                                            }} />
-                                        ) : null}
+                                                : d.isToday
+                                                    ? 'var(--surface)'
+                                                    : 'transparent',
+                                            color: isSelected
+                                                ? 'white'
+                                                : d.isToday
+                                                    ? 'var(--primary)'
+                                                    : 'var(--text)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                            minWidth: 0,
+                                            boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
+                                        }}
+                                    >
+                                        <span style={{
+                                            fontSize: 9,
+                                            fontWeight: 600,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.02em',
+                                            opacity: isSelected ? 0.9 : 0.6,
+                                        }}>
+                                            {d.dayName}
+                                        </span>
+                                        <span className="font-oswald" style={{
+                                            fontSize: 14,
+                                            fontWeight: isSelected || d.isToday ? 600 : 400,
+                                            marginTop: 1,
+                                            lineHeight: 1.1,
+                                        }}>
+                                            {d.dayNumber}
+                                        </span>
+                                        <div style={{ height: 4, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {dayCounts.pending > 0 ? (
+                                                <span style={{
+                                                    width: 4,
+                                                    height: 4,
+                                                    borderRadius: '50%',
+                                                    background: isSelected ? 'white' : 'var(--primary)',
+                                                }} />
+                                            ) : dayCounts.done > 0 ? (
+                                                <span style={{
+                                                    width: 4,
+                                                    height: 4,
+                                                    borderRadius: '50%',
+                                                    background: isSelected ? 'white' : '#10b981',
+                                                    opacity: 0.8,
+                                                }} />
+                                            ) : null}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* View mode 2: Month Grid */}
+                    {plannerViewMode === 'month' && (
+                        <div style={{
+                            padding: '8px 6px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 12,
+                        }}>
+                            {/* Days of week header */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, marginBottom: 4 }}>
+                                {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((dn, idx) => (
+                                    <div
+                                        key={dn}
+                                        style={{
+                                            textAlign: 'center',
+                                            fontSize: 9,
+                                            fontWeight: 600,
+                                            color: idx >= 5 ? '#ef4444' : 'var(--text-secondary)',
+                                            opacity: idx >= 5 ? 0.85 : 0.6,
+                                        }}
+                                    >
+                                        {dn}
                                     </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                                ))}
+                            </div>
+
+                            {/* Calendar Days Cells */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3 }}>
+                                {monthDaysGrid.map((c, idx) => {
+                                    if (!c) {
+                                        return <div key={`empty-${idx}`} style={{ minHeight: 32 }} />;
+                                    }
+                                    const isSelected = selectedDayStr === c.dateStr;
+                                    const hasEvents = plannerItems.some(i => i.dateStr === c.dateStr);
+                                    const pendingEvents = plannerItems.filter(i => i.dateStr === c.dateStr && !i.isDone).length;
+                                    const doneEvents = plannerItems.filter(i => i.dateStr === c.dateStr && i.isDone).length;
+
+                                    return (
+                                        <button
+                                            key={c.dateStr}
+                                            type="button"
+                                            onClick={() => {
+                                                if (selectedDayStr === c.dateStr) {
+                                                    setSelectedDayStr(null);
+                                                    setPlannerFilter('month');
+                                                } else {
+                                                    setSelectedDayStr(c.dateStr);
+                                                    setPlannerFilter('selectedDay');
+                                                }
+                                            }}
+                                            style={{
+                                                minHeight: 32,
+                                                padding: '4px 2px',
+                                                borderRadius: 7,
+                                                border: isSelected
+                                                    ? 'none'
+                                                    : c.isToday
+                                                        ? '1.5px solid var(--primary)'
+                                                        : '1px solid transparent',
+                                                background: isSelected
+                                                    ? 'var(--primary)'
+                                                    : c.isToday
+                                                        ? 'var(--surface)'
+                                                        : 'transparent',
+                                                color: isSelected
+                                                    ? 'white'
+                                                    : c.isToday
+                                                        ? 'var(--primary)'
+                                                        : c.isWeekend
+                                                            ? '#ef4444'
+                                                            : 'var(--text)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s ease',
+                                                boxShadow: isSelected ? '0 2px 6px rgba(0, 82, 255, 0.25)' : 'none',
+                                            }}
+                                        >
+                                            <span className="font-oswald" style={{
+                                                fontSize: 12,
+                                                fontWeight: isSelected || c.isToday ? 600 : 400,
+                                                lineHeight: 1,
+                                            }}>
+                                                {c.dayNumber}
+                                            </span>
+                                            <div style={{ height: 4, marginTop: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {pendingEvents > 0 ? (
+                                                    <span style={{
+                                                        width: 4,
+                                                        height: 4,
+                                                        borderRadius: '50%',
+                                                        background: isSelected ? 'white' : 'var(--primary)',
+                                                    }} />
+                                                ) : doneEvents > 0 ? (
+                                                    <span style={{
+                                                        width: 4,
+                                                        height: 4,
+                                                        borderRadius: '50%',
+                                                        background: isSelected ? 'white' : '#10b981',
+                                                        opacity: 0.8,
+                                                    }} />
+                                                ) : null}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Task list inside the card */}
                     {displayedItems.length === 0 ? (
@@ -1556,22 +1901,66 @@ export function DashboardPage() {
 
                         {/* Client selector */}
                         <div>
-                            <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
-                                Клиент
-                            </label>
-                            <select
-                                className="form-input"
-                                style={{ height: 42, borderRadius: 10, fontSize: 13 }}
-                                value={taskModal.client_id}
-                                onChange={e => handleModalFieldChange('client_id', e.target.value)}
-                            >
-                                <option value="">— Без клиента —</option>
-                                {myClients.map(c => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.full_name} {c.phone ? `(${c.phone})` : ''}
-                                    </option>
-                                ))}
-                            </select>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
+                                    Клиент
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowNewTaskClient(v => !v)}
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                                        fontSize: 11, fontWeight: 600, color: showNewTaskClient ? 'var(--danger)' : 'var(--primary)',
+                                        background: 'transparent', border: 'none', cursor: 'pointer', padding: 0
+                                    }}
+                                >
+                                    {showNewTaskClient ? <><X size={12} /> Отмена</> : <><UserPlus size={12} /> + Новый клиент</>}
+                                </button>
+                            </div>
+
+                            {showNewTaskClient ? (
+                                <div style={{ background: 'var(--bg-light)', borderRadius: 12, padding: 10, border: '1px dashed var(--primary)', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
+                                    <input
+                                        className="form-input"
+                                        style={{ height: 38, fontSize: 13, borderRadius: 8 }}
+                                        placeholder="ФИО клиента *"
+                                        value={newTaskClientName}
+                                        onChange={e => setNewTaskClientName(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <input
+                                        type="tel"
+                                        inputMode="tel"
+                                        className="form-input"
+                                        style={{ height: 38, fontSize: 13, borderRadius: 8 }}
+                                        placeholder="+7 (___) ___-__-__"
+                                        value={newTaskClientPhone}
+                                        onChange={e => setNewTaskClientPhone(formatPhone(e.target.value, true))}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleCreateTaskClient}
+                                        className="btn btn-primary"
+                                        style={{ height: 36, borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                                    >
+                                        Создать и выбрать
+                                    </button>
+                                </div>
+                            ) : (
+                                <select
+                                    className="form-input"
+                                    style={{ height: 42, borderRadius: 10, fontSize: 13 }}
+                                    value={taskModal.client_id}
+                                    onChange={e => handleModalFieldChange('client_id', e.target.value)}
+                                >
+                                    <option value="">— Без клиента —</option>
+                                    {myClients.map(c => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.full_name} {c.phone ? `(${c.phone})` : ''}
+                                        </option>
+                                    ))}
+                                </select>
+                            )}
                         </div>
 
                         {/* Property selector */}
