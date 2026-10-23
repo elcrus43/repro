@@ -1,5 +1,49 @@
+const FOUR_DIGIT_CODES = [
+    '8332', // Киров
+    '8352', // Чебоксары
+    '8362', // Йошкар-Ола
+    '8342', // Саранск
+    '8412', // Пенза
+    '8422', // Ульяновск
+    '8482', // Тольятти
+    '8552', // Набережные Челны
+    '8793', // Пятигорск
+    '8142', // Петрозаводск
+    '8152', // Мурманск
+    '8162', // Новгород
+    '8172', // Вологда
+    '8182', // Архангельск
+    '8202', // Череповец
+    '8212', // Сыктывкар
+    '4852', // Ярославль
+    '4922', // Владимир
+    '4822', // Тверь
+    '4912', // Рязань
+    '4842', // Калуга
+    '4872', // Тула
+    '4732', // Воронеж
+    '4712', // Курск
+    '4722', // Белгород
+    '4742', // Липецк
+    '4752', // Тамбов
+    '4812', // Смоленск
+    '4832', // Брянск
+    '4862', // Орел
+    '4932', // Иваново
+    '4942', // Кострома
+    '3432', // Екатеринбург
+    '3512', // Челябинск
+    '3832', // Новосибирск
+    '3812', // Омск
+    '3852', // Барнаул
+    '3912', // Красноярск
+    '3952', // Иркутск
+    '4212', // Хабаровск
+    '4232'  // Владивосток
+];
+
 /**
- * Formats a phone string to +7 (xxx) xxx-xx-xx
+ * Formats a phone string to +7 (xxx) xxx-xx-xx or +7 (xxxx) xx-xx-xx (for direct city numbers)
  * @param {string} phone
  * @param {boolean} inputMode - if true, returns partial formatting for live input
  * @returns {string}
@@ -24,9 +68,14 @@ export function formatPhone(phone, inputMode = false) {
     let digits = trimmed.replace(/\D/g, '');
     if (!digits) return '';
 
-    // Handle double country code that occurs when pasting into existing "+7 ("
+    // Direct 6-digit city number (e.g. 450103 or 45-01-03) -> expand with Kirov code 8332
+    if (digits.length === 6 && !trimmed.startsWith('+') && !trimmed.startsWith('7') && !trimmed.startsWith('8') && !trimmed.startsWith('9')) {
+        digits = '8332' + digits;
+    }
+
+    // Handle double country code that occurs when pasting into existing "+7 (" (12+ digits)
     // e.g. "+7 (8912..." -> digits: "78912..." (12 digits) or "+7 (+7912..." -> "77912..."
-    if (digits.length >= 11 && (digits.startsWith('77') || digits.startsWith('78'))) {
+    if (digits.length >= 12 && (digits.startsWith('77') || digits.startsWith('78'))) {
         digits = digits.slice(2);
     } else if (digits.length >= 11 && (digits.startsWith('7') || digits.startsWith('8'))) {
         digits = digits.slice(1);
@@ -40,6 +89,18 @@ export function formatPhone(phone, inputMode = false) {
     const len = d.length;
     if (len === 0) return inputMode ? '+7 (' : '';
 
+    const is4Digit = FOUR_DIGIT_CODES.some(code => d.startsWith(code));
+
+    if (is4Digit) {
+        let result = '+7 ';
+        result += `(${d.substring(0, Math.min(4, len))}`;
+        if (len >= 4) result += ') ';
+        if (len > 4) result += d.substring(4, Math.min(6, len));
+        if (len > 6) result += `-${d.substring(6, Math.min(8, len))}`;
+        if (len > 8) result += `-${d.substring(8, 10)}`;
+        return result;
+    }
+
     let result = '+7 ';
     result += `(${d.substring(0, Math.min(3, len))}`;
     if (len > 3) result += `) ${d.substring(3, Math.min(6, len))}`;
@@ -50,7 +111,7 @@ export function formatPhone(phone, inputMode = false) {
 }
 
 /**
- * Strips phone to digits for storage (e.g. 79998887766)
+ * Strips phone to digits for storage (e.g. 79998887766 or 78332450103)
  */
 export function stripPhone(phone) {
     if (!phone) return '';
@@ -58,6 +119,10 @@ export function stripPhone(phone) {
     if (!clean) return '';
     if (clean.length >= 12 && (clean.startsWith('77') || clean.startsWith('78'))) {
         clean = clean.substring(1);
+    }
+    // 6-digit local city number -> auto-prepend Kirov code 8332
+    if (clean.length === 6) {
+        return '78332' + clean;
     }
     if (clean.length === 10) return '7' + clean;
     if (clean.length === 11 && (clean.startsWith('8') || clean.startsWith('7'))) return '7' + clean.substring(1);

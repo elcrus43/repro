@@ -21,7 +21,8 @@ import {
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
     Upload, Calculator, Ruler, ArrowUpCircle, Briefcase,
-    Calendar, Users, Zap, User, AlertTriangle, Package
+    Calendar, Users, Zap, User, AlertTriangle, Package,
+    UserPlus, PieChart
 } from 'lucide-react';
 
 // Cloudinary конфигурация
@@ -786,6 +787,7 @@ export function FormPage() {
                                 <option value="meeting">Встреча</option>
                                 <option value="agreement">АД (агент. договор)</option>
                                 <option value="advertising">В рекламе</option>
+                                <option value="selection">Подбор</option>
                                 <option value="deposit">Задаток</option>
                                 <option value="deal">Сделка</option>
                             </select>
@@ -794,60 +796,220 @@ export function FormPage() {
                 </FormCard>
 
                 {/* Владельцы (Позиция №2) */}
-                <FormCard title="Владельцы и Агент" icon={<Users size={22} />} description="Выберите собственников и привязанного агента">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                        <div>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 6, display: 'block' }}>Собственники</label>
+                <FormCard title="Владельцы и Агент" icon={<Users size={20} />} description="Собственники объекта, доли владения и ответственный агент">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                        {/* ── Блок 1: Собственники ── */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label className="form-label" style={{ fontWeight: 400, fontSize: 13, margin: 0, color: 'var(--text)' }}>
+                                    Собственники
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuickOwnerForm(true)}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5,
+                                        padding: '5px 12px',
+                                        borderRadius: 8,
+                                        border: '1px solid rgba(0, 82, 255, 0.15)',
+                                        background: 'rgba(0, 82, 255, 0.06)',
+                                        color: 'var(--primary)',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    title="Создать нового собственника"
+                                >
+                                    <UserPlus size={13} />
+                                    <span>+ Создать собственника</span>
+                                </button>
+                            </div>
+
                             <MultiClientSelector 
                                 selectedIds={form.client_ids || []}
                                 onChange={ids => setF('client_ids', ids)}
                                 clients={state.clients || []}
+                                placeholder="Выберите собственников объекта..."
                             />
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 8 }}
-                                onClick={() => setShowQuickOwnerForm(true)}
-                            >
-                                + Создать нового собственника
-                            </button>
+
+                            {/* Доли в праве собственности (отображаются аккуратным блоком) */}
                             {form.client_ids && form.client_ids.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, padding: '12px', background: 'var(--bg-light)', borderRadius: 14 }}>
-                                    <label className="form-label" style={{ fontWeight: 500, fontSize: 11, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Доли в праве собственности:</label>
-                                    {form.client_ids.map(clientId => {
-                                        const client = state.clients.find(c => c.id === clientId);
-                                        if (!client) return null;
-                                        return (
-                                            <div key={clientId} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                <span style={{ fontSize: 13, flex: 1, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', fontWeight: 300 }}>{client.full_name}</span>
-                                                <input 
-                                                    type="text" 
-                                                    className="form-input" 
-                                                    style={{ width: 120, height: 34, borderRadius: 10, fontSize: 12, padding: '0 8px', border: '1px solid rgba(0,0,0,0.08)' }} 
-                                                    placeholder="Доля (напр. 1/2)" 
-                                                    value={form.client_shares?.[clientId] || ''} 
-                                                    onChange={e => {
-                                                        const newShares = { ...(form.client_shares || {}) };
-                                                        newShares[clientId] = e.target.value;
-                                                        setF('client_shares', newShares);
-                                                    }} 
-                                                />
-                                            </div>
-                                        );
-                                    })}
+                                <div style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    gap: 10, 
+                                    marginTop: 4, 
+                                    padding: '12px 14px', 
+                                    background: 'var(--bg-light)', 
+                                    borderRadius: 16,
+                                    border: '1px solid var(--border-light)'
+                                }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                            <PieChart size={13} style={{ color: 'var(--primary)' }} />
+                                            <span>Доли в праве собственности</span>
+                                        </div>
+                                        {form.client_ids.length === 1 && !form.client_shares?.[form.client_ids[0]] && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newShares = { ...(form.client_shares || {}) };
+                                                    newShares[form.client_ids[0]] = '1/1';
+                                                    setF('client_shares', newShares);
+                                                }}
+                                                style={{
+                                                    border: 'none',
+                                                    background: 'transparent',
+                                                    color: 'var(--primary)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    cursor: 'pointer',
+                                                    padding: 0
+                                                }}
+                                            >
+                                                Заполнить 1/1 (100%)
+                                            </button>
+                                        )}
+                                        {form.client_ids.length === 2 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newShares = { ...(form.client_shares || {}) };
+                                                    newShares[form.client_ids[0]] = '1/2';
+                                                    newShares[form.client_ids[1]] = '1/2';
+                                                    setF('client_shares', newShares);
+                                                }}
+                                                style={{
+                                                    border: 'none',
+                                                    background: 'transparent',
+                                                    color: 'var(--primary)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    cursor: 'pointer',
+                                                    padding: 0
+                                                }}
+                                            >
+                                                По 1/2
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {form.client_ids.map(clientId => {
+                                            const client = state.clients.find(c => c.id === clientId);
+                                            if (!client) return null;
+                                            const initials = client.full_name ? client.full_name.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() : '?';
+                                            return (
+                                                <div 
+                                                    key={clientId} 
+                                                    style={{ 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'space-between',
+                                                        gap: 12,
+                                                        padding: '8px 12px',
+                                                        background: 'var(--surface)',
+                                                        borderRadius: 12,
+                                                        border: '1px solid rgba(0,0,0,0.04)'
+                                                    }}
+                                                >
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                                        <div style={{
+                                                            width: 28, height: 28, borderRadius: '50%',
+                                                            background: 'rgba(0, 82, 255, 0.08)',
+                                                            color: 'var(--primary)',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            fontSize: 11, fontWeight: 600, flexShrink: 0
+                                                        }}>
+                                                            {initials}
+                                                        </div>
+                                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {client.full_name}
+                                                            </div>
+                                                            {client.phone && (
+                                                                <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                                                                    {formatPhone(client.phone)}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <input 
+                                                        type="text" 
+                                                        style={{ 
+                                                            width: 110, 
+                                                            height: 32, 
+                                                            borderRadius: 8, 
+                                                            fontSize: 12, 
+                                                            fontWeight: 500,
+                                                            textAlign: 'center',
+                                                            padding: '0 8px', 
+                                                            border: '1px solid var(--border)',
+                                                            background: 'var(--bg-light)',
+                                                            color: 'var(--text)',
+                                                            outline: 'none',
+                                                            boxSizing: 'border-box'
+                                                        }} 
+                                                        placeholder={form.client_ids.length === 1 ? '1/1' : 'напр. 1/2'} 
+                                                        value={form.client_shares?.[clientId] || ''} 
+                                                        onChange={e => {
+                                                            const newShares = { ...(form.client_shares || {}) };
+                                                            newShares[clientId] = e.target.value;
+                                                            setF('client_shares', newShares);
+                                                        }} 
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
                         </div>
-                        
+
+                        {/* Разделитель */}
+                        <div style={{ height: 1, background: 'var(--border-light)', margin: '2px 0' }} />
+
+                        {/* ── Блок 2: Агент объекта ── */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 2, display: 'block' }}>Агент объекта</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <label className="form-label" style={{ fontWeight: 400, fontSize: 13, margin: 0, color: 'var(--text)' }}>
+                                    Агент объекта
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowQuickAgentForm(true)}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5,
+                                        padding: '5px 12px',
+                                        borderRadius: 8,
+                                        border: '1px solid rgba(0, 82, 255, 0.15)',
+                                        background: 'rgba(0, 82, 255, 0.06)',
+                                        color: 'var(--primary)',
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s ease'
+                                    }}
+                                    title="Создать нового агента"
+                                >
+                                    <UserPlus size={13} />
+                                    <span>+ Создать агента</span>
+                                </button>
+                            </div>
+
                             <select 
                                 className="form-select" 
                                 value={form.agent_id || ''} 
                                 onChange={e => setF('agent_id', e.target.value || null)} 
-                                style={{ borderRadius: 14, height: 44, padding: '0 12px', width: '100%' }}
+                                style={{ borderRadius: 12, height: 42, padding: '0 12px', width: '100%', fontSize: 13 }}
                             >
-                                <option value="">Без агента</option>
+                                <option value="">Без привязанного агента</option>
                                 {(() => {
                                     const agents = (state.clients || []).filter(c => c.client_types?.includes('agent'));
                                     const seenNames = new Set();
@@ -863,14 +1025,6 @@ export function FormPage() {
                                     ));
                                 })()}
                             </select>
-                            <button 
-                                type="button" 
-                                className="btn btn-secondary" 
-                                style={{ width: '100%', fontSize: 13, height: 44, borderRadius: 14, marginTop: 4 }}
-                                onClick={() => setShowQuickAgentForm(true)}
-                            >
-                                + Создать нового агента
-                            </button>
                         </div>
                     </div>
                 </FormCard>

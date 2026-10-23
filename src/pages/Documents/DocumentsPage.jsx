@@ -11,6 +11,7 @@ import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, num
 import { formatPhone, stripPhone, parsePgArray } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
+import { GlobalSearch } from '../../components/GlobalSearch';
 
 /* ─── Иконки шаблонов ─────────────────────────────────────────────────────── */
 const TEMPLATE_ICONS = {
@@ -1402,31 +1403,37 @@ export function DocumentsPage() {
             <div className="topbar sticky no-print" style={{
                 background: 'var(--topbar-bg)',
                 backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px',
+                padding: '16px 20px',
                 borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 alignItems: 'center',
+                justifyContent: 'space-between',
                 gap: 16
             }}>
-                <button
-                    className="card-clickable"
-                    onClick={() => navigate(-1)}
-                    style={{
-                        width: 44, height: 44, borderRadius: 14, border: 'none',
-                        background: 'var(--surface)', color: 'var(--text)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', flexShrink: 0
-                    }}
-                >
-                    <ChevronLeft size={20} />
-                </button>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 20, fontWeight: 300 }}>
-                        Документы
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>
-                        Заполнение из CRM + DOCX
-                    </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                    <button
+                        className="card-clickable"
+                        onClick={() => navigate(-1)}
+                        style={{
+                            width: 40, height: 40, borderRadius: 12, border: 'none',
+                            background: 'var(--surface)', color: 'var(--text)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)', flexShrink: 0
+                        }}
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 20, fontWeight: 300 }}>
+                            Документы
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>
+                            Заполнение из CRM + DOCX
+                        </span>
+                    </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                    <GlobalSearch />
                 </div>
             </div>
 

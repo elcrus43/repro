@@ -17,6 +17,7 @@ import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
 import { initCalendarAuth } from '../lib/googleCalendar';
 import { neonDb } from '../lib/neon';
+import { useCallLogSync } from '../hooks/useCallLogSync';
 
 /* ─── Cache helpers ────────────────────────────────────────────────────────── */
 const CACHE_KEY = (userId) => `rm_cache_${userId}`;
@@ -315,9 +316,20 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={contextValue}>
+      <CallLogSyncBridge />
       {children}
     </AppContext.Provider>
   );
+}
+
+/**
+ * CallLogSyncBridge — компонент, живущий внутри AppContext.Provider.
+ * Вызывает useCallLogSync(), который использует useApp().
+ * Рендерит null — нужен только для side-effects.
+ */
+function CallLogSyncBridge() {
+  useCallLogSync();
+  return null;
 }
 
 /* ─── Hook ─────────────────────────────────────────────────────────────────── */

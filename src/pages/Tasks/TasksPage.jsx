@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Pencil, Trash, Calendar, Phone, User, Plus, CheckCircle, Activity, Clock, ChevronRight } from 'lucide-react';
+import { Pencil, Trash, Calendar, Phone, User, Plus, CheckCircle, Activity, Clock, ChevronRight, PhoneIncoming, PhoneOutgoing, PhoneMissed, Smartphone } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { nanoid } from '../../utils/nanoid';
@@ -29,6 +29,17 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
     const client = task.client_id ? state.clients.find(c => c.id === task.client_id) : null;
     const prop = task.property_id ? state.properties.find(p => p.id === task.property_id) : null;
     const priorColors = { high: 'var(--danger)', medium: 'var(--warning)', low: 'var(--success)' };
+
+    // Метаданные для импортированных звонков с Android
+    const isImported = task.imported_from === 'android_calllog';
+    const callTypeIcon = isImported ? {
+        incoming: <PhoneIncoming size={12} color="var(--success)" />,
+        outgoing: <PhoneOutgoing size={12} color="var(--primary)" />,
+        missed:   <PhoneMissed  size={12} color="var(--danger)"  />,
+    }[task.call_type] || <Phone size={12} /> : null;
+    const callDurationLabel = isImported && task.call_duration > 0
+        ? `${Math.floor(task.call_duration / 60)}м ${task.call_duration % 60}с`
+        : null;
     
     return (
         <div style={{ display: 'flex', gap: 16, padding: '16px 0', borderBottom: '1px solid var(--border-light)', alignItems: 'flex-start' }}>
@@ -44,14 +55,21 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                 {task.status === 'done' ? '✓' : ''}
             </button>
             <div style={{ flex: 1 }}>
-                <div className="font-oswald" style={{ 
-                    fontWeight: 300, fontSize: 16, letterSpacing: '0.02em',
-                    textDecoration: task.status === 'done' ? 'line-through' : 'none', 
-                    color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text)' 
-                }}>
-                    {task.title}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {isImported && (
+                        <span title="Импортировано из Android" style={{ flexShrink: 0 }}>
+                            <Smartphone size={12} color="var(--text-muted)" />
+                        </span>
+                    )}
+                    <div className="font-oswald" style={{ 
+                        fontWeight: 300, fontSize: 16, letterSpacing: '0.02em',
+                        textDecoration: task.status === 'done' ? 'line-through' : 'none', 
+                        color: task.status === 'done' ? 'var(--text-muted)' : 'var(--text)' 
+                    }}>
+                        {task.title}
+                    </div>
                 </div>
-                {task.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{task.description}</div>}
+                {task.description && <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2, whiteSpace: 'pre-line' }}>{task.description}</div>}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 12px', marginTop: 6 }}>
                     {client && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 300, color: 'var(--primary)' }}>
@@ -61,6 +79,20 @@ function TaskItem({ task, onToggle, onDelete, onEdit }) {
                     {task.due_date && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 300, color: 'var(--text-muted)' }}>
                             <Clock size={12} /> {new Date(task.due_date).toLocaleDateString('ru-RU')}
+                            {' '}
+                            {new Date(task.due_date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    )}
+                    {/* Метки для импортированных звонков */}
+                    {isImported && callTypeIcon && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 300, color: 'var(--text-muted)' }}>
+                            {callTypeIcon}
+                            {task.call_type === 'incoming' ? 'Входящий' : task.call_type === 'outgoing' ? 'Исходящий' : 'Пропущенный'}
+                        </div>
+                    )}
+                    {callDurationLabel && (
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                            ⏱ {callDurationLabel}
                         </div>
                     )}
                 </div>

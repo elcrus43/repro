@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPhone, formatNumber } from '../../utils/format';
+import { formatPhone, formatNumber, stripPhone } from '../../utils/format';
 import { Phone, User, Home, Tag, Calendar, FileText } from 'lucide-react';
 
 const EXCLUDED_TYPES = ['developer', 'agent', 'lawyer'];
@@ -516,7 +516,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6, fontSize: 11 }}>
                       {client.phone && (
                         <a
-                          href={`tel:+${client.phone.replace(/\D/g, '')}`}
+                          href={`tel:+${stripPhone(client.phone)}`}
                           onClick={(e) => e.stopPropagation()}
                           style={{
                             display: 'inline-flex',

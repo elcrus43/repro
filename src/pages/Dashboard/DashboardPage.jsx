@@ -10,6 +10,7 @@ import {
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone } from '../../utils/format';
+import { GlobalSearch } from '../../components/GlobalSearch';
 
 export function DashboardPage() {
     const { state, dispatch } = useApp();
@@ -797,8 +798,8 @@ export function DashboardPage() {
                 backdropFilter: 'none', 
                 position: 'relative' 
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div className="fade-in" style={{ animationDelay: '0.1s' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+                    <div className="fade-in" style={{ animationDelay: '0.1s', flexShrink: 0 }}>
                         <h1 className="font-oswald" style={{ fontSize: 26, fontWeight: 300, color: 'var(--text)', lineHeight: 1.1, letterSpacing: '-0.02em' }}>
                             Привет, {user.full_name?.split(' ')[1] || user.full_name?.split(' ')[0] || user.full_name}!
                         </h1>
@@ -812,17 +813,21 @@ export function DashboardPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="card-clickable" style={{
-                        width: 44, height: 44, borderRadius: 14,
-                        background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
-                        color: 'white',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 14, fontWeight: 400,
-                        boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)',
-                        border: '2px solid white',
-                        fontFamily: "'Oswald', sans-serif"
-                    }} onClick={() => navigate('/profile')}>
-                        {user.full_name?.split(' ').map(n => n[0]).join('')}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                        <GlobalSearch style={{ maxWidth: 340 }} />
+                        <div className="card-clickable" style={{
+                            width: 40, height: 40, borderRadius: 12,
+                            background: 'linear-gradient(135deg, var(--primary) 0%, #003db3 100%)', 
+                            color: 'white',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 14, fontWeight: 400,
+                            boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)',
+                            border: '2px solid white',
+                            fontFamily: "'Oswald', sans-serif",
+                            flexShrink: 0
+                        }} onClick={() => navigate('/profile')}>
+                            {user.full_name?.split(' ').map(n => n[0]).join('')}
+                        </div>
                     </div>
                 </div>
             </div>

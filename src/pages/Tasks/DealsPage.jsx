@@ -9,6 +9,7 @@ import { DealChat } from '../../components/DealChat';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
 import { DealLocationSelect, saveDealLocation } from '../../components/DealLocationSelect';
+import { GlobalSearch } from '../../components/GlobalSearch';
 import { neonDb } from '../../lib/neon';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone, parsePgArray } from '../../utils/format';
@@ -591,8 +592,8 @@ export function DealsPage() {
                 gap: 10,
                 height: 'auto'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                         <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Сделки</span>
                         {/* Compact Inline Month Selector */}
                         <div style={{ 
@@ -626,26 +627,30 @@ export function DealsPage() {
                         </div>
                     </div>
 
-                    <button 
-                        className="card-clickable" 
-                        onClick={() => { resetForm(); setShowForm(!showForm); }} 
-                        style={{ 
-                            height: 36, 
-                            padding: '0 14px', 
-                            borderRadius: 10, 
-                            background: 'var(--primary)', 
-                            color: 'white', 
-                            border: 'none', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 6, 
-                            fontSize: 13, 
-                            fontWeight: 600 
-                        }}
-                    >
-                        <Plus size={16} />
-                        <span>Новая</span>
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
+                        <GlobalSearch />
+                        <button 
+                            className="card-clickable" 
+                            onClick={() => { resetForm(); setShowForm(!showForm); }} 
+                            style={{ 
+                                height: 38, 
+                                padding: '0 14px', 
+                                borderRadius: 10, 
+                                background: 'var(--primary)', 
+                                color: 'white', 
+                                border: 'none', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 6, 
+                                fontSize: 13, 
+                                fontWeight: 600,
+                                flexShrink: 0 
+                            }}
+                        >
+                            <Plus size={16} />
+                            <span>Новая</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 

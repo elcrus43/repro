@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, stripPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
 import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList, FileText } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -108,9 +108,10 @@ export function ListPage() {
                 const phones = c.phones || [c.phone];
                 const inn = c.inn || c.company_details?.inn || '';
                 const authName = c.authorized_person?.name || '';
+                const cleanSearch = search.replace(/\D/g, '');
                 return !search || 
                     c.full_name?.toLowerCase().includes(search.toLowerCase()) || 
-                    phones.some(p => p?.includes(search)) ||
+                    phones.some(p => p && (p.includes(search) || formatPhone(p).includes(search) || (cleanSearch.length >= 3 && stripPhone(p).includes(cleanSearch)))) ||
                     inn.includes(search) ||
                     authName.toLowerCase().includes(search.toLowerCase());
             })
@@ -184,12 +185,12 @@ export function ListPage() {
                 gap: 16,
                 height: 'auto'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Клиенты</span>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.75, letterSpacing: '0.02em' }}>База контактов</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
                         <GlobalSearch />
                         {(() => {
                             const isPipelineAllowed = !['developer', 'agent', 'lawyer'].includes(filter);
@@ -204,23 +205,25 @@ export function ListPage() {
                                     disabled={!isPipelineAllowed}
                                     title={isPipelineAllowed ? (viewMode === 'list' ? 'Воронка клиентов' : 'Список контактов') : 'Воронка доступна для покупателей, продавцов и аренды'}
                                     style={{
-                                        width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)',
+                                        width: 40, height: 40, borderRadius: 12, border: '1px solid var(--border)',
                                         background: 'var(--surface)', color: 'var(--text)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         cursor: isPipelineAllowed ? 'pointer' : 'not-allowed',
-                                        opacity: isPipelineAllowed ? 1 : 0.4
+                                        opacity: isPipelineAllowed ? 1 : 0.4,
+                                        flexShrink: 0
                                     }}
                                 >
-                                    {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                                    {viewMode === 'list' ? <Columns3 size={18} /> : <LayoutList size={18} />}
                                 </button>
                             );
                         })()}
                         <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
-                            width: 44, height: 44, borderRadius: 12, border: 'none', 
+                            width: 40, height: 40, borderRadius: 12, border: 'none', 
                             background: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)'
+                            cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',
+                            flexShrink: 0
                         }}>
-                            <Plus size={22} />
+                            <Plus size={20} />
                         </button>
                     </div>
                 </div>

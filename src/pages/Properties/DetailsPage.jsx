@@ -1268,6 +1268,7 @@ export function DetailsPage() {
                             { id: 'meeting',     label: 'Встреча',    color: '#3b82f6' },
                             { id: 'agreement',   label: 'АД',         color: '#f59e0b' },
                             { id: 'advertising', label: 'Реклама',   color: '#8b5cf6' },
+                            { id: 'selection',   label: 'Подбор',     color: '#06b6d4' },
                             { id: 'deposit',     label: 'Задаток',   color: '#10b981' },
                             { id: 'deal',        label: 'Сделка',     color: '#22c55e' },
                         ];
@@ -1331,7 +1332,7 @@ export function DetailsPage() {
                                 onClick={() => setShowAdGen(true)}
                                 title="Генератор текста объявления"
                             >
-                                <Sparkles size={14} style={{ color: 'var(--primary)' }} />
+                                <Sparkles size={14} style={{ color: '#4f46e5', flexShrink: 0 }} />
                                 <span>Объявление</span>
                             </button>
 
@@ -1340,7 +1341,7 @@ export function DetailsPage() {
                                 onClick={() => setShowBannerGen(true)}
                                 title="Создать баннер для соцсетей"
                             >
-                                <ImageIcon size={14} style={{ color: '#f59e0b' }} />
+                                <ImageIcon size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
                                 <span>Баннер</span>
                             </button>
 
@@ -1349,7 +1350,7 @@ export function DetailsPage() {
                                 onClick={() => setShowPortfolio(true)}
                                 title="Портфолио и презентация объекта"
                             >
-                                <Briefcase size={14} style={{ color: '#8b5cf6' }} />
+                                <Briefcase size={14} style={{ color: '#8b5cf6', flexShrink: 0 }} />
                                 <span>Портфолио</span>
                             </button>
 
@@ -1358,11 +1359,560 @@ export function DetailsPage() {
                                 onClick={() => setShowCma(true)}
                                 title="Сравнительный маркетинговый анализ (СМА)"
                             >
-                                <TrendingDown size={14} style={{ color: '#10b981' }} />
+                                <TrendingDown size={14} style={{ color: '#10b981', flexShrink: 0 }} />
                                 <span>СМА</span>
                             </button>
                         </div>
                     </div>
+                </div>
+
+                {/* ── ЛИДЫ / ИНТЕРЕСОВАВШИЕСЯ КЛИЕНТЫ (ПОД КНОПКАМИ СМА) ── */}
+                <div id="leads-section" className="card" style={{ 
+                    padding: '20px 24px', 
+                    border: 'none', 
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
+                    borderRadius: 28, 
+                    background: 'var(--surface)' 
+                }}>
+                    {/* Header Row */}
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center', 
+                        flexWrap: 'wrap', 
+                        gap: 12,
+                        marginBottom: leads.length > 0 ? 14 : 0
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{
+                                width: 36, height: 36, borderRadius: 10,
+                                background: 'rgba(59, 130, 246, 0.1)',
+                                color: '#2563eb',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                <PhoneCall size={18} />
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <h3 className="font-oswald" style={{ margin: 0, fontWeight: 400, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                                    Лиды
+                                </h3>
+                                <span style={{
+                                    background: leads.length > 0 ? 'var(--primary-light)' : 'var(--bg-light)',
+                                    color: leads.length > 0 ? 'var(--primary)' : 'var(--text-secondary)',
+                                    padding: '2px 8px',
+                                    borderRadius: 10,
+                                    fontSize: 12,
+                                    fontWeight: 600
+                                }}>
+                                    {leads.length}
+                                </span>
+                            </div>
+                        </div>
+
+                        {leads.length > 0 && (
+                            <div style={{ position: 'relative', width: 220 }}>
+                                <input
+                                    type="text"
+                                    placeholder="Поиск лида..."
+                                    value={leadSearchQuery}
+                                    onChange={e => setLeadSearchQuery(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        height: 34,
+                                        padding: '0 10px 0 30px',
+                                        borderRadius: 10,
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--bg-light)',
+                                        color: 'var(--text)',
+                                        fontSize: 12,
+                                        outline: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                                <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                {leadSearchQuery && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setLeadSearchQuery('')}
+                                        style={{
+                                            position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                                            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                                            cursor: 'pointer', padding: 2, display: 'flex'
+                                        }}
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Filter Pills (only shown if there are leads) */}
+                    {leads.length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, marginBottom: 14, overflowX: 'auto', paddingBottom: 2 }}>
+                            {[
+                                { id: 'all', label: `Все (${leads.length})` },
+                                { id: 'Новый лид', label: 'Новые' },
+                                { id: 'Вх. звонок', label: 'Звонки' },
+                                { id: 'Назначен показ', label: 'Показы' },
+                                { id: 'Думает', label: 'Думают' },
+                                { id: 'Готов к сделке', label: 'Сделка' },
+                                { id: 'Отказ', label: 'Отказы' },
+                            ].map(filter => {
+                                const active = leadFilterStatus === filter.id;
+                                return (
+                                    <button
+                                        key={filter.id}
+                                        type="button"
+                                        onClick={() => setLeadFilterStatus(filter.id)}
+                                        style={{
+                                            padding: '4px 10px',
+                                            borderRadius: 14,
+                                            fontSize: 11,
+                                            fontWeight: 500,
+                                            border: active ? '1px solid var(--primary)' : '1px solid var(--border-light)',
+                                            background: active ? 'var(--primary-light)' : 'var(--bg-light)',
+                                            color: active ? 'var(--primary)' : 'var(--text-secondary)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                            whiteSpace: 'nowrap'
+                                        }}
+                                    >
+                                        {filter.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {/* Empty State: Sleek, compact banner */}
+                    {leads.length === 0 ? (
+                        <div style={{
+                            padding: '12px 16px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 14,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                            marginTop: 10
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <PhoneCall size={16} style={{ color: 'var(--primary)', opacity: 0.7, flexShrink: 0 }} />
+                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                    Пока нет зафиксированных звонков и обращений по объекту.
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => handleOpenAddLead()}
+                                style={{
+                                    border: 'none',
+                                    background: 'transparent',
+                                    color: 'var(--primary)',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    padding: '4px 8px',
+                                    whiteSpace: 'nowrap'
+                                }}
+                            >
+                                <Plus size={13} />
+                                <span>Добавить</span>
+                            </button>
+                        </div>
+                    ) : filteredLeads.length === 0 ? (
+                        <div style={{
+                            fontSize: 12,
+                            color: 'var(--text-secondary)',
+                            textAlign: 'center',
+                            padding: '18px 12px',
+                            background: 'var(--bg-light)',
+                            borderRadius: 14
+                        }}>
+                            По выбранным критериям обращений не найдено
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: 12 }}>
+                            {filteredLeads.map(lead => {
+                                const cfg = LEAD_STATUS_CONFIG[lead.status] || { bg: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'transparent', label: lead.status };
+                                const isExpanded = expandedLeadId === lead.client.id;
+                                const isPhoneCopied = copiedLeadPhoneId === lead.client.id;
+                                const cleanPhone = stripPhone(lead.client.phone);
+
+                                return (
+                                    <div
+                                        key={lead.client.id}
+                                        style={{
+                                            borderRadius: 16,
+                                            border: '1px solid var(--border)',
+                                            background: 'var(--surface)',
+                                            padding: '14px 16px',
+                                            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 10,
+                                            transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
+                                        }}
+                                    >
+                                        {/* Header: Client Info & Status Badge */}
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                                <div
+                                                    onClick={() => navigate(`/clients/${lead.client.id}`)}
+                                                    style={{
+                                                        width: 36,
+                                                        height: 36,
+                                                        borderRadius: '50%',
+                                                        background: 'rgba(59, 130, 246, 0.1)',
+                                                        color: 'var(--primary)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        fontSize: 13,
+                                                        fontWeight: 600,
+                                                        flexShrink: 0,
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Перейти в карточку клиента"
+                                                >
+                                                    {initials(lead.client.full_name)}
+                                                </div>
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div
+                                                        onClick={() => navigate(`/clients/${lead.client.id}`)}
+                                                        style={{
+                                                            fontSize: 14,
+                                                            fontWeight: 600,
+                                                            color: 'var(--text)',
+                                                            cursor: 'pointer',
+                                                            whiteSpace: 'nowrap',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis'
+                                                        }}
+                                                        title={lead.client.full_name}
+                                                    >
+                                                        {lead.client.full_name}
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 1, flexWrap: 'wrap' }}>
+                                                        <span style={{
+                                                            fontSize: 9,
+                                                            padding: '1px 5px',
+                                                            borderRadius: 4,
+                                                            background: 'rgba(59, 130, 246, 0.1)',
+                                                            color: '#2563eb',
+                                                            fontWeight: 600
+                                                        }}>
+                                                            Лид
+                                                        </span>
+                                                        {lead.source && lead.source.toLowerCase() !== 'лид' && lead.source.toLowerCase() !== 'lead' && (
+                                                            <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                                                                {lead.source}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <span style={{
+                                                    fontSize: 10,
+                                                    padding: '3px 7px',
+                                                    borderRadius: 6,
+                                                    background: cfg.bg,
+                                                    color: cfg.color,
+                                                    border: `1px solid ${cfg.border || 'transparent'}`,
+                                                    fontWeight: 600,
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                    {cfg.label}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleEditLead(lead)}
+                                                    style={{
+                                                        width: 26,
+                                                        height: 26,
+                                                        borderRadius: 6,
+                                                        border: '1px solid var(--border)',
+                                                        background: 'var(--surface)',
+                                                        color: 'var(--text-secondary)',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    title="Редактировать лид"
+                                                >
+                                                    <Pencil size={12} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Phone & Quick communication actions */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            background: 'var(--bg-light)',
+                                            padding: '6px 10px',
+                                            borderRadius: 10
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <Phone size={13} style={{ color: 'var(--text-secondary)' }} />
+                                                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>
+                                                    {formatPhone(lead.client.phone) || 'Номер не указан'}
+                                                </span>
+                                            </div>
+                                            {cleanPhone && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => copyLeadPhone(lead.client.id, lead.client.phone)}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            cursor: 'pointer',
+                                                            padding: 3,
+                                                            color: isPhoneCopied ? 'var(--success)' : 'var(--text-secondary)',
+                                                            display: 'flex',
+                                                            alignItems: 'center'
+                                                        }}
+                                                        title="Скопировать номер"
+                                                    >
+                                                        {isPhoneCopied ? <Check size={13} /> : <Copy size={13} />}
+                                                    </button>
+                                                    <a
+                                                        href={`tel:+${cleanPhone}`}
+                                                        style={{
+                                                            padding: '3px 7px',
+                                                            borderRadius: 6,
+                                                            background: 'var(--surface)',
+                                                            color: 'var(--primary)',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            textDecoration: 'none'
+                                                        }}
+                                                        title="Позвонить"
+                                                    >
+                                                        <PhoneCall size={12} />
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openWhatsApp(lead.client.phone, lead.client.full_name)}
+                                                        style={{
+                                                            border: 'none',
+                                                            padding: '3px 7px',
+                                                            borderRadius: 6,
+                                                            background: '#25D366',
+                                                            color: '#fff',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                        title="Написать в WhatsApp"
+                                                    >
+                                                        <MessageSquare size={12} />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Latest note / comment */}
+                                        {lead.comment && (
+                                            <div style={{
+                                                fontSize: 12,
+                                                color: 'var(--text-secondary)',
+                                                lineHeight: 1.4,
+                                                background: 'rgba(0,0,0,0.015)',
+                                                padding: '6px 10px',
+                                                borderRadius: 8,
+                                                borderLeft: '3px solid var(--primary-light)'
+                                            }}>
+                                                {lead.comment}
+                                            </div>
+                                        )}
+
+                                        {/* Touchpoints Summary & Expand Toggle */}
+                                        <div style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            fontSize: 11,
+                                            color: 'var(--text-muted)',
+                                            marginTop: 'auto',
+                                            paddingTop: 2
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                <Clock size={11} />
+                                                <span>
+                                                    {lead.lastDate ? formatDate(lead.lastDate) : 'Не указана'}
+                                                </span>
+                                                <span>•</span>
+                                                <span>{lead.sortedEvents.length} касаний</span>
+                                            </div>
+
+                                            {lead.sortedEvents.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setExpandedLeadId(isExpanded ? null : lead.client.id)}
+                                                    style={{
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        color: 'var(--primary)',
+                                                        fontSize: 11,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 2,
+                                                        padding: 0
+                                                    }}
+                                                >
+                                                    <span>{isExpanded ? 'Скрыть историю' : 'История'}</span>
+                                                    {isExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Expanded history details */}
+                                        {isExpanded && lead.sortedEvents.length > 0 && (
+                                            <div style={{
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 6,
+                                                paddingTop: 6,
+                                                borderTop: '1px dashed var(--border)'
+                                            }}>
+                                                {lead.sortedEvents.map(evt => (
+                                                    <div key={evt.id} style={{ fontSize: 11, background: 'var(--bg-light)', padding: '5px 8px', borderRadius: 6 }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-secondary)', marginBottom: 2 }}>
+                                                            <span style={{ fontWeight: 600 }}>
+                                                                {evt.event_type === 'call' ? '📞 Входящий звонок' : evt.event_type === 'showing' ? '🏠 Показ' : evt.event_type === 'meeting' ? '🤝 Встреча' : '📋 Событие'}
+                                                            </span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                <span>{formatDate(evt.showing_date)}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleEditLead(lead, evt)}
+                                                                    style={{
+                                                                        border: 'none',
+                                                                        background: 'transparent',
+                                                                        color: 'var(--primary)',
+                                                                        cursor: 'pointer',
+                                                                        padding: '1px 3px',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 2,
+                                                                        fontSize: 10
+                                                                    }}
+                                                                    title="Редактировать контакт"
+                                                                >
+                                                                    <Pencil size={10} />
+                                                                    <span>изм.</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        {evt.client_feedback && (
+                                                            <div style={{ color: 'var(--primary)', fontWeight: 500 }}>
+                                                                Статус: {LEAD_STATUS_CONFIG[evt.client_feedback]?.label || evt.client_feedback}
+                                                            </div>
+                                                        )}
+                                                        {evt.feedback_comment && (
+                                                            <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                {evt.feedback_comment}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Action buttons footer */}
+                                        <div style={{
+                                            display: 'flex',
+                                            gap: 6,
+                                            paddingTop: 6,
+                                            borderTop: '1px solid var(--border)',
+                                            marginTop: 2
+                                        }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenAddLead(lead.client)}
+                                                style={{
+                                                    flex: 1,
+                                                    height: 30,
+                                                    borderRadius: 6,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--surface)',
+                                                    color: 'var(--text)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 4,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Добавить новый звонок или показ для этого клиента"
+                                            >
+                                                <Plus size={11} />
+                                                <span>Новый контакт</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEditLead(lead)}
+                                                style={{
+                                                    height: 30,
+                                                    padding: '0 8px',
+                                                    borderRadius: 6,
+                                                    border: '1px solid var(--border)',
+                                                    background: 'var(--surface)',
+                                                    color: 'var(--text)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 4,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Редактировать данные лида"
+                                            >
+                                                <Pencil size={11} />
+                                                <span>Редактировать</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(`/tasks/new?property_id=${id}&client_id=${lead.client.id}`)}
+                                                style={{
+                                                    height: 30,
+                                                    padding: '0 8px',
+                                                    borderRadius: 6,
+                                                    border: 'none',
+                                                    background: 'var(--primary-light)',
+                                                    color: 'var(--primary)',
+                                                    fontSize: 11,
+                                                    fontWeight: 500,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 4,
+                                                    cursor: 'pointer'
+                                                }}
+                                                title="Поставить задачу по клиенту"
+                                            >
+                                                <Clock size={11} />
+                                                <span>Задача</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {/* ── ХАРАКТЕРИСТИКИ ОБЪЕКТА (КОМПАКТНЫЙ ЕДИНЫЙ БЛОК) ── */}
@@ -2610,558 +3160,6 @@ export function DetailsPage() {
                 {/* <NewBuildsSelection currentProp={prop} allProperties={state.properties} onNavigate={navigate} /> */}
 
                     </div>
-                </div>
-
-                {/* ── ЛИДЫ / ИНТЕРЕСОВАВШИЕСЯ КЛИЕНТЫ ── */}
-                <div id="leads-section" className="card" style={{ padding: '24px 28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)', marginTop: 24 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{
-                                width: 40, height: 40, borderRadius: 12,
-                                background: 'rgba(59, 130, 246, 0.1)',
-                                color: '#2563eb',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center'
-                            }}>
-                                <PhoneCall size={22} />
-                            </div>
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <h3 className="font-oswald" style={{ margin: 0, fontWeight: 400, fontSize: 20, letterSpacing: '0.02em', color: 'var(--text)' }}>
-                                        Интересовавшиеся клиенты (Лиды)
-                                    </h3>
-                                    <span style={{
-                                        background: 'var(--primary-light)',
-                                        color: 'var(--primary)',
-                                        padding: '2px 10px',
-                                        borderRadius: 12,
-                                        fontSize: 13,
-                                        fontWeight: 600
-                                    }}>
-                                        {leads.length}
-                                    </span>
-                                </div>
-                                <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                    Клиенты, звонившие по объявлению, запрашивавшие показ или интересовавшиеся этим объектом
-                                </div>
-                            </div>
-                        </div>
-
-                        <button
-                            type="button"
-                            className="card-clickable"
-                            onClick={() => handleOpenAddLead()}
-                            style={{
-                                height: 40,
-                                padding: '0 16px',
-                                borderRadius: 12,
-                                border: 'none',
-                                background: 'var(--primary)',
-                                color: '#fff',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                fontSize: 13,
-                                fontWeight: 500,
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-                            }}
-                        >
-                            <UserPlus size={16} />
-                            <span>Зафиксировать звонок / лид</span>
-                        </button>
-                    </div>
-
-                    {/* Filter Pills and Search */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            {[
-                                { id: 'all', label: `Все (${leads.length})` },
-                                { id: 'Новый лид', label: 'Новые' },
-                                { id: 'Вх. звонок', label: 'Звонки' },
-                                { id: 'Назначен показ', label: 'Показы' },
-                                { id: 'Думает', label: 'Думают' },
-                                { id: 'Готов к сделке', label: 'Готовы к сделке' },
-                                { id: 'Отказ', label: 'Отказы' },
-                            ].map(filter => {
-                                const active = leadFilterStatus === filter.id;
-                                return (
-                                    <button
-                                        key={filter.id}
-                                        type="button"
-                                        onClick={() => setLeadFilterStatus(filter.id)}
-                                        style={{
-                                            padding: '6px 14px',
-                                            borderRadius: 20,
-                                            fontSize: 12,
-                                            fontWeight: 500,
-                                            border: active ? '1px solid var(--primary)' : '1px solid var(--border)',
-                                            background: active ? 'var(--primary-light)' : 'transparent',
-                                            color: active ? 'var(--primary)' : 'var(--text-secondary)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease'
-                                        }}
-                                    >
-                                        {filter.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
-                        <div style={{ position: 'relative', minWidth: 220, flex: '1 1 220px', maxWidth: 360 }}>
-                            <input
-                                type="text"
-                                placeholder="Поиск по имени, номеру, комментарию..."
-                                value={leadSearchQuery}
-                                onChange={e => setLeadSearchQuery(e.target.value)}
-                                style={{
-                                    width: '100%',
-                                    padding: '8px 12px 8px 34px',
-                                    borderRadius: 12,
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--bg-light)',
-                                    color: 'var(--text)',
-                                    fontSize: 12,
-                                    outline: 'none',
-                                    boxSizing: 'border-box'
-                                }}
-                            />
-                            <Search size={14} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                            {leadSearchQuery && (
-                                <button
-                                    type="button"
-                                    onClick={() => setLeadSearchQuery('')}
-                                    style={{
-                                        position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                                        background: 'transparent', border: 'none', color: 'var(--text-muted)',
-                                        cursor: 'pointer', padding: 2, display: 'flex'
-                                    }}
-                                >
-                                    <X size={13} />
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Leads List / Grid */}
-                    {filteredLeads.length === 0 ? (
-                        <div style={{
-                            fontSize: 13,
-                            color: 'var(--text-secondary)',
-                            textAlign: 'center',
-                            padding: '36px 16px',
-                            background: 'var(--bg-light)',
-                            borderRadius: 18,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: 12
-                        }}>
-                            <PhoneCall size={32} style={{ opacity: 0.35, color: 'var(--primary)' }} />
-                            <div>
-                                {leads.length === 0
-                                    ? 'По этому объекту пока нет зафиксированных звонков и обращений'
-                                    : 'По выбранным критериям обращений не найдено'}
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => handleOpenAddLead()}
-                                style={{
-                                    marginTop: 4,
-                                    padding: '8px 16px',
-                                    borderRadius: 10,
-                                    border: 'none',
-                                    background: 'var(--primary-light)',
-                                    color: 'var(--primary)',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6
-                                }}
-                            >
-                                <Plus size={14} />
-                                <span>Зафиксировать обращение</span>
-                            </button>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-                            {filteredLeads.map(lead => {
-                                const cfg = LEAD_STATUS_CONFIG[lead.status] || { bg: 'var(--bg-light)', color: 'var(--text-secondary)', border: 'transparent', label: lead.status };
-                                const isExpanded = expandedLeadId === lead.client.id;
-                                const isPhoneCopied = copiedLeadPhoneId === lead.client.id;
-                                const cleanPhone = stripPhone(lead.client.phone);
-
-                                return (
-                                    <div
-                                        key={lead.client.id}
-                                        style={{
-                                            borderRadius: 18,
-                                            border: '1px solid var(--border)',
-                                            background: 'var(--surface)',
-                                            padding: '16px 18px',
-                                            boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: 12,
-                                            transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
-                                        }}
-                                    >
-                                        {/* Header: Client Info & Status Badge */}
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                                                <div
-                                                    onClick={() => navigate(`/clients/${lead.client.id}`)}
-                                                    style={{
-                                                        width: 42,
-                                                        height: 42,
-                                                        borderRadius: '50%',
-                                                        background: 'rgba(59, 130, 246, 0.1)',
-                                                        color: 'var(--primary)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        fontSize: 15,
-                                                        fontWeight: 600,
-                                                        flexShrink: 0,
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    title="Перейти в карточку клиента"
-                                                >
-                                                    {initials(lead.client.full_name)}
-                                                </div>
-                                                <div style={{ minWidth: 0 }}>
-                                                    <div
-                                                        onClick={() => navigate(`/clients/${lead.client.id}`)}
-                                                        style={{
-                                                            fontSize: 15,
-                                                            fontWeight: 600,
-                                                            color: 'var(--text)',
-                                                            cursor: 'pointer',
-                                                            whiteSpace: 'nowrap',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis'
-                                                        }}
-                                                        title={lead.client.full_name}
-                                                    >
-                                                        {lead.client.full_name}
-                                                    </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2, flexWrap: 'wrap' }}>
-                                                        <span style={{
-                                                            fontSize: 10,
-                                                            padding: '1px 6px',
-                                                            borderRadius: 4,
-                                                            background: 'rgba(59, 130, 246, 0.1)',
-                                                            color: '#2563eb',
-                                                            fontWeight: 600
-                                                        }}>
-                                                            Лид
-                                                        </span>
-                                                        {lead.source && lead.source.toLowerCase() !== 'лид' && lead.source.toLowerCase() !== 'lead' && (
-                                                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                                {lead.source}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                <span style={{
-                                                    fontSize: 11,
-                                                    padding: '4px 8px',
-                                                    borderRadius: 8,
-                                                    background: cfg.bg,
-                                                    color: cfg.color,
-                                                    border: `1px solid ${cfg.border || 'transparent'}`,
-                                                    fontWeight: 600,
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                    {cfg.label}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleEditLead(lead)}
-                                                    style={{
-                                                        width: 28,
-                                                        height: 28,
-                                                        borderRadius: 8,
-                                                        border: '1px solid var(--border)',
-                                                        background: 'var(--surface)',
-                                                        color: 'var(--text-secondary)',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.15s ease'
-                                                    }}
-                                                    title="Редактировать лид"
-                                                >
-                                                    <Pencil size={13} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Phone & Quick communication actions */}
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            background: 'var(--bg-light)',
-                                            padding: '8px 12px',
-                                            borderRadius: 12
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                <Phone size={14} style={{ color: 'var(--text-secondary)' }} />
-                                                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>
-                                                    {formatPhone(lead.client.phone) || 'Номер не указан'}
-                                                </span>
-                                            </div>
-                                            {cleanPhone && (
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => copyLeadPhone(lead.client.id, lead.client.phone)}
-                                                        style={{
-                                                            border: 'none',
-                                                            background: 'transparent',
-                                                            cursor: 'pointer',
-                                                            padding: 4,
-                                                            color: isPhoneCopied ? 'var(--success)' : 'var(--text-secondary)',
-                                                            display: 'flex',
-                                                            alignItems: 'center'
-                                                        }}
-                                                        title="Скопировать номер"
-                                                    >
-                                                        {isPhoneCopied ? <Check size={14} /> : <Copy size={14} />}
-                                                    </button>
-                                                    <a
-                                                        href={`tel:+${cleanPhone}`}
-                                                        style={{
-                                                            padding: '4px 8px',
-                                                            borderRadius: 8,
-                                                            background: 'var(--surface)',
-                                                            color: 'var(--primary)',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            textDecoration: 'none'
-                                                        }}
-                                                        title="Позвонить"
-                                                    >
-                                                        <PhoneCall size={13} />
-                                                    </a>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => openWhatsApp(lead.client.phone, lead.client.full_name)}
-                                                        style={{
-                                                            border: 'none',
-                                                            padding: '4px 8px',
-                                                            borderRadius: 8,
-                                                            background: '#25D366',
-                                                            color: '#fff',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                        title="Написать в WhatsApp"
-                                                    >
-                                                        <MessageSquare size={13} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Latest note / comment */}
-                                        {lead.comment && (
-                                            <div style={{
-                                                fontSize: 12,
-                                                color: 'var(--text-secondary)',
-                                                lineHeight: 1.45,
-                                                background: 'rgba(0,0,0,0.015)',
-                                                padding: '8px 10px',
-                                                borderRadius: 8,
-                                                borderLeft: '3px solid var(--primary-light)'
-                                            }}>
-                                                {lead.comment}
-                                            </div>
-                                        )}
-
-                                        {/* Touchpoints Summary & Expand Toggle */}
-                                        <div style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            fontSize: 11,
-                                            color: 'var(--text-muted)',
-                                            marginTop: 'auto',
-                                            paddingTop: 4
-                                        }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                                <Clock size={12} />
-                                                <span>
-                                                    {lead.lastDate ? formatDate(lead.lastDate) : 'Не указана'}
-                                                </span>
-                                                <span>•</span>
-                                                <span>{lead.sortedEvents.length} касаний</span>
-                                            </div>
-
-                                            {lead.sortedEvents.length > 0 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setExpandedLeadId(isExpanded ? null : lead.client.id)}
-                                                    style={{
-                                                        background: 'transparent',
-                                                        border: 'none',
-                                                        color: 'var(--primary)',
-                                                        fontSize: 11,
-                                                        cursor: 'pointer',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 2,
-                                                        padding: 0
-                                                    }}
-                                                >
-                                                    <span>{isExpanded ? 'Скрыть историю' : 'История'}</span>
-                                                    {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                                                </button>
-                                            )}
-                                        </div>
-
-                                        {/* Expanded history details */}
-                                        {isExpanded && lead.sortedEvents.length > 0 && (
-                                            <div style={{
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                gap: 8,
-                                                marginTop: 4,
-                                                paddingTop: 8,
-                                                borderTop: '1px dashed var(--border)'
-                                            }}>
-                                                {lead.sortedEvents.map(evt => (
-                                                    <div key={evt.id} style={{ fontSize: 11, background: 'var(--bg-light)', padding: '6px 8px', borderRadius: 8 }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-secondary)', marginBottom: 2 }}>
-                                                            <span style={{ fontWeight: 600 }}>
-                                                                {evt.event_type === 'call' ? '📞 Входящий звонок' : evt.event_type === 'showing' ? '🏠 Показ' : evt.event_type === 'meeting' ? '🤝 Встреча' : '📋 Событие'}
-                                                            </span>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                                <span>{formatDate(evt.showing_date)}</span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => handleEditLead(lead, evt)}
-                                                                    style={{
-                                                                        border: 'none',
-                                                                        background: 'transparent',
-                                                                        color: 'var(--primary)',
-                                                                        cursor: 'pointer',
-                                                                        padding: '1px 4px',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        gap: 2,
-                                                                        fontSize: 10
-                                                                    }}
-                                                                    title="Редактировать контакт"
-                                                                >
-                                                                    <Pencil size={10} />
-                                                                    <span>изм.</span>
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                        {evt.client_feedback && (
-                                                            <div style={{ color: 'var(--primary)', fontWeight: 500 }}>
-                                                                Статус: {LEAD_STATUS_CONFIG[evt.client_feedback]?.label || evt.client_feedback}
-                                                            </div>
-                                                        )}
-                                                        {evt.feedback_comment && (
-                                                            <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>
-                                                                {evt.feedback_comment}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {/* Action buttons footer */}
-                                        <div style={{
-                                            display: 'flex',
-                                            gap: 8,
-                                            paddingTop: 8,
-                                            borderTop: '1px solid var(--border)',
-                                            marginTop: 2
-                                        }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleOpenAddLead(lead.client)}
-                                                style={{
-                                                    flex: 1,
-                                                    height: 32,
-                                                    borderRadius: 8,
-                                                    border: '1px solid var(--border)',
-                                                    background: 'var(--surface)',
-                                                    color: 'var(--text)',
-                                                    fontSize: 11,
-                                                    fontWeight: 500,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: 4,
-                                                    cursor: 'pointer'
-                                                }}
-                                                title="Добавить новый звонок или показ для этого клиента"
-                                            >
-                                                <Plus size={12} />
-                                                <span>Новый контакт</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleEditLead(lead)}
-                                                style={{
-                                                    height: 32,
-                                                    padding: '0 10px',
-                                                    borderRadius: 8,
-                                                    border: '1px solid var(--border)',
-                                                    background: 'var(--surface)',
-                                                    color: 'var(--text)',
-                                                    fontSize: 11,
-                                                    fontWeight: 500,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 4,
-                                                    cursor: 'pointer'
-                                                }}
-                                                title="Редактировать данные лида"
-                                            >
-                                                <Pencil size={12} />
-                                                <span>Редактировать</span>
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => navigate(`/tasks/new?property_id=${id}&client_id=${lead.client.id}`)}
-                                                style={{
-                                                    height: 32,
-                                                    padding: '0 10px',
-                                                    borderRadius: 8,
-                                                    border: 'none',
-                                                    background: 'var(--primary-light)',
-                                                    color: 'var(--primary)',
-                                                    fontSize: 11,
-                                                    fontWeight: 500,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: 4,
-                                                    cursor: 'pointer'
-                                                }}
-                                                title="Поставить задачу по клиенту"
-                                            >
-                                                <Clock size={12} />
-                                                <span>Задача</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
 
                 {/* ── ИСТОРИЯ ПОКАЗОВ И СОБЫТИЙ (В САМОМ НИЗУ СТРАНИЦЫ) ── */}

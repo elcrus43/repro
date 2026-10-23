@@ -1208,7 +1208,7 @@ export function FormPage() {
                     </FormCard>
 
                     <FormCard 
-                        title="Агентский договор (АД)"
+                        title="Агентский договор"
                         action={
                             (form.agency_contract_date || form.has_agency_contract) ? (
                                 <span style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: '#ecfdf5', color: '#059669', fontWeight: 600 }}>
@@ -1218,7 +1218,7 @@ export function FormPage() {
                         }
                     >
                         <div className="form-group">
-                            <label className="form-label">Дата заключения АД</label>
+                            <label className="form-label">Дата заключения</label>
                             <div style={{ position: 'relative' }}>
                                 <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}><Calendar size={18} /></span>
                                 <input 

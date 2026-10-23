@@ -416,28 +416,33 @@ export function MatchDetailPage() {
                         )}
 
                         {/* Кнопка Создать сделку — доступна на любом статусе */}
-                        <button
-                            className="btn btn-full card-clickable"
-                            style={{
-                                height: 60,
-                                borderRadius: 18,
-                                fontSize: 15,
-                                fontWeight: 300,
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                color: '#fff',
-                                border: 'none',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 10,
-                                boxShadow: '0 8px 24px rgba(16,185,129,0.25)',
-                                letterSpacing: '0.01em',
-                            }}
-                            onClick={handleDeal}
-                        >
-                            <Briefcase size={20} />
-                            <span>Создать сделку</span>
-                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                            <button
+                                className="card-clickable"
+                                style={{
+                                    height: 42,
+                                    borderRadius: 14,
+                                    fontSize: 13,
+                                    fontWeight: 500,
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    padding: '0 20px',
+                                    boxShadow: '0 4px 14px rgba(16,185,129,0.22)',
+                                    letterSpacing: '0.01em',
+                                    width: 'auto',
+                                    cursor: 'pointer',
+                                }}
+                                onClick={handleDeal}
+                            >
+                                <Briefcase size={16} />
+                                <span>Создать сделку</span>
+                            </button>
+                        </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                             <button className="card-clickable" style={{ 

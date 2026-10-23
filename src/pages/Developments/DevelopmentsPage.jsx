@@ -29,6 +29,7 @@ import { DevelopmentsYandexMap } from '../../components/Map/DevelopmentsYandexMa
 import { DevelopmentCard } from './DevelopmentCard';
 import { DevelopmentDetailModal } from './DevelopmentDetailModal';
 import { DevelopmentFormModal } from './DevelopmentFormModal';
+import { GlobalSearch } from '../../components/GlobalSearch';
 import { formatNumber } from '../../utils/format';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -204,6 +205,8 @@ export default function DevelopmentsPage() {
         </div>
 
         <div className="dev-header-controls">
+          <GlobalSearch style={{ maxWidth: 280 }} />
+
           {/* Prominent View Mode Switcher */}
           <div className="view-mode-toggle">
             <button

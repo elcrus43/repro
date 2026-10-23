@@ -84,7 +84,7 @@ export function ListPage() {
 
     // Closed statuses = deal completed (sold)
     const CLOSED_STATUSES = ['sold'];
-    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'deposit', 'deal'];
+    const ACTIVE_STATUSES = ['meeting', 'agreement', 'advertising', 'selection', 'deposit', 'deal'];
 
     const filteredProperties = useMemo(() => {
         return state.properties
@@ -105,7 +105,7 @@ export function ListPage() {
             })
             .filter(p => (!priceMin || p.price >= Number(priceMin)) && (!priceMax || p.price <= Number(priceMax)))
             .sort((a, b) => {
-                const statusOrder = { deal: 1, deposit: 2, advertising: 3, agreement: 4, meeting: 5 };
+                const statusOrder = { deal: 1, deposit: 2, selection: 3, advertising: 4, agreement: 5, meeting: 6 };
                 const orderA = statusOrder[a.status] || 99;
                 const orderB = statusOrder[b.status] || 99;
                 if (orderA !== orderB) return orderA - orderB;
@@ -118,6 +118,7 @@ export function ListPage() {
             meeting: [],
             agreement: [],
             advertising: [],
+            selection: [],
             deposit: [],
             deal: []
         };
@@ -133,7 +134,7 @@ export function ListPage() {
 
     const statusOrder = useMemo(() => {
         if (filter === 'closed') return ['sold'];
-        return ['deal', 'deposit', 'advertising', 'agreement', 'meeting'];
+        return ['deal', 'deposit', 'selection', 'advertising', 'agreement', 'meeting'];
     }, [filter]);
 
     const toggleStatus = (status, defaultCollapsed = false) => {
@@ -147,6 +148,7 @@ export function ListPage() {
     };
 
     const statusSolidColors = {
+        selection: '#06b6d4',
         meeting: '#3b82f6',
         agreement: '#f59e0b',
         advertising: '#8b5cf6',
@@ -212,6 +214,7 @@ export function ListPage() {
     };
 
     const statusLabels = {
+        selection: 'Подбор',
         meeting: 'Встреча',
         agreement: 'АД',
         advertising: 'В рекламе',
@@ -220,6 +223,7 @@ export function ListPage() {
         sold: 'Продано'
     };
     const statusColors = {
+        selection: 'linear-gradient(135deg, #22d3ee 0%, #06b6d4 100%)',
         meeting: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)',
         agreement: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
         advertising: 'linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%)',
@@ -240,38 +244,39 @@ export function ListPage() {
                 gap: 16,
                 height: 'auto'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 12 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                         <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Объекты</span>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.75, letterSpacing: '0.02em' }}>Портфель недвижимости</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 10 }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
                         <GlobalSearch />
                         {filter !== 'selection' && (
                             <button
                                 className="card-clickable"
                                 onClick={() => setViewMode(prev => prev === 'list' ? 'pipeline' : 'list')}
                                 style={{
-                                    width: 44, height: 44, borderRadius: 12, border: '1px solid var(--border)',
+                                    width: 40, height: 40, borderRadius: 12, border: '1px solid var(--border)',
                                     background: 'var(--surface)', color: 'var(--text)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer', flexShrink: 0
                                 }}
                             >
-                                {viewMode === 'list' ? <Columns3 size={20} /> : <LayoutList size={20} />}
+                                {viewMode === 'list' ? <Columns3 size={18} /> : <LayoutList size={18} />}
                             </button>
                         )}
                         <button 
                             className="card-clickable" 
                             onClick={() => navigate(filter === 'selection' ? '/selection/new' : '/properties/new')} 
                             style={{ 
-                                width: 44, height: 44, borderRadius: 12, border: 'none',
+                                width: 40, height: 40, borderRadius: 12, border: 'none',
                                 background: 'var(--primary)', color: '#ffffff',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)'
+                                cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',
+                                flexShrink: 0
                             }}
                         >
-                            <Plus size={22} />
+                            <Plus size={20} />
                         </button>
                     </div>
                 </div>
@@ -827,10 +832,10 @@ export function ListPage() {
                                                                     })()}
                                                                     <span style={{
                                                                         fontSize: 10, fontWeight: 400, flexShrink: 0,
-                                                                        color: status === 'sold' ? '#16a34a' : status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : '#2563eb',
-                                                                        background: status === 'sold' ? 'rgba(22,163,74,0.08)' : status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : 'rgba(37,99,235,0.08)',
+                                                                        color: status === 'sold' ? '#16a34a' : status === 'deal' ? '#16a34a' : status === 'deposit' ? '#059669' : status === 'advertising' ? '#7c3aed' : status === 'agreement' ? '#d97706' : status === 'selection' ? '#0891b2' : '#2563eb',
+                                                                        background: status === 'sold' ? 'rgba(22,163,74,0.08)' : status === 'deal' ? 'rgba(22,163,74,0.08)' : status === 'deposit' ? 'rgba(5,150,105,0.08)' : status === 'advertising' ? 'rgba(124,58,237,0.08)' : status === 'agreement' ? 'rgba(217,119,6,0.08)' : status === 'selection' ? 'rgba(8,145,178,0.08)' : 'rgba(37,99,235,0.08)',
                                                                         padding: '3px 8px', borderRadius: 20,
-                                                                        border: `1px solid ${status === 'sold' ? 'rgba(22,163,74,0.2)' : status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : 'rgba(37,99,235,0.2)'}`,
+                                                                        border: `1px solid ${status === 'sold' ? 'rgba(22,163,74,0.2)' : status === 'deal' ? 'rgba(22,163,74,0.2)' : status === 'deposit' ? 'rgba(5,150,105,0.2)' : status === 'advertising' ? 'rgba(124,58,237,0.2)' : status === 'agreement' ? 'rgba(217,119,6,0.2)' : status === 'selection' ? 'rgba(8,145,178,0.2)' : 'rgba(37,99,235,0.2)'}`,
                                                                     }}>
                                                                         {statusLabels[status] || status}
                                                                     </span>

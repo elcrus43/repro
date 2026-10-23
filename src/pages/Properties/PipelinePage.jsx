@@ -7,6 +7,7 @@ const PIPELINE_COLUMNS = [
   { id: 'meeting',     label: 'Встреча',    color: '#3b82f6' },
   { id: 'agreement',  label: 'АД',         color: '#f59e0b' },
   { id: 'advertising',label: 'В рекламе',  color: '#8b5cf6' },
+  { id: 'selection',   label: 'Подбор',     color: '#06b6d4' },
   { id: 'deposit',    label: 'Задаток',    color: '#10b981' },
   { id: 'deal',       label: 'Сделка',     color: '#22c55e' },
 ];

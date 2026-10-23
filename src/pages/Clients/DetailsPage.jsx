@@ -1257,7 +1257,7 @@ export function DetailsPage() {
                                         <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
                                             Уполномоченное лицо
                                         </span>
-                                        {(authPersonClient || client.authorized_person?.name) ? (
+                                        {(authPersonClient || client.authorized_person?.name) && (
                                             <span style={{
                                                 fontSize: 11,
                                                 fontWeight: 600,
@@ -1269,48 +1269,33 @@ export function DetailsPage() {
                                             }}>
                                                 {authPersonClient ? 'Привязано физлицо' : 'Указано вручную'}
                                             </span>
-                                        ) : (
-                                            <span style={{
-                                                fontSize: 11,
-                                                fontWeight: 500,
-                                                padding: '3px 8px',
-                                                borderRadius: 8,
-                                                background: 'var(--bg-light)',
-                                                color: 'var(--text-muted)',
-                                                border: '1px solid var(--border-light)'
-                                            }}>
-                                                Не указано
-                                            </span>
                                         )}
-                                    </div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                        Представитель организации с правом подписи договоров
                                     </div>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <button
-                                    type="button"
-                                    onClick={openEditAuthModal}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        padding: '8px 14px',
-                                        borderRadius: 12,
-                                        border: 'none',
-                                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                                        color: '#fff',
-                                        fontSize: 12,
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
-                                    }}
-                                >
-                                    <Pencil size={13} /> {(authPersonClient || client.authorized_person?.name) ? 'Изменить' : 'Назначить'}
-                                </button>
-                                {(authPersonClient || client.authorized_person?.name) && (
+                            {(authPersonClient || client.authorized_person?.name) && (
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={openEditAuthModal}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            padding: '8px 14px',
+                                            borderRadius: 12,
+                                            border: 'none',
+                                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                            color: '#fff',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                        }}
+                                    >
+                                        <Pencil size={13} /> Изменить
+                                    </button>
                                     <button
                                         type="button"
                                         onClick={handleUnlinkAuthPerson}
@@ -1330,8 +1315,8 @@ export function DetailsPage() {
                                     >
                                         <Unlink2 size={16} />
                                     </button>
-                                )}
-                            </div>
+                                </div>
+                            )}
                         </div>
 
                         {(authPersonClient || client.authorized_person?.name) ? (
@@ -1424,31 +1409,38 @@ export function DetailsPage() {
                         ) : (
                             <div style={{
                                 background: 'var(--bg-light)',
-                                borderRadius: 16,
-                                padding: '20px',
+                                borderRadius: 20,
+                                padding: '24px 20px',
                                 textAlign: 'center',
-                                color: 'var(--text-muted)',
-                                fontSize: 13
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 12
                             }}>
-                                Уполномоченное лицо еще не привязано к организации.
-                                <div style={{ marginTop: 10 }}>
-                                    <button
-                                        type="button"
-                                        onClick={openEditAuthModal}
-                                        style={{
-                                            padding: '8px 16px',
-                                            borderRadius: 12,
-                                            border: '1px dashed #0284c7',
-                                            background: 'rgba(2, 132, 199, 0.06)',
-                                            color: '#0284c7',
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        + Привязать уполномоченное лицо
-                                    </button>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                                    Представитель еще не назначен
                                 </div>
+                                <button
+                                    type="button"
+                                    className="card-clickable"
+                                    onClick={openEditAuthModal}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        padding: '8px 18px',
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                        color: '#fff',
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                    }}
+                                >
+                                    <Plus size={15} /> Назначить представителя
+                                </button>
                             </div>
                         )}
                     </div>
@@ -1549,7 +1541,7 @@ export function DetailsPage() {
                     </div>
                 )}
 
-                {/* ── Агентские договоры (АД) ── */}
+                {/* ── Агентские договоры ── */}
                 <div className="card" style={{
                     padding: '22px 24px',
                     border: 'none',
@@ -1574,70 +1566,88 @@ export function DetailsPage() {
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                     <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
-                                        АД
+                                        Агентские договоры
                                     </span>
-                                    <span style={{
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        padding: '3px 8px',
-                                        borderRadius: 8,
-                                        background: activeContracts.length > 0 ? '#ecfdf5' : 'var(--bg-light)',
-                                        color: activeContracts.length > 0 ? '#059669' : 'var(--text-muted)',
-                                        border: activeContracts.length > 0 ? '1px solid #10b98140' : '1px solid var(--border-light)'
-                                    }}>
-                                        {activeContracts.length > 0
-                                            ? `${activeContracts.length} ${activeContracts.length === 1 ? 'активный' : (activeContracts.length < 5 ? 'активных' : 'активных')}`
-                                            : (clientContracts.length > 0 ? 'Архивные' : 'Не заключены')}
-                                    </span>
+                                    {activeContracts.length > 0 && (
+                                        <span style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            padding: '3px 8px',
+                                            borderRadius: 8,
+                                            background: '#ecfdf5',
+                                            color: '#059669',
+                                            border: '1px solid #10b98140'
+                                        }}>
+                                            {activeContracts.length} {activeContracts.length === 1 ? 'активный' : (activeContracts.length < 5 ? 'активных' : 'активных')}
+                                        </span>
+                                    )}
+                                    {activeContracts.length === 0 && clientContracts.length > 0 && (
+                                        <span style={{
+                                            fontSize: 11,
+                                            fontWeight: 500,
+                                            padding: '3px 8px',
+                                            borderRadius: 8,
+                                            background: 'var(--bg-light)',
+                                            color: 'var(--text-muted)',
+                                            border: '1px solid var(--border-light)'
+                                        }}>
+                                            Архив
+                                        </span>
+                                    )}
                                 </div>
-                                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                    {clientContracts.length > 0
-                                        ? `Всего договоров: ${clientContracts.length}. Учет договоров по разным объектам клиента.`
-                                        : 'Фиксация агентских договоров (Покупка, Продажа, ЮСС, Аренда) по разным объектам'}
-                                </div>
+                                {clientContracts.length > 0 && (
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                        Договоры по объектам клиента
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        <button
-                            type="button"
-                            className="card-clickable"
-                            onClick={openAddContractModal}
-                            style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                padding: '9px 16px', borderRadius: 12, border: 'none',
-                                background: 'linear-gradient(135deg, #0052ff 0%, #0041cc 100%)',
-                                color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                                boxShadow: '0 2px 8px rgba(0,82,255,0.25)'
-                            }}
-                        >
-                            <Plus size={15} /> Добавить АД
-                        </button>
+                        {clientContracts.length > 0 && (
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={openAddContractModal}
+                                style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                                    padding: '8px 14px', borderRadius: 12, border: 'none',
+                                    background: 'linear-gradient(135deg, #0052ff 0%, #0041cc 100%)',
+                                    color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(0,82,255,0.2)'
+                                }}
+                            >
+                                <Plus size={14} /> Добавить
+                            </button>
+                        )}
                     </div>
 
                     {clientContracts.length === 0 ? (
                         <div style={{
                             background: 'var(--bg-light)',
-                            padding: '20px',
-                            borderRadius: 18,
+                            padding: '24px 20px',
+                            borderRadius: 20,
                             textAlign: 'center',
-                            color: 'var(--text-secondary)',
-                            fontSize: 13,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: 10
+                            gap: 12
                         }}>
-                            <div>У клиента пока нет добавленных агентских договоров.</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                                Договоры еще не заключены
+                            </div>
                             <button
                                 type="button"
+                                className="card-clickable"
                                 onClick={openAddContractModal}
                                 style={{
                                     display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '8px 16px', borderRadius: 12, border: '1px solid var(--border-light)',
-                                    background: 'var(--surface)', color: 'var(--text)', fontSize: 12, fontWeight: 500, cursor: 'pointer'
+                                    padding: '9px 18px', borderRadius: 12, border: 'none',
+                                    background: 'linear-gradient(135deg, #0052ff 0%, #0041cc 100%)',
+                                    color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                                    boxShadow: '0 2px 8px rgba(0,82,255,0.25)'
                                 }}
                             >
-                                <Plus size={14} /> Добавить договор
+                                <Plus size={15} /> Заключить договор
                             </button>
                         </div>
                     ) : (
@@ -1700,9 +1710,9 @@ export function DetailsPage() {
                                                         color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                                                         boxShadow: '0 2px 6px rgba(16,185,129,0.2)'
                                                     }}
-                                                    title="Сформировать печатный документ АД"
+                                                    title="Сформировать печатный документ"
                                                 >
-                                                    <FileText size={13} /> Создать АД
+                                                    <FileText size={13} /> Документ
                                                 </button>
                                                 <button
                                                     type="button"
@@ -2686,7 +2696,7 @@ export function DetailsPage() {
                                                 type="tel"
                                                 placeholder="+7 (999) 000-00-00"
                                                 value={authModalForm.phone}
-                                                onChange={e => setAuthModalForm({ ...authModalForm, phone: e.target.value })}
+                                                onChange={e => setAuthModalForm({ ...authModalForm, phone: formatPhone(e.target.value, true) })}
                                                 style={{ width: '100%', height: 42, borderRadius: 12, border: '1px solid var(--border-light)', padding: '0 12px', background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13 }}
                                             />
                                         </div>

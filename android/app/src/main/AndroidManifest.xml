@@ -38,4 +38,8 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Чтение истории звонков для автоматической фиксации звонков в CRM -->
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+
 </manifest>
