@@ -1688,8 +1688,10 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 ))}
 
                 {agent && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <User size={12} color={accentColor} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>
+                            Агент:
+                        </span>
                         <span
                             onClick={() => navigate(`/clients/${agent.id}`)}
                             style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer', fontWeight: 400 }}
