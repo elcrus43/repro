@@ -22,6 +22,7 @@ const TEMPLATE_ICONS = {
     sale: <FileText size={16} />,
     rent: <FileText size={16} />,
     act: <FileText size={16} />,
+    key_act: <Key size={16} />,
 };
 
 /* ─── Предпросмотр данных для подстановки ─────────────────────────────────── */
@@ -440,6 +441,35 @@ export function DocumentsPage() {
     const [actDate, setActDate] = useState(() => prefill.actDate || new Date().toISOString().split('T')[0]);
     const [movableProperty, setMovableProperty] = useState(() => prefill.movableProperty || '');
     const [realtorTaxStatus, setRealtorTaxStatus] = useState(() => prefill.realtorTaxStatus || state.currentUser?.tax_status || state.currentUser?.passport_details?.tax_status || 'Самозанятый');
+    const [city, setCity] = useState(() => prefill.city || 'г. Киров');
+    const [agencyCustomName, setAgencyCustomName] = useState(() => prefill.agencyName || 'ИП Муравьевой Ю.А.');
+    const [realtorDraft, setRealtorDraft] = useState({
+        full_name: '',
+        birth_date: '',
+        series: '',
+        number: '',
+        issued_by: '',
+        issue_date: '',
+        unit_code: '',
+        registration_address: '',
+    });
+
+    useEffect(() => {
+        if (state.currentUser) {
+            const u = state.currentUser;
+            const up = u.passport_details || {};
+            setRealtorDraft(prev => ({
+                full_name: prev.full_name || u.full_name || '',
+                birth_date: prev.birth_date || u.birth_date || up.birth_date || '',
+                series: prev.series || up.series || '',
+                number: prev.number || up.number || '',
+                issued_by: prev.issued_by || up.issued_by || '',
+                issue_date: prev.issue_date || up.issue_date || '',
+                unit_code: prev.unit_code || up.unit_code || '',
+                registration_address: prev.registration_address || up.registration_address || u.reg_address || u.address || '',
+            }));
+        }
+    }, [state.currentUser]);
 
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSavedToCrm, setIsSavedToCrm] = useState(false);
@@ -531,6 +561,7 @@ export function DocumentsPage() {
         sale: 'Договор купли-продажи',
         rent: 'Договор аренды',
         act: 'Акт приема-передачи',
+        key_act: 'Акт приема-передачи ключей',
     };
 
     const displayedTemplates = useMemo(() => {
@@ -564,8 +595,10 @@ export function DocumentsPage() {
     /* ── Выбранный клиент для редактирования реквизитов ────────────────────── */
     const isAgencyRentLandlord = selectedTemplate === 'agency_rent_landlord_1';
     const isServicesRent3Party = selectedTemplate === 'services_rent_3party';
-    const isAgencySale = selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
-    const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
+    const isKeyAct = selectedTemplate === 'key_act';
+    const isAgencySale = selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord || isKeyAct;
+    const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord || isKeyAct;
+    const individualClients = useMemo(() => state.clients.filter(c => !c.is_legal_entity && !c.client_types?.includes('legal_entity') && !c.company_name), [state.clients]);
 
     const activeClient = useMemo(() => {
         if (sourceMode === 'deal' && selectedDealId) {
@@ -659,6 +692,13 @@ export function DocumentsPage() {
         passport_issue_date: '',
         passport_unit_code: '',
         registration_address: '',
+        auth_person_birth: '',
+        auth_person_series: '',
+        auth_person_number: '',
+        auth_person_issued_by: '',
+        auth_person_issue_date: '',
+        auth_person_unit_code: '',
+        auth_person_reg_address: '',
     });
 
     useEffect(() => {
@@ -666,6 +706,9 @@ export function DocumentsPage() {
             const p = activeClient.passport_details || {};
             const cd = activeClient.company_details || {};
             const ap = activeClient.authorized_person || {};
+            const authPersonId = activeClient.authorized_person_id || ap.client_id;
+            const authClient = authPersonId ? state.clients.find(c => String(c.id) === String(authPersonId)) : null;
+            const apPass = authClient?.passport_details || ap.passport_details || {};
             const isLegal = Boolean(
                 activeClient.is_legal_entity ||
                 activeClient.client_types?.includes('legal_entity') ||
@@ -683,8 +726,15 @@ export function DocumentsPage() {
                 ogrn: activeClient.ogrn || cd.ogrn || '',
                 legal_address: activeClient.legal_address || cd.legal_address || activeClient.reg_address || activeClient.address || '',
                 authorized_position: activeClient.authorized_position || ap.position || cd.director_position || 'Генеральный директор',
-                authorized_name: activeClient.authorized_name || ap.name || cd.director_name || (!isLegal ? activeClient.full_name : ''),
+                authorized_name: activeClient.authorized_name || ap.name || authClient?.full_name || cd.director_name || (!isLegal ? activeClient.full_name : ''),
                 authorized_basis: activeClient.authorized_basis || ap.basis_document || 'Устава',
+                auth_person_birth: authClient?.birth_date || apPass.birth_date || ap.birth_date || '',
+                auth_person_series: apPass.series || ap.series || '',
+                auth_person_number: apPass.number || ap.number || '',
+                auth_person_issued_by: apPass.issued_by || ap.issued_by || '',
+                auth_person_issue_date: apPass.issue_date || ap.issue_date || '',
+                auth_person_unit_code: apPass.unit_code || ap.unit_code || '',
+                auth_person_reg_address: apPass.registration_address || authClient?.reg_address || authClient?.address || ap.registration_address || '',
                 full_name: activeClient.full_name || '',
                 phone: formatPhone(activeClient.phone || ap.phone || '', true),
                 birth_date: activeClient.birth_date || p.birth_date || '',
@@ -1127,17 +1177,47 @@ export function DocumentsPage() {
         }
 
         const isRealtorSelfEmployed = (realtorTaxStatus || 'Самозанятый').toLowerCase().includes('самозанят');
+        const effectiveRealtor = {
+            ...(realtor || {}),
+            full_name: realtorDraft.full_name || realtor?.full_name || '',
+            birth_date: realtorDraft.birth_date || realtor?.birth_date || '',
+            passport_details: {
+                ...(realtor?.passport_details || {}),
+                series: realtorDraft.series || realtor?.passport_details?.series || '',
+                number: realtorDraft.number || realtor?.passport_details?.number || '',
+                issued_by: realtorDraft.issued_by || realtor?.passport_details?.issued_by || '',
+                issue_date: realtorDraft.issue_date || realtor?.passport_details?.issue_date || '',
+                unit_code: realtorDraft.unit_code || realtor?.passport_details?.unit_code || '',
+                registration_address: realtorDraft.registration_address || realtor?.passport_details?.registration_address || '',
+            },
+            tax_status: realtorTaxStatus,
+        };
+
+        const authPersonClient = state.clients.find(c => String(c.id) === String(activeClient?.authorized_person_id || activeClient?.authorized_person?.client_id)) || null;
+
         return {
             seller, buyer, property,
-            realtor: { ...(realtor || {}), tax_status: realtorTaxStatus },
-            agencyName, deal, contractEndDate,
+            realtor: effectiveRealtor,
+            agencyName: agencyCustomName || agencyName || 'ИП Муравьевой Ю.А.',
+            city: city || property?.city || 'г. Киров',
+            deal, contractEndDate,
             service1Cost, service2Cost, actDate,
             movableProperty: movableProperty || property?.movable_property || '',
             realtorTaxStatus,
             isRealtorSelfEmployed,
-            isLegalEntity: Boolean(clientDraft.is_legal_entity)
+            isLegalEntity: Boolean(clientDraft.is_legal_entity),
+            authPersonName: clientDraft.authorized_name,
+            authPersonPosition: clientDraft.authorized_position,
+            authPersonBirth: clientDraft.auth_person_birth,
+            authPersonSeries: clientDraft.auth_person_series,
+            authPersonNumber: clientDraft.auth_person_number,
+            authPersonIssuedBy: clientDraft.auth_person_issued_by,
+            authPersonIssueDate: clientDraft.auth_person_issue_date,
+            authPersonUnitCode: clientDraft.auth_person_unit_code,
+            authPersonRegAddress: clientDraft.auth_person_reg_address,
+            authPersonClient,
         };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, agencyName, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, movableProperty, clientDraft.is_legal_entity, realtorTaxStatus]);
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, realtorDraft, agencyName, agencyCustomName, city, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, movableProperty, clientDraft, realtorTaxStatus, activeClient]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -2854,6 +2934,347 @@ export function DocumentsPage() {
                             </div>
                         </div>
                     </div>
+                ) : selectedTemplate === 'key_act' ? (
+                    <div className="no-print" style={{
+                        background: 'var(--surface)', borderRadius: 20, padding: 20,
+                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Key size={16} style={{ color: 'var(--primary)' }} />
+                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                    Параметры акта приема-передачи ключей
+                                </span>
+                            </div>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
+                                <CheckCircle2 size={13} />
+                                <span>Готов к печати и выгрузке</span>
+                            </div>
+                        </div>
+
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                            Акт фиксирует передачу ключей от объекта Принципалом Агенту для исполнения агентского договора (показы, реклама, реализация). Подписывается исключительно физическими лицами (в случае юрлица — ответственным лицом организации).
+                        </div>
+
+                        {/* Общие параметры: Дата, Город, Агент по договору */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                    Дата составления акта
+                                </label>
+                                <input
+                                    id="doc-input-act-date"
+                                    type="date"
+                                    className="form-input"
+                                    value={actDate}
+                                    onChange={e => setActDate(e.target.value)}
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
+                                {actDate && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
+                                        В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                    Город составления
+                                </label>
+                                <input
+                                    id="doc-input-key-city"
+                                    className="form-input"
+                                    value={city}
+                                    onChange={e => setCity(e.target.value)}
+                                    placeholder="г. Киров"
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                                    Агент по договору
+                                </label>
+                                <input
+                                    id="doc-input-key-agency"
+                                    className="form-input"
+                                    value={agencyCustomName}
+                                    onChange={e => setAgencyCustomName(e.target.value)}
+                                    placeholder="ИП Муравьевой Ю.А."
+                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Сторона «Передал» (Принципал) */}
+                        <div style={{ background: 'var(--bg)', borderRadius: 14, padding: 14, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                                        Сторона «Передал» (Принципал)
+                                    </span>
+                                    {clientDraft.is_legal_entity ? (
+                                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', fontWeight: 600 }}>
+                                            Юрлицо → Ответственное лицо
+                                        </span>
+                                    ) : (
+                                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', fontWeight: 600 }}>
+                                            Физическое лицо
+                                        </span>
+                                    )}
+                                </div>
+                                {clientDraft.is_legal_entity && individualClients.length > 0 && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Заполнить из физлица:</span>
+                                        <select
+                                            style={{ height: 30, borderRadius: 8, fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border)', padding: '0 6px' }}
+                                            value={activeClient?.authorized_person_id || ''}
+                                            onChange={e => {
+                                                const selectedId = e.target.value;
+                                                if (!selectedId) return;
+                                                const ind = state.clients.find(c => String(c.id) === String(selectedId));
+                                                if (ind) {
+                                                    const ip = ind.passport_details || {};
+                                                    setClientDraft(prev => ({
+                                                        ...prev,
+                                                        authorized_name: ind.full_name || prev.authorized_name,
+                                                        auth_person_birth: ind.birth_date || ip.birth_date || '',
+                                                        auth_person_series: ip.series || '',
+                                                        auth_person_number: ip.number || '',
+                                                        auth_person_issued_by: ip.issued_by || '',
+                                                        auth_person_issue_date: ip.issue_date || '',
+                                                        auth_person_unit_code: ip.unit_code || '',
+                                                        auth_person_reg_address: ip.registration_address || ind.reg_address || ind.address || '',
+                                                    }));
+                                                }
+                                            }}
+                                        >
+                                            <option value="">- Выбрать контакт -</option>
+                                            {individualClients.map(c => (
+                                                <option key={c.id} value={c.id}>{c.full_name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </div>
+
+                            {clientDraft.is_legal_entity && (
+                                <div style={{ fontSize: 11, color: '#1e40af', background: 'rgba(59, 130, 246, 0.08)', padding: '8px 12px', borderRadius: 10, lineHeight: 1.4 }}>
+                                    Организация: <strong>{clientDraft.company_name || activeClient?.full_name || 'Не указана'}</strong>. В акте приема-передачи ключей стороной и подписантом выступает исключительно физическое лицо (ответственное лицо).
+                                </div>
+                            )}
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                        {clientDraft.is_legal_entity ? 'ФИО ответственного лица' : 'ФИО принципала'}
+                                    </label>
+                                    <input
+                                        id="doc-input-key-principal-name"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.authorized_name || '') : (clientDraft.full_name || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'authorized_name' : 'full_name', e.target.value)}
+                                        placeholder="Иванов Иван Иванович"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата рождения</label>
+                                    <input
+                                        id="doc-input-key-principal-birth"
+                                        type="date"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_birth || '') : (clientDraft.birth_date || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_birth' : 'birth_date', e.target.value)}
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Серия паспорта</label>
+                                    <input
+                                        id="doc-input-key-principal-series"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_series || '') : (clientDraft.passport_series || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_series' : 'passport_series', e.target.value)}
+                                        placeholder="33 14"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Номер паспорта</label>
+                                    <input
+                                        id="doc-input-key-principal-number"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_number || '') : (clientDraft.passport_number || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_number' : 'passport_number', e.target.value)}
+                                        placeholder="123456"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Кем выдан паспорт</label>
+                                    <input
+                                        id="doc-input-key-principal-issued-by"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_issued_by || '') : (clientDraft.passport_issued_by || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_issued_by' : 'passport_issued_by', e.target.value)}
+                                        placeholder="УМВД России..."
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата выдачи паспорта</label>
+                                    <input
+                                        id="doc-input-key-principal-issue-date"
+                                        type="date"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_issue_date || '') : (clientDraft.passport_issue_date || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_issue_date' : 'passport_issue_date', e.target.value)}
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Код подразделения</label>
+                                    <input
+                                        id="doc-input-key-principal-unit-code"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_unit_code || '') : (clientDraft.passport_unit_code || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_unit_code' : 'passport_unit_code', e.target.value)}
+                                        placeholder="430-001"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Адрес регистрации</label>
+                                    <input
+                                        id="doc-input-key-principal-reg-address"
+                                        className="form-input"
+                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_reg_address || '') : (clientDraft.registration_address || '')}
+                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_reg_address' : 'registration_address', e.target.value)}
+                                        placeholder="г. Киров, ул. Ленина, д. 1"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Сторона «Принял» (Риелтор) */}
+                        <div style={{ background: 'var(--bg)', borderRadius: 14, padding: 14, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                                    Сторона «Принял» (Риелтор / Сотрудник агентства)
+                                </span>
+                                <span style={{ fontSize: 11, color: realtorDraft.number ? '#059669' : '#d97706', fontWeight: 600 }}>
+                                    {realtorDraft.number ? '✓ Паспорт заполнен' : '● Паспорт не заполнен'}
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>ФИО риелтора</label>
+                                    <input
+                                        id="doc-input-realtor-name"
+                                        className="form-input"
+                                        value={realtorDraft.full_name}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, full_name: e.target.value }))}
+                                        placeholder="ФИО сотрудника"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата рождения</label>
+                                    <input
+                                        id="doc-input-realtor-birth"
+                                        type="date"
+                                        className="form-input"
+                                        value={realtorDraft.birth_date}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, birth_date: e.target.value }))}
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Серия паспорта</label>
+                                    <input
+                                        id="doc-input-realtor-series"
+                                        className="form-input"
+                                        value={realtorDraft.series}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, series: e.target.value }))}
+                                        placeholder="33 14"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Номер паспорта</label>
+                                    <input
+                                        id="doc-input-realtor-number"
+                                        className="form-input"
+                                        value={realtorDraft.number}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, number: e.target.value }))}
+                                        placeholder="123456"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Кем выдан</label>
+                                    <input
+                                        id="doc-input-realtor-issued-by"
+                                        className="form-input"
+                                        value={realtorDraft.issued_by}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, issued_by: e.target.value }))}
+                                        placeholder="УМВД..."
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата выдачи</label>
+                                    <input
+                                        id="doc-input-realtor-issue-date"
+                                        type="date"
+                                        className="form-input"
+                                        value={realtorDraft.issue_date}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, issue_date: e.target.value }))}
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Код подразделения</label>
+                                    <input
+                                        id="doc-input-realtor-unit-code"
+                                        className="form-input"
+                                        value={realtorDraft.unit_code}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, unit_code: e.target.value }))}
+                                        placeholder="430-001"
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Адрес регистрации</label>
+                                    <input
+                                        id="doc-input-realtor-reg-address"
+                                        className="form-input"
+                                        value={realtorDraft.registration_address}
+                                        onChange={e => setRealtorDraft(prev => ({ ...prev, registration_address: e.target.value }))}
+                                        placeholder="г. Киров..."
+                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 ) : (
                     <div className="no-print" style={{
                         background: 'var(--surface)', borderRadius: 20, padding: 20,
@@ -3073,6 +3494,37 @@ export function DocumentsPage() {
                                 {actDate && (
                                     <DataPreview label="Дата Акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />
                                 )}
+                            </>
+                        ) : selectedTemplate === 'key_act' ? (
+                            <>
+                                <DataPreview label="Документ" value="Акт приема-передачи ключей" />
+                                <DataPreview label="Принял (Риелтор)" value={`${realtorDraft.full_name || realtor?.full_name || 'Не указан'}${realtorDraft.number ? ` (паспорт № ${realtorDraft.number})` : ''}`} />
+                                {(buyer || seller) && (
+                                    clientDraft.is_legal_entity || (buyer || seller).is_legal_entity || (buyer || seller).company_name ? (
+                                        <>
+                                            <DataPreview label="Принципал (Юрлицо)" value={clientDraft.company_name || (buyer || seller).company_name || (seller || buyer).full_name} />
+                                            <DataPreview label="Передал (Подписант)" value={`${clientDraft.authorized_name || 'Ответственное лицо'} (ответственное лицо)`} />
+                                            {(clientDraft.auth_person_series || clientDraft.auth_person_number) && (
+                                                <DataPreview label="Паспорт подписанта" value={`Серия ${clientDraft.auth_person_series} № ${clientDraft.auth_person_number}`} />
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DataPreview label="Передал (Принципал)" value={(seller || buyer).full_name} />
+                                            {((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) && (
+                                                <DataPreview label="Паспорт" value={`Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}`} />
+                                            )}
+                                        </>
+                                    )
+                                )}
+                                <DataPreview label="Агент по договору" value={agencyCustomName || 'ИП Муравьевой Ю.А.'} />
+                                {property && (
+                                    <>
+                                        <DataPreview label="Вид объекта" value={formatPropertyKind(property)} />
+                                        <DataPreview label="Адрес объекта" value={property.address || property.city} />
+                                    </>
+                                )}
+                                {actDate && <DataPreview label="Дата акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />}
                             </>
                         ) : isAgencyContract ? (
                             <>
@@ -4900,6 +5352,110 @@ function DocumentPreview({ template, data, highlight = true }) {
                         </p>
                         <p style={{ color: 'var(--text-secondary)' }}>__________________________________________________________________________________________</p>
                     </div>
+                </div>
+            </div>
+        );
+    }
+
+    /* ── Шаблон: Акт приема-передачи ключей ─────────────────────────────────── */
+    if (template === 'key_act') {
+        const customActDate = fDate(data.actDate || deal?.handover_date || deal?.deal_date) || today;
+        const keyCity = f(data.city || property?.city || 'г. Киров');
+        const keyAgency = f(data.agencyName || realtor?.agency_name || 'ИП Муравьевой Ю.А.');
+
+        const authClient = data.authPersonClient || null;
+        const apPass = authClient?.passport_details || pAuth?.passport_details || {};
+        const effectiveAuthName = f(data.authPersonName || principal?.authorized_name || pAuth?.name || authClient?.full_name || pCompany?.director_name || '');
+        const authBirth = data.authPersonBirth ? fDate(data.authPersonBirth) : (authClient?.birth_date ? fDate(authClient.birth_date) : (apPass.birth_date ? fDate(apPass.birth_date) : (pAuth?.birth_date ? fDate(pAuth.birth_date) : '')));
+        const authSeries = f(data.authPersonSeries || apPass.series || pAuth?.series);
+        const authNumber = f(data.authPersonNumber || apPass.number || pAuth?.number);
+        const authIssuedBy = f(data.authPersonIssuedBy || apPass.issued_by || pAuth?.issued_by);
+        const authIssueDate = data.authPersonIssueDate ? fDate(data.authPersonIssueDate) : (apPass.issue_date ? fDate(apPass.issue_date) : (pAuth?.issue_date ? fDate(pAuth.issue_date) : ''));
+        const authUnitCode = f(data.authPersonUnitCode || apPass.unit_code || pAuth?.unit_code);
+        const authRegAddress = f(data.authPersonRegAddress || apPass.registration_address || authClient?.reg_address || authClient?.address || pAuth?.registration_address);
+
+        // Передающая сторона (Передал): ВСЕГДА физлицо! Если юрлицо — ответственное лицо
+        const transferrerDisplayName = isLegalEntity
+            ? (effectiveAuthName ? `${effectiveAuthName} (ответственное лицо ${companyName || 'организации'})` : `[Ответственное лицо] (${companyName || 'организации'})`)
+            : principalName;
+        const transferrerShort = isLegalEntity ? toShortName(effectiveAuthName) : principalShort;
+        const transferrerBirth = isLegalEntity ? authBirth : principalBirth;
+        const transferrerSeries = isLegalEntity ? authSeries : principalSeries;
+        const transferrerNumber = isLegalEntity ? authNumber : principalNumber;
+        const transferrerIssuedBy = isLegalEntity ? authIssuedBy : principalIssuedBy;
+        const transferrerIssueDate = isLegalEntity ? authIssueDate : principalIssueDate;
+        const transferrerUnitCode = isLegalEntity ? authUnitCode : principalUnitCode;
+        const transferrerRegAddress = isLegalEntity ? authRegAddress : principalRegAddress;
+
+        // Принимающая сторона (Принял): Риелтор
+        const receiverName = realtorFullName;
+        const receiverShort = realtorShort;
+        const receiverBirth = realtorBirth;
+        const receiverSeries = realtorSeries;
+        const receiverNumber = realtorNumber;
+        const receiverIssuedBy = realtorIssuedBy;
+        const receiverIssueDate = realtorIssueDate;
+        const receiverUnitCode = realtorUnitCode;
+        const receiverRegAddress = realtorRegAddress;
+
+        // Объект недвижимости
+        const propKindLower = propKind.toLowerCase();
+        const objectKindGenitive = propKindLower.includes('комнат') ? 'комнаты' : (propKindLower.includes('дом') ? 'жилого дома' : 'квартиры/комнаты');
+        const objectKindCap = objectKindGenitive === 'комнаты' ? 'Комната' : (objectKindGenitive === 'жилого дома' ? 'Жилой дом' : 'Квартира/комната');
+
+        return (
+            <div>
+                {/* Логотип Самолет Плюс */}
+                <div style={{ marginBottom: 12 }}>
+                    <img
+                        src={`data:image/png;base64,${YUSS_BUY_1_LOGO_BASE64}`}
+                        alt="Самолет Плюс"
+                        style={{ width: 140, height: 110, objectFit: 'contain' }}
+                    />
+                </div>
+
+                <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 18, marginBottom: 18, color: '#000' }}>
+                    Акт приема-передачи ключей
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <span><Slot slotId="key_city" value={keyCity} label="Город" fallback="г. Киров" highlight={highlight} /></span>
+                    <span>«<Slot slotId="act_date" value={customActDate} label="Дата составления акта" inputId="doc-input-act-date" highlight={highlight} />»</span>
+                </div>
+
+                <p style={{ marginBottom: 14, lineHeight: 1.6, textAlign: 'justify' }}>
+                    Гр. <strong><Slot slotId="realtor_name" value={receiverName} label="ФИО сотрудника (Принял)" fallback="____________________________________________________________________" highlight={highlight} /></strong>,<br />
+                    <Slot slotId="realtor_birth" value={receiverBirth} label="Дата рождения" fallback="________" highlight={highlight} /> года рождения, паспорт <Slot slotId="realtor_series" value={receiverSeries} label="Серия паспорта" fallback="________" highlight={highlight} /> <Slot slotId="realtor_number" value={receiverNumber} label="Номер паспорта" fallback="________" highlight={highlight} /> выдан <Slot slotId="realtor_issued_by" value={receiverIssuedBy} label="Кем выдан" fallback="____________________" highlight={highlight} /> <Slot slotId="realtor_issue_date" value={receiverIssueDate} label="Дата выдачи" fallback="________" highlight={highlight} /> г.<br />
+                    код подразделения <Slot slotId="realtor_unit_code" value={receiverUnitCode} label="Код подразделения" fallback="_____________" highlight={highlight} />, зарегистрирован по адресу: <Slot slotId="realtor_reg_address" value={receiverRegAddress} label="Адрес регистрации" fallback="____________________" highlight={highlight} />
+                </p>
+
+                <p style={{ margin: '14px 0 10px', fontWeight: 'bold' }}>
+                    получил от Принципала:
+                </p>
+
+                <p style={{ marginBottom: 14, lineHeight: 1.6, textAlign: 'justify' }}>
+                    Гр. <strong><Slot slotId="key_principal_name" value={transferrerDisplayName} label="ФИО Принципала / Ответственного лица" fallback="____________________________________________________________________" highlight={highlight} /></strong>,<br />
+                    <Slot slotId="key_principal_birth" value={transferrerBirth} label="Дата рождения" fallback="________" highlight={highlight} /> года рождения, паспорт <Slot slotId="key_principal_series" value={transferrerSeries} label="Серия паспорта" fallback="________" highlight={highlight} /> <Slot slotId="key_principal_number" value={transferrerNumber} label="Номер паспорта" fallback="________" highlight={highlight} /> выдан <Slot slotId="key_principal_issued_by" value={transferrerIssuedBy} label="Кем выдан" fallback="____________________" highlight={highlight} /> <Slot slotId="key_principal_issue_date" value={transferrerIssueDate} label="Дата выдачи" fallback="________" highlight={highlight} /> г.<br />
+                    код подразделения <Slot slotId="key_principal_unit_code" value={transferrerUnitCode} label="Код подразделения" fallback="_____________" highlight={highlight} />, зарегистрирован по адресу: <Slot slotId="key_principal_reg_address" value={transferrerRegAddress} label="Адрес регистрации" fallback="____________________" highlight={highlight} />
+                </p>
+
+                <p style={{ marginBottom: 12, lineHeight: 1.6, textAlign: 'justify' }}>
+                    ключи от <Slot slotId="key_prop_kind" value={objectKindGenitive} label="Вид объекта" fallback="квартиры/комнаты" highlight={highlight} /> для исполнение агентского договора, заключенного между Принципалом и Агентом <Slot slotId="key_agency_name" value={keyAgency} label="Агент по договору" fallback="ИП Муравьевой Ю.А." highlight={highlight} />.<br />
+                    <Slot slotId="key_prop_kind_cap" value={objectKindCap} label="Вид объекта (заглавная)" fallback="Квартира/комната" highlight={highlight} /> расположена по адресу: <strong><Slot slotId="prop_address" value={propAddress} label="Адрес объекта" fallback="__________________________________________________________________________________________" highlight={highlight} /></strong>.
+                </p>
+
+                <p style={{ fontWeight: 'bold', margin: '22px 0 18px', lineHeight: 1.5, textAlign: 'justify' }}>
+                    Передающая сторона гарантирует, что в Квартире/комнате не находятся деньги, драгоценности и иные ценные вещи.
+                </p>
+
+                <div style={{ marginTop: 24, lineHeight: 2 }}>
+                    <p style={{ fontWeight: 'bold', marginBottom: 12 }}>Подписи:</p>
+                    <p style={{ marginBottom: 18 }}>
+                        Передал /_____________________________/ <strong>{transferrerShort ? ` ${transferrerShort}` : ''}</strong>
+                    </p>
+                    <p>
+                        Принял /______________________________/ <strong>{receiverShort ? ` ${receiverShort}` : ''}</strong>
+                    </p>
                 </div>
             </div>
         );

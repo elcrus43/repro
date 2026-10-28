@@ -95,10 +95,22 @@ describe('docxGenerator - getDocumentTemplates', () => {
 
         const otherTemplates = templates.filter(t => t.categories.includes('other')).map(t => t.key);
         expect(otherTemplates).toContain('act');
+        expect(otherTemplates).toContain('key_act');
+    });
+
+    it('includes key_act template for key handover act', () => {
+        const templates = getDocumentTemplates();
+        const keyAct = templates.find(t => t.key === 'key_act');
+        expect(keyAct).toBeDefined();
+        expect(keyAct.title).toBe('Акт приема-передачи ключей');
+        expect(keyAct.category).toBe('other');
+        expect(keyAct.categories).toContain('other');
+        expect(keyAct.categories).toContain('sale');
+        expect(keyAct.categories).toContain('rent');
     });
 });
 
-import { toShortName, formatPropertyKind, collectDocxBlocksFromDom } from './docxGenerator';
+import { toShortName, formatPropertyKind, collectDocxBlocksFromDom, buildKeyHandoverAct } from './docxGenerator';
 
 describe('docxGenerator - toShortName', () => {
     it('formats full Russian names into initials correctly', () => {
@@ -106,6 +118,87 @@ describe('docxGenerator - toShortName', () => {
         expect(toShortName('Петров Сергей')).toBe('Петров С.');
         expect(toShortName('Сидоров')).toBe('Сидоров');
         expect(toShortName('')).toBe('____________________');
+        expect(toShortName('Иванов Иван Иванович (ответственное лицо ООО «Ромашка»)')).toBe('Иванов И.И.');
+    });
+});
+
+describe('docxGenerator - buildKeyHandoverAct', () => {
+    it('builds key handover act for individual physical person', () => {
+        const data = {
+            seller: {
+                full_name: 'Кузнецов Алексей Михайлович',
+                birth_date: '1985-04-12',
+                passport_details: {
+                    series: '33 10',
+                    number: '987654',
+                    issued_by: 'УМВД по Кировской области',
+                    issue_date: '2005-05-20',
+                    unit_code: '430-002',
+                    registration_address: 'г. Киров, ул. Спасская, д. 5',
+                }
+            },
+            realtor: {
+                full_name: 'Муравьева Юлия Анатольевна',
+                birth_date: '1988-10-15',
+                agency_name: 'ИП Муравьевой Ю.А.',
+                passport_details: {
+                    series: '33 14',
+                    number: '123456',
+                    issued_by: 'УМВД по г. Кирову',
+                    issue_date: '2010-01-10',
+                    unit_code: '430-001',
+                    registration_address: 'г. Киров, ул. Ленина, д. 10',
+                }
+            },
+            property: {
+                property_kind: '2-комн. квартира',
+                address: 'г. Киров, Октябрьский пр-т, д. 100, кв. 15',
+            },
+            city: 'г. Киров',
+            actDate: '2026-10-28',
+        };
+
+        const result = buildKeyHandoverAct(data);
+        expect(result).toBeDefined();
+        expect(result.children).toBeDefined();
+        expect(result.children.length).toBeGreaterThanOrEqual(10);
+    });
+
+    it('always assigns an individual (responsible person) as the signer when client is a legal entity', () => {
+        const data = {
+            seller: {
+                full_name: 'ООО «Вятка Строй»',
+                is_legal_entity: true,
+                company_name: 'ООО «Вятка Строй»',
+                inn: '4345000000',
+                authorized_name: 'Смирнов Дмитрий Васильевич',
+                authorized_position: 'Генеральный директор',
+                authorized_person: {
+                    name: 'Смирнов Дмитрий Васильевич',
+                    position: 'Генеральный директор',
+                }
+            },
+            authPersonName: 'Смирнов Дмитрий Васильевич',
+            authPersonBirth: '1980-03-25',
+            authPersonSeries: '33 12',
+            authPersonNumber: '554433',
+            authPersonIssuedBy: 'УМВД г. Кирова',
+            authPersonIssueDate: '2008-07-15',
+            authPersonUnitCode: '430-003',
+            authPersonRegAddress: 'г. Киров, ул. Московская, д. 20',
+            realtor: {
+                full_name: 'Муравьева Юлия Анатольевна',
+                agency_name: 'ИП Муравьевой Ю.А.',
+            },
+            property: {
+                address: 'г. Киров, ул. Карла Маркса, д. 45',
+            },
+            city: 'г. Киров',
+        };
+
+        const result = buildKeyHandoverAct(data);
+        expect(result).toBeDefined();
+        expect(result.children.length).toBeGreaterThan(0);
     });
 });
 

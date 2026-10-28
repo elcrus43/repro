@@ -3,7 +3,9 @@ import { formatPropertyKind, numberToWordsRu } from '../../utils/docxGenerator';
 
 export function toShortName(fullName) {
     if (!fullName) return '____________________';
-    const parts = fullName.trim().split(/\s+/);
+    const cleaned = fullName.replace(/\(.*?\)/g, '').trim();
+    const parts = cleaned.split(/\s+/);
+    if (parts.length === 0 || !parts[0]) return '____________________';
     if (parts.length === 1) return parts[0];
     if (parts.length === 2) return `${parts[0]} ${parts[1][0]}.`;
     return `${parts[0]} ${parts[1][0]}.${parts[2][0]}.`;
@@ -42,7 +44,7 @@ export function buildSlotValues(data, template) {
     const dealDate = fDate(deal?.deal_date);
     const today = fDate(deal?.deal_date || new Date().toISOString());
 
-    const isAgencySale = template === 'agency_sale_1' || template === 'agency_rent_landlord_1';
+    const isAgencySale = template === 'agency_sale_1' || template === 'agency_rent_landlord_1' || template === 'key_act';
     const principal = isAgencySale ? (seller || buyer) : (buyer || seller);
     const pDetails = principal?.passport_details || {};
     const principalName = f(principal?.full_name);
@@ -165,6 +167,39 @@ export function buildSlotValues(data, template) {
     const actDate = fDate(data.actDate || deal?.act_date || deal?.deal_date || new Date().toISOString());
     const contractNumber = f(data.contractNumber || deal?.contract_number || 'б/н');
 
+    // Для Акта приема-передачи ключей: физическое лицо-подписант Принципала
+    // Если сторона юрлицо — подписывает ответственное лицо
+    const authClient = data.authPersonClient || null;
+    const apPass = authClient?.passport_details || pAuth?.passport_details || {};
+    const respName = f(data.authPersonName || principal?.authorized_name || pAuth?.name || authClient?.full_name || pCompany?.director_name || (!isLegalEntity ? principal?.full_name : ''));
+    const respBirth = f(data.authPersonBirth ? fDate(data.authPersonBirth) : (authClient?.birth_date ? fDate(authClient.birth_date) : (apPass.birth_date ? fDate(apPass.birth_date) : '')));
+    const respSeries = f(data.authPersonSeries || apPass.series || pAuth?.series);
+    const respNumber = f(data.authPersonNumber || apPass.number || pAuth?.number);
+    const respIssuedBy = f(data.authPersonIssuedBy || apPass.issued_by || pAuth?.issued_by);
+    const respIssueDate = f(data.authPersonIssueDate ? fDate(data.authPersonIssueDate) : (apPass.issue_date ? fDate(apPass.issue_date) : ''));
+    const respUnitCode = f(data.authPersonUnitCode || apPass.unit_code || pAuth?.unit_code);
+    const respRegAddress = f(data.authPersonRegAddress || apPass.registration_address || authClient?.reg_address || authClient?.address || pAuth?.registration_address);
+    const respShort = toShortName(respName);
+
+    const keyPrincipalName = isLegalEntity
+        ? (respName ? `${respName} (ответственное лицо ${companyName || 'организации'})` : `[Ответственное лицо] (${companyName || 'организации'})`)
+        : principalName;
+    const keyPrincipalShort = isLegalEntity ? respShort : principalShort;
+    const keyPrincipalBirth = isLegalEntity ? respBirth : principalBirth;
+    const keyPrincipalSeries = isLegalEntity ? respSeries : principalSeries;
+    const keyPrincipalNumber = isLegalEntity ? respNumber : principalNumber;
+    const keyPrincipalIssuedBy = isLegalEntity ? respIssuedBy : principalIssuedBy;
+    const keyPrincipalIssueDate = isLegalEntity ? respIssueDate : principalIssueDate;
+    const keyPrincipalUnitCode = isLegalEntity ? respUnitCode : principalUnitCode;
+    const keyPrincipalRegAddress = isLegalEntity ? respRegAddress : principalRegAddress;
+
+    const propKindLower = propKind.toLowerCase();
+    const objectKindGenitive = propKindLower.includes('комнат') ? 'комнаты' : (propKindLower.includes('дом') ? 'жилого дома' : 'квартиры/комнаты');
+    const objectKindCap = objectKindGenitive === 'комнаты' ? 'Комната' : (objectKindGenitive === 'жилого дома' ? 'Жилой дом' : 'Квартира/комната');
+
+    const keyCity = f(data.city || property?.city || 'г. Киров');
+    const keyAgencyName = f(data.agencyName || realtor?.agency_name || 'ИП Муравьевой Ю.А.');
+
     return {
         contract_date: today,
         act_date: actDate,
@@ -236,6 +271,19 @@ export function buildSlotValues(data, template) {
         area: area,
         price: price,
         deal_date: dealDate,
+        key_principal_name: keyPrincipalName,
+        key_principal_short: keyPrincipalShort,
+        key_principal_birth: keyPrincipalBirth,
+        key_principal_series: keyPrincipalSeries,
+        key_principal_number: keyPrincipalNumber,
+        key_principal_issued_by: keyPrincipalIssuedBy,
+        key_principal_issue_date: keyPrincipalIssueDate,
+        key_principal_unit_code: keyPrincipalUnitCode,
+        key_principal_reg_address: keyPrincipalRegAddress,
+        key_prop_kind: objectKindGenitive,
+        key_prop_kind_cap: objectKindCap,
+        key_city: keyCity,
+        key_agency_name: keyAgencyName,
     };
 }
 
@@ -325,6 +373,18 @@ export function injectDataIntoTemplateHtml(html, slotValues, highlight = true, i
                 else if (title.includes('Покупатель') || label.includes('Покупатель')) slotId = 'buyer_name';
                 else if (title.includes('Продавец') || label.includes('Продавец') || title.includes('Наймодатель')) slotId = 'seller_name';
                 else if (title.includes('Наниматель') || label.includes('Наниматель')) slotId = 'buyer_name';
+                else if (inputId === 'doc-input-key-city' || label.includes('Город')) slotId = 'key_city';
+                else if (inputId === 'doc-input-key-agency') slotId = 'key_agency_name';
+                else if (inputId === 'doc-input-key-prop-kind') slotId = 'key_prop_kind';
+                else if (inputId === 'doc-input-key-principal-name') slotId = 'key_principal_name';
+                else if (inputId === 'doc-input-key-principal-birth') slotId = 'key_principal_birth';
+                else if (inputId === 'doc-input-key-principal-series') slotId = 'key_principal_series';
+                else if (inputId === 'doc-input-key-principal-number') slotId = 'key_principal_number';
+                else if (inputId === 'doc-input-key-principal-issued-by') slotId = 'key_principal_issued_by';
+                else if (inputId === 'doc-input-key-principal-issue-date') slotId = 'key_principal_issue_date';
+                else if (inputId === 'doc-input-key-principal-unit-code') slotId = 'key_principal_unit_code';
+                else if (inputId === 'doc-input-key-principal-reg-address') slotId = 'key_principal_reg_address';
+                else if (inputId === 'doc-input-key-principal-short') slotId = 'key_principal_short';
             }
 
             if (slotId && slotValues[slotId] !== undefined) {
@@ -416,6 +476,18 @@ export function sanitizeTemplateForSaving(domElement) {
             else if (title.includes('Покупатель') || label.includes('Покупатель')) slotId = 'buyer_name';
             else if (title.includes('Продавец') || label.includes('Продавец') || title.includes('Наймодатель')) slotId = 'seller_name';
             else if (title.includes('Наниматель') || label.includes('Наниматель')) slotId = 'buyer_name';
+            else if (inputId === 'doc-input-key-city' || label.includes('Город')) slotId = 'key_city';
+            else if (inputId === 'doc-input-key-agency') slotId = 'key_agency_name';
+            else if (inputId === 'doc-input-key-prop-kind') slotId = 'key_prop_kind';
+            else if (inputId === 'doc-input-key-principal-name') slotId = 'key_principal_name';
+            else if (inputId === 'doc-input-key-principal-birth') slotId = 'key_principal_birth';
+            else if (inputId === 'doc-input-key-principal-series') slotId = 'key_principal_series';
+            else if (inputId === 'doc-input-key-principal-number') slotId = 'key_principal_number';
+            else if (inputId === 'doc-input-key-principal-issued-by') slotId = 'key_principal_issued_by';
+            else if (inputId === 'doc-input-key-principal-issue-date') slotId = 'key_principal_issue_date';
+            else if (inputId === 'doc-input-key-principal-unit-code') slotId = 'key_principal_unit_code';
+            else if (inputId === 'doc-input-key-principal-reg-address') slotId = 'key_principal_reg_address';
+            else if (inputId === 'doc-input-key-principal-short') slotId = 'key_principal_short';
         }
 
         if (slotId) {

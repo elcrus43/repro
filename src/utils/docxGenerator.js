@@ -52,7 +52,9 @@ function fmtPrice(price) {
 
 export function toShortName(fullName) {
     if (!fullName) return '____________________';
-    const parts = fullName.trim().split(/\s+/);
+    const cleaned = fullName.replace(/\(.*?\)/g, '').trim();
+    const parts = cleaned.split(/\s+/);
+    if (parts.length === 0 || !parts[0]) return '____________________';
     if (parts.length === 1) return parts[0];
     if (parts.length === 2) return `${parts[0]} ${parts[1][0]}.`;
     return `${parts[0]} ${parts[1][0]}.${parts[2][0]}.`;
@@ -1641,6 +1643,228 @@ export function buildServicesRent3PartyContract(data) {
     ];
 }
 
+/* ─── Шаблон: Акт приема-передачи ключей ─────────────────────────────────────── */
+
+export function buildKeyHandoverAct(data) {
+    const { seller, buyer, property, realtor, deal } = data;
+    // В акте приема-передачи ключей Принципал — клиент (собственник/продавец или наниматель/покупатель)
+    const principal = seller || buyer || {};
+    const p = principal.passport_details || {};
+    const pCompany = principal.company_details || {};
+    const pAuth = principal.authorized_person || {};
+
+    const isLegal = Boolean(
+        data.isLegalEntity ||
+        principal.is_legal_entity ||
+        principal.client_types?.includes('legal_entity') ||
+        principal.company_name ||
+        pCompany.name ||
+        pCompany.inn ||
+        pCompany.ogrn ||
+        /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(principal.full_name || '')
+    );
+
+    const companyName = fmt(data.company_name || principal.company_name || pCompany.name || pCompany.short_name || (isLegal ? principal.full_name : ''));
+
+    // Ответственное лицо (для юрлиц всегда подписывает физлицо — ответственное лицо)
+    const authClient = data.authPersonClient || null;
+    const apPass = authClient?.passport_details || pAuth?.passport_details || {};
+    const respName = fmt(data.authPersonName || principal.authorized_name || pAuth.name || authClient?.full_name || pCompany.director_name || (!isLegal ? principal.full_name : ''), '____________________________________________________________________');
+    const respBirth = data.authPersonBirth ? fmtDate(data.authPersonBirth) : (authClient?.birth_date ? fmtDate(authClient.birth_date) : (apPass.birth_date ? fmtDate(apPass.birth_date) : (pAuth.birth_date ? fmtDate(pAuth.birth_date) : '________')));
+    const respSeries = fmt(data.authPersonSeries || apPass.series || pAuth.series, '________');
+    const respNumber = fmt(data.authPersonNumber || apPass.number || pAuth.number, '________');
+    const respIssuedBy = fmt(data.authPersonIssuedBy || apPass.issued_by || pAuth.issued_by, '____________________');
+    const respIssueDate = data.authPersonIssueDate ? fmtDate(data.authPersonIssueDate) : (apPass.issue_date ? fmtDate(apPass.issue_date) : (pAuth.issue_date ? fmtDate(pAuth.issue_date) : '________'));
+    const respUnitCode = fmt(data.authPersonUnitCode || apPass.unit_code || pAuth.unit_code, '_____________');
+    const respRegAddress = fmt(data.authPersonRegAddress || apPass.registration_address || authClient?.reg_address || authClient?.address || pAuth.registration_address, '____________________');
+
+    // Данные принципала (физического лица)
+    const indName = fmt(principal.full_name, '____________________________________________________________________');
+    const indBirth = principal.birth_date ? fmtDate(principal.birth_date) : (p.birth_date ? fmtDate(p.birth_date) : '________');
+    const indSeries = fmt(p.series, '________');
+    const indNumber = fmt(p.number, '________');
+    const indIssuedBy = fmt(p.issued_by, '____________________');
+    const indIssueDate = p.issue_date ? fmtDate(p.issue_date) : '________';
+    const indUnitCode = fmt(p.unit_code, '_____________');
+    const indRegAddress = fmt(p.registration_address || principal.reg_address || principal.address, '____________________');
+
+    // Передающая сторона (Передал): ВСЕГДА физлицо (для юрлиц — ответственное лицо)
+    const transferrerName = isLegal
+        ? `${respName} (ответственное лицо ${companyName || 'организации'})`
+        : indName;
+    const transferrerBirth = isLegal ? respBirth : indBirth;
+    const transferrerSeries = isLegal ? respSeries : indSeries;
+    const transferrerNumber = isLegal ? respNumber : indNumber;
+    const transferrerIssuedBy = isLegal ? respIssuedBy : indIssuedBy;
+    const transferrerIssueDate = isLegal ? respIssueDate : indIssueDate;
+    const transferrerUnitCode = isLegal ? respUnitCode : indUnitCode;
+    const transferrerRegAddress = isLegal ? respRegAddress : indRegAddress;
+    const transferrerShort = isLegal ? toShortName(respName) : toShortName(principal.full_name);
+
+    // Принимающая сторона (Принял): Риелтор / Агент
+    const r = realtor || {};
+    const rp = r.passport_details || {};
+    const receiverName = fmt(r.full_name, '____________________________________________________________________');
+    const receiverBirth = r.birth_date ? fmtDate(r.birth_date) : (rp.birth_date ? fmtDate(rp.birth_date) : '________');
+    const receiverSeries = fmt(rp.series, '________');
+    const receiverNumber = fmt(rp.number, '________');
+    const receiverIssuedBy = fmt(rp.issued_by, '____________________');
+    const receiverIssueDate = rp.issue_date ? fmtDate(rp.issue_date) : '________';
+    const receiverUnitCode = fmt(rp.unit_code, '_____________');
+    const receiverRegAddress = fmt(rp.registration_address || r.reg_address || r.address, '____________________');
+    const receiverShort = toShortName(r.full_name);
+
+    // Город и дата составления
+    const city = fmt(data.city || property?.city, 'г. Киров');
+    const rawActDate = data.actDate || deal?.handover_date || deal?.deal_date;
+    let actDateFormatted = '«___» ___________ 202_ года';
+    if (rawActDate) {
+        const dt = new Date(rawActDate);
+        if (!isNaN(dt.getTime())) {
+            const day = dt.getDate();
+            const month = dt.toLocaleDateString('ru-RU', { month: 'long' });
+            const year = dt.getFullYear();
+            actDateFormatted = `«${day}» ${month} ${year} года`;
+        }
+    }
+
+    // Объект недвижимости и агент
+    const agencyName = fmt(data.agencyName || r.agency_name, 'ИП Муравьевой Ю.А.');
+    const propAddress = fmt(property?.address || property?.city, '__________________________________________________________________________________________');
+    const propKind = formatPropertyKind(property) || 'квартира/комната';
+    const propKindLower = propKind.toLowerCase();
+    const objectKindGenitive = propKindLower.includes('комнат') ? 'комнаты' : (propKindLower.includes('дом') ? 'жилого дома' : 'квартиры/комнаты');
+    const objectKindCap = objectKindGenitive === 'комнаты' ? 'Комната' : (objectKindGenitive === 'жилого дома' ? 'Жилой дом' : 'Квартира/комната');
+
+    const bodyChildren = [
+        new Paragraph({
+            children: [
+                new ImageRun({
+                    data: getLogoUint8Array(),
+                    transformation: { width: 130, height: 108 },
+                }),
+            ],
+            spacing: { after: 120 },
+        }),
+        new Paragraph({
+            children: [arialBold('Акт приема-передачи ключей', { size: 28 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200 },
+        }),
+        new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            borders: {
+                top: { style: BorderStyle.NONE },
+                bottom: { style: BorderStyle.NONE },
+                left: { style: BorderStyle.NONE },
+                right: { style: BorderStyle.NONE },
+                insideHorizontal: { style: BorderStyle.NONE },
+                insideVertical: { style: BorderStyle.NONE },
+            },
+            rows: [
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            width: { size: 50, type: WidthType.PERCENTAGE },
+                            children: [new Paragraph({ children: [arialRun(city, { size: 22 })], spacing: { after: 160 } })],
+                        }),
+                        new TableCell({
+                            width: { size: 50, type: WidthType.PERCENTAGE },
+                            children: [new Paragraph({
+                                alignment: AlignmentType.RIGHT,
+                                children: [arialRun(actDateFormatted, { size: 22 })],
+                                spacing: { after: 160 }
+                            })],
+                        }),
+                    ],
+                }),
+            ],
+        }),
+        arialPara([
+            arialRun('Гр. '),
+            arialBold(receiverName),
+            arialRun(',\n'),
+            arialRun(receiverBirth !== '________' ? `${receiverBirth} года рождения, ` : '________ года рождения, '),
+            arialRun('паспорт '),
+            arialRun(receiverSeries),
+            arialRun(' '),
+            arialRun(receiverNumber),
+            arialRun(' выдан '),
+            arialRun(receiverIssuedBy),
+            arialRun(receiverIssueDate !== '________' ? ` ${receiverIssueDate} г.` : ' ____________________ г.'),
+            arialRun('\nкод подразделения '),
+            arialRun(receiverUnitCode),
+            arialRun(', зарегистрирован по адресу: '),
+            arialRun(receiverRegAddress),
+        ], { afterPt: 8, lineSpacing: 260 }),
+
+        arialPara([
+            arialBold('получил от Принципала:'),
+        ], { afterPt: 8 }),
+
+        arialPara([
+            arialRun('Гр. '),
+            arialBold(transferrerName),
+            arialRun(',\n'),
+            arialRun(transferrerBirth !== '________' ? `${transferrerBirth} года рождения, ` : '________ года рождения, '),
+            arialRun('паспорт '),
+            arialRun(transferrerSeries),
+            arialRun(' '),
+            arialRun(transferrerNumber),
+            arialRun(' выдан '),
+            arialRun(transferrerIssuedBy),
+            arialRun(transferrerIssueDate !== '________' ? ` ${transferrerIssueDate} г.` : ' ____________________ г.'),
+            arialRun('\nкод подразделения '),
+            arialRun(transferrerUnitCode),
+            arialRun(', зарегистрирован по адресу: '),
+            arialRun(transferrerRegAddress),
+        ], { afterPt: 10, lineSpacing: 260 }),
+
+        arialPara([
+            arialRun(`ключи от ${objectKindGenitive} для исполнение агентского договора, заключенного между Принципалом и Агентом `),
+            arialBold(agencyName),
+            arialRun('.'),
+        ], { afterPt: 6, lineSpacing: 260 }),
+
+        arialPara([
+            arialRun(`${objectKindCap} расположена по адресу: `),
+            arialBold(propAddress),
+        ], { afterPt: 14, lineSpacing: 260 }),
+
+        arialPara([
+            arialBold('Передающая сторона гарантирует, что в Квартире/комнате не находятся деньги, драгоценности и иные ценные вещи.'),
+        ], { afterPt: 24, lineSpacing: 260 }),
+
+        arialPara([
+            arialBold('Подписи:'),
+        ], { afterPt: 16 }),
+
+        arialPara([
+            arialRun('Передал /_____________________________/ '),
+            arialBold(transferrerShort ? ` ${transferrerShort}` : ''),
+        ], { afterPt: 16 }),
+
+        arialPara([
+            arialRun('Принял /______________________________/ '),
+            arialBold(receiverShort ? ` ${receiverShort}` : ''),
+        ], { afterPt: 12 }),
+    ];
+
+    return {
+        properties: {
+            page: {
+                margin: {
+                    top: 851,
+                    right: 566,
+                    bottom: 851,
+                    left: 1134,
+                },
+            },
+        },
+        children: bodyChildren,
+    };
+}
+
 /* ─── Карта шаблонов ─────────────────────────────────────────────────────── */
 
 export const DOCUMENT_CATEGORIES = [
@@ -1702,6 +1926,12 @@ const TEMPLATES = {
         builder: buildHandoverAct,
         category: 'other',
         categories: ['other'],
+    },
+    key_act: {
+        title: 'Акт приема-передачи ключей',
+        builder: buildKeyHandoverAct,
+        category: 'other',
+        categories: ['other', 'sale', 'rent', 'hire', 'buy'],
     },
 };
 
@@ -1864,7 +2094,7 @@ export async function generateAndDownloadDocx(templateKey, data, editedDomElemen
     const template = TEMPLATES[templateKey];
     if (!template) throw new Error(`Неизвестный шаблон: ${templateKey}`);
 
-    const isAgencyContract = templateKey === 'yuss_buy_1' || templateKey === 'agency_sale_1' || templateKey === 'agency_rent_landlord_1';
+    const isAgencyContract = templateKey === 'yuss_buy_1' || templateKey === 'agency_sale_1' || templateKey === 'agency_rent_landlord_1' || templateKey === 'key_act';
 
     let bodyChildren = null;
     let headers = undefined;

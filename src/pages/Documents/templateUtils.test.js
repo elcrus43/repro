@@ -47,6 +47,40 @@ describe('templateUtils - buildSlotValues', () => {
         expect(slots.comm_formatted.replace(/\s/g, ' ')).toBe('60 000');
         expect(slots.price_formatted.replace(/\s/g, ' ')).toBe('5 000 000');
     });
+
+    it('builds slot values for key_act with responsible person when client is legal entity', () => {
+        const data = {
+            seller: {
+                full_name: 'ООО «Инвест Про»',
+                company_name: 'ООО «Инвест Про»',
+                is_legal_entity: true,
+                authorized_name: 'Семенов Семен Семенович',
+                authorized_position: 'Директор',
+            },
+            authPersonName: 'Семенов Семен Семенович',
+            authPersonBirth: '1975-08-10',
+            authPersonSeries: '33 15',
+            authPersonNumber: '112233',
+            realtor: {
+                full_name: 'Муравьева Юлия Анатольевна',
+                agency_name: 'ИП Муравьевой Ю.А.',
+            },
+            property: {
+                property_kind: '1-комн. квартира',
+                address: 'г. Киров, ул. Ленина, д. 50',
+            },
+            city: 'г. Киров',
+        };
+
+        const slots = buildSlotValues(data, 'key_act');
+        expect(slots.key_principal_name).toContain('Семенов Семен Семенович');
+        expect(slots.key_principal_name).toContain('ООО «Инвест Про»');
+        expect(slots.key_principal_short).toBe('Семенов С.С.');
+        expect(slots.key_principal_series).toBe('33 15');
+        expect(slots.key_principal_number).toBe('112233');
+        expect(slots.key_agency_name).toBe('ИП Муравьевой Ю.А.');
+        expect(slots.key_city).toBe('г. Киров');
+    });
 });
 
 describe('templateUtils - injectDataIntoTemplateHtml', () => {
