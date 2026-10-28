@@ -110,7 +110,7 @@ describe('docxGenerator - getDocumentTemplates', () => {
     });
 });
 
-import { toShortName, formatPropertyKind, collectDocxBlocksFromDom, buildKeyHandoverAct } from './docxGenerator';
+import { toShortName, formatPropertyKind, getPropertyKindForms, collectDocxBlocksFromDom, buildKeyHandoverAct } from './docxGenerator';
 
 describe('docxGenerator - toShortName', () => {
     it('formats full Russian names into initials correctly', () => {
@@ -225,6 +225,72 @@ describe('docxGenerator - formatPropertyKind', () => {
     it('respects custom property_kind if provided', () => {
         expect(formatPropertyKind({ property_kind: 'Таунхаус' })).toBe('Таунхаус');
         expect(formatPropertyKind({ property_kind: '2-комн. квартира (евродвушка)' })).toBe('2-комн. квартира (евродвушка)');
+    });
+});
+
+describe('docxGenerator - getPropertyKindForms', () => {
+    it('inflects apartments correctly', () => {
+        const f1 = getPropertyKindForms('Квартира');
+        expect(f1.genitive).toBe('квартиры');
+        expect(f1.nominative).toBe('Квартира');
+        expect(f1.prepositional).toBe('в квартире');
+        expect(f1.locatedVerb).toBe('расположена');
+
+        const f2 = getPropertyKindForms('2-комн. квартира');
+        expect(f2.genitive).toBe('2-комн. квартиры');
+        expect(f2.nominative).toBe('2-комн. квартира');
+        expect(f2.prepositional).toBe('в 2-комн. квартире');
+        expect(f2.locatedVerb).toBe('расположена');
+
+        const f3 = getPropertyKindForms('Квартира-студия');
+        expect(f3.genitive).toBe('квартиры-студии');
+        expect(f3.prepositional).toBe('в квартире-студии');
+        expect(f3.locatedVerb).toBe('расположена');
+    });
+
+    it('inflects rooms, houses, plots, and commercial properties correctly', () => {
+        const room = getPropertyKindForms('Комната');
+        expect(room.genitive).toBe('комнаты');
+        expect(room.prepositional).toBe('в комнате');
+        expect(room.locatedVerb).toBe('расположена');
+
+        const house = getPropertyKindForms('Жилой дом');
+        expect(house.genitive).toBe('жилого дома');
+        expect(house.prepositional).toBe('в жилом доме');
+        expect(house.locatedVerb).toBe('расположен');
+
+        const houseLand = getPropertyKindForms('Жилой дом с земельным участком');
+        expect(houseLand.genitive).toBe('жилого дома с земельным участком');
+        expect(houseLand.prepositional).toBe('в жилом доме с земельным участком');
+        expect(houseLand.locatedVerb).toBe('расположен');
+
+        const land = getPropertyKindForms('Земельный участок');
+        expect(land.genitive).toBe('земельного участка');
+        expect(land.prepositional).toBe('на земельном участке');
+        expect(land.locatedVerb).toBe('расположен');
+
+        const comm = getPropertyKindForms('Нежилое помещение');
+        expect(comm.genitive).toBe('нежилого помещения');
+        expect(comm.prepositional).toBe('в нежилом помещении');
+        expect(comm.locatedVerb).toBe('расположено');
+
+        const garage = getPropertyKindForms('Гараж');
+        expect(garage.genitive).toBe('гаража');
+        expect(garage.prepositional).toBe('в гараже');
+        expect(garage.locatedVerb).toBe('расположен');
+
+        const ap = getPropertyKindForms('Апартаменты');
+        expect(ap.genitive).toBe('апартаментов');
+        expect(ap.prepositional).toBe('в апартаментах');
+        expect(ap.locatedVerb).toBe('расположены');
+    });
+
+    it('handles empty fallback gracefully', () => {
+        const def = getPropertyKindForms('');
+        expect(def.genitive).toBe('объекта недвижимости');
+        expect(def.nominative).toBe('Объект недвижимости');
+        expect(def.prepositional).toBe('в объекте недвижимости');
+        expect(def.locatedVerb).toBe('расположен');
     });
 });
 

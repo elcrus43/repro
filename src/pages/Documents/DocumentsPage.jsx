@@ -7,7 +7,7 @@ import {
     ChevronDown, ChevronUp, Search, Save, CheckCircle2, AlertCircle, Sparkles, Check, Loader2,
     UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
-import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind } from '../../utils/docxGenerator';
+import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind, getPropertyKindForms } from '../../utils/docxGenerator';
 import { formatPhone, stripPhone, parsePgArray } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
@@ -5399,9 +5399,7 @@ function DocumentPreview({ template, data, highlight = true }) {
         const receiverRegAddress = realtorRegAddress;
 
         // Объект недвижимости
-        const propKindLower = propKind.toLowerCase();
-        const objectKindGenitive = propKindLower.includes('комнат') ? 'комнаты' : (propKindLower.includes('дом') ? 'жилого дома' : 'квартиры/комнаты');
-        const objectKindCap = objectKindGenitive === 'комнаты' ? 'Комната' : (objectKindGenitive === 'жилого дома' ? 'Жилой дом' : 'Квартира/комната');
+        const forms = getPropertyKindForms(propKind);
 
         return (
             <div>
@@ -5440,12 +5438,12 @@ function DocumentPreview({ template, data, highlight = true }) {
                 </p>
 
                 <p style={{ marginBottom: 12, lineHeight: 1.6, textAlign: 'justify' }}>
-                    ключи от <Slot slotId="key_prop_kind" value={objectKindGenitive} label="Вид объекта" fallback="квартиры/комнаты" highlight={highlight} /> для исполнение агентского договора, заключенного между Принципалом и Агентом <Slot slotId="key_agency_name" value={keyAgency} label="Агент по договору" fallback="ИП Муравьевой Ю.А." highlight={highlight} />.<br />
-                    <Slot slotId="key_prop_kind_cap" value={objectKindCap} label="Вид объекта (заглавная)" fallback="Квартира/комната" highlight={highlight} /> расположена по адресу: <strong><Slot slotId="prop_address" value={propAddress} label="Адрес объекта" fallback="__________________________________________________________________________________________" highlight={highlight} /></strong>.
+                    ключи от <Slot slotId="key_prop_kind" value={forms.genitive} label="Вид объекта (род. падеж)" fallback="квартиры" highlight={highlight} /> для исполнение агентского договора, заключенного между Принципалом и Агентом <Slot slotId="key_agency_name" value={keyAgency} label="Агент по договору" fallback="ИП Муравьевой Ю.А." highlight={highlight} />.<br />
+                    <Slot slotId="key_prop_kind_cap" value={forms.nominative} label="Вид объекта" fallback="Квартира" highlight={highlight} /> <Slot slotId="key_located_verb" value={forms.locatedVerb} label="расположен / расположена" fallback="расположена" highlight={highlight} /> по адресу: <strong><Slot slotId="prop_address" value={propAddress} label="Адрес объекта" fallback="__________________________________________________________________________________________" highlight={highlight} /></strong>.
                 </p>
 
                 <p style={{ fontWeight: 'bold', margin: '22px 0 18px', lineHeight: 1.5, textAlign: 'justify' }}>
-                    Передающая сторона гарантирует, что в Квартире/комнате не находятся деньги, драгоценности и иные ценные вещи.
+                    Передающая сторона гарантирует, что <Slot slotId="key_guarantee_location" value={forms.prepositional} label="Местонахождение" fallback="в квартире" highlight={highlight} /> не находятся деньги, драгоценности и иные ценные вещи.
                 </p>
 
                 <div style={{ marginTop: 24, lineHeight: 2 }}>

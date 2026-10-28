@@ -105,6 +105,285 @@ export function formatPropertyKind(property) {
     return 'Квартира';
 }
 
+/**
+ * Возвращает грамматические формы для вида объекта недвижимости:
+ * - nominative: именительный падеж с заглавной буквы (например, "2-комн. квартира", "Жилой дом", "Земельный участок")
+ * - genitive: родительный падеж ("2-комн. квартиры", "жилого дома", "земельного участка")
+ * - prepositional: предложный падеж с подходящим предлогом в/на ("в 2-комн. квартире", "в жилом доме", "на земельном участке")
+ * - locatedVerb: подходящая форма глагола "расположен / расположена / расположено / расположены"
+ */
+export function getPropertyKindForms(kind) {
+    const raw = (kind || '').trim();
+    if (!raw) {
+        return {
+            nominative: 'Объект недвижимости',
+            genitive: 'объекта недвижимости',
+            prepositional: 'в объекте недвижимости',
+            locatedVerb: 'расположен',
+        };
+    }
+
+    const lower = raw.toLowerCase();
+    const toLowerFirst = (s) => s.charAt(0).toLowerCase() + s.slice(1);
+
+    const replaceWord = (str, target, replacement) => {
+        const re = new RegExp('(^|[^a-zA-Zа-яА-ЯёЁ0-9])' + target + '([^a-zA-Zа-яА-ЯёЁ0-9]|$)', 'gi');
+        return str.replace(re, '$1' + replacement + '$2');
+    };
+
+    // 1. Апартаменты
+    if (lower.includes('апартамент')) {
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(raw.replace(/апартаменты/gi, 'апартаментов')),
+            prepositional: 'в ' + toLowerFirst(raw.replace(/апартаменты/gi, 'апартаментах')),
+            locatedVerb: 'расположены',
+        };
+    }
+
+    // 2. Жилой дом с земельным участком
+    if (lower.includes('жилой дом с земельным участком') || (lower.includes('дом') && lower.includes('участк'))) {
+        const gen = raw.replace(/жилой дом с земельным участком/gi, 'жилого дома с земельным участком');
+        const prep = raw.replace(/жилой дом с земельным участком/gi, 'жилом доме с земельным участком');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположен',
+        };
+    }
+
+    // 3. Земельный участок / Участок
+    if (lower.includes('участок') || lower.includes('участк')) {
+        const gen = replaceWord(
+            replaceWord(
+                replaceWord(
+                    raw.replace(/земельный участок/gi, 'земельного участка'),
+                    'садовый участок', 'садового участка'
+                ),
+                'дачный участок', 'дачного участка'
+            ),
+            'участок', 'участка'
+        );
+
+        const prep = replaceWord(
+            replaceWord(
+                replaceWord(
+                    raw.replace(/земельный участок/gi, 'земельном участке'),
+                    'садовый участок', 'садовом участке'
+                ),
+                'дачный участок', 'дачном участке'
+            ),
+            'участок', 'участке'
+        );
+
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'на ' + toLowerFirst(prep),
+            locatedVerb: 'расположен',
+        };
+    }
+
+    // 4. Квартиры
+    if (lower.includes('квартир')) {
+        const gen = replaceWord(
+            raw.replace(/квартира-студия/gi, 'квартиры-студии')
+               .replace(/комнатная квартира/gi, 'комнатной квартиры')
+               .replace(/комн\. квартира/gi, 'комн. квартиры'),
+            'квартира', 'квартиры'
+        );
+
+        const prep = replaceWord(
+            raw.replace(/квартира-студия/gi, 'квартире-студии')
+               .replace(/комнатная квартира/gi, 'комнатной квартире')
+               .replace(/комн\. квартира/gi, 'комн. квартире'),
+            'квартира', 'квартире'
+        );
+
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположена',
+        };
+    }
+
+    // 5. Комната
+    if (lower.includes('комнат')) {
+        const gen = replaceWord(raw, 'комната', 'комнаты');
+        const prep = replaceWord(raw, 'комната', 'комнате');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположена',
+        };
+    }
+
+    // 6. Дача
+    if (lower.includes('дача') || lower.includes('дач')) {
+        const gen = replaceWord(raw, 'дача', 'дачи');
+        const prep = replaceWord(raw, 'дача', 'даче');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'на ' + toLowerFirst(prep),
+            locatedVerb: 'расположена',
+        };
+    }
+
+    // 7. Жилой дом / Дом / Коттедж / Таунхаус
+    if (lower.includes('дом') || lower.includes('коттедж') || lower.includes('таунхаус')) {
+        const gen = replaceWord(
+            replaceWord(
+                replaceWord(
+                    raw.replace(/жилой дом/gi, 'жилого дома'),
+                    'дом', 'дома'
+                ),
+                'коттедж', 'коттеджа'
+            ),
+            'таунхаус', 'таунхауса'
+        );
+
+        const prep = replaceWord(
+            replaceWord(
+                replaceWord(
+                    raw.replace(/жилой дом/gi, 'жилом доме'),
+                    'дом', 'доме'
+                ),
+                'коттедж', 'коттедже'
+            ),
+            'таунхаус', 'таунхаусе'
+        );
+
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположен',
+        };
+    }
+
+    // 8. Нежилое помещение / Помещение
+    if (lower.includes('помещени')) {
+        const gen = replaceWord(
+            replaceWord(
+                raw.replace(/нежилое помещение/gi, 'нежилого помещения')
+                   .replace(/коммерческое помещение/gi, 'коммерческого помещения'),
+                'помещение', 'помещения'
+            ),
+            'помещения', 'помещения'
+        );
+
+        const prep = replaceWord(
+            replaceWord(
+                raw.replace(/нежилое помещение/gi, 'нежилом помещении')
+                   .replace(/коммерческое помещение/gi, 'коммерческом помещении'),
+                'помещение', 'помещении'
+            ),
+            'помещении', 'помещении'
+        );
+
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположено',
+        };
+    }
+
+    // 9. Здание
+    if (lower.includes('здани')) {
+        const gen = replaceWord(raw, 'здание', 'здания');
+        const prep = replaceWord(raw, 'здание', 'здании');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположено',
+        };
+    }
+
+    // 10. Машиноместо
+    if (lower.includes('машиномест') || lower.includes('машино-мест')) {
+        const gen = raw.replace(/машиноместо/gi, 'машиноместа').replace(/машино-место/gi, 'машино-места');
+        const prep = raw.replace(/машиноместо/gi, 'машиноместе').replace(/машино-место/gi, 'машино-месте');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'на ' + toLowerFirst(prep),
+            locatedVerb: 'расположено',
+        };
+    }
+
+    // 11. Гараж
+    if (lower.includes('гараж')) {
+        const gen = replaceWord(raw, 'гараж', 'гаража');
+        const prep = replaceWord(raw, 'гараж', 'гараже');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположен',
+        };
+    }
+
+    // 12. Склад
+    if (lower.includes('склад')) {
+        const gen = replaceWord(raw, 'склад', 'склада');
+        const prep = replaceWord(raw, 'склад', 'складе');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'на ' + toLowerFirst(prep),
+            locatedVerb: 'расположен',
+        };
+    }
+
+    // 13. Офис
+    if (lower.includes('офис')) {
+        const gen = replaceWord(raw, 'офис', 'офиса');
+        const prep = replaceWord(raw, 'офис', 'офисе');
+        return {
+            nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+            genitive: toLowerFirst(gen),
+            prepositional: 'в ' + toLowerFirst(prep),
+            locatedVerb: 'расположен',
+        };
+    }
+
+    // Fallback для произвольных наименований
+    const lastChar = raw.slice(-1).toLowerCase();
+    let gen = raw;
+    let prep = raw;
+    let verb = 'расположен';
+
+    if (['а', 'я'].includes(lastChar)) {
+        verb = 'расположена';
+        const stem = raw.slice(0, -1);
+        const lastStemChar = stem.slice(-1).toLowerCase();
+        const genEnd = lastChar === 'я' ? 'и' : (['г', 'к', 'х', 'ж', 'ч', 'ш', 'щ'].includes(lastStemChar) ? 'и' : 'ы');
+        gen = stem + genEnd;
+        prep = stem + 'е';
+    } else if (lastChar === 'о' || lastChar === 'е') {
+        verb = 'расположено';
+        const stem = raw.slice(0, -1);
+        gen = stem + (lastChar === 'о' ? 'а' : 'я');
+        prep = stem + (lastChar === 'о' ? 'е' : (raw.slice(-2).toLowerCase() === 'ие' ? 'и' : 'е'));
+    } else {
+        gen = raw + 'а';
+        prep = raw + 'е';
+    }
+
+    return {
+        nominative: raw.charAt(0).toUpperCase() + raw.slice(1),
+        genitive: toLowerFirst(gen),
+        prepositional: 'в ' + toLowerFirst(prep),
+        locatedVerb: verb,
+    };
+}
+
 
 /**
  * Преобразует целое число в рубли прописью на русском языке
@@ -1731,10 +2010,8 @@ export function buildKeyHandoverAct(data) {
     // Объект недвижимости и агент
     const agencyName = fmt(data.agencyName || r.agency_name, 'ИП Муравьевой Ю.А.');
     const propAddress = fmt(property?.address || property?.city, '__________________________________________________________________________________________');
-    const propKind = formatPropertyKind(property) || 'квартира/комната';
-    const propKindLower = propKind.toLowerCase();
-    const objectKindGenitive = propKindLower.includes('комнат') ? 'комнаты' : (propKindLower.includes('дом') ? 'жилого дома' : 'квартиры/комнаты');
-    const objectKindCap = objectKindGenitive === 'комнаты' ? 'Комната' : (objectKindGenitive === 'жилого дома' ? 'Жилой дом' : 'Квартира/комната');
+    const propKind = formatPropertyKind(property);
+    const propForms = getPropertyKindForms(propKind);
 
     const bodyChildren = [
         new Paragraph({
@@ -1821,18 +2098,18 @@ export function buildKeyHandoverAct(data) {
         ], { afterPt: 10, lineSpacing: 260 }),
 
         arialPara([
-            arialRun(`ключи от ${objectKindGenitive} для исполнение агентского договора, заключенного между Принципалом и Агентом `),
+            arialRun(`ключи от ${propForms.genitive} для исполнение агентского договора, заключенного между Принципалом и Агентом `),
             arialBold(agencyName),
             arialRun('.'),
         ], { afterPt: 6, lineSpacing: 260 }),
 
         arialPara([
-            arialRun(`${objectKindCap} расположена по адресу: `),
+            arialRun(`${propForms.nominative} ${propForms.locatedVerb} по адресу: `),
             arialBold(propAddress),
         ], { afterPt: 14, lineSpacing: 260 }),
 
         arialPara([
-            arialBold('Передающая сторона гарантирует, что в Квартире/комнате не находятся деньги, драгоценности и иные ценные вещи.'),
+            arialBold(`Передающая сторона гарантирует, что ${propForms.prepositional} не находятся деньги, драгоценности и иные ценные вещи.`),
         ], { afterPt: 24, lineSpacing: 260 }),
 
         arialPara([

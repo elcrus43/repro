@@ -1,5 +1,5 @@
 import { formatPhone } from '../../utils/format';
-import { formatPropertyKind, numberToWordsRu } from '../../utils/docxGenerator';
+import { formatPropertyKind, getPropertyKindForms, numberToWordsRu } from '../../utils/docxGenerator';
 
 export function toShortName(fullName) {
     if (!fullName) return '____________________';
@@ -193,9 +193,7 @@ export function buildSlotValues(data, template) {
     const keyPrincipalUnitCode = isLegalEntity ? respUnitCode : principalUnitCode;
     const keyPrincipalRegAddress = isLegalEntity ? respRegAddress : principalRegAddress;
 
-    const propKindLower = propKind.toLowerCase();
-    const objectKindGenitive = propKindLower.includes('комнат') ? 'комнаты' : (propKindLower.includes('дом') ? 'жилого дома' : 'квартиры/комнаты');
-    const objectKindCap = objectKindGenitive === 'комнаты' ? 'Комната' : (objectKindGenitive === 'жилого дома' ? 'Жилой дом' : 'Квартира/комната');
+    const propForms = getPropertyKindForms(propKind);
 
     const keyCity = f(data.city || property?.city || 'г. Киров');
     const keyAgencyName = f(data.agencyName || realtor?.agency_name || 'ИП Муравьевой Ю.А.');
@@ -280,8 +278,10 @@ export function buildSlotValues(data, template) {
         key_principal_issue_date: keyPrincipalIssueDate,
         key_principal_unit_code: keyPrincipalUnitCode,
         key_principal_reg_address: keyPrincipalRegAddress,
-        key_prop_kind: objectKindGenitive,
-        key_prop_kind_cap: objectKindCap,
+        key_prop_kind: propForms.genitive,
+        key_prop_kind_cap: propForms.nominative,
+        key_located_verb: propForms.locatedVerb,
+        key_guarantee_location: propForms.prepositional,
         key_city: keyCity,
         key_agency_name: keyAgencyName,
     };
@@ -385,6 +385,8 @@ export function injectDataIntoTemplateHtml(html, slotValues, highlight = true, i
                 else if (inputId === 'doc-input-key-principal-unit-code') slotId = 'key_principal_unit_code';
                 else if (inputId === 'doc-input-key-principal-reg-address') slotId = 'key_principal_reg_address';
                 else if (inputId === 'doc-input-key-principal-short') slotId = 'key_principal_short';
+                else if (inputId === 'doc-input-key-located-verb') slotId = 'key_located_verb';
+                else if (inputId === 'doc-input-key-guarantee-location') slotId = 'key_guarantee_location';
             }
 
             if (slotId && slotValues[slotId] !== undefined) {
@@ -488,6 +490,8 @@ export function sanitizeTemplateForSaving(domElement) {
             else if (inputId === 'doc-input-key-principal-unit-code') slotId = 'key_principal_unit_code';
             else if (inputId === 'doc-input-key-principal-reg-address') slotId = 'key_principal_reg_address';
             else if (inputId === 'doc-input-key-principal-short') slotId = 'key_principal_short';
+            else if (inputId === 'doc-input-key-located-verb') slotId = 'key_located_verb';
+            else if (inputId === 'doc-input-key-guarantee-location') slotId = 'key_guarantee_location';
         }
 
         if (slotId) {

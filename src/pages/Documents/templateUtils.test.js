@@ -80,6 +80,10 @@ describe('templateUtils - buildSlotValues', () => {
         expect(slots.key_principal_number).toBe('112233');
         expect(slots.key_agency_name).toBe('ИП Муравьевой Ю.А.');
         expect(slots.key_city).toBe('г. Киров');
+        expect(slots.key_prop_kind).toBe('1-комн. квартиры');
+        expect(slots.key_prop_kind_cap).toBe('1-комн. квартира');
+        expect(slots.key_located_verb).toBe('расположена');
+        expect(slots.key_guarantee_location).toBe('в 1-комн. квартире');
     });
 });
 
