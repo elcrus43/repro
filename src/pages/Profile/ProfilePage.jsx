@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { authService } from '../../lib/auth';
-import { formatPhone, formatPassportDisplay, parsePassportInput, formatUnitCode } from '../../utils/format';
+import { formatPhone, formatPassportDisplay, parsePassportInput, formatPassportInput, formatUnitCode } from '../../utils/format';
 import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon, FileText } from 'lucide-react';
 import {
     isCalendarConfigured,
@@ -413,7 +413,8 @@ export function ProfilePage() {
                                 style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
                                 value={formatPassportDisplay(editData.passport_details?.series, editData.passport_details?.number)}
                                 onChange={e => {
-                                    const { series, number } = parsePassportInput(e.target.value);
+                                    const formatted = formatPassportInput(e.target.value);
+                                    const { series, number } = parsePassportInput(formatted);
                                     setEditData(prev => ({
                                         ...prev,
                                         passport_details: {
@@ -423,8 +424,8 @@ export function ProfilePage() {
                                         }
                                     }));
                                 }}
-                                placeholder="Серия и номер: __ ______"
-                                maxLength={13}
+                                placeholder="Серия и номер: __ __ ______"
+                                maxLength={12}
                             />
 
                             <input

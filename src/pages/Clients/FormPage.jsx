@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, stripPhone, formatPassportDisplay, parsePassportInput } from '../../utils/format';
+import { formatPhone, stripPhone, formatPassportDisplay, parsePassportInput, formatPassportInput } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
@@ -1299,12 +1299,13 @@ export function FormPage() {
                                             style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }}
                                             value={formatPassportDisplay(form.passport_details?.series, form.passport_details?.number)}
                                             onChange={e => {
-                                                const { series, number } = parsePassportInput(e.target.value);
+                                                const formatted = formatPassportInput(e.target.value);
+                                                const { series, number } = parsePassportInput(formatted);
                                                 setPassport('series', series);
                                                 setPassport('number', number);
                                             }}
-                                            placeholder="__ ______"
-                                            maxLength={13}
+                                            placeholder="__ __ ______"
+                                            maxLength={12}
                                         />
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>

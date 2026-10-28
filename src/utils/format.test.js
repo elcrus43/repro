@@ -312,26 +312,26 @@ describe('formatUnitCode', () => {
 })
 
 describe('passport formatting & parsing', () => {
-  it('formats combined passport input correctly', () => {
-    expect(formatPassportInput('43 123456')).toBe('43 123456')
-    expect(formatPassportInput('4314 123456')).toBe('4314 123456')
-    expect(formatPassportInput('43 14 123456')).toBe('43 14 123456')
-    expect(formatPassportInput('4314123456')).toBe('4314 123456')
-    expect(formatPassportInput('43123456')).toBe('43 123456')
+  it('formats combined passport input correctly according to __ __ ______', () => {
+    expect(formatPassportInput('3314123456')).toBe('33 14 123456')
+    expect(formatPassportInput('33 14 123456')).toBe('33 14 123456')
+    expect(formatPassportInput('3314')).toBe('33 14')
+    expect(formatPassportInput('331')).toBe('33 1')
+    expect(formatPassportInput('33')).toBe('33')
   })
 
-  it('parses passport into separate series and number', () => {
-    expect(parsePassportInput('43 123456')).toEqual({ series: '43', number: '123456' })
-    expect(parsePassportInput('43 14 123456')).toEqual({ series: '43 14', number: '123456' })
-    expect(parsePassportInput('4314 123456')).toEqual({ series: '4314', number: '123456' })
-    expect(parsePassportInput('4314123456')).toEqual({ series: '4314', number: '123456' })
-    expect(parsePassportInput('43123456')).toEqual({ series: '43', number: '123456' })
+  it('parses passport into separate series and number according to __ __ ______', () => {
+    expect(parsePassportInput('33 14 123456')).toEqual({ series: '33 14', number: '123456' })
+    expect(parsePassportInput('3314123456')).toEqual({ series: '33 14', number: '123456' })
+    expect(parsePassportInput('33 14')).toEqual({ series: '33 14', number: '' })
+    expect(parsePassportInput('3314')).toEqual({ series: '33 14', number: '' })
+    expect(parsePassportInput('33')).toEqual({ series: '33', number: '' })
     expect(parsePassportInput('')).toEqual({ series: '', number: '' })
   })
 
-  it('formats passport display string from series and number', () => {
+  it('formats passport display string from series and number according to __ __ ______', () => {
     expect(formatPassportDisplay('33 14', '123456')).toBe('33 14 123456')
-    expect(formatPassportDisplay('43', '123456')).toBe('43 123456')
+    expect(formatPassportDisplay('3314', '123456')).toBe('33 14 123456')
     expect(formatPassportDisplay('33 14', '')).toBe('33 14')
     expect(formatPassportDisplay('', '123456')).toBe('123456')
     expect(formatPassportDisplay('', '')).toBe('')

@@ -2354,12 +2354,13 @@ export function DocumentsPage() {
                                                 className="doc-input-sm"
                                                 value={formatPassportDisplay(clientDraft.passport_series, clientDraft.passport_number)}
                                                 onChange={e => {
-                                                    const { series, number } = parsePassportInput(e.target.value);
+                                                    const formatted = formatPassportInput(e.target.value);
+                                                    const { series, number } = parsePassportInput(formatted);
                                                     handleDraftChange('passport_series', series);
                                                     handleDraftChange('passport_number', number);
                                                 }}
-                                                placeholder="__ ______"
-                                                maxLength={13}
+                                                placeholder="__ __ ______"
+                                                maxLength={12}
                                                 style={{
                                                     border: (!clientDraft.passport_series?.trim() || !clientDraft.passport_number?.trim())
                                                         ? '1px solid #f59e0b'
@@ -2812,7 +2813,8 @@ export function DocumentsPage() {
                                                     clientDraft.is_legal_entity ? clientDraft.auth_person_number : clientDraft.passport_number
                                                 )}
                                                 onChange={e => {
-                                                    const { series, number } = parsePassportInput(e.target.value);
+                                                    const formatted = formatPassportInput(e.target.value);
+                                                    const { series, number } = parsePassportInput(formatted);
                                                     if (clientDraft.is_legal_entity) {
                                                         handleDraftChange('auth_person_series', series);
                                                         handleDraftChange('auth_person_number', number);
@@ -2821,8 +2823,8 @@ export function DocumentsPage() {
                                                         handleDraftChange('passport_number', number);
                                                     }
                                                 }}
-                                                placeholder="Серия и номер: __ ______"
-                                                maxLength={13}
+                                                placeholder="Серия и номер: __ __ ______"
+                                                maxLength={12}
                                             />
                                         </div>
                                     </div>
@@ -2843,11 +2845,12 @@ export function DocumentsPage() {
                                                 className="doc-input-sm"
                                                 value={formatPassportDisplay(realtorDraft.series, realtorDraft.number)}
                                                 onChange={e => {
-                                                    const { series, number } = parsePassportInput(e.target.value);
+                                                    const formatted = formatPassportInput(e.target.value);
+                                                    const { series, number } = parsePassportInput(formatted);
                                                     setRealtorDraft(prev => ({ ...prev, series, number }));
                                                 }}
-                                                placeholder="Серия и номер: __ ______"
-                                                maxLength={13}
+                                                placeholder="Серия и номер: __ __ ______"
+                                                maxLength={12}
                                             />
                                         </div>
                                     </div>
