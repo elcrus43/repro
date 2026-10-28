@@ -61,13 +61,16 @@ function ClientSearch({ clients, value, onChange, placeholder, onAddNew, addLabe
                     style={{
                         flex: 1, textAlign: 'left', display: 'flex',
                         justifyContent: 'space-between', alignItems: 'center',
-                        height: 46, borderRadius: 14, cursor: 'pointer',
+                        height: 36, borderRadius: 9, cursor: 'pointer',
                         color: selected ? 'var(--text)' : 'var(--text-secondary)',
+                        fontSize: 12.5, padding: '0 10px'
                     }}
                     onClick={() => setOpen(o => !o)}
                 >
-                    <span>{selected ? selected.full_name : placeholder}</span>
-                    {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selected ? selected.full_name : placeholder}
+                    </span>
+                    {open ? <ChevronUp size={14} style={{ flexShrink: 0 }} /> : <ChevronDown size={14} style={{ flexShrink: 0 }} />}
                 </button>
                 {onAddNew && (
                     <button
@@ -76,22 +79,22 @@ function ClientSearch({ clients, value, onChange, placeholder, onAddNew, addLabe
                         title="Создать нового клиента"
                         onClick={() => onAddNew('')}
                         style={{
-                            height: 46,
-                            padding: '0 12px',
-                            borderRadius: 14,
+                            height: 36,
+                            padding: '0 10px',
+                            borderRadius: 9,
                             border: '1px solid var(--border)',
                             background: 'var(--surface)',
                             color: 'var(--primary)',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 6,
-                            fontSize: 12,
+                            gap: 4,
+                            fontSize: 11.5,
                             fontWeight: 600,
                             cursor: 'pointer',
                             flexShrink: 0,
                         }}
                     >
-                        <UserPlus size={15} />
+                        <UserPlus size={14} />
                         <span>+ Создать</span>
                     </button>
                 )}
@@ -488,6 +491,18 @@ export function DocumentsPage() {
     });
     const [previewKey, setPreviewKey] = useState(0);
     const previewRef = useRef(null);
+
+    // Компактный интерфейс: состояния сворачивания аккордеонов
+    const [collapsedSections, setCollapsedSections] = useState({
+        client: false,
+        property: false,
+        contractParams: false,
+        dataSummary: true, // Сводка данных по умолчанию свернута
+    });
+    const toggleSection = (key) => setCollapsedSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+    // Режим отображения на узких экранах: 'all' | 'settings' | 'preview'
+    const [mobileTab, setMobileTab] = useState('all');
 
     // При смене шаблона обновляем сохраненный шаблон и выключаем режим редактирования
     useEffect(() => {
@@ -921,6 +936,39 @@ export function DocumentsPage() {
             price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : activeProperty.price,
         };
     }, [activeProperty, propDraft]);
+
+    const clientMissingCount = useMemo(() => {
+        const isLegal = Boolean(clientDraft.is_legal_entity);
+        return isLegal ? [
+            !clientDraft.company_name?.trim(),
+            !clientDraft.inn?.trim(),
+            !clientDraft.ogrn?.trim(),
+            !clientDraft.legal_address?.trim(),
+            !clientDraft.phone?.trim(),
+            !clientDraft.authorized_name?.trim(),
+            !clientDraft.authorized_position?.trim(),
+            !clientDraft.authorized_basis?.trim(),
+        ].filter(Boolean).length : [
+            !clientDraft.full_name?.trim(),
+            !clientDraft.phone?.trim(),
+            !clientDraft.birth_date?.trim(),
+            !clientDraft.passport_series?.trim(),
+            !clientDraft.passport_number?.trim(),
+            !clientDraft.passport_issued_by?.trim(),
+            !clientDraft.passport_issue_date?.trim(),
+            !clientDraft.passport_unit_code?.trim(),
+            !clientDraft.registration_address?.trim(),
+        ].filter(Boolean).length;
+    }, [clientDraft]);
+    const isClientComplete = clientMissingCount === 0;
+
+    const propMissingCount = useMemo(() => {
+        return [
+            !propDraft.property_kind?.trim(),
+            !propDraft.address?.trim(),
+        ].filter(Boolean).length;
+    }, [propDraft]);
+    const isPropComplete = propMissingCount === 0;
 
     /* ── Сохранение в CRM ─────────────────────────────────────────────────── */
     const handleSaveToCrm = async () => {
@@ -1449,7 +1497,7 @@ export function DocumentsPage() {
 
     return (
         <div className="page fade-in" style={{ paddingBottom: 100 }}>
-            {/* Print style */}
+            {/* Print style and Workbench Layout */}
             <style dangerouslySetInnerHTML={{__html: `
                 @media print {
                     body * { visibility: hidden; }
@@ -1477,38 +1525,154 @@ export function DocumentsPage() {
                         text-decoration: underline !important;
                     }
                 }
+
+                /* Компактный рабочий стол (Workbench) */
+                .doc-workbench {
+                    display: grid;
+                    grid-template-columns: 380px minmax(0, 1fr);
+                    gap: 16px;
+                    align-items: start;
+                    width: 100%;
+                }
+                @media (max-width: 1080px) {
+                    .doc-workbench {
+                        grid-template-columns: 1fr;
+                    }
+                    .mobile-hidden {
+                        display: none !important;
+                    }
+                }
+                .doc-sidebar {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                }
+                .doc-main {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 10px;
+                    min-width: 0;
+                }
+                .doc-card {
+                    background: var(--surface);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 11px 13px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+                }
+                .doc-card-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    cursor: pointer;
+                    user-select: none;
+                    gap: 8px;
+                }
+                .doc-input-sm {
+                    width: 100%;
+                    height: 35px;
+                    border-radius: 8px;
+                    font-size: 12.5px;
+                    padding: 6px 10px;
+                    border: 1px solid var(--border);
+                    background: var(--bg);
+                    color: var(--text);
+                    outline: none;
+                    box-sizing: border-box;
+                    transition: all 0.15s ease;
+                }
+                .doc-input-sm:focus {
+                    border-color: var(--primary) !important;
+                    box-shadow: 0 0 0 2px var(--primary-glow);
+                }
+                .doc-toolbar-sticky {
+                    position: sticky;
+                    top: 60px;
+                    z-index: 25;
+                    background: var(--surface);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid var(--border);
+                    border-radius: 12px;
+                    padding: 8px 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+                }
+                .btn-compact {
+                    height: 34px;
+                    padding: 0 12px;
+                    border-radius: 8px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 6px;
+                    cursor: pointer;
+                    transition: all 0.15s ease;
+                    white-space: nowrap;
+                    border: none;
+                }
+                .btn-compact-primary {
+                    background: var(--primary);
+                    color: #fff;
+                    box-shadow: 0 2px 8px rgba(0,82,255,0.22);
+                }
+                .btn-compact-primary:hover {
+                    background: var(--primary-hover);
+                }
+                .btn-compact-secondary {
+                    background: var(--surface);
+                    color: var(--text);
+                    border: 1px solid var(--border);
+                }
+                .btn-compact-secondary:hover {
+                    background: var(--bg);
+                    border-color: var(--primary);
+                }
+                .btn-compact-secondary.active-edit {
+                    background: var(--primary);
+                    color: #fff;
+                    border-color: var(--primary);
+                }
             `}} />
 
             {/* Topbar */}
             <div className="topbar sticky no-print" style={{
                 background: 'var(--topbar-bg)',
                 backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '16px 20px',
+                padding: '10px 18px',
                 borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                gap: 16
+                gap: 12
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     <button
                         className="card-clickable"
                         onClick={() => navigate(-1)}
                         style={{
-                            width: 40, height: 40, borderRadius: 12, border: 'none',
+                            width: 34, height: 34, borderRadius: 10, border: 'none',
                             background: 'var(--surface)', color: 'var(--text)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)', flexShrink: 0
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)', flexShrink: 0
                         }}
                     >
-                        <ChevronLeft size={20} />
+                        <ChevronLeft size={18} />
                     </button>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 20, fontWeight: 300 }}>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 18, fontWeight: 400 }}>
                             Документы
                         </span>
-                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>
-                            Заполнение из CRM + DOCX
+                        <span style={{ fontSize: 9.5, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.7 }}>
+                            Заполнение из CRM + генерация DOCX
                         </span>
                     </div>
                 </div>
@@ -1517,10 +1681,10 @@ export function DocumentsPage() {
                 </div>
             </div>
 
-            <div className="page-content" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="page-content" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
 
-                {/* Категории и выбор шаблона */}
-                <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* Категории и выбор шаблона (Компактный заголовочный блок) */}
+                <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {/* Фильтр по категориям */}
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
                         {DOCUMENT_CATEGORIES.map(cat => {
@@ -1536,28 +1700,28 @@ export function DocumentsPage() {
                                     onClick={() => handleCategoryChange(cat.id)}
                                     style={{
                                         whiteSpace: 'nowrap',
-                                        padding: '7px 14px',
-                                        borderRadius: 12,
+                                        padding: '5px 11px',
+                                        borderRadius: 9,
                                         border: '1px solid',
                                         borderColor: isActive ? 'var(--primary)' : 'var(--border)',
                                         background: isActive ? 'var(--primary)' : 'var(--surface)',
                                         color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                                        fontSize: 13,
+                                        fontSize: 12,
                                         fontWeight: isActive ? 600 : 500,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: 6,
+                                        gap: 5,
                                         cursor: 'pointer',
                                         transition: 'all 0.15s ease',
-                                        boxShadow: isActive ? '0 2px 8px rgba(0,82,255,0.22)' : 'none',
+                                        boxShadow: isActive ? '0 2px 6px rgba(0,82,255,0.2)' : 'none',
                                         flexShrink: 0
                                     }}
                                 >
                                     <span>{cat.label}</span>
                                     <span style={{
-                                        fontSize: 10,
-                                        padding: '1px 6px',
-                                        borderRadius: 8,
+                                        fontSize: 9.5,
+                                        padding: '1px 5px',
+                                        borderRadius: 6,
                                         background: isActive ? 'rgba(255,255,255,0.25)' : 'var(--bg)',
                                         color: isActive ? '#ffffff' : 'var(--text-muted)',
                                         fontWeight: 600
@@ -1570,19 +1734,19 @@ export function DocumentsPage() {
                     </div>
 
                     {/* Выбор шаблона */}
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', paddingBottom: 2, scrollbarWidth: 'none' }}>
                         {displayedTemplates.map(t => (
                             <button
                                 key={t.key}
                                 className={`tab-filter ${selectedTemplate === t.key ? 'active' : ''}`}
                                 onClick={() => setSelectedTemplate(t.key)}
                                 style={{
-                                    whiteSpace: 'nowrap', padding: '10px 18px', borderRadius: 14, border: 'none',
+                                    whiteSpace: 'nowrap', padding: '6px 12px', borderRadius: 9, border: 'none',
                                     background: selectedTemplate === t.key ? 'var(--primary)' : 'var(--surface)',
                                     color: selectedTemplate === t.key ? 'white' : 'var(--text-secondary)',
-                                    fontSize: 13, fontWeight: 500,
-                                    boxShadow: selectedTemplate === t.key ? '0 4px 12px rgba(0,82,255,0.2)' : 'none',
-                                    display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0
+                                    fontSize: 12, fontWeight: 500,
+                                    boxShadow: selectedTemplate === t.key ? '0 2px 8px rgba(0,82,255,0.2)' : 'none',
+                                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0
                                 }}
                             >
                                 {TEMPLATE_ICONS[t.key]}
@@ -1598,14 +1762,14 @@ export function DocumentsPage() {
                                 }}
                                 title="Показать все доступные шаблоны"
                                 style={{
-                                    whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
+                                    whiteSpace: 'nowrap', padding: '6px 10px', borderRadius: 9,
                                     border: '1px dashed var(--border)', background: 'var(--surface)',
-                                    color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500,
-                                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                                    color: 'var(--text-secondary)', fontSize: 11.5, fontWeight: 500,
+                                    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
                                     cursor: 'pointer'
                                 }}
                             >
-                                <span>Показать все ({templates.length})</span>
+                                <span>Все ({templates.length})</span>
                             </button>
                         )}
                         {!hideOtherTemplates && selectedContractId && (
@@ -1614,10 +1778,10 @@ export function DocumentsPage() {
                                 onClick={() => setHideOtherTemplates(true)}
                                 title="Скрыть остальные шаблоны"
                                 style={{
-                                    whiteSpace: 'nowrap', padding: '9px 14px', borderRadius: 14,
+                                    whiteSpace: 'nowrap', padding: '6px 10px', borderRadius: 9,
                                     border: '1px dashed var(--border)', background: 'transparent',
-                                    color: 'var(--text-secondary)', fontSize: 12,
-                                    display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                                    color: 'var(--text-secondary)', fontSize: 11.5,
+                                    display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0,
                                     cursor: 'pointer'
                                 }}
                             >
@@ -1627,59 +1791,97 @@ export function DocumentsPage() {
                     </div>
                 </div>
 
-                {/* Режим источника данных */}
-                <div className="no-print" style={{
-                    background: 'var(--surface)', borderRadius: 20, padding: 20,
-                    border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Источник данных</span>
-                    </div>
+                {/* Мобильный переключатель видов (Параметры / Документ) */}
+                <div className="mobile-view-tabs no-print" style={{ display: 'none', gap: 4, background: 'var(--surface)', padding: 3, borderRadius: 10, border: '1px solid var(--border)' }}>
+                    <button
+                        type="button"
+                        onClick={() => setMobileTab('all')}
+                        style={{
+                            flex: 1, padding: '5px 8px', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: mobileTab === 'all' ? 600 : 500,
+                            background: mobileTab === 'all' ? 'var(--primary)' : 'transparent',
+                            color: mobileTab === 'all' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                        }}
+                    >
+                        Все вместе
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMobileTab('settings')}
+                        style={{
+                            flex: 1, padding: '5px 8px', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: mobileTab === 'settings' ? 600 : 500,
+                            background: mobileTab === 'settings' ? 'var(--primary)' : 'transparent',
+                            color: mobileTab === 'settings' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                        }}
+                    >
+                        Параметры
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMobileTab('preview')}
+                        style={{
+                            flex: 1, padding: '5px 8px', borderRadius: 7, border: 'none', fontSize: 12, fontWeight: mobileTab === 'preview' ? 600 : 500,
+                            background: mobileTab === 'preview' ? 'var(--primary)' : 'transparent',
+                            color: mobileTab === 'preview' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer'
+                        }}
+                    >
+                        Документ
+                    </button>
+                </div>
 
-                    {/* Переключатель режима */}
-                    <div style={{ display: 'flex', gap: 8, maxWidth: 360 }}>
-                        {[
-                            { id: 'deal', label: 'Из сделки', icon: <Briefcase size={14} /> },
-                            { id: 'manual', label: 'Выбрать вручную', icon: <User size={14} /> },
-                        ].map(m => (
-                            <button
-                                key={m.id}
-                                type="button"
-                                onClick={() => setSourceMode(m.id)}
-                                style={{
-                                    flex: 1, height: 42, borderRadius: 12, border: '1px solid',
-                                    borderColor: sourceMode === m.id ? 'var(--primary)' : 'var(--border)',
-                                    background: sourceMode === m.id ? 'rgba(0,82,255,0.06)' : 'var(--bg)',
-                                    color: sourceMode === m.id ? 'var(--primary)' : 'var(--text-secondary)',
-                                    fontSize: 13, fontWeight: sourceMode === m.id ? 600 : 400,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                    cursor: 'pointer', transition: 'all 0.2s',
-                                }}
-                            >
-                                {m.icon} {m.label}
-                            </button>
-                        ))}
-                    </div>
+                {/* Главный рабочий стол (Workbench): Сайдбар параметров слева + Документ справа */}
+                <div className="doc-workbench">
+                    {/* ЛЕВАЯ КОЛОНКА (Сайдбар настроек) */}
+                    <div className={`doc-sidebar no-print ${mobileTab === 'preview' ? 'mobile-hidden' : ''}`}>
 
-                    {/* Режим — из сделки */}
-                    {sourceMode === 'deal' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Выберите сделку</label>
-                            <select
-                                className="form-input"
-                                style={{ height: 46, borderRadius: 14 }}
-                                value={selectedDealId}
-                                onChange={e => setSelectedDealId(e.target.value)}
-                            >
-                                <option value="">— Выбрать сделку —</option>
-                                {deals.map(d => {
-                                    const prop = state.properties.find(p => p.id === d.property_id);
-                                    const label = d.title || (prop ? (prop.address || prop.city) : '') || `Сделка от ${new Date(d.created_at).toLocaleDateString('ru-RU')}`;
-                                    return <option key={d.id} value={d.id}>{label}</option>;
-                                })}
-                            </select>
-                        </div>
-                    )}
+                        {/* Карточка 1: Режим источника данных */}
+                        <div className="doc-card">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                    <Briefcase size={14} style={{ color: 'var(--primary)' }} />
+                                    Источник данных
+                                </span>
+                                <div style={{ display: 'inline-flex', gap: 3, background: 'var(--bg)', padding: '2px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                    {[
+                                        { id: 'deal', label: 'Из сделки', icon: <Briefcase size={12} /> },
+                                        { id: 'manual', label: 'Вручную', icon: <User size={12} /> },
+                                    ].map(m => (
+                                        <button
+                                            key={m.id}
+                                            type="button"
+                                            onClick={() => setSourceMode(m.id)}
+                                            style={{
+                                                padding: '3px 8px', borderRadius: 6, border: 'none',
+                                                background: sourceMode === m.id ? 'var(--surface)' : 'transparent',
+                                                color: sourceMode === m.id ? 'var(--primary)' : 'var(--text-secondary)',
+                                                fontSize: 11.5, fontWeight: sourceMode === m.id ? 600 : 500,
+                                                display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer',
+                                                boxShadow: sourceMode === m.id ? '0 1px 3px rgba(0,0,0,0.06)' : 'none'
+                                            }}
+                                        >
+                                            {m.icon} {m.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Режим — из сделки */}
+                            {sourceMode === 'deal' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Выберите сделку</label>
+                                    <select
+                                        className="form-input doc-input-sm"
+                                        value={selectedDealId}
+                                        onChange={e => setSelectedDealId(e.target.value)}
+                                    >
+                                        <option value="">— Выбрать сделку —</option>
+                                        {deals.map(d => {
+                                            const prop = state.properties.find(p => p.id === d.property_id);
+                                            const label = d.title || (prop ? (prop.address || prop.city) : '') || `Сделка от ${new Date(d.created_at).toLocaleDateString('ru-RU')}`;
+                                            return <option key={d.id} value={d.id}>{label}</option>;
+                                        })}
+                                    </select>
+                                </div>
+                            )}
 
                     {/* Режим — вручную */}
                     {sourceMode === 'manual' && (
@@ -1913,1525 +2115,819 @@ export function DocumentsPage() {
                     )}
                 </div>
 
-                {/* Интерактивное заполнение и подсветка недостающих данных Принципала / Заказчика */}
+                {/* Карточка 2: Реквизиты Принципала / Заказчика */}
                 {(isAgencyContract || isServicesRent3Party || sourceMode === 'manual' || activeClient) && (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Sparkles size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    {activeClient 
-                                        ? (isServicesRent3Party 
-                                            ? `Реквизиты Заказчика (${clientDraft.is_legal_entity ? (clientDraft.company_name || activeClient.full_name) : activeClient.full_name})` 
-                                            : `Реквизиты Принципала (${clientDraft.is_legal_entity ? (clientDraft.company_name || activeClient.full_name) : activeClient.full_name})`) 
-                                        : (isServicesRent3Party 
-                                            ? `Реквизиты Заказчика (${clientDraft.is_legal_entity ? 'Юрлицо / новый клиент' : 'ручной ввод / новый клиент'})` 
-                                            : `Реквизиты Принципала (${clientDraft.is_legal_entity ? 'Юрлицо / новый принципал' : 'ручной ввод / новый принципал'})`)
-                                    }
+                    <div className="doc-card no-print">
+                        <div
+                            className="doc-card-header"
+                            onClick={() => toggleSection('client')}
+                            role="button"
+                            tabIndex={0}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                                <Sparkles size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {isServicesRent3Party ? 'Заказчик' : 'Принципал'}
+                                    {activeClient ? `: ${clientDraft.is_legal_entity ? (clientDraft.company_name || activeClient.full_name) : activeClient.full_name}` : ''}
                                 </span>
-                                {activeClient && (
-                                    <button
-                                        type="button"
-                                        onClick={handleClearClient}
-                                        style={{
-                                            background: 'none', border: 'none', color: 'var(--primary)',
-                                            fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: '2px 6px'
-                                        }}
-                                        title="Очистить и ввести нового принципала вручную"
-                                    >
-                                        Сменить / Ввести нового
-                                    </button>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                                {clientMissingCount > 0 ? (
+                                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', fontWeight: 600 }}>
+                                        ● {clientMissingCount}
+                                    </span>
+                                ) : (
+                                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', fontWeight: 600 }}>
+                                        ✓ Ок
+                                    </span>
                                 )}
-                            </div>
-
-                            {/* Переключатель: Физлицо / Юридическое лицо */}
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--bg)', padding: '3px', borderRadius: 10, border: '1px solid var(--border)' }}>
                                 <button
                                     type="button"
-                                    onClick={() => handleDraftChange('is_legal_entity', false)}
-                                    style={{
-                                        padding: '4px 10px',
-                                        borderRadius: 7,
-                                        border: 'none',
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        background: !clientDraft.is_legal_entity ? 'var(--surface)' : 'transparent',
-                                        color: !clientDraft.is_legal_entity ? 'var(--primary)' : 'var(--text-secondary)',
-                                        boxShadow: !clientDraft.is_legal_entity ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                                        transition: 'all 0.15s ease'
-                                    }}
+                                    onClick={() => toggleSection('client')}
+                                    style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
                                 >
-                                    Физлицо
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => handleDraftChange('is_legal_entity', true)}
-                                    style={{
-                                        padding: '4px 10px',
-                                        borderRadius: 7,
-                                        border: 'none',
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        background: clientDraft.is_legal_entity ? 'var(--surface)' : 'transparent',
-                                        color: clientDraft.is_legal_entity ? 'var(--primary)' : 'var(--text-secondary)',
-                                        boxShadow: clientDraft.is_legal_entity ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                                        transition: 'all 0.15s ease'
-                                    }}
-                                >
-                                    Юрлицо (ООО, АО и др.)
+                                    <ChevronDown size={14} style={{ transform: collapsedSections.client ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />
                                 </button>
                             </div>
+                        </div>
 
-                            {(() => {
-                                const isLegal = Boolean(clientDraft.is_legal_entity);
-                                const missing = isLegal ? [
-                                    !clientDraft.company_name?.trim(),
-                                    !clientDraft.inn?.trim(),
-                                    !clientDraft.ogrn?.trim(),
-                                    !clientDraft.legal_address?.trim(),
-                                    !clientDraft.phone?.trim(),
-                                    !clientDraft.authorized_name?.trim(),
-                                    !clientDraft.authorized_position?.trim(),
-                                    !clientDraft.authorized_basis?.trim(),
-                                ].filter(Boolean).length : [
-                                    !clientDraft.full_name?.trim(),
-                                    !clientDraft.phone?.trim(),
-                                    !clientDraft.birth_date?.trim(),
-                                    !clientDraft.passport_series?.trim(),
-                                    !clientDraft.passport_number?.trim(),
-                                    !clientDraft.passport_issued_by?.trim(),
-                                    !clientDraft.passport_issue_date?.trim(),
-                                    !clientDraft.passport_unit_code?.trim(),
-                                    !clientDraft.registration_address?.trim(),
-                                ].filter(Boolean).length;
+                        {!collapsedSections.client && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                {/* Физлицо / Юрлицо + Сменить */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                                    <div style={{ display: 'inline-flex', gap: 2, background: 'var(--bg)', padding: '2px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDraftChange('is_legal_entity', false)}
+                                            style={{
+                                                padding: '3px 8px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                                background: !clientDraft.is_legal_entity ? 'var(--surface)' : 'transparent',
+                                                color: !clientDraft.is_legal_entity ? 'var(--primary)' : 'var(--text-secondary)',
+                                                boxShadow: !clientDraft.is_legal_entity ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                            }}
+                                        >
+                                            Физлицо
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDraftChange('is_legal_entity', true)}
+                                            style={{
+                                                padding: '3px 8px', borderRadius: 6, border: 'none', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                                background: clientDraft.is_legal_entity ? 'var(--surface)' : 'transparent',
+                                                color: clientDraft.is_legal_entity ? 'var(--primary)' : 'var(--text-secondary)',
+                                                boxShadow: clientDraft.is_legal_entity ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                                            }}
+                                        >
+                                            Юрлицо
+                                        </button>
+                                    </div>
+                                    {activeClient && (
+                                        <button
+                                            type="button"
+                                            onClick={handleClearClient}
+                                            style={{
+                                                background: 'none', border: 'none', color: 'var(--primary)',
+                                                fontSize: 11, cursor: 'pointer', textDecoration: 'underline', padding: '0 4px'
+                                            }}
+                                            title="Очистить и ввести вручную"
+                                        >
+                                            Сменить
+                                        </button>
+                                    )}
+                                </div>
 
-                                if (missing > 0) {
-                                    return (
-                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                            <AlertCircle size={13} />
-                                            <span>Не заполнено: {missing}</span>
+                                {/* Поля ввода реквизитов */}
+                                {clientDraft.is_legal_entity ? (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Наименование (ООО, АО...)</div>
+                                            <input
+                                                id="doc-input-company-name"
+                                                className="doc-input-sm"
+                                                value={clientDraft.company_name}
+                                                onChange={e => {
+                                                    handleDraftChange('company_name', e.target.value);
+                                                    if (!clientDraft.full_name) handleDraftChange('full_name', e.target.value);
+                                                }}
+                                                placeholder="ООО «Компания»"
+                                                style={{ border: !clientDraft.company_name?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
                                         </div>
-                                    );
-                                }
-                                return (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                        <CheckCircle2 size={13} />
-                                        <span>Все реквизиты заполнены</span>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>ИНН</div>
+                                            <input
+                                                id="doc-input-inn"
+                                                className="doc-input-sm"
+                                                value={clientDraft.inn}
+                                                onChange={e => handleDraftChange('inn', e.target.value)}
+                                                placeholder="4345000000"
+                                                maxLength={12}
+                                                style={{ border: !clientDraft.inn?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>ОГРН</div>
+                                            <input
+                                                id="doc-input-ogrn"
+                                                className="doc-input-sm"
+                                                value={clientDraft.ogrn}
+                                                onChange={e => handleDraftChange('ogrn', e.target.value)}
+                                                placeholder="1154300000000"
+                                                maxLength={15}
+                                                style={{ border: !clientDraft.ogrn?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>КПП (опционально)</div>
+                                            <input
+                                                id="doc-input-kpp"
+                                                className="doc-input-sm"
+                                                value={clientDraft.kpp}
+                                                onChange={e => handleDraftChange('kpp', e.target.value)}
+                                                placeholder="434501001"
+                                                maxLength={9}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Телефон</div>
+                                            <input
+                                                id="doc-input-phone"
+                                                type="tel"
+                                                className="doc-input-sm"
+                                                value={clientDraft.phone}
+                                                onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
+                                                placeholder="+7 (___) ___-__-__"
+                                                style={{ border: !clientDraft.phone?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Юр. адрес</div>
+                                            <input
+                                                id="doc-input-legal-address"
+                                                className="doc-input-sm"
+                                                value={clientDraft.legal_address}
+                                                onChange={e => handleDraftChange('legal_address', e.target.value)}
+                                                placeholder="г. Киров, ул. Ленина, д. 10"
+                                                style={{ border: !clientDraft.legal_address?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Должность</div>
+                                            <input
+                                                id="doc-input-authorized-pos"
+                                                className="doc-input-sm"
+                                                value={clientDraft.authorized_position}
+                                                onChange={e => handleDraftChange('authorized_position', e.target.value)}
+                                                placeholder="Генеральный директор"
+                                                style={{ border: !clientDraft.authorized_position?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>На основании чего</div>
+                                            <input
+                                                id="doc-input-authorized-basis"
+                                                className="doc-input-sm"
+                                                value={clientDraft.authorized_basis}
+                                                onChange={e => handleDraftChange('authorized_basis', e.target.value)}
+                                                placeholder="Устава"
+                                                style={{ border: !clientDraft.authorized_basis?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>ФИО представителя</div>
+                                            <input
+                                                id="doc-input-authorized-name"
+                                                className="doc-input-sm"
+                                                value={clientDraft.authorized_name}
+                                                onChange={e => handleDraftChange('authorized_name', e.target.value)}
+                                                placeholder="Иванов Иван Иванович"
+                                                style={{ border: !clientDraft.authorized_name?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
                                     </div>
-                                );
-                            })()}
-                        </div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>ФИО принципала</div>
+                                            <input
+                                                id="doc-input-fullname"
+                                                className="doc-input-sm"
+                                                value={clientDraft.full_name}
+                                                onChange={e => handleDraftChange('full_name', e.target.value)}
+                                                placeholder="Иванов Иван Иванович"
+                                                style={{ border: !clientDraft.full_name?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Телефон</div>
+                                            <input
+                                                id="doc-input-phone"
+                                                type="tel"
+                                                className="doc-input-sm"
+                                                value={clientDraft.phone}
+                                                onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
+                                                placeholder="+7 (___) ___-__-__"
+                                                style={{ border: !clientDraft.phone?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Дата рождения</div>
+                                            <input
+                                                id="doc-input-birthdate"
+                                                type="date"
+                                                className="doc-input-sm"
+                                                value={clientDraft.birth_date}
+                                                onChange={e => handleDraftChange('birth_date', e.target.value)}
+                                                style={{ border: !clientDraft.birth_date?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Серия паспорта</div>
+                                            <input
+                                                id="doc-input-series"
+                                                className="doc-input-sm"
+                                                value={clientDraft.passport_series}
+                                                onChange={e => handleDraftChange('passport_series', e.target.value)}
+                                                placeholder="33 14"
+                                                maxLength={7}
+                                                style={{ border: !clientDraft.passport_series?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Номер паспорта</div>
+                                            <input
+                                                id="doc-input-number"
+                                                className="doc-input-sm"
+                                                value={clientDraft.passport_number}
+                                                onChange={e => handleDraftChange('passport_number', e.target.value)}
+                                                placeholder="123456"
+                                                maxLength={10}
+                                                style={{ border: !clientDraft.passport_number?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Дата выдачи</div>
+                                            <input
+                                                id="doc-input-issue-date"
+                                                type="date"
+                                                className="doc-input-sm"
+                                                value={clientDraft.passport_issue_date}
+                                                onChange={e => handleDraftChange('passport_issue_date', e.target.value)}
+                                                style={{ border: !clientDraft.passport_issue_date?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Код подр-я</div>
+                                            <input
+                                                id="doc-input-unit-code"
+                                                className="doc-input-sm"
+                                                value={clientDraft.passport_unit_code}
+                                                onChange={e => handleDraftChange('passport_unit_code', e.target.value)}
+                                                placeholder="430-001"
+                                                maxLength={8}
+                                                style={{ border: !clientDraft.passport_unit_code?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Кем выдан</div>
+                                            <input
+                                                id="doc-input-issued-by"
+                                                className="doc-input-sm"
+                                                value={clientDraft.passport_issued_by}
+                                                onChange={e => handleDraftChange('passport_issued_by', e.target.value)}
+                                                placeholder="Отделом УФМС России..."
+                                                style={{ border: !clientDraft.passport_issued_by?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Адрес регистрации</div>
+                                            <input
+                                                id="doc-input-reg-address"
+                                                className="doc-input-sm"
+                                                value={clientDraft.registration_address}
+                                                onChange={e => handleDraftChange('registration_address', e.target.value)}
+                                                placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
+                                                style={{ border: !clientDraft.registration_address?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
 
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            {clientDraft.is_legal_entity 
-                                ? 'Реквизиты организации (ИНН, ОГРН, юр. адрес) и полномочия представителя подставляются в договор, а кнопка ниже синхронизирует их с CRM.'
-                                : 'Паспортные и контактные данные Принципала подставляются в преамбулу и подписи договора, а кнопка ниже синхронизирует их с CRM.'
-                            }
-                        </div>
-
-                        {/* Сетка полей с подсветкой недостающих */}
-                        {clientDraft.is_legal_entity ? (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-                                {/* Наименование организации */}
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Наименование организации (ООО, АО и т.д.)</span>
-                                        {!clientDraft.company_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-company-name"
-                                        className="form-input"
-                                        value={clientDraft.company_name}
-                                        onChange={e => {
-                                            handleDraftChange('company_name', e.target.value);
-                                            if (!clientDraft.full_name) handleDraftChange('full_name', e.target.value);
-                                        }}
-                                        placeholder="Общество с ограниченной ответственностью «Альфа»"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.company_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.company_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* ИНН */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>ИНН</span>
-                                        {!clientDraft.inn?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-inn"
-                                        className="form-input"
-                                        value={clientDraft.inn}
-                                        onChange={e => handleDraftChange('inn', e.target.value)}
-                                        placeholder="4345000000"
-                                        maxLength={12}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.inn?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.inn?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* КПП */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>КПП (при наличии)</span>
-                                        <span style={{ color: 'var(--text-secondary)' }}>опционально</span>
-                                    </div>
-                                    <input
-                                        id="doc-input-kpp"
-                                        className="form-input"
-                                        value={clientDraft.kpp}
-                                        onChange={e => handleDraftChange('kpp', e.target.value)}
-                                        placeholder="434501001"
-                                        maxLength={9}
-                                        style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, border: '1px solid var(--border)', background: 'var(--bg)' }}
-                                    />
-                                </div>
-
-                                {/* ОГРН */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>ОГРН</span>
-                                        {!clientDraft.ogrn?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-ogrn"
-                                        className="form-input"
-                                        value={clientDraft.ogrn}
-                                        onChange={e => handleDraftChange('ogrn', e.target.value)}
-                                        placeholder="1154300000000"
-                                        maxLength={15}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.ogrn?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.ogrn?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Телефон */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Телефон организации / представителя</span>
-                                        {!clientDraft.phone?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-phone"
-                                        type="tel"
-                                        inputMode="tel"
-                                        className="form-input"
-                                        value={clientDraft.phone}
-                                        onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
-                                        placeholder="+7 (___) ___-__-__"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.phone?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.phone?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Юридический адрес */}
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Юридический адрес местонахождения</span>
-                                        {!clientDraft.legal_address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-legal-address"
-                                        className="form-input"
-                                        value={clientDraft.legal_address}
-                                        onChange={e => handleDraftChange('legal_address', e.target.value)}
-                                        placeholder="610000, Кировская обл., г. Киров, ул. Ленина, д. 10, оф. 5"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.legal_address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.legal_address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Должность представителя */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Должность представителя</span>
-                                        {!clientDraft.authorized_position?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-auth-position"
-                                        className="form-input"
-                                        value={clientDraft.authorized_position}
-                                        onChange={e => handleDraftChange('authorized_position', e.target.value)}
-                                        placeholder="Генерального директора"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.authorized_position?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.authorized_position?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* ФИО представителя */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>ФИО представителя</span>
-                                        {!clientDraft.authorized_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-auth-name"
-                                        className="form-input"
-                                        value={clientDraft.authorized_name}
-                                        onChange={e => handleDraftChange('authorized_name', e.target.value)}
-                                        placeholder="Иванова Ивана Ивановича"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.authorized_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.authorized_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Основание полномочий */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Действует на основании</span>
-                                        {!clientDraft.authorized_basis?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-auth-basis"
-                                        className="form-input"
-                                        value={clientDraft.authorized_basis}
-                                        onChange={e => handleDraftChange('authorized_basis', e.target.value)}
-                                        placeholder="Устава / Доверенности № 1 от 10.01.2025"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.authorized_basis?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.authorized_basis?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-                                {/* ФИО */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>ФИО Принципала</span>
-                                        {!clientDraft.full_name?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-full-name"
-                                        className="form-input"
-                                        value={clientDraft.full_name}
-                                        onChange={e => handleDraftChange('full_name', e.target.value)}
-                                        placeholder="Иванов Иван Иванович"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.full_name?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.full_name?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Телефон */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Телефон</span>
-                                        {!clientDraft.phone?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-phone"
-                                        type="tel"
-                                        inputMode="tel"
-                                        className="form-input"
-                                        value={clientDraft.phone}
-                                        onChange={e => handleDraftChange('phone', formatPhone(e.target.value, true))}
-                                        placeholder="+7 (___) ___-__-__"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.phone?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.phone?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Дата рождения */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Дата рождения</span>
-                                        {!clientDraft.birth_date?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-birth-date"
-                                        type="date"
-                                        className="form-input"
-                                        value={clientDraft.birth_date}
-                                        onChange={e => handleDraftChange('birth_date', e.target.value)}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.birth_date?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.birth_date?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Серия паспорта */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Серия паспорта</span>
-                                        {!clientDraft.passport_series?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-series"
-                                        className="form-input"
-                                        value={clientDraft.passport_series}
-                                        onChange={e => handleDraftChange('passport_series', e.target.value)}
-                                        placeholder="33 14"
-                                        maxLength={7}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.passport_series?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.passport_series?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Номер паспорта */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Номер паспорта</span>
-                                        {!clientDraft.passport_number?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-number"
-                                        className="form-input"
-                                        value={clientDraft.passport_number}
-                                        onChange={e => handleDraftChange('passport_number', e.target.value)}
-                                        placeholder="123456"
-                                        maxLength={10}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.passport_number?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.passport_number?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Дата выдачи паспорта */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Дата выдачи паспорта</span>
-                                        {!clientDraft.passport_issue_date?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-issue-date"
-                                        type="date"
-                                        className="form-input"
-                                        value={clientDraft.passport_issue_date}
-                                        onChange={e => handleDraftChange('passport_issue_date', e.target.value)}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.passport_issue_date?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.passport_issue_date?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Код подразделения */}
-                                <div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Код подразделения</span>
-                                        {!clientDraft.passport_unit_code?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-unit-code"
-                                        className="form-input"
-                                        value={clientDraft.passport_unit_code}
-                                        onChange={e => handleDraftChange('passport_unit_code', e.target.value)}
-                                        placeholder="430-001"
-                                        maxLength={8}
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.passport_unit_code?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.passport_unit_code?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Кем выдан паспорт */}
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Кем выдан паспорт</span>
-                                        {!clientDraft.passport_issued_by?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-issued-by"
-                                        className="form-input"
-                                        value={clientDraft.passport_issued_by}
-                                        onChange={e => handleDraftChange('passport_issued_by', e.target.value)}
-                                        placeholder="Отделом УФМС России по Кировской области в Первомайском р-не г. Кирова"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.passport_issued_by?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.passport_issued_by?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Адрес регистрации */}
-                                <div style={{ gridColumn: '1 / -1' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                        <span style={{ color: 'var(--text-secondary)' }}>Адрес регистрации (по паспорту)</span>
-                                        {!clientDraft.registration_address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                    </div>
-                                    <input
-                                        id="doc-input-reg-address"
-                                        className="form-input"
-                                        value={clientDraft.registration_address}
-                                        onChange={e => handleDraftChange('registration_address', e.target.value)}
-                                        placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
-                                        style={{
-                                            width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                            border: !clientDraft.registration_address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                            background: !clientDraft.registration_address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                        }}
-                                    />
+                                {/* Кнопка сохранения в CRM */}
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
+                                    {activeClient ? (
+                                        <button
+                                            type="button"
+                                            className="btn-compact btn-compact-primary"
+                                            onClick={handleSaveToCrm}
+                                            disabled={isSavingToCrm}
+                                            style={{ background: isSavedToCrm ? '#10b981' : 'var(--primary)' }}
+                                        >
+                                            {isSavingToCrm ? <Loader2 size={13} className="animate-spin" /> : (isSavedToCrm ? <Check size={13} /> : <Save size={13} />)}
+                                            {isSavingToCrm ? 'Сохранение...' : (isSavedToCrm ? 'Сохранено' : 'Сохранить в CRM')}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            className="btn-compact btn-compact-primary"
+                                            onClick={handleSaveNewClientToCrm}
+                                            disabled={isSavingToCrm || !clientDraft.full_name?.trim()}
+                                            style={{ background: isSavedToCrm ? '#10b981' : 'var(--primary)' }}
+                                        >
+                                            {isSavingToCrm ? <Loader2 size={13} className="animate-spin" /> : (isSavedToCrm ? <Check size={13} /> : <UserPlus size={13} />)}
+                                            {isSavingToCrm ? 'Создание...' : (isSavedToCrm ? 'Клиент сохранен' : 'Сохранить в CRM')}
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
-
-                        {/* Кнопка сохранения в CRM */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                            {activeClient ? (
-                                <button
-                                    type="button"
-                                    className="card-clickable"
-                                    onClick={handleSaveToCrm}
-                                    disabled={isSavingToCrm}
-                                    style={{
-                                        height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
-                                        background: isSavedToCrm ? '#10b981' : 'var(--primary)',
-                                        color: 'white', fontWeight: 600, fontSize: 13,
-                                        boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
-                                        display: 'flex', alignItems: 'center', gap: 8, cursor: isSavingToCrm ? 'not-allowed' : 'pointer',
-                                        transition: 'all 0.2s',
-                                        opacity: isSavingToCrm ? 0.7 : 1,
-                                    }}
-                                >
-                                    {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <Save size={16} />)}
-                                    {isSavingToCrm ? 'Сохранение в CRM...' : (isSavedToCrm ? 'Данные сохранены в CRM' : 'Сохранить в карточку клиента')}
-                                </button>
-                            ) : (
-                                <button
-                                    type="button"
-                                    className="card-clickable"
-                                    onClick={handleSaveNewClientToCrm}
-                                    disabled={isSavingToCrm || !clientDraft.full_name?.trim()}
-                                    style={{
-                                        height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
-                                        background: isSavedToCrm ? '#10b981' : 'var(--primary)',
-                                        color: 'white', fontWeight: 600, fontSize: 13,
-                                        boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
-                                        display: 'flex', alignItems: 'center', gap: 8, cursor: (isSavingToCrm || !clientDraft.full_name?.trim()) ? 'not-allowed' : 'pointer',
-                                        transition: 'all 0.2s',
-                                        opacity: (isSavingToCrm || !clientDraft.full_name?.trim()) ? 0.7 : 1,
-                                    }}
-                                    title="Создать нового клиента в CRM с введенными данными"
-                                >
-                                    {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <UserPlus size={16} />)}
-                                    {isSavingToCrm ? 'Создание клиента...' : (isSavedToCrm ? 'Клиент сохранен в CRM' : 'Сохранить нового клиента в CRM')}
-                                </button>
-                            )}
-                        </div>
                     </div>
                 )}
 
-                {/* Интерактивное заполнение и подсветка характеристик объекта недвижимости */}
+                {/* Карточка 3: Характеристики объекта недвижимости */}
                 {(activeProperty || isAgencySale || selectedTemplate === 'yuss_buy_1' || propertyId) && (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Building2 size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    {activeProperty ? 'Характеристики объекта (карточка CRM)' : 'Характеристики объекта'}
+                    <div className="doc-card no-print">
+                        <div
+                            className="doc-card-header"
+                            onClick={() => toggleSection('property')}
+                            role="button"
+                            tabIndex={0}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                                <Building2 size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                                <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    Объект{propDraft.address ? `: ${propDraft.address}` : ''}
                                 </span>
                             </div>
-                            {(() => {
-                                const missing = [
-                                    !propDraft.address?.trim(),
-                                    !propDraft.cadastral_number?.trim(),
-                                    !propDraft.price,
-                                ].filter(Boolean).length;
-
-                                if (missing > 0) {
-                                    return (
-                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                            <AlertCircle size={13} />
-                                            <span>Не заполнено: {missing}</span>
-                                        </div>
-                                    );
-                                }
-                                return (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                        <CheckCircle2 size={13} />
-                                        <span>Все характеристики заполнены</span>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            Адрес, кадастровый номер и ориентировочная стоимость подставляются в п. 1.1 и таблицу договора. Сохранение синхронизирует их с CRM.
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-                            {/* Вид объекта недвижимости */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Вид объекта недвижимости (п. 1.1)</span>
-                                    {!propDraft.property_kind?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                </div>
-                                <input
-                                    id="doc-input-prop-kind"
-                                    className="form-input"
-                                    value={propDraft.property_kind}
-                                    onChange={e => handlePropDraftChange('property_kind', e.target.value)}
-                                    placeholder="2-комн. квартира"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !propDraft.property_kind?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !propDraft.property_kind?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
-
-                            {/* Адрес */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Адрес (местоположение) объекта</span>
-                                    {!propDraft.address?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                </div>
-                                <input
-                                    id="doc-input-prop-address"
-                                    className="form-input"
-                                    value={propDraft.address}
-                                    onChange={e => handlePropDraftChange('address', e.target.value)}
-                                    placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !propDraft.address?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !propDraft.address?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
-
-                            {/* Кадастровый номер */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Кадастровый номер</span>
-                                    {!propDraft.cadastral_number?.trim() ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                </div>
-                                <input
-                                    id="doc-input-prop-cadastral"
-                                    className="form-input"
-                                    value={propDraft.cadastral_number}
-                                    onChange={e => handlePropDraftChange('cadastral_number', e.target.value)}
-                                    placeholder="43:40:000000:000"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !propDraft.cadastral_number?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !propDraft.cadastral_number?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
-
-                            {/* Площадь */}
-                            <div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Общая площадь (кв. м)</span>
-                                    {!propDraft.area_total ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                </div>
-                                <input
-                                    id="doc-input-prop-area"
-                                    className="form-input"
-                                    value={propDraft.area_total}
-                                    onChange={e => handlePropDraftChange('area_total', e.target.value.replace(/[^\d.,]/g, ''))}
-                                    placeholder="45,4"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !propDraft.area_total ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !propDraft.area_total ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                            </div>
-
-                            {/* Стоимость объекта */}
-                            <div style={{ gridColumn: '1 / -1' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Ориентировочная стоимость объекта (₽) — п. 1.1.1</span>
-                                    {!propDraft.price ? <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span> : <span style={{ color: '#10b981' }}>✓ Заполнено</span>}
-                                </div>
-                                <input
-                                    id="doc-input-prop-price"
-                                    className="form-input"
-                                    value={propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')).toLocaleString('ru-RU') : ''}
-                                    onChange={e => {
-                                        const digits = e.target.value.replace(/\D/g, '');
-                                        handlePropDraftChange('price', digits);
-                                    }}
-                                    placeholder="4 500 000"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
-                                        border: !propDraft.price ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !propDraft.price ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                                {propDraft.price && Number(String(propDraft.price).replace(/\D/g, '')) > 0 && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8, marginTop: 4 }}>
-                                        Прописью: <strong>{numberToWordsRu(Number(String(propDraft.price).replace(/\D/g, '')))}</strong> рублей
-                                    </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                                {propMissingCount > 0 ? (
+                                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', fontWeight: 600 }}>
+                                        ● {propMissingCount}
+                                    </span>
+                                ) : (
+                                    <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', fontWeight: 600 }}>
+                                        ✓ Ок
+                                    </span>
                                 )}
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSection('property')}
+                                    style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                                >
+                                    <ChevronDown size={14} style={{ transform: collapsedSections.property ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />
+                                </button>
                             </div>
                         </div>
 
-                        {/* Кнопка сохранения в CRM */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+                        {!collapsedSections.property && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Вид объекта (п. 1.1)</div>
+                                        <input
+                                            id="doc-input-prop-kind"
+                                            className="doc-input-sm"
+                                            value={propDraft.property_kind}
+                                            onChange={e => handlePropDraftChange('property_kind', e.target.value)}
+                                            placeholder="2-комн. квартира"
+                                            style={{ border: !propDraft.property_kind?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Адрес объекта</div>
+                                        <input
+                                            id="doc-input-prop-address"
+                                            className="doc-input-sm"
+                                            value={propDraft.address}
+                                            onChange={e => handlePropDraftChange('address', e.target.value)}
+                                            placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
+                                            style={{ border: !propDraft.address?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Кадастровый номер</div>
+                                        <input
+                                            id="doc-input-prop-cadastral"
+                                            className="doc-input-sm"
+                                            value={propDraft.cadastral_number}
+                                            onChange={e => handlePropDraftChange('cadastral_number', e.target.value)}
+                                            placeholder="43:40:000000:000"
+                                            style={{ border: !propDraft.cadastral_number?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Площадь (кв. м)</div>
+                                        <input
+                                            id="doc-input-prop-area"
+                                            className="doc-input-sm"
+                                            value={propDraft.area_total}
+                                            onChange={e => handlePropDraftChange('area_total', e.target.value.replace(/[^\d.,]/g, ''))}
+                                            placeholder="45,4"
+                                            style={{ border: !propDraft.area_total ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                    </div>
+                                    <div style={{ gridColumn: '1 / -1' }}>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Стоимость (₽) — п. 1.1.1</div>
+                                        <input
+                                            id="doc-input-prop-price"
+                                            className="doc-input-sm"
+                                            value={propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')).toLocaleString('ru-RU') : ''}
+                                            onChange={e => {
+                                                const digits = e.target.value.replace(/\D/g, '');
+                                                handlePropDraftChange('price', digits);
+                                            }}
+                                            placeholder="4 500 000"
+                                            style={{ fontWeight: 600, border: !propDraft.price ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                        {propDraft.price && Number(String(propDraft.price).replace(/\D/g, '')) > 0 && (
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: 2 }}>
+                                                {numberToWordsRu(Number(String(propDraft.price).replace(/\D/g, '')))} руб.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 2 }}>
+                                    <button
+                                        type="button"
+                                        className="btn-compact btn-compact-primary"
+                                        onClick={handleSaveToCrm}
+                                        disabled={isSavingToCrm}
+                                        style={{ background: isSavedToCrm ? '#10b981' : 'var(--primary)' }}
+                                    >
+                                        {isSavingToCrm ? <Loader2 size={13} className="animate-spin" /> : (isSavedToCrm ? <Check size={13} /> : <Save size={13} />)}
+                                        {isSavingToCrm ? 'Сохранение...' : (isSavedToCrm ? 'Сохранено' : 'Сохранить объект')}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Карточка 4: Параметры договора / акта */}
+                <div className="doc-card no-print">
+                    <div
+                        className="doc-card-header"
+                        onClick={() => toggleSection('contractParams')}
+                        role="button"
+                        tabIndex={0}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                            {selectedTemplate === 'key_act' ? <Key size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} /> : <Briefcase size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />}
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {isServicesRent3Party ? 'Условия 3-стор. договора' : selectedTemplate === 'act' ? 'Параметры акта приема' : selectedTemplate === 'key_act' ? 'Параметры акта ключей' : 'Условия договора'}
+                            </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
                             <button
                                 type="button"
-                                className="card-clickable"
-                                onClick={handleSaveToCrm}
-                                disabled={isSavingToCrm}
-                                style={{
-                                    height: 44, padding: '0 20px', borderRadius: 14, border: 'none',
-                                    background: isSavedToCrm ? '#10b981' : 'var(--primary)',
-                                    color: 'white', fontWeight: 600, fontSize: 13,
-                                    boxShadow: isSavedToCrm ? '0 4px 14px rgba(16, 185, 129, 0.25)' : '0 4px 14px rgba(0,82,255,0.2)',
-                                    display: 'flex', alignItems: 'center', gap: 8, cursor: isSavingToCrm ? 'not-allowed' : 'pointer',
-                                    transition: 'all 0.2s',
-                                    opacity: isSavingToCrm ? 0.7 : 1,
-                                }}
+                                onClick={() => toggleSection('contractParams')}
+                                style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
                             >
-                                {isSavingToCrm ? <Loader2 size={16} className="animate-spin" /> : (isSavedToCrm ? <Check size={16} /> : <Save size={16} />)}
-                                {isSavingToCrm ? 'Сохранение в CRM...' : (isSavedToCrm ? 'Данные сохранены в CRM' : 'Сохранить характеристики в CRM')}
+                                <ChevronDown size={14} style={{ transform: collapsedSections.contractParams ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />
                             </button>
                         </div>
                     </div>
-                )}
 
-                {/* Блок параметров для договора: 3-сторонний или стандартный агентский */}
-                {isServicesRent3Party ? (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Briefcase size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    Условия 3-стороннего договора и оплаты
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                                {service1Cost?.trim() && service2Cost?.trim() ? (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                        <CheckCircle2 size={13} />
-                                        <span>Стоимости указаны</span>
+                    {!collapsedSections.contractParams && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                            {isServicesRent3Party ? (
+                                <>
+                                    {/* Риелтор (Исполнитель 2) */}
+                                    <div style={{ background: 'var(--bg)', borderRadius: 9, padding: '8px 10px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)' }}>
+                                                Исполнитель 2: {realtor?.full_name || 'Не указан'}
+                                            </span>
+                                            <select
+                                                value={realtorTaxStatus}
+                                                onChange={e => setRealtorTaxStatus(e.target.value)}
+                                                style={{ fontSize: 10.5, fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--primary)', padding: '1px 4px' }}
+                                            >
+                                                <option value="Самозанятый">Самозанятый</option>
+                                                <option value="Физическое лицо">Физлицо</option>
+                                                <option value="Индивидуальный предприниматель">ИП</option>
+                                            </select>
+                                        </div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>
+                                            ИНН: {realtor?.inn || 'нет'} | Паспорт: {realtor?.passport_details?.series ? `${realtor.passport_details.series} ${realtor.passport_details.number}` : 'нет'}
+                                        </div>
                                     </div>
-                                ) : (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                        <AlertCircle size={13} />
-                                        <span>Укажите суммы</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
 
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            В 3-стороннем договоре оплата Исполнителю 1 (ИП Муравьева) и Исполнителю 2 производится Заказчиком раздельно.
-                        </div>
-
-                        {/* Карточка Исполнителя 2 */}
-                        <div style={{
-                            background: 'var(--bg)', borderRadius: 14, padding: 14,
-                            border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 8
-                        }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <User size={15} style={{ color: 'var(--primary)' }} />
-                                    <strong style={{ fontSize: 13, color: 'var(--text)' }}>Исполнитель 2:</strong>
-                                    <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>{realtor?.full_name || 'Не указан'}</span>
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface)', padding: '2px 6px', borderRadius: 8, border: '1px solid var(--border)' }}>
-                                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Статус:</span>
-                                        <select
-                                            value={realtorTaxStatus}
-                                            onChange={e => setRealtorTaxStatus(e.target.value)}
-                                            style={{
-                                                fontSize: 11, fontWeight: 600, border: 'none', background: 'transparent',
-                                                color: realtorTaxStatus === 'Самозанятый' ? 'var(--primary)' : 'var(--text)',
-                                                cursor: 'pointer', outline: 'none'
-                                            }}
-                                        >
-                                            <option value="Самозанятый">Самозанятый</option>
-                                            <option value="Физическое лицо">Физическое лицо</option>
-                                            <option value="Индивидуальный предприниматель">Индивидуальный предприниматель</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => navigate('/profile')}
-                                    style={{
-                                        background: 'none', border: 'none', color: 'var(--primary)',
-                                        fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
-                                    }}
-                                >
-                                    <Edit3 size={12} /> Изменить в профиле
-                                </button>
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 6 }}>
-                                <div>ИНН: <strong style={{ color: 'var(--text)' }}>{realtor?.inn || 'Не указан в профиле'}</strong></div>
-                                <div>Телефон: <strong style={{ color: 'var(--text)' }}>{formatPhone(realtor?.phone) || 'Не указан'}</strong></div>
-                                <div>Паспорт: <strong style={{ color: 'var(--text)' }}>{realtor?.passport_details?.series && realtor?.passport_details?.number ? `${realtor.passport_details.series} ${realtor.passport_details.number}` : 'Не указан'}</strong></div>
-                                <div>Прописка: <strong style={{ color: 'var(--text)' }}>{realtor?.passport_details?.registration_address || realtor?.reg_address || 'Не указан'}</strong></div>
-                            </div>
-                            {(!realtor?.inn || !realtor?.passport_details?.series) && (
-                                <div style={{ fontSize: 11, color: '#d97706', background: 'rgba(245, 158, 11, 0.08)', padding: '6px 10px', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <AlertCircle size={13} />
-                                    <span>Заполните ИНН и паспорт в вашем Профиле, чтобы они автоматически подставились в договор.</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                            {/* Стоимость услуг Исполнителя 1 */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Исполнитель 1 (ИП Муравьева) (₽) — п. 3.2
-                                    </span>
-                                    <span style={{ color: 'var(--primary)', fontWeight: 600 }}>в т.ч. НДС 5%</span>
-                                </div>
-                                <input
-                                    id="doc-input-service1-cost"
-                                    className="form-input"
-                                    value={service1Cost}
-                                    onChange={e => {
-                                        const digits = e.target.value.replace(/\D/g, '');
-                                        setService1Cost(digits ? Number(digits).toLocaleString('ru-RU') : '');
-                                    }}
-                                    placeholder="5 000"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
-                                        border: '1px solid var(--border)', background: 'var(--bg)',
-                                    }}
-                                />
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                    {[3000, 5000, 7000, 10000].map(amt => (
-                                        <button
-                                            key={amt}
-                                            type="button"
-                                            onClick={() => setService1Cost(amt.toLocaleString('ru-RU'))}
-                                            style={{
-                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {amt.toLocaleString('ru-RU')} ₽
-                                        </button>
-                                    ))}
-                                </div>
-                                {service1Cost && Number(service1Cost.replace(/\D/g, '')) > 0 && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        Прописью: <strong>{numberToWordsRu(Number(service1Cost.replace(/\D/g, '')))}</strong> рублей, в т.ч. НДС 5%
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Стоимость услуг Исполнителя 2 */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Исполнитель 2 (₽) — п. 3.3
-                                    </span>
-                                    <span style={{ color: 'var(--text-secondary)' }}>{realtorTaxStatus === 'Самозанятый' ? 'самозанятый' : realtorTaxStatus?.toLowerCase()}</span>
-                                </div>
-                                <input
-                                    id="doc-input-service2-cost"
-                                    className="form-input"
-                                    value={service2Cost}
-                                    onChange={e => {
-                                        const digits = e.target.value.replace(/\D/g, '');
-                                        setService2Cost(digits ? Number(digits).toLocaleString('ru-RU') : '');
-                                    }}
-                                    placeholder="15 000"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
-                                        border: '1px solid var(--border)', background: 'var(--bg)',
-                                    }}
-                                />
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                    {[10000, 15000, 20000, 25000, 30000].map(amt => (
-                                        <button
-                                            key={amt}
-                                            type="button"
-                                            onClick={() => setService2Cost(amt.toLocaleString('ru-RU'))}
-                                            style={{
-                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {amt.toLocaleString('ru-RU')} ₽
-                                        </button>
-                                    ))}
-                                </div>
-                                {service2Cost && Number(service2Cost.replace(/\D/g, '')) > 0 && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        Прописью: <strong>{numberToWordsRu(Number(service2Cost.replace(/\D/g, '')))}</strong> рублей
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Даты: Срок оказания услуг и дата Акта */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Срок оказания услуг (до даты) — п. 1.3
-                                    </span>
-                                </div>
-                                <input
-                                    id="doc-input-contract-end-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={contractEndDate}
-                                    onChange={e => setContractEndDate(e.target.value)}
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                    {[
-                                        { label: '+1 мес', m: 1 },
-                                        { label: '+2 мес', m: 2 },
-                                        { label: '+3 мес', m: 3 },
-                                        { label: '+6 мес', m: 6 },
-                                    ].map(item => (
-                                        <button
-                                            key={item.label}
-                                            type="button"
-                                            onClick={() => {
-                                                const d = new Date();
-                                                d.setMonth(d.getMonth() + item.m);
-                                                setContractEndDate(d.toISOString().split('T')[0]);
-                                            }}
-                                            style={{
-                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {item.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Дата Акта выполненных работ
-                                    </span>
-                                </div>
-                                <input
-                                    id="doc-input-act-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={actDate}
-                                    onChange={e => setActDate(e.target.value)}
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                                {actDate && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                ) : selectedTemplate === 'act' ? (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <FileText size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    Параметры акта приема-передачи квартиры
-                                </span>
-                            </div>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                <CheckCircle2 size={13} />
-                                <span>Готов к печати и выгрузке</span>
-                            </div>
-                        </div>
-
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            Акт приема-передачи фиксирует передачу квартиры от Продавца к Покупателю, показания счетчиков учета ресурсов и отсутствие взаимных претензий.
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                            {/* Дата составления акта */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Дата составления акта
-                                    </span>
-                                </div>
-                                <input
-                                    id="doc-input-act-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={actDate}
-                                    onChange={e => setActDate(e.target.value)}
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                                {actDate && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Неотделимое оборудование и движимое имущество */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Оборудование и движимое имущество (опционально)
-                                    </span>
-                                </div>
-                                <input
-                                    className="form-input"
-                                    value={movableProperty}
-                                    onChange={e => setMovableProperty(e.target.value)}
-                                    placeholder="кухонный гарнитур, встроенная техника..."
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                ) : selectedTemplate === 'key_act' ? (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Key size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    Параметры акта приема-передачи ключей
-                                </span>
-                            </div>
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                <CheckCircle2 size={13} />
-                                <span>Готов к печати и выгрузке</span>
-                            </div>
-                        </div>
-
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            Акт фиксирует передачу ключей от объекта Принципалом Агенту для исполнения агентского договора (показы, реклама, реализация). Подписывается исключительно физическими лицами (в случае юрлица — ответственным лицом организации).
-                        </div>
-
-                        {/* Общие параметры: Дата, Город, Агент по договору */}
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    Дата составления акта
-                                </label>
-                                <input
-                                    id="doc-input-act-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={actDate}
-                                    onChange={e => setActDate(e.target.value)}
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                                {actDate && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        В акте: от <strong>«{new Date(actDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    Город составления
-                                </label>
-                                <input
-                                    id="doc-input-key-city"
-                                    className="form-input"
-                                    value={city}
-                                    onChange={e => setCity(e.target.value)}
-                                    placeholder="г. Киров"
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <label style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                    Агент по договору
-                                </label>
-                                <input
-                                    id="doc-input-key-agency"
-                                    className="form-input"
-                                    value={agencyCustomName}
-                                    onChange={e => setAgencyCustomName(e.target.value)}
-                                    placeholder="ИП Муравьевой Ю.А."
-                                    style={{ width: '100%', height: 42, borderRadius: 12, fontSize: 13, background: 'var(--bg)' }}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Сторона «Передал» (Принципал) */}
-                        <div style={{ background: 'var(--bg)', borderRadius: 14, padding: 14, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-                                        Сторона «Передал» (Принципал)
-                                    </span>
-                                    {clientDraft.is_legal_entity ? (
-                                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', fontWeight: 600 }}>
-                                            Юрлицо → Ответственное лицо
-                                        </span>
-                                    ) : (
-                                        <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', fontWeight: 600 }}>
-                                            Физическое лицо
-                                        </span>
-                                    )}
-                                </div>
-                                {clientDraft.is_legal_entity && individualClients.length > 0 && (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Заполнить из физлица:</span>
-                                        <select
-                                            style={{ height: 30, borderRadius: 8, fontSize: 11, background: 'var(--surface)', border: '1px solid var(--border)', padding: '0 6px' }}
-                                            value={activeClient?.authorized_person_id || ''}
+                                    {/* Стоимость услуг Исполнителя 1 */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 2 }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Исполнитель 1 (ИП Муравьева) ₽</span>
+                                            <span style={{ color: 'var(--primary)', fontWeight: 600 }}>НДС 5%</span>
+                                        </div>
+                                        <input
+                                            id="doc-input-service1-cost"
+                                            className="doc-input-sm"
+                                            value={service1Cost}
                                             onChange={e => {
-                                                const selectedId = e.target.value;
-                                                if (!selectedId) return;
-                                                const ind = state.clients.find(c => String(c.id) === String(selectedId));
-                                                if (ind) {
-                                                    const ip = ind.passport_details || {};
-                                                    setClientDraft(prev => ({
-                                                        ...prev,
-                                                        authorized_name: ind.full_name || prev.authorized_name,
-                                                        auth_person_birth: ind.birth_date || ip.birth_date || '',
-                                                        auth_person_series: ip.series || '',
-                                                        auth_person_number: ip.number || '',
-                                                        auth_person_issued_by: ip.issued_by || '',
-                                                        auth_person_issue_date: ip.issue_date || '',
-                                                        auth_person_unit_code: ip.unit_code || '',
-                                                        auth_person_reg_address: ip.registration_address || ind.reg_address || ind.address || '',
-                                                    }));
-                                                }
+                                                const digits = e.target.value.replace(/\D/g, '');
+                                                setService1Cost(digits ? Number(digits).toLocaleString('ru-RU') : '');
                                             }}
-                                        >
-                                            <option value="">- Выбрать контакт -</option>
-                                            {individualClients.map(c => (
-                                                <option key={c.id} value={c.id}>{c.full_name}</option>
+                                            placeholder="5 000"
+                                            style={{ fontWeight: 600 }}
+                                        />
+                                        <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                                            {[3000, 5000, 7000, 10000].map(amt => (
+                                                <button
+                                                    key={amt}
+                                                    type="button"
+                                                    onClick={() => setService1Cost(amt.toLocaleString('ru-RU'))}
+                                                    style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer' }}
+                                                >
+                                                    {amt / 1000}к
+                                                </button>
                                             ))}
-                                        </select>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
 
-                            {clientDraft.is_legal_entity && (
-                                <div style={{ fontSize: 11, color: '#1e40af', background: 'rgba(59, 130, 246, 0.08)', padding: '8px 12px', borderRadius: 10, lineHeight: 1.4 }}>
-                                    Организация: <strong>{clientDraft.company_name || activeClient?.full_name || 'Не указана'}</strong>. В акте приема-передачи ключей стороной и подписантом выступает исключительно физическое лицо (ответственное лицо).
-                                </div>
+                                    {/* Стоимость услуг Исполнителя 2 */}
+                                    <div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Исполнитель 2 ₽</div>
+                                        <input
+                                            id="doc-input-service2-cost"
+                                            className="doc-input-sm"
+                                            value={service2Cost}
+                                            onChange={e => {
+                                                const digits = e.target.value.replace(/\D/g, '');
+                                                setService2Cost(digits ? Number(digits).toLocaleString('ru-RU') : '');
+                                            }}
+                                            placeholder="15 000"
+                                            style={{ fontWeight: 600 }}
+                                        />
+                                        <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+                                            {[10000, 15000, 20000, 25000].map(amt => (
+                                                <button
+                                                    key={amt}
+                                                    type="button"
+                                                    onClick={() => setService2Cost(amt.toLocaleString('ru-RU'))}
+                                                    style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer' }}
+                                                >
+                                                    {amt / 1000}к
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Даты */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Срок договора</div>
+                                            <input
+                                                id="doc-input-contract-end-date"
+                                                type="date"
+                                                className="doc-input-sm"
+                                                value={contractEndDate}
+                                                onChange={e => setContractEndDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Дата Акта</div>
+                                            <input
+                                                id="doc-input-act-date"
+                                                type="date"
+                                                className="doc-input-sm"
+                                                value={actDate}
+                                                onChange={e => setActDate(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            ) : selectedTemplate === 'act' ? (
+                                <>
+                                    <div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Дата составления акта</div>
+                                        <input
+                                            id="doc-input-act-date"
+                                            type="date"
+                                            className="doc-input-sm"
+                                            value={actDate}
+                                            onChange={e => setActDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Имущество / мебель (опционально)</div>
+                                        <input
+                                            className="doc-input-sm"
+                                            value={movableProperty}
+                                            onChange={e => setMovableProperty(e.target.value)}
+                                            placeholder="кухонный гарнитур, техника..."
+                                        />
+                                    </div>
+                                </>
+                            ) : selectedTemplate === 'key_act' ? (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Дата акта</div>
+                                            <input
+                                                id="doc-input-act-date"
+                                                type="date"
+                                                className="doc-input-sm"
+                                                value={actDate}
+                                                onChange={e => setActDate(e.target.value)}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Город</div>
+                                            <input
+                                                id="doc-input-key-city"
+                                                className="doc-input-sm"
+                                                value={city}
+                                                onChange={e => setCity(e.target.value)}
+                                                placeholder="г. Киров"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Агент по договору</div>
+                                        <input
+                                            id="doc-input-key-agency"
+                                            className="doc-input-sm"
+                                            value={agencyCustomName}
+                                            onChange={e => setAgencyCustomName(e.target.value)}
+                                            placeholder="ИП Муравьевой Ю.А."
+                                        />
+                                    </div>
+
+                                    {/* Сторона Передал (Принципал / ответственное лицо) */}
+                                    <div style={{ background: 'var(--bg)', borderRadius: 9, padding: '8px 10px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
+                                                Передал: {clientDraft.is_legal_entity ? (clientDraft.authorized_name || 'Ответственное лицо') : (clientDraft.full_name || 'Принципал')}
+                                            </span>
+                                            <span style={{ fontSize: 9.5, padding: '1px 5px', borderRadius: 5, background: 'rgba(59, 130, 246, 0.12)', color: '#2563eb', fontWeight: 600 }}>
+                                                {clientDraft.is_legal_entity ? 'Отв. лицо' : 'Физлицо'}
+                                            </span>
+                                        </div>
+                                        {clientDraft.is_legal_entity && individualClients.length > 0 && (
+                                            <select
+                                                style={{ height: 26, borderRadius: 6, fontSize: 10.5, background: 'var(--surface)', border: '1px solid var(--border)', padding: '0 4px' }}
+                                                value={activeClient?.authorized_person_id || ''}
+                                                onChange={e => {
+                                                    const selectedId = e.target.value;
+                                                    if (!selectedId) return;
+                                                    const ind = state.clients.find(c => String(c.id) === String(selectedId));
+                                                    if (ind) {
+                                                        const ip = ind.passport_details || {};
+                                                        setClientDraft(prev => ({
+                                                            ...prev,
+                                                            authorized_name: ind.full_name || prev.authorized_name,
+                                                            auth_person_birth: ind.birth_date || ip.birth_date || '',
+                                                            auth_person_series: ip.series || '',
+                                                            auth_person_number: ip.number || '',
+                                                            auth_person_issued_by: ip.issued_by || '',
+                                                            auth_person_issue_date: ip.issue_date || '',
+                                                            auth_person_unit_code: ip.unit_code || '',
+                                                            auth_person_reg_address: ip.registration_address || ind.reg_address || ind.address || '',
+                                                        }));
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">- Заполнить из контакта -</option>
+                                                {individualClients.map(c => (
+                                                    <option key={c.id} value={c.id}>{c.full_name}</option>
+                                                ))}
+                                            </select>
+                                        )}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                            <input
+                                                id="doc-input-key-principal-series"
+                                                className="doc-input-sm"
+                                                value={clientDraft.is_legal_entity ? (clientDraft.auth_person_series || '') : (clientDraft.passport_series || '')}
+                                                onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_series' : 'passport_series', e.target.value)}
+                                                placeholder="Серия паспорта"
+                                            />
+                                            <input
+                                                id="doc-input-key-principal-number"
+                                                className="doc-input-sm"
+                                                value={clientDraft.is_legal_entity ? (clientDraft.auth_person_number || '') : (clientDraft.passport_number || '')}
+                                                onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_number' : 'passport_number', e.target.value)}
+                                                placeholder="Номер паспорта"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Сторона Принял (Риелтор) */}
+                                    <div style={{ background: 'var(--bg)', borderRadius: 9, padding: '8px 10px', border: '1px solid var(--border-light)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
+                                                Принял (Риелтор): {realtorDraft.full_name || realtor?.full_name || ''}
+                                            </span>
+                                            <span style={{ fontSize: 9.5, color: realtorDraft.number ? '#059669' : '#d97706', fontWeight: 600 }}>
+                                                {realtorDraft.number ? '✓ Ок' : '● Нет паспорта'}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                            <input
+                                                id="doc-input-realtor-series"
+                                                className="doc-input-sm"
+                                                value={realtorDraft.series}
+                                                onChange={e => setRealtorDraft(prev => ({ ...prev, series: e.target.value }))}
+                                                placeholder="Серия паспорта"
+                                            />
+                                            <input
+                                                id="doc-input-realtor-number"
+                                                className="doc-input-sm"
+                                                value={realtorDraft.number}
+                                                onChange={e => setRealtorDraft(prev => ({ ...prev, number: e.target.value }))}
+                                                placeholder="Номер паспорта"
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    {/* Стандартный агентский договор */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 2 }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Вознаграждение агента (₽) — п. 3.1</span>
+                                            {commission?.trim() ? <span style={{ color: '#10b981' }}>✓ Указано</span> : <span style={{ color: '#d97706' }}>● Заполнить</span>}
+                                        </div>
+                                        <input
+                                            id="doc-input-commission"
+                                            className="doc-input-sm"
+                                            value={commission}
+                                            onChange={e => {
+                                                const digits = e.target.value.replace(/\D/g, '');
+                                                setCommission(digits ? Number(digits).toLocaleString('ru-RU') : '');
+                                            }}
+                                            placeholder="50 000"
+                                            style={{ fontWeight: 600, border: !commission?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                                            {[30000, 50000, 70000, 100000].map(amt => (
+                                                <button
+                                                    key={amt}
+                                                    type="button"
+                                                    onClick={() => setCommission(amt.toLocaleString('ru-RU'))}
+                                                    style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer' }}
+                                                >
+                                                    {amt / 1000}к
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {commission && Number(commission.replace(/\D/g, '')) > 0 && (
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', fontStyle: 'italic', marginTop: 2 }}>
+                                                {numberToWordsRu(Number(commission.replace(/\D/g, '')))} руб. (в т.ч. НДС 5%)
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 2 }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Срок договора (до даты) — п. 5.1</span>
+                                            {contractEndDate ? <span style={{ color: '#10b981' }}>✓ Выбран</span> : <span style={{ color: '#d97706' }}>● Выбрать</span>}
+                                        </div>
+                                        <input
+                                            id="doc-input-contract-end-date"
+                                            type="date"
+                                            className="doc-input-sm"
+                                            value={contractEndDate}
+                                            onChange={e => setContractEndDate(e.target.value)}
+                                            style={{ border: !contractEndDate ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                        />
+                                        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 3 }}>
+                                            {[
+                                                { label: '+1 мес', m: 1 },
+                                                { label: '+2 мес', m: 2 },
+                                                { label: '+3 мес', m: 3 },
+                                                { label: '+6 мес', m: 6 },
+                                            ].map(item => (
+                                                <button
+                                                    key={item.label}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const d = new Date();
+                                                        d.setMonth(d.getMonth() + item.m);
+                                                        setContractEndDate(d.toISOString().split('T')[0]);
+                                                    }}
+                                                    style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer' }}
+                                                >
+                                                    {item.label}
+                                                </button>
+                                            ))}
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const yr = new Date().getFullYear();
+                                                    setContractEndDate(`${yr}-12-31`);
+                                                }}
+                                                style={{ padding: '2px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 10, cursor: 'pointer' }}
+                                            >
+                                                До 31 дек
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
                             )}
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                                        {clientDraft.is_legal_entity ? 'ФИО ответственного лица' : 'ФИО принципала'}
-                                    </label>
-                                    <input
-                                        id="doc-input-key-principal-name"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.authorized_name || '') : (clientDraft.full_name || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'authorized_name' : 'full_name', e.target.value)}
-                                        placeholder="Иванов Иван Иванович"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата рождения</label>
-                                    <input
-                                        id="doc-input-key-principal-birth"
-                                        type="date"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_birth || '') : (clientDraft.birth_date || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_birth' : 'birth_date', e.target.value)}
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Серия паспорта</label>
-                                    <input
-                                        id="doc-input-key-principal-series"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_series || '') : (clientDraft.passport_series || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_series' : 'passport_series', e.target.value)}
-                                        placeholder="33 14"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Номер паспорта</label>
-                                    <input
-                                        id="doc-input-key-principal-number"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_number || '') : (clientDraft.passport_number || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_number' : 'passport_number', e.target.value)}
-                                        placeholder="123456"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Кем выдан паспорт</label>
-                                    <input
-                                        id="doc-input-key-principal-issued-by"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_issued_by || '') : (clientDraft.passport_issued_by || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_issued_by' : 'passport_issued_by', e.target.value)}
-                                        placeholder="УМВД России..."
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата выдачи паспорта</label>
-                                    <input
-                                        id="doc-input-key-principal-issue-date"
-                                        type="date"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_issue_date || '') : (clientDraft.passport_issue_date || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_issue_date' : 'passport_issue_date', e.target.value)}
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Код подразделения</label>
-                                    <input
-                                        id="doc-input-key-principal-unit-code"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_unit_code || '') : (clientDraft.passport_unit_code || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_unit_code' : 'passport_unit_code', e.target.value)}
-                                        placeholder="430-001"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Адрес регистрации</label>
-                                    <input
-                                        id="doc-input-key-principal-reg-address"
-                                        className="form-input"
-                                        value={clientDraft.is_legal_entity ? (clientDraft.auth_person_reg_address || '') : (clientDraft.registration_address || '')}
-                                        onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_reg_address' : 'registration_address', e.target.value)}
-                                        placeholder="г. Киров, ул. Ленина, д. 1"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-                            </div>
                         </div>
-
-                        {/* Сторона «Принял» (Риелтор) */}
-                        <div style={{ background: 'var(--bg)', borderRadius: 14, padding: 14, border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-                                    Сторона «Принял» (Риелтор / Сотрудник агентства)
-                                </span>
-                                <span style={{ fontSize: 11, color: realtorDraft.number ? '#059669' : '#d97706', fontWeight: 600 }}>
-                                    {realtorDraft.number ? '✓ Паспорт заполнен' : '● Паспорт не заполнен'}
-                                </span>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>ФИО риелтора</label>
-                                    <input
-                                        id="doc-input-realtor-name"
-                                        className="form-input"
-                                        value={realtorDraft.full_name}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, full_name: e.target.value }))}
-                                        placeholder="ФИО сотрудника"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата рождения</label>
-                                    <input
-                                        id="doc-input-realtor-birth"
-                                        type="date"
-                                        className="form-input"
-                                        value={realtorDraft.birth_date}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, birth_date: e.target.value }))}
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Серия паспорта</label>
-                                    <input
-                                        id="doc-input-realtor-series"
-                                        className="form-input"
-                                        value={realtorDraft.series}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, series: e.target.value }))}
-                                        placeholder="33 14"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Номер паспорта</label>
-                                    <input
-                                        id="doc-input-realtor-number"
-                                        className="form-input"
-                                        value={realtorDraft.number}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, number: e.target.value }))}
-                                        placeholder="123456"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Кем выдан</label>
-                                    <input
-                                        id="doc-input-realtor-issued-by"
-                                        className="form-input"
-                                        value={realtorDraft.issued_by}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, issued_by: e.target.value }))}
-                                        placeholder="УМВД..."
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Дата выдачи</label>
-                                    <input
-                                        id="doc-input-realtor-issue-date"
-                                        type="date"
-                                        className="form-input"
-                                        value={realtorDraft.issue_date}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, issue_date: e.target.value }))}
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Код подразделения</label>
-                                    <input
-                                        id="doc-input-realtor-unit-code"
-                                        className="form-input"
-                                        value={realtorDraft.unit_code}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, unit_code: e.target.value }))}
-                                        placeholder="430-001"
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Адрес регистрации</label>
-                                    <input
-                                        id="doc-input-realtor-reg-address"
-                                        className="form-input"
-                                        value={realtorDraft.registration_address}
-                                        onChange={e => setRealtorDraft(prev => ({ ...prev, registration_address: e.target.value }))}
-                                        placeholder="г. Киров..."
-                                        style={{ height: 38, borderRadius: 10, fontSize: 13, background: 'var(--surface)' }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 16
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Briefcase size={16} style={{ color: 'var(--primary)' }} />
-                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    Условия договора и вознаграждение агента
-                                </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: 6 }}>
-                                {commission?.trim() && contractEndDate ? (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(16, 185, 129, 0.12)', color: '#059669', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                        <CheckCircle2 size={13} />
-                                        <span>Условия заполнены</span>
-                                    </div>
-                                ) : (
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245, 158, 11, 0.12)', color: '#d97706', padding: '4px 10px', borderRadius: 10, fontSize: 11, fontWeight: 600 }}>
-                                        <AlertCircle size={13} />
-                                        <span>Укажите вознаграждение и срок</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                            Размер вознаграждения подставляется в п. 3.1, а срок действия договора — в п. 5.1. Данные сразу синхронизируются в предпросмотре и DOCX.
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
-                            {/* Вознаграждение Агента */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Вознаграждение Агента (₽) — п. 3.1
-                                    </span>
-                                    {!commission?.trim() ? (
-                                        <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span>
-                                    ) : (
-                                        <span style={{ color: '#10b981' }}>✓ Указано</span>
-                                    )}
-                                </div>
-                                <input
-                                    id="doc-input-commission"
-                                    className="form-input"
-                                    value={commission}
-                                    onChange={e => {
-                                        const digits = e.target.value.replace(/\D/g, '');
-                                        setCommission(digits ? Number(digits).toLocaleString('ru-RU') : '');
-                                    }}
-                                    placeholder="50 000"
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 14, fontWeight: 600,
-                                        border: !commission?.trim() ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !commission?.trim() ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                                {/* Быстрые кнопки сумм */}
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                    {[30000, 50000, 70000, 100000].map(amt => (
-                                        <button
-                                            key={amt}
-                                            type="button"
-                                            onClick={() => setCommission(amt.toLocaleString('ru-RU'))}
-                                            style={{
-                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                                cursor: 'pointer', transition: 'all 0.15s'
-                                            }}
-                                        >
-                                            {amt.toLocaleString('ru-RU')} ₽
-                                        </button>
-                                    ))}
-                                </div>
-                                {/* Сумма прописью */}
-                                {commission && Number(commission.replace(/\D/g, '')) > 0 && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, fontStyle: 'italic', background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        Прописью: <strong>{numberToWordsRu(Number(commission.replace(/\D/g, '')))}</strong> рублей, в т.ч. НДС 5%
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Срок действия договора */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11 }}>
-                                    <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>
-                                        Срок действия договора (до даты) — п. 5.1
-                                    </span>
-                                    {!contractEndDate ? (
-                                        <span style={{ color: '#d97706', fontWeight: 600 }}>● Выбрать дату</span>
-                                    ) : (
-                                        <span style={{ color: '#10b981' }}>✓ Выбран</span>
-                                    )}
-                                </div>
-                                <input
-                                    id="doc-input-contract-end-date"
-                                    type="date"
-                                    className="form-input"
-                                    value={contractEndDate}
-                                    onChange={e => setContractEndDate(e.target.value)}
-                                    style={{
-                                        width: '100%', height: 42, borderRadius: 12, fontSize: 13,
-                                        border: !contractEndDate ? '1.5px solid #f59e0b' : '1px solid var(--border)',
-                                        background: !contractEndDate ? 'rgba(245, 158, 11, 0.04)' : 'var(--bg)',
-                                    }}
-                                />
-                                {/* Быстрые кнопки срока */}
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 2 }}>
-                                    {[
-                                        { label: '+1 мес', m: 1 },
-                                        { label: '+2 мес', m: 2 },
-                                        { label: '+3 мес', m: 3 },
-                                        { label: '+6 мес', m: 6 },
-                                    ].map(item => (
-                                        <button
-                                            key={item.label}
-                                            type="button"
-                                            onClick={() => {
-                                                const d = new Date();
-                                                d.setMonth(d.getMonth() + item.m);
-                                                setContractEndDate(d.toISOString().split('T')[0]);
-                                            }}
-                                            style={{
-                                                padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                                background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            {item.label}
-                                        </button>
-                                    ))}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            const yr = new Date().getFullYear();
-                                            setContractEndDate(`${yr}-12-31`);
-                                        }}
-                                        style={{
-                                            padding: '4px 9px', borderRadius: 8, border: '1px solid var(--border)',
-                                            background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11,
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        До 31 дек
-                                    </button>
-                                </div>
-                                {contractEndDate && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.3, background: 'var(--bg)', padding: '6px 10px', borderRadius: 8 }}>
-                                        В договоре: действует до <strong>«{new Date(contractEndDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}»</strong> включительно
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
+                    )}
+                </div>
 
                 {/* Модальное окно быстрого создания клиента */}
                 <QuickClientModal
@@ -3451,514 +2947,403 @@ export function DocumentsPage() {
                     }}
                 />
 
-                {/* Предпросмотр подставляемых данных */}
+                {/* Карточка 5: Сводка данных (Свернута по умолчанию) */}
                 {(seller || buyer || property || deal) && (
-                    <div className="no-print" style={{
-                        background: 'var(--surface)', borderRadius: 20, padding: 20,
-                        border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10
-                    }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                            Данные для документа
-                        </span>
-                        {isServicesRent3Party ? (
-                            <>
-                                <DataPreview label="Исполнитель 1" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
-                                <DataPreview label="Исполнитель 2" value={`${(realtorTaxStatus === 'Самозанятый' ? 'Самозанятый ' : '')}${realtor?.full_name || 'Не указан'} (${realtorTaxStatus}, ${realtor?.inn ? `ИНН ${realtor.inn}` : 'ИНН не указан'})`} />
-                                {(buyer || seller) && (
-                                    (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
-                                        <>
-                                            <DataPreview label="Заказчик (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
-                                            {((buyer || seller).inn || clientDraft.inn) && <DataPreview label="ИНН / ОГРН" value={`ИНН ${(buyer || seller).inn || clientDraft.inn}${((buyer || seller).ogrn || clientDraft.ogrn) ? ` / ОГРН ${(buyer || seller).ogrn || clientDraft.ogrn}` : ''}`} />}
-                                            {((buyer || seller).legal_address || clientDraft.legal_address) && <DataPreview label="Юр. адрес" value={(buyer || seller).legal_address || clientDraft.legal_address} />}
-                                            {((buyer || seller).authorized_name || clientDraft.authorized_name) && <DataPreview label="Представитель" value={`${(buyer || seller).authorized_position || clientDraft.authorized_position || 'Руководитель'}: ${(buyer || seller).authorized_name || clientDraft.authorized_name}`} />}
-                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <DataPreview label="Заказчик" value={(seller || buyer).full_name} />
-                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
-                                            <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
-                                            <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
-                                        </>
-                                    )
-                                )}
-                                {service1Cost && (
-                                    <DataPreview label="Исполнитель 1 (ИП)" value={`${Number(String(service1Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
-                                )}
-                                {service2Cost && (
-                                    <DataPreview label="Исполнитель 2" value={`${Number(String(service2Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />
-                                )}
-                                {contractEndDate && (
-                                    <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
-                                )}
-                                {actDate && (
-                                    <DataPreview label="Дата Акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />
-                                )}
-                            </>
-                        ) : selectedTemplate === 'key_act' ? (
-                            <>
-                                <DataPreview label="Документ" value="Акт приема-передачи ключей" />
-                                <DataPreview label="Принял (Риелтор)" value={`${realtorDraft.full_name || realtor?.full_name || 'Не указан'}${realtorDraft.number ? ` (паспорт № ${realtorDraft.number})` : ''}`} />
-                                {(buyer || seller) && (
-                                    clientDraft.is_legal_entity || (buyer || seller).is_legal_entity || (buyer || seller).company_name ? (
-                                        <>
-                                            <DataPreview label="Принципал (Юрлицо)" value={clientDraft.company_name || (buyer || seller).company_name || (seller || buyer).full_name} />
-                                            <DataPreview label="Передал (Подписант)" value={`${clientDraft.authorized_name || 'Ответственное лицо'} (ответственное лицо)`} />
-                                            {(clientDraft.auth_person_series || clientDraft.auth_person_number) && (
-                                                <DataPreview label="Паспорт подписанта" value={`Серия ${clientDraft.auth_person_series} № ${clientDraft.auth_person_number}`} />
-                                            )}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <DataPreview label="Передал (Принципал)" value={(seller || buyer).full_name} />
-                                            {((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) && (
-                                                <DataPreview label="Паспорт" value={`Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}`} />
-                                            )}
-                                        </>
-                                    )
-                                )}
-                                <DataPreview label="Агент по договору" value={agencyCustomName || 'ИП Муравьевой Ю.А.'} />
-                                {property && (
-                                    <>
-                                        <DataPreview label="Вид объекта" value={formatPropertyKind(property)} />
-                                        <DataPreview label="Адрес объекта" value={property.address || property.city} />
-                                    </>
-                                )}
-                                {actDate && <DataPreview label="Дата акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />}
-                            </>
-                        ) : isAgencyContract ? (
-                            <>
-                                <DataPreview label="Агент" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
-                                {(buyer || seller) && (
-                                    (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
-                                        <>
-                                            <DataPreview label="Принципал (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
-                                            {((buyer || seller).inn || clientDraft.inn) && <DataPreview label="ИНН / ОГРН" value={`ИНН ${(buyer || seller).inn || clientDraft.inn}${((buyer || seller).ogrn || clientDraft.ogrn) ? ` / ОГРН ${(buyer || seller).ogrn || clientDraft.ogrn}` : ''}`} />}
-                                            {((buyer || seller).legal_address || clientDraft.legal_address) && <DataPreview label="Юр. адрес" value={(buyer || seller).legal_address || clientDraft.legal_address} />}
-                                            {((buyer || seller).authorized_name || clientDraft.authorized_name) && <DataPreview label="Представитель" value={`${(buyer || seller).authorized_position || clientDraft.authorized_position || 'Руководитель'}: ${(buyer || seller).authorized_name || clientDraft.authorized_name}`} />}
-                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
-                                        </>
-                                    ) : (
-                                        <>
-                                            <DataPreview label="Принципал" value={(seller || buyer).full_name} />
-                                            {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
-                                            <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
-                                            <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
-                                        </>
-                                    )
-                                )}
-                                {property && (
-                                    <>
-                                        <DataPreview label="Вид объекта" value={formatPropertyKind(property)} />
-                                        <DataPreview label="Объект" value={property.address || property.city} />
-                                        {property.cadastral_number && <DataPreview label="Кадастровый №" value={property.cadastral_number} />}
-                                        {(deal?.price || property.price) && <DataPreview label="Ориентир. стоимость" value={`${Number(String(deal?.price || property.price).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />}
-                                    </>
-                                )}
-                                {(deal?.commission || property?.commission || commission) && (
-                                    <DataPreview label="Вознаграждение" value={`${Number(String(deal?.commission || property?.commission || commission).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
-                                )}
-                                {contractEndDate && (
-                                    <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <DataPreview label="Риелтор" value={realtor?.full_name} />
-                                <DataPreview label="Агентство" value={agencyName} />
-                                {seller && <DataPreview label={selectedTemplate === 'rent' ? 'Наймодатель' : 'Продавец'} value={seller.full_name} />}
-                                {buyer && <DataPreview label={selectedTemplate === 'rent' ? 'Наниматель' : 'Покупатель'} value={buyer.full_name} />}
-                                {property && (
-                                    <>
-                                        <DataPreview label="Адрес объекта" value={property.address || property.city} />
-                                        {property.area_total && <DataPreview label="Площадь" value={`${property.area_total} кв.м.`} />}
-                                        {property.price && <DataPreview label="Стоимость" value={`${Number(property.price).toLocaleString('ru-RU')} ₽`} />}
-                                        {(movableProperty || property.movable_property) && <DataPreview label="Список имущества" value={movableProperty || property.movable_property} />}
-                                    </>
-                                )}
-                                {deal && (
-                                    <>
-                                        {deal.price && <DataPreview label="Цена сделки" value={`${Number(String(deal.price).replace(/\D/g,'')).toLocaleString('ru-RU')} ₽`} />}
-                                        {deal.deal_date && <DataPreview label="Дата сделки" value={new Date(deal.deal_date).toLocaleDateString('ru-RU')} />}
-                                    </>
-                                )}
-                            </>
-                        )}
-                    </div>
-                )}
-
-                {/* Кнопки действий */}
-                <div className="no-print" style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <button
-                        className="card-clickable"
-                        onClick={handleDownload}
-                        disabled={isGenerating}
-                        style={{
-                            height: 48, padding: '0 28px', borderRadius: 14, border: 'none',
-                            background: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: 14,
-                            boxShadow: '0 4px 14px rgba(0,82,255,0.25)',
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            opacity: isGenerating ? 0.7 : 1, cursor: isGenerating ? 'not-allowed' : 'pointer',
-                        }}
-                    >
-                        <Download size={18} />
-                        {isGenerating ? 'Генерация...' : 'Скачать DOCX'}
-                    </button>
-                    <button
-                        className="card-clickable"
-                        onClick={() => window.print()}
-                        style={{
-                            height: 48, padding: '0 22px', borderRadius: 14,
-                            border: '1px solid var(--border)', background: 'var(--surface)',
-                            color: 'var(--text-secondary)', fontWeight: 500, fontSize: 14,
-                            display: 'inline-flex', alignItems: 'center', gap: 8,
-                            cursor: 'pointer'
-                        }}
-                    >
-                        <Printer size={18} />
-                        Печать
-                    </button>
-                </div>
-
-                {/* Панель управления предпросмотром и правкой */}
-                <div className="no-print" style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '12px 18px',
-                    background: 'var(--surface)',
-                    border: isEditMode ? '1.5px solid var(--primary)' : '1px solid var(--border)',
-                    borderRadius: 18,
-                    flexWrap: 'wrap',
-                    gap: 12,
-                    transition: 'all 0.2s',
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                            Предпросмотр договора
-                        </span>
-                        {isEditMode ? (
-                            <span style={{
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                                padding: '3px 10px', borderRadius: 8,
-                                background: 'rgba(0,102,255,0.12)', color: 'var(--primary)',
-                                fontWeight: 600, fontSize: 11
-                            }}>
-                                <Edit3 size={13} />
-                                Режим правки включен
-                            </span>
-                        ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, flexWrap: 'wrap' }}>
-                                <span style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                                    padding: '3px 8px', borderRadius: 6,
-                                    background: 'rgba(0,102,255,0.08)', color: '#0052cc', fontWeight: 600,
-                                    borderBottom: '2px solid #0066ff'
-                                }}>
-                                    🟦 Из CRM
-                                </span>
-                                <span style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                                    padding: '3px 8px', borderRadius: 6,
-                                    background: 'rgba(245,158,11,0.14)', color: '#b45309', fontWeight: 600,
-                                    border: '1px dashed #f59e0b'
-                                }}>
-                                    🟧 Заполнить
-                                </span>
-                                {savedTemplateHtml && (
-                                    <span style={{
-                                        display: 'inline-flex', alignItems: 'center', gap: 4,
-                                        padding: '3px 8px', borderRadius: 6,
-                                        background: 'rgba(16,185,129,0.12)', color: '#059669', fontWeight: 600
-                                    }}>
-                                        ✓ Свой шаблон
-                                    </span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        {/* Кнопка включения режима правки */}
-                        <button
-                            type="button"
-                            className="card-clickable"
-                            onClick={() => {
-                                const next = !isEditMode;
-                                setIsEditMode(next);
-                                if (next) {
-                                    setHighlightSlots(false);
-                                }
-                            }}
-                            style={{
-                                height: 36,
-                                padding: '0 14px',
-                                borderRadius: 12,
-                                border: isEditMode ? '1px solid var(--primary)' : '1px solid var(--border)',
-                                background: isEditMode ? 'var(--primary)' : 'var(--bg)',
-                                color: isEditMode ? 'white' : 'var(--text)',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                transition: 'all 0.15s ease-in-out',
-                                boxShadow: isEditMode ? '0 2px 8px rgba(0,82,255,0.3)' : 'none',
-                            }}
-                            title={isEditMode ? "Завершить редактирование текста" : "Включить редактирование текста прямо на листе договора"}
+                    <div className="doc-card no-print">
+                        <div
+                            className="doc-card-header"
+                            onClick={() => toggleSection('dataSummary')}
+                            role="button"
+                            tabIndex={0}
                         >
-                            <Edit3 size={14} />
-                            {isEditMode ? 'Завершить правку' : 'Редактировать текст'}
-                        </button>
-
-                        {/* Панель быстрого форматирования при активной правке */}
-                        {isEditMode && (
-                            <div style={{
-                                display: 'flex', alignItems: 'center', gap: 2,
-                                background: 'var(--bg)', padding: '2px 4px',
-                                borderRadius: 10, border: '1px solid var(--border)'
-                            }}>
-                                <button
-                                    type="button"
-                                    onClick={() => document.execCommand('bold', false, null)}
-                                    title="Жирный (Ctrl+B)"
-                                    style={{
-                                        width: 28, height: 28, borderRadius: 6, border: 'none',
-                                        background: 'transparent', cursor: 'pointer', fontWeight: 'bold',
-                                        color: 'var(--text)', fontSize: 13
-                                    }}
-                                >
-                                    Ж
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => document.execCommand('italic', false, null)}
-                                    title="Курсив (Ctrl+I)"
-                                    style={{
-                                        width: 28, height: 28, borderRadius: 6, border: 'none',
-                                        background: 'transparent', cursor: 'pointer', fontStyle: 'italic',
-                                        color: 'var(--text)', fontSize: 13
-                                    }}
-                                >
-                                    К
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => document.execCommand('underline', false, null)}
-                                    title="Подчеркнутый (Ctrl+U)"
-                                    style={{
-                                        width: 28, height: 28, borderRadius: 6, border: 'none',
-                                        background: 'transparent', cursor: 'pointer', textDecoration: 'underline',
-                                        color: 'var(--text)', fontSize: 13
-                                    }}
-                                >
-                                    Ч
-                                </button>
-                                <div style={{ width: 1, height: 16, background: 'var(--border)', margin: '0 2px' }} />
-                                <button
-                                    type="button"
-                                    onClick={() => document.execCommand('undo', false, null)}
-                                    title="Отменить действие (Ctrl+Z)"
-                                    style={{
-                                        width: 28, height: 28, borderRadius: 6, border: 'none',
-                                        background: 'transparent', cursor: 'pointer', display: 'flex',
-                                        alignItems: 'center', justifyContent: 'center', color: 'var(--text)'
-                                    }}
-                                >
-                                    <Undo2 size={13} />
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => document.execCommand('redo', false, null)}
-                                    title="Повторить действие (Ctrl+Y)"
-                                    style={{
-                                        width: 28, height: 28, borderRadius: 6, border: 'none',
-                                        background: 'transparent', cursor: 'pointer', display: 'flex',
-                                        alignItems: 'center', justifyContent: 'center', color: 'var(--text)'
-                                    }}
-                                >
-                                    <Redo2 size={13} />
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Кнопка сохранения как шаблон */}
-                        {(isEditMode || hasManualEdits) && (
-                            <button
-                                type="button"
-                                className="card-clickable"
-                                onClick={handleSaveAsTemplate}
-                                style={{
-                                    height: 36,
-                                    padding: '0 12px',
-                                    borderRadius: 12,
-                                    border: '1px solid rgba(16,185,129,0.3)',
-                                    background: 'rgba(16,185,129,0.1)',
-                                    color: '#059669',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                }}
-                                title="Сохранить эти формулировки как постоянный шаблон для договоров данного типа"
-                            >
-                                <Save size={14} />
-                                Сохранить шаблон
-                            </button>
-                        )}
-
-                        {/* Кнопка сброса правок */}
-                        {(hasManualEdits || savedTemplateHtml) && (
-                            <button
-                                type="button"
-                                className="card-clickable"
-                                onClick={handleResetTemplate}
-                                style={{
-                                    height: 36,
-                                    padding: '0 12px',
-                                    borderRadius: 12,
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--bg)',
-                                    color: 'var(--text-secondary)',
-                                    fontSize: 12,
-                                    fontWeight: 500,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                }}
-                                title="Сбросить все правки и вернуться к исходному шаблону CRM"
-                            >
-                                <RotateCcw size={13} />
-                                Сбросить
-                            </button>
-                        )}
-
-                        {/* Кнопка подсветки полей */}
-                        {!isEditMode && (
-                            <button
-                                type="button"
-                                className="card-clickable"
-                                onClick={() => setHighlightSlots(!highlightSlots)}
-                                style={{
-                                    height: 36,
-                                    padding: '0 12px',
-                                    borderRadius: 12,
-                                    border: '1px solid var(--border)',
-                                    background: highlightSlots ? 'rgba(0,102,255,0.08)' : 'var(--bg)',
-                                    color: highlightSlots ? 'var(--primary)' : 'var(--text-secondary)',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                    transition: 'all 0.2s',
-                                }}
-                            >
-                                <Sparkles size={14} />
-                                {highlightSlots ? 'Подсветка: ВКЛ' : 'Подсветка: ВЫКЛ'}
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Баннер подсказки в режиме правки */}
-                {isEditMode && (
-                    <div className="no-print" style={{
-                        marginTop: 10,
-                        padding: '10px 16px',
-                        borderRadius: 14,
-                        background: 'rgba(0,102,255,0.06)',
-                        border: '1px solid rgba(0,102,255,0.2)',
-                        fontSize: 12,
-                        color: 'var(--primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        fontWeight: 500,
-                    }}>
-                        <Sparkles size={16} style={{ flexShrink: 0 }} />
-                        <span>
-                            <strong>Режим правки активен:</strong> Кликните в любой абзац, пункт или таблицу документа ниже, чтобы изменить текст, дописать свои условия или удалить ненужное. Все правки сохранятся при печати и выгрузке в DOCX.
-                        </span>
-                    </div>
-                )}
-
-                {/* Оповещение об активном сохраненном шаблоне */}
-                {savedTemplateHtml && (
-                    <div className="no-print" style={{
-                        marginTop: 10,
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '12px 18px', borderRadius: 16,
-                        background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)',
-                        fontSize: 12, color: 'var(--text)', gap: 12, flexWrap: 'wrap'
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <FileText size={18} style={{ color: '#059669', flexShrink: 0 }} />
-                            <span>
-                                Используется ваш <strong>сохранённый шаблон</strong> для этого типа договора. Данные принципала и объекта обновляются автоматически.
+                            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                Сводка данных документа
                             </span>
+                            <button
+                                type="button"
+                                onClick={() => toggleSection('dataSummary')}
+                                style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                            >
+                                <ChevronDown size={14} style={{ transform: collapsedSections.dataSummary ? 'rotate(-90deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </button>
                         </div>
-                        <button
-                            type="button"
-                            className="card-clickable"
-                            onClick={handleResetTemplate}
-                            style={{
-                                padding: '6px 14px', borderRadius: 10,
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                background: 'rgba(239, 68, 68, 0.08)',
-                                color: '#dc2626', fontSize: 12, fontWeight: 600,
-                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
-                            }}
-                            title="Сбросить все правки шаблона и вернуть стандартный системный вариант договора"
-                        >
-                            <RotateCcw size={13} />
-                            Сбросить к стандартному CRM
-                        </button>
+                        {!collapsedSections.dataSummary && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                                {isServicesRent3Party ? (
+                                    <>
+                                        <DataPreview label="Исполнитель 1" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
+                                        <DataPreview label="Исполнитель 2" value={`${(realtorTaxStatus === 'Самозанятый' ? 'Самозанятый ' : '')}${realtor?.full_name || 'Не указан'} (${realtorTaxStatus}, ${realtor?.inn ? `ИНН ${realtor.inn}` : 'ИНН не указан'})`} />
+                                        {(buyer || seller) && (
+                                            (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
+                                                <>
+                                                    <DataPreview label="Заказчик (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
+                                                    {((buyer || seller).inn || clientDraft.inn) && <DataPreview label="ИНН / ОГРН" value={`ИНН ${(buyer || seller).inn || clientDraft.inn}${((buyer || seller).ogrn || clientDraft.ogrn) ? ` / ОГРН ${(buyer || seller).ogrn || clientDraft.ogrn}` : ''}`} />}
+                                                    {((buyer || seller).legal_address || clientDraft.legal_address) && <DataPreview label="Юр. адрес" value={(buyer || seller).legal_address || clientDraft.legal_address} />}
+                                                    {((buyer || seller).authorized_name || clientDraft.authorized_name) && <DataPreview label="Представитель" value={`${(buyer || seller).authorized_position || clientDraft.authorized_position || 'Руководитель'}: ${(buyer || seller).authorized_name || clientDraft.authorized_name}`} />}
+                                                    {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DataPreview label="Заказчик" value={(seller || buyer).full_name} />
+                                                    {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                                    <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
+                                                    <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
+                                                </>
+                                            )
+                                        )}
+                                        {service1Cost && (
+                                            <DataPreview label="Исполнитель 1 (ИП)" value={`${Number(String(service1Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
+                                        )}
+                                        {service2Cost && (
+                                            <DataPreview label="Исполнитель 2" value={`${Number(String(service2Cost).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />
+                                        )}
+                                        {contractEndDate && (
+                                            <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
+                                        )}
+                                        {actDate && (
+                                            <DataPreview label="Дата Акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />
+                                        )}
+                                    </>
+                                ) : selectedTemplate === 'key_act' ? (
+                                    <>
+                                        <DataPreview label="Документ" value="Акт приема-передачи ключей" />
+                                        <DataPreview label="Принял (Риелтор)" value={`${realtorDraft.full_name || realtor?.full_name || 'Не указан'}${realtorDraft.number ? ` (паспорт № ${realtorDraft.number})` : ''}`} />
+                                        {(buyer || seller) && (
+                                            clientDraft.is_legal_entity || (buyer || seller).is_legal_entity || (buyer || seller).company_name ? (
+                                                <>
+                                                    <DataPreview label="Принципал (Юрлицо)" value={clientDraft.company_name || (buyer || seller).company_name || (seller || buyer).full_name} />
+                                                    <DataPreview label="Передал (Подписант)" value={`${clientDraft.authorized_name || 'Ответственное лицо'} (ответственное лицо)`} />
+                                                    {(clientDraft.auth_person_series || clientDraft.auth_person_number) && (
+                                                        <DataPreview label="Паспорт подписанта" value={`Серия ${clientDraft.auth_person_series} № ${clientDraft.auth_person_number}`} />
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DataPreview label="Передал (Принципал)" value={(seller || buyer).full_name} />
+                                                    {((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) && (
+                                                        <DataPreview label="Паспорт" value={`Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}`} />
+                                                    )}
+                                                </>
+                                            )
+                                        )}
+                                        <DataPreview label="Агент по договору" value={agencyCustomName || 'ИП Муравьевой Ю.А.'} />
+                                        {property && (
+                                            <>
+                                                <DataPreview label="Вид объекта" value={formatPropertyKind(property)} />
+                                                <DataPreview label="Адрес объекта" value={property.address || property.city} />
+                                            </>
+                                        )}
+                                        {actDate && <DataPreview label="Дата акта" value={new Date(actDate).toLocaleDateString('ru-RU')} />}
+                                    </>
+                                ) : isAgencyContract ? (
+                                    <>
+                                        <DataPreview label="Агент" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
+                                        {(buyer || seller) && (
+                                            (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
+                                                <>
+                                                    <DataPreview label="Принципал (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
+                                                    {((buyer || seller).inn || clientDraft.inn) && <DataPreview label="ИНН / ОГРН" value={`ИНН ${(buyer || seller).inn || clientDraft.inn}${((buyer || seller).ogrn || clientDraft.ogrn) ? ` / ОГРН ${(buyer || seller).ogrn || clientDraft.ogrn}` : ''}`} />}
+                                                    {((buyer || seller).legal_address || clientDraft.legal_address) && <DataPreview label="Юр. адрес" value={(buyer || seller).legal_address || clientDraft.legal_address} />}
+                                                    {((buyer || seller).authorized_name || clientDraft.authorized_name) && <DataPreview label="Представитель" value={`${(buyer || seller).authorized_position || clientDraft.authorized_position || 'Руководитель'}: ${(buyer || seller).authorized_name || clientDraft.authorized_name}`} />}
+                                                    {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <DataPreview label="Принципал" value={(seller || buyer).full_name} />
+                                                    {(buyer || seller).phone && <DataPreview label="Телефон" value={formatPhone((buyer || seller).phone)} />}
+                                                    <DataPreview label="Паспорт" value={((buyer || seller).passport_details?.series && (buyer || seller).passport_details?.number) ? `Серия ${(buyer || seller).passport_details.series} № ${(buyer || seller).passport_details.number}` : null} />
+                                                    <DataPreview label="Прописка" value={(buyer || seller).passport_details?.registration_address || (buyer || seller).reg_address || (buyer || seller).address} />
+                                                </>
+                                            )
+                                        )}
+                                        {property && (
+                                            <>
+                                                <DataPreview label="Вид объекта" value={formatPropertyKind(property)} />
+                                                <DataPreview label="Объект" value={property.address || property.city} />
+                                                {property.cadastral_number && <DataPreview label="Кадастровый №" value={property.cadastral_number} />}
+                                                {(deal?.price || property.price) && <DataPreview label="Ориентир. стоимость" value={`${Number(String(deal?.price || property.price).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽`} />}
+                                            </>
+                                        )}
+                                        {(deal?.commission || property?.commission || commission) && (
+                                            <DataPreview label="Вознаграждение" value={`${Number(String(deal?.commission || property?.commission || commission).replace(/\D/g, '')).toLocaleString('ru-RU')} ₽ (в т.ч. НДС 5%)`} />
+                                        )}
+                                        {contractEndDate && (
+                                            <DataPreview label="Срок договора" value={`до ${new Date(contractEndDate).toLocaleDateString('ru-RU')} включ.`} />
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        <DataPreview label="Риелтор" value={realtor?.full_name} />
+                                        <DataPreview label="Агентство" value={agencyName} />
+                                        {seller && <DataPreview label={selectedTemplate === 'rent' ? 'Наймодатель' : 'Продавец'} value={seller.full_name} />}
+                                        {buyer && <DataPreview label={selectedTemplate === 'rent' ? 'Наниматель' : 'Покупатель'} value={buyer.full_name} />}
+                                        {property && (
+                                            <>
+                                                <DataPreview label="Адрес объекта" value={property.address || property.city} />
+                                                {property.area_total && <DataPreview label="Площадь" value={`${property.area_total} кв.м.`} />}
+                                                {property.price && <DataPreview label="Стоимость" value={`${Number(property.price).toLocaleString('ru-RU')} ₽`} />}
+                                                {(movableProperty || property.movable_property) && <DataPreview label="Список имущества" value={movableProperty || property.movable_property} />}
+                                            </>
+                                        )}
+                                        {deal && (
+                                            <>
+                                                {deal.price && <DataPreview label="Цена сделки" value={`${Number(String(deal.price).replace(/\D/g,'')).toLocaleString('ru-RU')} ₽`} />}
+                                                {deal.deal_date && <DataPreview label="Дата сделки" value={new Date(deal.deal_date).toLocaleDateString('ru-RU')} />}
+                                            </>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
                     </div>
                 )}
+                    </div>
+                    {/* КОНЕЦ ЛЕВОЙ КОЛОНКИ (doc-sidebar) */}
 
-                {/* Предпросмотр документа (для экрана и печати) */}
-                <div
-                    ref={previewRef}
-                    id="doc-print-area"
-                    contentEditable={isEditMode}
-                    suppressContentEditableWarning={true}
-                    onClick={handlePreviewClick}
-                    onInput={() => setHasManualEdits(true)}
-                    style={{
-                        background: 'var(--surface)',
-                        color: 'var(--text)',
-                        borderRadius: 24,
-                        padding: '44px 40px',
-                        marginTop: 14,
-                        border: isEditMode ? '2px dashed var(--primary)' : '1px solid var(--border)',
-                        boxShadow: isEditMode ? '0 0 0 4px rgba(0,102,255,0.08)' : '0 8px 32px rgba(0,0,0,0.03)',
-                        fontFamily: isAgencyContract ? 'Arial, Helvetica, sans-serif' : 'Georgia, Cambria, "Times New Roman", serif',
-                        fontSize: isAgencyContract ? 13 : 14,
-                        lineHeight: isAgencyContract ? 1.6 : 1.8,
-                        minHeight: 600,
-                        outline: 'none',
-                        cursor: isEditMode ? 'text' : 'default',
-                        transition: 'border 0.2s, box-shadow 0.2s',
-                    }}
-                >
-                    {hydratedCustomTemplateHtml ? (
-                        <div dangerouslySetInnerHTML={{ __html: hydratedCustomTemplateHtml }} />
-                    ) : (
-                        <DocumentPreview
-                            key={previewKey}
-                            template={selectedTemplate}
-                            data={generatorData}
-                            highlight={highlightSlots && !isEditMode}
-                            isEditing={isEditMode}
-                        />
-                    )}
+                    {/* ПРАВАЯ КОЛОНКА (Документ + Панель инструментов) */}
+                    <div className={`doc-main ${mobileTab === 'settings' ? 'mobile-hidden' : ''}`}>
+                        {/* Прилипающая верхняя панель действий (Sticky Toolbar) */}
+                        <div className="doc-toolbar-sticky no-print">
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {TEMPLATE_ICONS[selectedTemplate] || <FileText size={16} />}
+                                        <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                                            {selectedTemplateMeta?.title || 'Предпросмотр документа'}
+                                        </span>
+                                    </div>
+
+                                    {/* Метки режима */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        {isEditMode ? (
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 7px', borderRadius: 6, background: 'rgba(0,102,255,0.12)', color: 'var(--primary)', fontWeight: 600, fontSize: 10.5 }}>
+                                                <Edit3 size={11} /> Правка
+                                            </span>
+                                        ) : (
+                                            <>
+                                                <span style={{ fontSize: 10.5, padding: '2px 6px', borderRadius: 5, background: 'rgba(0,102,255,0.08)', color: '#0052cc', fontWeight: 600, borderBottom: '2px solid #0066ff' }}>
+                                                    🟦 CRM
+                                                </span>
+                                                <span style={{ fontSize: 10.5, padding: '2px 6px', borderRadius: 5, background: 'rgba(245,158,11,0.12)', color: '#b45309', fontWeight: 600, border: '1px dashed #f59e0b' }}>
+                                                    🟧 Поле
+                                                </span>
+                                                {savedTemplateHtml && (
+                                                    <span style={{ fontSize: 10.5, padding: '2px 6px', borderRadius: 5, background: 'rgba(16,185,129,0.12)', color: '#059669', fontWeight: 600 }}>
+                                                        ✓ Свой шаблон
+                                                    </span>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Кнопки действий */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                    {/* Подсветка */}
+                                    {!isEditMode && (
+                                        <button
+                                            type="button"
+                                            className="btn-compact btn-compact-secondary"
+                                            onClick={() => setHighlightSlots(!highlightSlots)}
+                                            style={{
+                                                background: highlightSlots ? 'rgba(0,102,255,0.08)' : 'var(--bg)',
+                                                color: highlightSlots ? 'var(--primary)' : 'var(--text-secondary)',
+                                            }}
+                                            title="Включить / выключить цветовую подсветку авто-заполненных полей"
+                                        >
+                                            <Sparkles size={13} />
+                                            {highlightSlots ? 'Подсветка: ВКЛ' : 'Подсветка'}
+                                        </button>
+                                    )}
+
+                                    {/* Редактировать текст */}
+                                    <button
+                                        type="button"
+                                        className={`btn-compact ${isEditMode ? 'btn-compact-primary' : 'btn-compact-secondary'}`}
+                                        onClick={() => {
+                                            const next = !isEditMode;
+                                            setIsEditMode(next);
+                                            if (next) setHighlightSlots(false);
+                                        }}
+                                        title={isEditMode ? "Завершить редактирование текста" : "Редактировать текст документа прямо на листе"}
+                                    >
+                                        <Edit3 size={13} />
+                                        {isEditMode ? 'Завершить' : 'Правка'}
+                                    </button>
+
+                                    {/* Сохранить шаблон */}
+                                    {(isEditMode || hasManualEdits) && (
+                                        <button
+                                            type="button"
+                                            className="btn-compact"
+                                            onClick={handleSaveAsTemplate}
+                                            style={{
+                                                border: '1px solid rgba(16,185,129,0.3)',
+                                                background: 'rgba(16,185,129,0.1)',
+                                                color: '#059669',
+                                                fontWeight: 600
+                                            }}
+                                            title="Сохранить текущий текст как постоянный шаблон"
+                                        >
+                                            <Save size={13} />
+                                            Шаблон
+                                        </button>
+                                    )}
+
+                                    {/* Сбросить */}
+                                    {(hasManualEdits || savedTemplateHtml) && (
+                                        <button
+                                            type="button"
+                                            className="btn-compact btn-compact-secondary"
+                                            onClick={handleResetTemplate}
+                                            title="Сбросить все правки к системному шаблону"
+                                        >
+                                            <RotateCcw size={12} />
+                                            Сброс
+                                        </button>
+                                    )}
+
+                                    {/* Печать */}
+                                    <button
+                                        type="button"
+                                        className="btn-compact btn-compact-secondary"
+                                        onClick={() => window.print()}
+                                        title="Распечатать документ"
+                                    >
+                                        <Printer size={13} />
+                                        Печать
+                                    </button>
+
+                                    {/* Скачать DOCX */}
+                                    <button
+                                        type="button"
+                                        className="btn-compact btn-compact-primary"
+                                        onClick={handleDownload}
+                                        disabled={isGenerating}
+                                        style={{
+                                            opacity: isGenerating ? 0.7 : 1,
+                                            cursor: isGenerating ? 'not-allowed' : 'pointer',
+                                            padding: '0 14px',
+                                        }}
+                                        title="Скачать документ в формате Word (.docx)"
+                                    >
+                                        <Download size={14} />
+                                        {isGenerating ? 'Генерация...' : 'Скачать DOCX'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Подпанель форматирования текста (при isEditMode) */}
+                            {isEditMode && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, paddingTop: 6, borderTop: '1px solid var(--border-light)', flexWrap: 'wrap', gap: 6 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: 'var(--bg)', padding: '2px 4px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => document.execCommand('bold', false, null)}
+                                            title="Жирный (Ctrl+B)"
+                                            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', fontWeight: 'bold', color: 'var(--text)', fontSize: 12 }}
+                                        >
+                                            Ж
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => document.execCommand('italic', false, null)}
+                                            title="Курсив (Ctrl+I)"
+                                            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', fontStyle: 'italic', color: 'var(--text)', fontSize: 12 }}
+                                        >
+                                            К
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => document.execCommand('underline', false, null)}
+                                            title="Подчеркнутый (Ctrl+U)"
+                                            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', textDecoration: 'underline', color: 'var(--text)', fontSize: 12 }}
+                                        >
+                                            Ч
+                                        </button>
+                                        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px' }} />
+                                        <button
+                                            type="button"
+                                            onClick={() => document.execCommand('undo', false, null)}
+                                            title="Отменить действие (Ctrl+Z)"
+                                            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}
+                                        >
+                                            <Undo2 size={12} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => document.execCommand('redo', false, null)}
+                                            title="Повторить действие (Ctrl+Y)"
+                                            style={{ width: 24, height: 24, borderRadius: 5, border: 'none', background: 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)' }}
+                                        >
+                                            <Redo2 size={12} />
+                                        </button>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <Sparkles size={12} />
+                                        <span>Кликните по любому месту текста для правки</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Баннер сохраненного шаблона */}
+                            {savedTemplateHtml && !isEditMode && (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, padding: '4px 10px', borderRadius: 8, background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: 11, color: 'var(--text)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <FileText size={13} style={{ color: '#059669' }} />
+                                        <span>Активен ваш <strong>сохранённый шаблон</strong></span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={handleResetTemplate}
+                                        style={{ background: 'none', border: 'none', color: '#dc2626', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}
+                                    >
+                                        Сбросить к стандартному CRM
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Холст документа (А4 лист) */}
+                        <div
+                            ref={previewRef}
+                            id="doc-print-area"
+                            contentEditable={isEditMode}
+                            suppressContentEditableWarning={true}
+                            onClick={handlePreviewClick}
+                            onInput={() => setHasManualEdits(true)}
+                            style={{
+                                background: 'var(--surface)',
+                                color: 'var(--text)',
+                                borderRadius: 18,
+                                padding: '36px 40px',
+                                border: isEditMode ? '2px dashed var(--primary)' : '1px solid var(--border)',
+                                boxShadow: isEditMode ? '0 0 0 4px rgba(0,102,255,0.08)' : '0 4px 24px rgba(0,0,0,0.04)',
+                                fontFamily: (isAgencyContract || selectedTemplate === 'key_act') ? 'Arial, Helvetica, sans-serif' : 'Georgia, Cambria, "Times New Roman", serif',
+                                fontSize: (isAgencyContract || selectedTemplate === 'key_act') ? 13 : 13.5,
+                                lineHeight: (isAgencyContract || selectedTemplate === 'key_act') ? 1.55 : 1.75,
+                                minHeight: 700,
+                                outline: 'none',
+                                cursor: isEditMode ? 'text' : 'default',
+                                transition: 'border 0.2s, box-shadow 0.2s',
+                            }}
+                        >
+                            {hydratedCustomTemplateHtml ? (
+                                <div dangerouslySetInnerHTML={{ __html: hydratedCustomTemplateHtml }} />
+                            ) : (
+                                <DocumentPreview
+                                    key={previewKey}
+                                    template={selectedTemplate}
+                                    data={generatorData}
+                                    highlight={highlightSlots && !isEditMode}
+                                    isEditing={isEditMode}
+                                />
+                            )}
+                        </div>
+                    </div>
+                    {/* КОНЕЦ ПРАВОЙ КОЛОНКИ (doc-main) */}
                 </div>
+                {/* КОНЕЦ doc-workbench */}
             </div>
         </div>
     );
