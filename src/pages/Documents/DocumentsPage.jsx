@@ -8,7 +8,7 @@ import {
     UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
 import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind, getPropertyKindForms } from '../../utils/docxGenerator';
-import { formatPhone, stripPhone, parsePgArray } from '../../utils/format';
+import { formatPhone, stripPhone, parsePgArray, formatUnitCode, formatPassportInput, parsePassportInput, formatPassportDisplay } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -2340,28 +2340,31 @@ export function DocumentsPage() {
                                                 style={{ border: !clientDraft.birth_date?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
                                             />
                                         </div>
-                                        <div>
-                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Серия паспорта</div>
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10.5 }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Серия и номер паспорта</span>
+                                                {(!clientDraft.passport_series?.trim() || !clientDraft.passport_number?.trim()) ? (
+                                                    <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span>
+                                                ) : (
+                                                    <span style={{ color: '#10b981' }}>✓ Заполнено</span>
+                                                )}
+                                            </div>
                                             <input
-                                                id="doc-input-series"
+                                                id="doc-input-passport"
                                                 className="doc-input-sm"
-                                                value={clientDraft.passport_series}
-                                                onChange={e => handleDraftChange('passport_series', e.target.value)}
-                                                placeholder="33 14"
-                                                maxLength={7}
-                                                style={{ border: !clientDraft.passport_series?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Номер паспорта</div>
-                                            <input
-                                                id="doc-input-number"
-                                                className="doc-input-sm"
-                                                value={clientDraft.passport_number}
-                                                onChange={e => handleDraftChange('passport_number', e.target.value)}
-                                                placeholder="123456"
-                                                maxLength={10}
-                                                style={{ border: !clientDraft.passport_number?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                                value={formatPassportDisplay(clientDraft.passport_series, clientDraft.passport_number)}
+                                                onChange={e => {
+                                                    const { series, number } = parsePassportInput(e.target.value);
+                                                    handleDraftChange('passport_series', series);
+                                                    handleDraftChange('passport_number', number);
+                                                }}
+                                                placeholder="__ ______"
+                                                maxLength={13}
+                                                style={{
+                                                    border: (!clientDraft.passport_series?.trim() || !clientDraft.passport_number?.trim())
+                                                        ? '1px solid #f59e0b'
+                                                        : '1px solid var(--border)'
+                                                }}
                                             />
                                         </div>
                                         <div>
@@ -2376,14 +2379,21 @@ export function DocumentsPage() {
                                             />
                                         </div>
                                         <div>
-                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Код подр-я</div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10.5 }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Код подразделения</span>
+                                                {!clientDraft.passport_unit_code?.trim() ? (
+                                                    <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span>
+                                                ) : (
+                                                    <span style={{ color: '#10b981' }}>✓</span>
+                                                )}
+                                            </div>
                                             <input
                                                 id="doc-input-unit-code"
                                                 className="doc-input-sm"
                                                 value={clientDraft.passport_unit_code}
-                                                onChange={e => handleDraftChange('passport_unit_code', e.target.value)}
-                                                placeholder="430-001"
-                                                maxLength={8}
+                                                onChange={e => handleDraftChange('passport_unit_code', formatUnitCode(e.target.value))}
+                                                placeholder="___-___"
+                                                maxLength={7}
                                                 style={{ border: !clientDraft.passport_unit_code?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
                                             />
                                         </div>
@@ -2793,20 +2803,26 @@ export function DocumentsPage() {
                                                 ))}
                                             </select>
                                         )}
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                        <div>
                                             <input
-                                                id="doc-input-key-principal-series"
+                                                id="doc-input-key-principal-passport"
                                                 className="doc-input-sm"
-                                                value={clientDraft.is_legal_entity ? (clientDraft.auth_person_series || '') : (clientDraft.passport_series || '')}
-                                                onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_series' : 'passport_series', e.target.value)}
-                                                placeholder="Серия паспорта"
-                                            />
-                                            <input
-                                                id="doc-input-key-principal-number"
-                                                className="doc-input-sm"
-                                                value={clientDraft.is_legal_entity ? (clientDraft.auth_person_number || '') : (clientDraft.passport_number || '')}
-                                                onChange={e => handleDraftChange(clientDraft.is_legal_entity ? 'auth_person_number' : 'passport_number', e.target.value)}
-                                                placeholder="Номер паспорта"
+                                                value={formatPassportDisplay(
+                                                    clientDraft.is_legal_entity ? clientDraft.auth_person_series : clientDraft.passport_series,
+                                                    clientDraft.is_legal_entity ? clientDraft.auth_person_number : clientDraft.passport_number
+                                                )}
+                                                onChange={e => {
+                                                    const { series, number } = parsePassportInput(e.target.value);
+                                                    if (clientDraft.is_legal_entity) {
+                                                        handleDraftChange('auth_person_series', series);
+                                                        handleDraftChange('auth_person_number', number);
+                                                    } else {
+                                                        handleDraftChange('passport_series', series);
+                                                        handleDraftChange('passport_number', number);
+                                                    }
+                                                }}
+                                                placeholder="Серия и номер: __ ______"
+                                                maxLength={13}
                                             />
                                         </div>
                                     </div>
@@ -2821,20 +2837,17 @@ export function DocumentsPage() {
                                                 {realtorDraft.number ? '✓ Ок' : '● Нет паспорта'}
                                             </span>
                                         </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                                        <div>
                                             <input
-                                                id="doc-input-realtor-series"
+                                                id="doc-input-realtor-passport"
                                                 className="doc-input-sm"
-                                                value={realtorDraft.series}
-                                                onChange={e => setRealtorDraft(prev => ({ ...prev, series: e.target.value }))}
-                                                placeholder="Серия паспорта"
-                                            />
-                                            <input
-                                                id="doc-input-realtor-number"
-                                                className="doc-input-sm"
-                                                value={realtorDraft.number}
-                                                onChange={e => setRealtorDraft(prev => ({ ...prev, number: e.target.value }))}
-                                                placeholder="Номер паспорта"
+                                                value={formatPassportDisplay(realtorDraft.series, realtorDraft.number)}
+                                                onChange={e => {
+                                                    const { series, number } = parsePassportInput(e.target.value);
+                                                    setRealtorDraft(prev => ({ ...prev, series, number }));
+                                                }}
+                                                placeholder="Серия и номер: __ ______"
+                                                maxLength={13}
                                             />
                                         </div>
                                     </div>
@@ -3358,7 +3371,10 @@ function Slot({ value, label, fallback, inputId, slotId, highlight = true, isEdi
         if (isEditing) return;
         if (inputId) {
             e?.stopPropagation?.();
-            const el = document.getElementById(inputId);
+            const el = document.getElementById(inputId) ||
+                ((inputId === 'doc-input-series' || inputId === 'doc-input-number') ? document.getElementById('doc-input-passport') : null) ||
+                ((inputId === 'doc-input-key-principal-series' || inputId === 'doc-input-key-principal-number') ? document.getElementById('doc-input-key-principal-passport') : null) ||
+                ((inputId === 'doc-input-realtor-series' || inputId === 'doc-input-realtor-number') ? document.getElementById('doc-input-realtor-passport') : null);
             if (el) {
                 el.focus();
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' });

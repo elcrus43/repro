@@ -254,6 +254,89 @@ export function parsePgArray(arr) {
     return [String(arr)];
 }
 
+/**
+ * Formats passport unit code according to mask: ___-___ (e.g. "430-001")
+ * @param {string} raw
+ * @returns {string}
+ */
+export function formatUnitCode(raw) {
+    if (!raw) return '';
+    const digits = String(raw).replace(/\D/g, '').slice(0, 6);
+    if (digits.length <= 3) return digits;
+    return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+}
+
+/**
+ * Formats combined passport series and number input string
+ * Supports __ ______ (2 digits series + 6 digits number) and 4 digits series (____ ______)
+ * @param {string} raw
+ * @returns {string}
+ */
+export function formatPassportInput(raw) {
+    if (!raw) return '';
+    const str = String(raw);
+    const parts = str.trimStart().split(/\s+/);
+    if (parts.length >= 2) {
+        const num = parts[parts.length - 1].replace(/\D/g, '').slice(0, 6);
+        const series = parts.slice(0, parts.length - 1).join(' ').replace(/[^\d\s]/g, '').slice(0, 5);
+        if (str.endsWith(' ') && !num) {
+            return `${series} `;
+        }
+        return num ? `${series} ${num}` : series;
+    }
+    const digits = str.replace(/\D/g, '').slice(0, 10);
+    if (digits.length <= 2) {
+        return str.endsWith(' ') ? `${digits} ` : digits;
+    }
+    if (digits.length <= 4) {
+        return digits;
+    }
+    if (digits.length <= 8) {
+        return `${digits.slice(0, 2)} ${digits.slice(2)}`;
+    }
+    return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+}
+
+/**
+ * Parses combined passport series and number into separate { series, number }
+ * @param {string} raw
+ * @returns {{ series: string, number: string }}
+ */
+export function parsePassportInput(raw) {
+    if (!raw) return { series: '', number: '' };
+    const clean = String(raw).trim();
+    const parts = clean.split(/\s+/);
+    if (parts.length === 1) {
+        const digits = parts[0].replace(/\D/g, '');
+        if (digits.length <= 4) {
+            return { series: digits, number: '' };
+        }
+        if (digits.length <= 8) {
+            return { series: digits.slice(0, 2), number: digits.slice(2) };
+        }
+        return { series: digits.slice(0, 4), number: digits.slice(4) };
+    }
+    const number = parts[parts.length - 1].replace(/\D/g, '').slice(0, 6);
+    const series = parts.slice(0, parts.length - 1).join(' ').replace(/[^\d\s]/g, '').slice(0, 5);
+    return { series, number };
+}
+
+/**
+ * Combines separate series and number into a display string
+ * @param {string} series
+ * @param {string} number
+ * @returns {string}
+ */
+export function formatPassportDisplay(series, number) {
+    const s = String(series || '').trim();
+    const n = String(number || '').trim();
+    if (!s && !n) return '';
+    if (!s) return n;
+    if (!n) return s;
+    return `${s} ${n}`;
+}
+
+
 
 
 

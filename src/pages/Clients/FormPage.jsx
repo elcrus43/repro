@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, stripPhone } from '../../utils/format';
+import { formatPhone, stripPhone, formatPassportDisplay, parsePassportInput } from '../../utils/format';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
@@ -1290,15 +1290,22 @@ export function FormPage() {
                         {showPassport && (
                             <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
 
-                                {/* Строка 1: Серия · Номер · Дата выдачи */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+                                {/* Строка 1: Серия и Номер · Дата выдачи */}
+                                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Серия</label>
-                                        <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }} value={form.passport_details?.series || ''} onChange={e => setPassport('series', e.target.value)} placeholder="1234" maxLength={4} inputMode="numeric" />
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Номер</label>
-                                        <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }} value={form.passport_details?.number || ''} onChange={e => setPassport('number', e.target.value)} placeholder="567890" maxLength={6} inputMode="numeric" />
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Серия и номер паспорта</label>
+                                        <input
+                                            className="form-input"
+                                            style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14 }}
+                                            value={formatPassportDisplay(form.passport_details?.series, form.passport_details?.number)}
+                                            onChange={e => {
+                                                const { series, number } = parsePassportInput(e.target.value);
+                                                setPassport('series', series);
+                                                setPassport('number', number);
+                                            }}
+                                            placeholder="__ ______"
+                                            maxLength={13}
+                                        />
                                     </div>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Дата выдачи</label>
@@ -1315,7 +1322,7 @@ export function FormPage() {
                                             style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.05em' }}
                                             value={form.passport_details?.unit_code || ''}
                                             onChange={e => handleUnitCodeChange(e.target.value)}
-                                            placeholder="123-456"
+                                            placeholder="___-___"
                                             inputMode="numeric"
                                             maxLength={7}
                                         />

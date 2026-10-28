@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, parsePgArray } from '../utils/format'
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, parsePgArray, formatUnitCode, formatPassportInput, parsePassportInput, formatPassportDisplay } from '../utils/format'
 import { formatDate, formatDateTime, cleanPrice, formatPrice, getLevelLabel } from '../utils/matching'
 
 // ─── Date Formatting ────────────────────────────────────────────────────────
@@ -295,3 +295,46 @@ describe('parsePgArray', () => {
     expect(parsePgArray('')).toEqual([]);
   })
 })
+
+describe('formatUnitCode', () => {
+  it('formats digits as ___-___', () => {
+    expect(formatUnitCode('430001')).toBe('430-001')
+    expect(formatUnitCode('430-001')).toBe('430-001')
+    expect(formatUnitCode('430')).toBe('430')
+    expect(formatUnitCode('4301')).toBe('430-1')
+  })
+
+  it('handles empty or non-numeric values', () => {
+    expect(formatUnitCode('')).toBe('')
+    expect(formatUnitCode(null)).toBe('')
+    expect(formatUnitCode('abc')).toBe('')
+  })
+})
+
+describe('passport formatting & parsing', () => {
+  it('formats combined passport input correctly', () => {
+    expect(formatPassportInput('43 123456')).toBe('43 123456')
+    expect(formatPassportInput('4314 123456')).toBe('4314 123456')
+    expect(formatPassportInput('43 14 123456')).toBe('43 14 123456')
+    expect(formatPassportInput('4314123456')).toBe('4314 123456')
+    expect(formatPassportInput('43123456')).toBe('43 123456')
+  })
+
+  it('parses passport into separate series and number', () => {
+    expect(parsePassportInput('43 123456')).toEqual({ series: '43', number: '123456' })
+    expect(parsePassportInput('43 14 123456')).toEqual({ series: '43 14', number: '123456' })
+    expect(parsePassportInput('4314 123456')).toEqual({ series: '4314', number: '123456' })
+    expect(parsePassportInput('4314123456')).toEqual({ series: '4314', number: '123456' })
+    expect(parsePassportInput('43123456')).toEqual({ series: '43', number: '123456' })
+    expect(parsePassportInput('')).toEqual({ series: '', number: '' })
+  })
+
+  it('formats passport display string from series and number', () => {
+    expect(formatPassportDisplay('33 14', '123456')).toBe('33 14 123456')
+    expect(formatPassportDisplay('43', '123456')).toBe('43 123456')
+    expect(formatPassportDisplay('33 14', '')).toBe('33 14')
+    expect(formatPassportDisplay('', '123456')).toBe('123456')
+    expect(formatPassportDisplay('', '')).toBe('')
+  })
+})
+

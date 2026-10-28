@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { authService } from '../../lib/auth';
-import { formatPhone } from '../../utils/format';
+import { formatPhone, formatPassportDisplay, parsePassportInput, formatUnitCode } from '../../utils/format';
 import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon, FileText } from 'lucide-react';
 import {
     isCalendarConfigured,
@@ -408,22 +408,24 @@ export function ProfilePage() {
                                 placeholder="ИНН (для самозанятого или ИП)"
                             />
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                <input
-                                    className="form-input"
-                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
-                                    value={editData.passport_details?.series || ''}
-                                    onChange={e => setPassport('series', e.target.value)}
-                                    placeholder="Серия паспорта"
-                                />
-                                <input
-                                    className="form-input"
-                                    style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
-                                    value={editData.passport_details?.number || ''}
-                                    onChange={e => setPassport('number', e.target.value)}
-                                    placeholder="Номер паспорта"
-                                />
-                            </div>
+                            <input
+                                className="form-input"
+                                style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none' }}
+                                value={formatPassportDisplay(editData.passport_details?.series, editData.passport_details?.number)}
+                                onChange={e => {
+                                    const { series, number } = parsePassportInput(e.target.value);
+                                    setEditData(prev => ({
+                                        ...prev,
+                                        passport_details: {
+                                            ...prev.passport_details,
+                                            series,
+                                            number
+                                        }
+                                    }));
+                                }}
+                                placeholder="Серия и номер: __ ______"
+                                maxLength={13}
+                            />
 
                             <input
                                 className="form-input"
@@ -450,8 +452,9 @@ export function ProfilePage() {
                                         className="form-input"
                                         style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', width: '100%' }}
                                         value={editData.passport_details?.unit_code || ''}
-                                        onChange={e => setPassport('unit_code', e.target.value)}
-                                        placeholder="000-000"
+                                        onChange={e => setPassport('unit_code', formatUnitCode(e.target.value))}
+                                        placeholder="___-___"
+                                        maxLength={7}
                                     />
                                 </div>
                             </div>
