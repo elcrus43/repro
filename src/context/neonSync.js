@@ -200,10 +200,6 @@ export async function loadUserData(userId, role) {
   const fetchedData = res.data?.[0]?.data || {};
   const error = res.error ? (typeof res.error === 'object' ? res.error.message : res.error) : null;
 
-  // Auto-migrations for newly added columns
-  neonDb.query(`ALTER TABLE "properties" ADD COLUMN IF NOT EXISTS "movable_property" TEXT;`).catch(() => {});
-  neonDb.query(`ALTER TABLE "deals" ADD COLUMN IF NOT EXISTS "deposit_paid" BOOLEAN DEFAULT false;`).catch(() => {});
-
   if (error) {
     console.error('[neonSync loadUserData] Error:', error);
   }
