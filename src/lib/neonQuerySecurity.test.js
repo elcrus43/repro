@@ -15,6 +15,7 @@ import {
   transformAndValidateQuery
 } from '../../api/neon-query.js';
 import { isValidDealToken } from '../../api/deal-chat.js';
+import { getClientIp, reportSecurityIncident } from '../../api/security-alerts.js';
 
 describe('neon-query isPublicQuery security filter', () => {
   it('blocks wildcard deal dumps (P0-4)', () => {
@@ -353,5 +354,51 @@ describe('Pipeline Security Filter: transformAndValidateQuery (P0-1 ... P0-6)', 
     expect(res.error).toBeNull();
     expect(res.query).toContain(`("realtor_id" = $2 OR "property_id" IN (SELECT id FROM properties WHERE realtor_id = $2) OR "request_id" IN (SELECT id FROM requests WHERE realtor_id = $2))`);
     expect(res.params).toEqual(['prop-uuid-1', 'realtor-uuid-1']);
+  });
+});
+
+describe('Security Alerts & Incident Reporting (api/security-alerts.js)', () => {
+  it('extracts client IP accurately from proxy headers', () => {
+    const reqWithForwarded = {
+      headers: { 'x-forwarded-for': '203.0.113.195, 70.41.3.18' }
+    };
+    expect(getClientIp(reqWithForwarded)).toBe('203.0.113.195');
+
+    const reqWithRealIp = {
+      headers: { 'x-real-ip': '198.51.100.4' }
+    };
+    expect(getClientIp(reqWithRealIp)).toBe('198.51.100.4');
+
+    expect(getClientIp({})).toBe('unknown');
+  });
+
+  it('records incident in app_errors and gracefully handles reporting', async () => {
+    const executedQueries = [];
+    const mockDb = {
+      query: async (q, params) => {
+        executedQueries.push({ q, params });
+        return [];
+      }
+    };
+
+    await reportSecurityIncident({
+      type: 'SQL_COMMENTS_INJECTION',
+      details: 'Test attack simulation',
+      query: 'SELECT * FROM clients WHERE 1=1; --',
+      userId: '11111111-2222-3333-4444-555555555555',
+      req: {
+        headers: {
+          'x-forwarded-for': '1.2.3.4',
+          'user-agent': 'SecurityTestRunner/1.0'
+        }
+      },
+      dbClient: mockDb
+    });
+
+    expect(executedQueries.length).toBe(1);
+    expect(executedQueries[0].q).toContain('INSERT INTO app_errors');
+    expect(executedQueries[0].params[0]).toBe('11111111-2222-3333-4444-555555555555');
+    expect(executedQueries[0].params[1]).toContain('[SECURITY ALERT] SQL_COMMENTS_INJECTION');
+    expect(executedQueries[0].params[2]).toContain('IP: 1.2.3.4');
   });
 });

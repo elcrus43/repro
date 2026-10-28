@@ -13,6 +13,7 @@
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { reportSecurityIncident } from './security-alerts.js';
 
 const NEON_DATABASE_URL = process.env.NEON_DATABASE_URL;
 const NEON_JWT_SECRET   = process.env.NEON_JWT_SECRET;
@@ -436,12 +437,26 @@ export default async function handler(req, res) {
   // ─── Универсальная защита от утечки хешей паролей (P0-2) ──────
   if (/\bpassword_hash\b/i.test(query)) {
     console.warn('[neon-query] Access to password_hash blocked in query');
+    reportSecurityIncident({
+      type: 'PASSWORD_HASH_ACCESS_ATTEMPT',
+      details: 'Попытка запроса или модификации поля password_hash',
+      query,
+      userId,
+      req
+    });
     return res.status(403).json({ data: null, error: 'Access denied: cannot access password_hash' });
   }
 
   // ─── Защита profiles: создание профилей только через auth (P0-1) ───
   if (/\bINSERT\s+INTO\s+["']?profiles["']?\b/i.test(query)) {
     console.warn('[neon-query] Direct INSERT into profiles blocked');
+    reportSecurityIncident({
+      type: 'DIRECT_PROFILE_INSERT_ATTEMPT',
+      details: 'Попытка прямого создания профиля в обход модуля авторизации',
+      query,
+      userId,
+      req
+    });
     return res.status(403).json({ data: null, error: 'Access denied: profile creation is only permitted via auth endpoint' });
   }
 
@@ -499,6 +514,13 @@ export default async function handler(req, res) {
     // ─── Безопасность: userId в JWT должен совпадать с телом ─────
     if (userId && jwtPayload.sub !== userId) {
       console.warn('[neon-query] userId mismatch', { jwt: jwtPayload.sub, body: userId });
+      reportSecurityIncident({
+        type: 'USER_ID_SPOOFING_ATTEMPT',
+        details: `Несовпадение userId: в теле указан ${userId}, в JWT сессии ${jwtPayload.sub}`,
+        query,
+        userId: jwtPayload.sub,
+        req
+      });
       return res.status(403).json({ data: null, error: 'Access denied: userId mismatch' });
     }
 
@@ -506,6 +528,13 @@ export default async function handler(req, res) {
     const transformed = transformAndValidateQuery(query, params, jwtPayload);
     if (transformed.error) {
       console.warn('[neon-query] Security validation failed:', transformed.error);
+      reportSecurityIncident({
+        type: 'ISOLATION_VIOLATION_ATTEMPT',
+        details: `Попытка нарушения изоляции данных: ${transformed.error}`,
+        query,
+        userId: jwtPayload.sub,
+        req
+      });
       return res.status(transformed.status || 403).json({ data: null, error: transformed.error });
     }
     query = transformed.query;
@@ -524,18 +553,39 @@ export default async function handler(req, res) {
   // 1. Блокировка null-byte атак
   if (query.includes('\0')) {
     console.warn('[neon-query] Null-byte detected in query');
+    reportSecurityIncident({
+      type: 'NULL_BYTE_INJECTION',
+      details: 'Обнаружен null-byte (\\0) в теле SQL-запроса',
+      query,
+      userId,
+      req
+    });
     return res.status(400).json({ data: null, error: 'Query not allowed: invalid characters' });
   }
 
   // 2. Блокировка SQL-комментариев (-- и /* */), исключающая обход фильтров
   if (/(--|\/\*|\*\/)/.test(query)) {
     console.warn('[neon-query] SQL comments blocked in query:', query.slice(0, 100));
+    reportSecurityIncident({
+      type: 'SQL_COMMENTS_INJECTION',
+      details: 'Обнаружены SQL-комментарии (-- или /* */), возможная попытка обхода изоляции',
+      query,
+      userId,
+      req
+    });
     return res.status(403).json({ data: null, error: 'Query not allowed: SQL comments forbidden' });
   }
 
   // 3. Блокировка multi-statement инъекций (любая точка с запятой запрещена в параметризованных запросах)
   if (/;/.test(query.trim())) {
     console.warn('[neon-query] Semicolon detected, chained query blocked:', query.slice(0, 100));
+    reportSecurityIncident({
+      type: 'MULTI_STATEMENT_INJECTION',
+      details: 'Обнаружена точка с запятой (;), попытка объединения нескольких SQL-команд',
+      query,
+      userId,
+      req
+    });
     return res.status(403).json({ data: null, error: 'Query not allowed: multiple statements forbidden' });
   }
 
@@ -543,6 +593,13 @@ export default async function handler(req, res) {
   const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|EXECUTE|PREPARE|DEALLOCATE|VACUUM|ANALYZE|REINDEX|information_schema|current_setting|set_config|lo_import|lo_export|lo_create|lo_unlink|dblink|crosstab)\b|\bpg_[a-zA-Z0-9_]+/i;
   if (dangerousPattern.test(query)) {
     console.warn('[neon-query] Dangerous query blocked:', query.slice(0, 100));
+    reportSecurityIncident({
+      type: 'FORBIDDEN_KEYWORD_OR_CATALOG_ACCESS',
+      details: 'Запрос содержит запрещённые DDL-команды, обращение к системным функциям или каталогам PostgreSQL',
+      query,
+      userId,
+      req
+    });
     return res.status(403).json({ data: null, error: 'Query not allowed: forbidden keyword or catalog access' });
   }
 
@@ -553,6 +610,13 @@ export default async function handler(req, res) {
     if (table === 'set' || table === 'only' || table === 'select' || table === 'values') continue;
     if (table && !ALLOWED_TABLES.has(table)) {
       console.warn('[neon-query] Unauthorized table access attempted:', table);
+      reportSecurityIncident({
+        type: 'UNAUTHORIZED_TABLE_ACCESS',
+        details: `Попытка несанкционированного доступа к таблице: ${table}`,
+        query,
+        userId,
+        req
+      });
       return res.status(403).json({ data: null, error: `Access denied to table: ${table}` });
     }
   }
