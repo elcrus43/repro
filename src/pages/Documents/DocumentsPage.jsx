@@ -565,6 +565,7 @@ export function DocumentsPage() {
     }, [sourceMode, selectedDealId, state.deals, state.properties]);
 
     const templates = getDocumentTemplates();
+    const selectedTemplateMeta = templates.find(t => t.key === selectedTemplate);
     const realtor = state.currentUser;
     const agencyName = realtor?.agency_name;
 
@@ -960,7 +961,6 @@ export function DocumentsPage() {
             !clientDraft.registration_address?.trim(),
         ].filter(Boolean).length;
     }, [clientDraft]);
-    const isClientComplete = clientMissingCount === 0;
 
     const propMissingCount = useMemo(() => {
         return [
@@ -968,7 +968,6 @@ export function DocumentsPage() {
             !propDraft.address?.trim(),
         ].filter(Boolean).length;
     }, [propDraft]);
-    const isPropComplete = propMissingCount === 0;
 
     /* ── Сохранение в CRM ─────────────────────────────────────────────────── */
     const handleSaveToCrm = async () => {
@@ -3485,7 +3484,7 @@ function DocumentPreview({ template, data, highlight = true }) {
     const propCadastral = f(property?.cadastral_number);
     const propArea = property?.area_total ? `${property.area_total} кв.м.` : '';
     const propRooms = property?.rooms ? (property.rooms === 'studio' ? 'Студия' : `${property.rooms}-комн. кв.`) : (property?.property_type === 'house' ? 'Жилой дом' : (property?.property_type === 'land' ? 'Земельный участок' : ''));
-    const propPrefix = [propRooms, propArea].filter(Boolean).join(', ');
+    const _propPrefix = [propRooms, propArea].filter(Boolean).join(', ');
 
     const rawPrice = deal?.price || property?.price;
     const cleanPriceNum = rawPrice ? Number(String(rawPrice).replace(/\D/g, '')) : 0;
@@ -3552,7 +3551,7 @@ function DocumentPreview({ template, data, highlight = true }) {
     const customerNumber = f(cDetails.number);
     const customerIssuedBy = f(cDetails.issued_by);
     const customerIssueDate = cDetails.issue_date ? fDate(cDetails.issue_date) : '';
-    const customerUnitCode = f(cDetails.unit_code);
+    const _customerUnitCode = f(cDetails.unit_code);
     const customerRegAddress = f(cDetails.registration_address || customer?.reg_address || customer?.address);
     const customerPhone = f(formatPhone(customer?.phone) || customer?.phone);
     const customerEmail = f(customer?.email);
