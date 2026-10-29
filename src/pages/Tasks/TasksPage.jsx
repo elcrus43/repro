@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Pencil, Trash, Calendar, Phone, User, Plus, CheckCircle, Activity, Clock, ChevronRight, PhoneIncoming, PhoneOutgoing, PhoneMissed, Smartphone } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -293,7 +293,7 @@ export function TasksPage() {
                             background: filter === v ? 'var(--primary)' : 'var(--surface)',
                             color: filter === v ? 'white' : 'var(--text-secondary)',
                             boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                            fontFamily: 'Oswald'
+                            fontFamily: 'Medeo Sans'
                         }} onClick={() => setFilter(v)}>{l}</button>
                     ))}
                 </div>

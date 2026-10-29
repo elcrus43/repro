@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
@@ -139,7 +139,7 @@ export function DetailsPage() {
                                     borderRadius: 11,
                                     border: 'none',
                                     fontSize: 12,
-                                    fontFamily: "'Oswald', sans-serif",
+                                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                                     fontWeight: isActive ? 500 : 300,
                                     background: isActive ? '#10b981' : 'transparent',
                                     color: isActive ? '#ffffff' : 'var(--text-secondary)',
@@ -162,7 +162,7 @@ export function DetailsPage() {
                                     borderRadius: 11,
                                     border: 'none',
                                     fontSize: 12,
-                                    fontFamily: "'Oswald', sans-serif",
+                                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                                     fontWeight: !isActive ? 500 : 300,
                                     background: !isActive ? '#64748b' : 'transparent',
                                     color: !isActive ? '#ffffff' : 'var(--text-secondary)',
@@ -224,7 +224,7 @@ export function DetailsPage() {
                                 <div key={c.id} className="card-clickable" onClick={() => navigate(`/clients/${c.id}`)} style={{ padding: '12px 16px', background: 'var(--bg-light)', borderRadius: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
                                     <div style={{ 
                                         width: 38, height: 38, borderRadius: 12, background: 'var(--primary)', color: 'white',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 300, fontFamily: "'Oswald', sans-serif"
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 300, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
                                     }}>
                                         {(c.full_name || '?')[0].toUpperCase()}
                                     </div>

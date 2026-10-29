@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert, Check, X, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -731,7 +731,7 @@ export function DealsPage() {
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#8b5cf6' }} />
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Продавец</span>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" }}>Продавец</span>
                                 </div>
 
                                 <div>
@@ -796,7 +796,7 @@ export function DealsPage() {
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Покупатель</span>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" }}>Покупатель</span>
                                 </div>
 
                                 <div>
@@ -814,7 +814,7 @@ export function DealsPage() {
                                                 background: 'var(--surface)', color: 'var(--text)',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 padding: '0 12px', fontSize: 13, fontWeight: 500, whiteSpace: 'nowrap',
-                                                fontFamily: "'Oswald', sans-serif"
+                                                fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
                                             }}
                                         >
                                             <Plus size={14} style={{ marginRight: 4 }} /> Покупатель
@@ -892,7 +892,7 @@ export function DealsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <CreditCard size={15} color="#6366f1" />
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>Ипотека</span>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#6366f1', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" }}>Ипотека</span>
                                 </div>
                                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
                                     <input
@@ -960,7 +960,7 @@ export function DealsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                     <FileText size={15} color="#10b981" />
-                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif" }}>АД</span>
+                                    <span style={{ fontSize: 11, fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" }}>АД</span>
                                 </div>
                                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
                                     <input
@@ -2613,7 +2613,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     style={{
                         flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'seller' ? '#8b5cf6' : 'rgba(139,92,246,0.25)'}`,
                         background: openChat === 'seller' ? 'rgba(139,92,246,0.1)' : 'transparent',
-                        color: '#8b5cf6', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
+                        color: '#8b5cf6', fontSize: 12, fontWeight: 500, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
                         transition: 'all 0.2s', position: 'relative'
                     }}
@@ -2671,7 +2671,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     style={{
                         flex: 1, height: 38, borderRadius: 12, border: `1.5px solid ${openChat === 'buyer' ? 'var(--primary)' : 'rgba(0,82,255,0.2)'}`,
                         background: openChat === 'buyer' ? 'var(--primary-light)' : 'transparent',
-                        color: 'var(--primary)', fontSize: 12, fontWeight: 500, fontFamily: "'Oswald', sans-serif",
+                        color: 'var(--primary)', fontSize: 12, fontWeight: 500, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, cursor: 'pointer',
                         transition: 'all 0.2s', position: 'relative'
                     }}

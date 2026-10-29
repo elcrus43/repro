@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { X, Loader, Copy, RefreshCw, Check, Sparkles } from 'lucide-react';
 import { generateAdFromAI } from '../utils/adGenerator';
 import { useToastContext } from './Toast';
@@ -119,7 +119,7 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                     boxShadow: '0 8px 32px rgba(0,0,0,0.08)' 
                 }}>
                     <div style={{ 
-                        fontFamily: 'Oswald, sans-serif', 
+                        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", 
                         fontSize: 12, 
                         fontWeight: 300, 
                         letterSpacing: '0.14em', 
@@ -178,7 +178,7 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                             borderRadius: 14,
                             background: activeColor,
                             color: '#ffffff',
-                            fontFamily: 'Oswald, sans-serif',
+                            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                             fontSize: 15,
                             fontWeight: 400,
                             letterSpacing: '0.02em',
@@ -216,7 +216,7 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                     minWidth: 0
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ fontFamily: 'Oswald, sans-serif', fontSize: 14, fontWeight: 300, color: 'var(--text)' }}>
+                        <div style={{ fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontSize: 14, fontWeight: 300, color: 'var(--text)' }}>
                             Результат генерации
                         </div>
                         {text && !loading && !error && (
@@ -240,7 +240,7 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                                 borderRadius: 16
                             }}>
                                 <Loader size={32} style={{ animation: 'spin 1s linear infinite', color: activeColor }} />
-                                <div style={{ fontSize: 14, color: 'var(--text-muted)', fontFamily: 'Oswald, sans-serif', textAlign: 'center', padding: '0 20px', lineHeight: 1.4 }}>
+                                <div style={{ fontSize: 14, color: 'var(--text-muted)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textAlign: 'center', padding: '0 20px', lineHeight: 1.4 }}>
                                     {status === 'parsing' 
                                         ? 'Сбор технических характеристик дома с МинЖКХ...' 
                                         : 'ИИ составляет описание объекта...'}
@@ -313,7 +313,7 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                                 borderRadius: 14,
                                 background: copied ? '#10b981' : activeColor,
                                 color: '#ffffff',
-                                fontFamily: 'Oswald, sans-serif',
+                                fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                                 fontSize: 15,
                                 fontWeight: 400,
                                 border: 'none',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToastContext } from '../../components/Toast';
 import { ChevronLeft, MessageSquare, Plus, Trash, Loader2, WifiOff, Layout, Tag, FileText } from 'lucide-react';
@@ -168,7 +168,7 @@ export function TemplatesPage() {
                             </div>
 
                             <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
-                                <button className="card-clickable" style={{ flex: 1, height: 52, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase' }} onClick={handleCreate}>Создать</button>
+                                <button className="card-clickable" style={{ flex: 1, height: 52, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase' }} onClick={handleCreate}>Создать</button>
                                 <button className="card-clickable" style={{ flex: 1, height: 52, borderRadius: 16, border: 'none', background: 'rgba(0,0,0,0.03)', color: 'var(--text-secondary)', fontWeight: 700, fontSize: 14 }} onClick={() => { setShowNew(false); setNewTpl({ name: '', category: 'Common', body: '', channels: ['whatsapp'] }); }}>Отмена</button>
                             </div>
                         </div>
@@ -188,7 +188,7 @@ export function TemplatesPage() {
                                     <div className="font-oswald" style={{ fontSize: 20, fontWeight: 800, color: 'var(--text)', textTransform: 'uppercase', marginBottom: 8 }}>Нет шаблонов</div>
                                     <div style={{ fontSize: 14, color: 'var(--text-secondary)', maxWidth: 240, margin: '0 auto', fontWeight: 600, lineHeight: 1.5 }}>Создайте шаблоны для быстрой отправки сообщений клиентам</div>
                                 </div>
-                                <button className="card-clickable" style={{ height: 52, padding: '0 32px', borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase' }} onClick={() => setShowNew(true)}>
+                                <button className="card-clickable" style={{ height: 52, padding: '0 32px', borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase' }} onClick={() => setShowNew(true)}>
                                     Создать первый шаблон
                                 </button>
                             </div>

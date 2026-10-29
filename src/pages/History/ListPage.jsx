@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, getEventStatusLabel } from '../../utils/format';
@@ -404,7 +404,7 @@ export function ListPage() {
                                         <div style={{ display: 'flex', gap: 10 }}>
                                             <button 
                                                 className="card-clickable" 
-                                                style={{ flex: 2, height: 44, background: '#dc2626', color: 'white', border: 'none', borderRadius: 14, fontWeight: 500, fontSize: 13, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase' }} 
+                                                style={{ flex: 2, height: 44, background: '#dc2626', color: 'white', border: 'none', borderRadius: 14, fontWeight: 500, fontSize: 13, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase' }} 
                                                 onClick={() => completShowing(s)}
                                             >
                                                 Записать
@@ -577,7 +577,7 @@ export function ListPage() {
                                             cursor: 'pointer',
                                             transition: 'all 0.15s ease',
                                             boxShadow: isSel ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
-                                            fontFamily: "'Oswald', sans-serif"
+                                            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
                                         }}
                                     >
                                         <span style={{
@@ -645,7 +645,7 @@ export function ListPage() {
                                                 background: isSel ? 'var(--primary)' : isToday ? 'var(--primary-light)' : 'transparent',
                                                 color: isSel ? 'white' : isToday ? 'var(--primary)' : isRed ? '#ef4444' : 'var(--text)',
                                                 position: 'relative', transition: 'all 0.15s', cursor: 'pointer',
-                                                fontFamily: "'Oswald', sans-serif"
+                                                fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
                                             }}
                                         >
                                             {d}
@@ -818,7 +818,7 @@ export function ListPage() {
                                             style={{ 
                                                 marginTop: 8, width: '100%', height: 34, borderRadius: 10, border: 'none', 
                                                 background: 'var(--primary)', color: 'white', fontWeight: 600, fontSize: 11,
-                                                fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em',
+                                                fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em',
                                                 display: 'flex', alignItems: 'center', justifyContent: 'center'
                                             }} 
                                             onClick={() => completShowing(s.raw)}

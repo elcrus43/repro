@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+﻿import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -58,7 +58,7 @@ function InlinePriceEditor({ prop, onSave }) {
                     onBlur={commit}
                     onKeyDown={handleKey}
                     style={{
-                        fontFamily: "'Oswald', sans-serif",
+                        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                         fontSize: 26, fontWeight: 400,
                         color: 'var(--primary)',
                         background: 'rgba(0,82,255,0.06)',
@@ -1271,6 +1271,7 @@ export function DetailsPage() {
                             { id: 'selection',   label: 'Подбор',     color: '#06b6d4' },
                             { id: 'deposit',     label: 'Задаток',   color: '#10b981' },
                             { id: 'deal',        label: 'Сделка',     color: '#22c55e' },
+                            { id: 'sold',        label: 'Продан',     color: '#16a34a' },
                         ];
                         const cur = prop.status;
                         return (
@@ -1297,7 +1298,7 @@ export function DetailsPage() {
                                                 borderRadius: 12,
                                                 border: isActive ? `1.5px solid ${s.color}` : '1px solid var(--border)',
                                                 fontSize: 12,
-                                                fontFamily: "'Oswald', sans-serif",
+                                                fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                                                 fontWeight: isActive ? 500 : 300,
                                                 background: isActive ? `${s.color}18` : isPast ? `${s.color}08` : 'var(--surface)',
                                                 color: isActive ? s.color : 'var(--text-secondary)',
@@ -1962,7 +1963,7 @@ export function DetailsPage() {
                             {(prop.area_total || prop.house_area) ? (
                                 <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Дом</div>
-                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.area_total || prop.house_area}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", marginTop: 2 }}>{prop.area_total || prop.house_area}</div>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>м²{(prop.floors_total || prop.house_floors) ? ` · ${prop.floors_total || prop.house_floors} эт.` : ''}</div>
                                 </div>
                             ) : null}
@@ -1970,7 +1971,7 @@ export function DetailsPage() {
                             {prop.land_area ? (
                                 <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Участок</div>
-                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.land_area}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", marginTop: 2 }}>{prop.land_area}</div>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>соток</div>
                                 </div>
                             ) : null}
@@ -1978,7 +1979,7 @@ export function DetailsPage() {
                             {prop.rooms !== undefined && prop.rooms !== null && (
                                 <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Комнат</div>
-                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.rooms > 0 ? prop.rooms : '—'}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", marginTop: 2 }}>{prop.rooms > 0 ? prop.rooms : '—'}</div>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>{prop.rooms > 0 ? 'комнаты' : 'свободная'}</div>
                                 </div>
                             )}
@@ -2593,7 +2594,7 @@ export function DetailsPage() {
                             {prop.land_area ? (
                                 <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Участок</div>
-                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.land_area}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", marginTop: 2 }}>{prop.land_area}</div>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>соток</div>
                                 </div>
                             ) : null}
@@ -2601,7 +2602,7 @@ export function DetailsPage() {
                             {prop.has_house ? (
                                 <div style={{ padding: '10px', background: 'var(--bg-light)', borderRadius: 14, textAlign: 'center' }}>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Дом</div>
-                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Oswald', sans-serif", marginTop: 2 }}>{prop.house_area || '—'}</div>
+                                    <div style={{ fontSize: 20, fontWeight: 500, color: 'var(--text)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", marginTop: 2 }}>{prop.house_area || '—'}</div>
                                     <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>м²{prop.house_floors ? ` · ${prop.house_floors} эт.` : ''}</div>
                                 </div>
                             ) : null}
@@ -2866,7 +2867,7 @@ export function DetailsPage() {
                                                 position: 'absolute', top: 6, left: 6,
                                                 background: 'var(--primary)', borderRadius: 6,
                                                 padding: '3px 7px', display: 'flex', alignItems: 'center', gap: 3,
-                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Oswald',
+                                                fontSize: 10, color: '#fff', fontWeight: 300, fontFamily: 'Medeo Sans',
                                                 pointerEvents: 'none'
                                             }}>
                                                 <Star size={10} fill="#fff" /> Обложка
@@ -3193,7 +3194,7 @@ export function DetailsPage() {
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <div style={{ flex: 1, minWidth: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--primary)', letterSpacing: '0.01em', fontFamily: 'Oswald' }}>{ev.typeLabel}</span>
+                                                    <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--primary)', letterSpacing: '0.01em', fontFamily: 'Medeo Sans' }}>{ev.typeLabel}</span>
                                                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{dateStr} {timeStr}</span>
                                                 </div>
                                                 {ev.buyer && (

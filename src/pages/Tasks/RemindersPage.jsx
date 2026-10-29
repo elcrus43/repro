@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { Bell, Plus, ChevronLeft, Phone, Calendar, FileText, Circle, Check, Trash, X } from 'lucide-react';
@@ -228,7 +228,7 @@ export default function RemindersPage() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', fontFamily: 'Oswald' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', fontFamily: 'Medeo Sans' }}>
                   Дата
                 </div>
                 <input
@@ -240,7 +240,7 @@ export default function RemindersPage() {
                 />
               </div>
               <div>
-                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', fontFamily: 'Oswald' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', fontFamily: 'Medeo Sans' }}>
                   Объект
                 </div>
                 <select
@@ -258,7 +258,7 @@ export default function RemindersPage() {
             </div>
 
             <div>
-              <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', fontFamily: 'Oswald' }}>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 6, textTransform: 'uppercase', fontFamily: 'Medeo Sans' }}>
                 Клиент
               </div>
               <select
@@ -323,7 +323,7 @@ export default function RemindersPage() {
                 fontSize: 12, fontWeight: 700, color: group.color,
                 textTransform: 'uppercase', letterSpacing: '0.04em',
                 marginBottom: 10, paddingLeft: 4,
-                fontFamily: 'Oswald',
+                fontFamily: 'Medeo Sans',
               }}>
                 {group.label} · {group.items.length}
               </div>

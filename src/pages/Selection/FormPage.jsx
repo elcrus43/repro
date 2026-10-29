@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -224,7 +224,7 @@ export function FormPage() {
     return (
         <div className="page" style={{ 
             background: 'var(--bg-light)', 
-            fontFamily: "'Oswald', sans-serif" 
+            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" 
         }}>
             <div style={{
                 position: 'sticky', top: 0, zIndex: 100,

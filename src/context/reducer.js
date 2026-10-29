@@ -245,10 +245,11 @@ export function reducer(state, action) {
     case 'ADD_DEAL': {
       const newDeal = { ...action.deal, status: action.deal.status || 'active' };
       const propId = action.deal.property_id;
+      const targetPropStatus = newDeal.status === 'closed' ? 'sold' : 'deal';
       const properties = propId
         ? state.properties.map(p =>
             p.id === propId
-              ? { ...p, status: 'deal', updated_at: newDeal.created_at || new Date().toISOString() }
+              ? { ...p, status: targetPropStatus, updated_at: newDeal.created_at || new Date().toISOString() }
               : p
           )
         : state.properties;
@@ -261,15 +262,14 @@ export function reducer(state, action) {
     case 'UPDATE_DEAL': {
       const incoming = action.deal;
       const prev = state.deals.find(d => d.id === incoming.id);
-      const propertyIdNow = incoming.property_id;
+      const propertyIdNow = incoming.property_id || prev?.property_id;
       const propertyIdPrev = prev ? prev.property_id : null;
+      const effectiveDealStatus = incoming.status || prev?.status || 'active';
       const propertyChanges = {};
       const nowTs = incoming.updated_at || new Date().toISOString();
 
-      if (prev && prev.status !== incoming.status) {
-        if (propertyIdNow) propertyChanges[propertyIdNow] = incoming.status === 'closed' ? 'sold' : 'deal';
-      } else if (!prev && propertyIdNow) {
-        propertyChanges[propertyIdNow] = incoming.status === 'closed' ? 'sold' : 'deal';
+      if (propertyIdNow) {
+        propertyChanges[propertyIdNow] = effectiveDealStatus === 'closed' ? 'sold' : 'deal';
       }
 
       if (propertyIdPrev && propertyIdPrev !== propertyIdNow) {

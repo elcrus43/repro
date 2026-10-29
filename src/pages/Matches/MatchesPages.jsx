@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -59,7 +59,7 @@ export function MatchesPage() {
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
                     <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Умные совпадения</span>
-                    <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 300, fontFamily: "'Oswald', sans-serif" }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 300, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" }}>
                         {matches.length}
                     </div>
                 </div>
@@ -118,7 +118,7 @@ function MatchCard({ match: m, onClick }) {
                     <div style={{ 
                         width: 36, height: 36, borderRadius: 10, background: m.match_level === 'perfect' ? 'var(--success-light)' : 'var(--warning-light)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.match_level === 'perfect' ? 'var(--success)' : 'var(--warning)',
-                        fontWeight: 500, fontFamily: "'Oswald', sans-serif", fontSize: 14
+                        fontWeight: 500, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontSize: 14
                     }}>
                         {m.score}%
                     </div>
@@ -271,7 +271,7 @@ export function MatchDetailPage() {
                 <div style={{ 
                     width: 44, height: 44, borderRadius: 14, background: match.match_level === 'perfect' ? 'var(--success-light)' : 'var(--warning-light)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', color: match.match_level === 'perfect' ? 'var(--success)' : 'var(--warning)',
-                    fontWeight: 300, fontFamily: "'Oswald', sans-serif"
+                    fontWeight: 300, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
                 }}>
                     {match.score}%
                 </div>

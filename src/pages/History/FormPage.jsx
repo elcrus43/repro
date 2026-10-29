@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -809,7 +809,7 @@ export function FormPage() {
                                 style={{
                                     height: 46, borderRadius: 12, border: 'none',
                                     background: 'var(--primary)', color: 'white', fontWeight: 700, fontSize: 13,
-                                    fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em',
+                                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase', letterSpacing: '0.04em',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                                     boxShadow: '0 4px 14px rgba(0, 82, 255, 0.25)', cursor: 'pointer'
                                 }}

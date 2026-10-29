@@ -6,6 +6,8 @@ import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
 import { Building2, Users, FileCheck, UserCircle, History, ClipboardList } from 'lucide-react';
 import { DesktopSidebar } from './components/DesktopSidebar';
+import { CommandPalette } from './components/CommandPalette';
+import { QuickActionFab } from './components/QuickActionFab';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -166,7 +168,7 @@ function LoadingScreen() {
       <p className="font-oswald" style={{ 
           marginTop: 20, color: 'var(--text-secondary)', fontSize: 13, fontWeight: 200, 
           textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.6,
-          fontFamily: "'Oswald', sans-serif"
+          fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
       }}>Загрузка данных</p>
       
       {showRetry && (
@@ -183,7 +185,7 @@ function LoadingScreen() {
               style={{ 
                   height: 52, borderRadius: 16, border: 'none', background: 'var(--primary)', 
                   color: 'white', fontWeight: 600, fontSize: 14, boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)',
-                  textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Oswald', sans-serif"
+                  textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
               }}
               onClick={() => window.location.reload()}
             >
@@ -243,6 +245,8 @@ function AppLayout({ children }) {
         {children}
       </main>
       {!noNav && <BottomNav />}
+      {!noNav && <QuickActionFab />}
+      {!noNav && <CommandPalette />}
     </div>
   );
 }

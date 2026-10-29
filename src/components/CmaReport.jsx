@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Loader, ExternalLink, ShieldCheck, HelpCircle, ArrowRight, TrendingUp, AlertTriangle } from 'lucide-react';
 import { API_BASE } from '../config';
 import { useToastContext } from './Toast';
@@ -387,7 +387,7 @@ const styles = {
         alignItems: 'center'
     },
     title: {
-        fontFamily: "'Oswald', sans-serif",
+        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
         fontSize: 22,
         fontWeight: 400,
         color: 'var(--text)',
@@ -459,7 +459,7 @@ const styles = {
         border: '1px solid rgba(0,0,0,0.02)'
     },
     sectionTitle: {
-        fontFamily: "'Oswald', sans-serif",
+        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
         fontSize: 16,
         fontWeight: 500,
         letterSpacing: '0.01em',
@@ -556,7 +556,7 @@ const styles = {
         borderRadius: 6
     },
     optionPrice: {
-        fontFamily: "'Oswald', sans-serif",
+        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
         fontSize: 24,
         fontWeight: 400,
         color: 'var(--text)',
@@ -678,7 +678,7 @@ const styles = {
         marginBottom: 24
     },
     loaderTitle: {
-        fontFamily: "'Oswald', sans-serif",
+        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
         fontSize: 20,
         fontWeight: 400,
         color: 'var(--text)',
@@ -716,7 +716,7 @@ const styles = {
         alignItems: 'center'
     },
     errorTitle: {
-        fontFamily: "'Oswald', sans-serif",
+        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
         fontSize: 18,
         fontWeight: 500,
         color: 'var(--text)',

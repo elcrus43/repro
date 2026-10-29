@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
@@ -169,7 +169,7 @@ export function ListPage() {
                                 {/* Line 2 */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0, flex: 1, overflow: 'hidden' }}>
-                                        <span style={{ color: 'var(--primary)', fontFamily: "'Oswald', sans-serif", fontSize: 15, fontWeight: 400, flexShrink: 0 }}>до {formatNumber(req.budget_max)} ₽</span>
+                                        <span style={{ color: 'var(--primary)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontSize: 15, fontWeight: 400, flexShrink: 0 }}>до {formatNumber(req.budget_max)} ₽</span>
                                         <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
                                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100, flexShrink: 1 }}>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || '—'}</span>
                                         <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>

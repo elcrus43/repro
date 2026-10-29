@@ -12,7 +12,8 @@ import {
   Sun, 
   Moon,
   FolderHeart,
-  Landmark
+  Landmark,
+  Search
 } from 'lucide-react';
 
 export function DesktopSidebar() {
@@ -87,6 +88,20 @@ export function DesktopSidebar() {
           <span className="sidebar-title">REA crm</span>
           <span className="sidebar-subtitle">CRM Платформа</span>
         </div>
+      </div>
+
+      {/* Quick 1-Click Search & Command Trigger */}
+      <div className="sidebar-search-container">
+        <button 
+          type="button" 
+          className="sidebar-search-btn"
+          onClick={() => window.dispatchEvent(new CustomEvent('open-command-palette'))}
+          title="Быстрый поиск и действия (Ctrl+K)"
+        >
+          <Search size={16} className="sidebar-search-icon" />
+          <span className="sidebar-search-text">Поиск и действия</span>
+          <kbd className="sidebar-search-kbd">Ctrl+K</kbd>
+        </button>
       </div>
 
       {/* Nav Menu */}

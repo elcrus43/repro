@@ -24,15 +24,26 @@ export async function loadUserData(userId, role) {
             localStorage.setItem('repro_profiles', JSON.stringify(profiles));
         }
 
+        const rawProperties = getList('properties');
+        const deals = getList('deals');
+        const properties = rawProperties.map(p => {
+            const closedDeal = deals.find(d => d.property_id === p.id && d.status === 'closed');
+            const hasActiveDeal = deals.some(d => d.property_id === p.id && d.status !== 'closed');
+            if (closedDeal && !hasActiveDeal && p.status === 'deal') {
+                return { ...p, status: 'sold' };
+            }
+            return p;
+        });
+
         return {
-            properties: getList('properties'),
+            properties,
             clients: getList('clients'),
             selectionItems: getList('selectionItems'),
             showings: getList('showings'),
             requests: getList('requests'),
             matches: getList('matches'),
             tasks: getList('tasks'),
-            deals: getList('deals'),
+            deals,
             pricelist: getList('pricelist'),
             profiles: profiles
         };
@@ -138,9 +149,17 @@ export async function syncAction(action, { onError } = {}) {
                 break;
 
             case 'ADD_DEAL':
-            case 'UPDATE_DEAL':
+            case 'UPDATE_DEAL': {
                 updateItem('deals', action.deal);
+                const linkedPropId = action.deal.property_id;
+                if (linkedPropId) {
+                    const propStatus = action.deal.status === 'closed' ? 'sold' : 'deal';
+                    const props = getList('properties');
+                    const updatedProps = props.map(p => p.id === linkedPropId ? { ...p, status: propStatus, updated_at: action.deal.updated_at || new Date().toISOString() } : p);
+                    setList('properties', updatedProps);
+                }
                 break;
+            }
             case 'DELETE_DEAL':
                 deleteItem('deals', action.id);
                 break;

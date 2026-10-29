@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+﻿import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -85,7 +85,7 @@ function ToggleChip({ label, value, onChange, icon }) {
                 border: 'none',
                 background: 'transparent',
                 color: value ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer', fontFamily: "'Oswald', sans-serif", fontWeight: 300,
+                cursor: 'pointer', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontWeight: 300,
                 transition: 'color 0.15s',
                 textDecoration: value ? 'underline' : 'none',
                 textUnderlineOffset: '3px',
@@ -112,7 +112,7 @@ function ChipGroup({ options, value, onChange }) {
                         border: 'none',
                         background: 'transparent',
                         color: value === opt.val ? 'var(--primary)' : 'var(--text-secondary)',
-                        cursor: 'pointer', fontFamily: "'Oswald', sans-serif", fontWeight: 300,
+                        cursor: 'pointer', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontWeight: 300,
                         transition: 'color 0.15s',
                         textDecoration: value === opt.val ? 'underline' : 'none',
                         textUnderlineOffset: '3px',
@@ -150,7 +150,7 @@ function MultiChipGroup({ options, value = [], onChange }) {
                             border: 'none',
                             background: 'transparent',
                             color: selected ? 'var(--primary)' : 'var(--text-secondary)',
-                            cursor: 'pointer', fontFamily: "'Oswald', sans-serif", fontWeight: 300,
+                            cursor: 'pointer', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontWeight: 300,
                             transition: 'color 0.15s',
                             textDecoration: selected ? 'underline' : 'none',
                             textUnderlineOffset: '3px',
@@ -663,7 +663,7 @@ export function FormPage() {
     return (
         <div className="page" style={{ 
             background: 'var(--bg-light)', 
-            fontFamily: "'Oswald', sans-serif" 
+            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" 
         }}>
             {/* Sticky Header with Glassmorphism */}
             <div style={{
@@ -790,6 +790,7 @@ export function FormPage() {
                                 <option value="selection">Подбор</option>
                                 <option value="deposit">Задаток</option>
                                 <option value="deal">Сделка</option>
+                                <option value="sold">Продан / Закрыта</option>
                             </select>
                         </div>
                     </div>

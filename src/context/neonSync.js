@@ -285,11 +285,19 @@ export async function loadUserData(userId, role) {
       agency_contracts: Array.isArray(contracts) ? contracts : []
     };
   });
-  const properties = mergeUnique(fetchedData.properties, getLocal('properties'), DEMO_PROPERTIES);
+  const propertiesRaw = mergeUnique(fetchedData.properties, getLocal('properties'), DEMO_PROPERTIES);
   const requests = mergeUnique(fetchedData.requests, getLocal('requests'), DEMO_REQUESTS);
   const matches = mergeUnique(fetchedData.matches, getLocal('matches'), []);
   const tasks = mergeUnique(fetchedData.tasks, getLocal('tasks'), []);
   const deals = mergeUnique(fetchedData.deals, getLocal('deals'), []);
+  const properties = propertiesRaw.map(p => {
+    const closedDeal = deals.find(d => d.property_id === p.id && d.status === 'closed');
+    const hasActiveDeal = deals.some(d => d.property_id === p.id && d.status !== 'closed');
+    if (closedDeal && !hasActiveDeal && p.status === 'deal') {
+      return { ...p, status: 'sold' };
+    }
+    return p;
+  });
   const rawSelection = mergeUnique(fetchedData.selection_items, getLocal('selectionItems'), []);
 
   return {
@@ -316,6 +324,35 @@ export async function loadUserData(userId, role) {
 }
 
 /* ─── Sync ─────────────────────────────────────────────────────────────── */
+
+export const VALID_PROPERTY_COLUMNS = new Set([
+  'id', 'realtor_id', 'client_id', 'client_ids', 'status', 'property_type',
+  'property_kind', 'market_type', 'city', 'district', 'microdistrict',
+  'address', 'residential_complex', 'price', 'price_min', 'rooms',
+  'area_total', 'area_living', 'area_kitchen', 'floor', 'floor_total',
+  'floors_total', 'building_type', 'year_built', 'build_year', 'renovation',
+  'bathroom', 'balcony', 'parking', 'furniture', 'mortgage', 'mortgage_available',
+  'matcapital_available', 'certificate_available', 'encumbrance', 'minor_owners',
+  'docs_ready', 'sale_type', 'ownership_type', 'urgency', 'description', 'notes',
+  'deal_type', 'commission', 'commission_buyer', 'surcharge', 'contract_end_date',
+  'deal_expenses', 'images', 'floorplan_images', 'seeking_alternative',
+  'elevator_type', 'has_elevator', 'has_garbage_chute', 'ceiling_height',
+  'house_series', 'developer', 'management_company', 'cadastral_number',
+  'apartments_count', 'portfolio_analog_links', 'portfolio_new_builds_files',
+  'portfolio_resale_files', 'portfolio_mortgage_files', 'created_at', 'updated_at',
+  'latitude', 'longitude', 'contact_name', 'contact_phone', 'agent_id',
+  'client_shares', 'movable_property',
+  'land_area', 'snt_name', 'snt_number', 'land_category', 'distance_to_city',
+  'road_access', 'has_house', 'house_area', 'house_floors', 'house_material',
+  'house_condition', 'house_build_year', 'house_has_cadastre', 'house_cadastral_number',
+  'has_electricity', 'electricity_kw', 'has_water', 'water_type', 'water_types',
+  'has_gas', 'gas_type', 'has_sewage', 'sewage_type', 'has_bathhouse', 'has_garage',
+  'garage_area', 'has_gazebo', 'has_greenhouse', 'has_well', 'has_summer_kitchen',
+  'has_pond', 'fence_type', 'garden_notes',
+  'commercial_type', 'entrance_type', 'commercial_layout', 'location_line',
+  'ventilation_type', 'has_shop_windows', 'access_24_7', 'has_loading_zone',
+  'wet_points', 'has_tenant', 'rental_income', 'commercial_notes'
+]);
 
 /**
  * syncAction — отправляет изменение в Neon.
@@ -466,7 +503,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Объекты ──────────────────────────────────────────── */
       case 'ADD_PROPERTY': {
-        const propertyData = {
+        const rawData = {
           ...action.property,
           deal_type:    action.property.deal_type || 'sale',
           property_type: action.property.property_type || 'apartment',
@@ -486,19 +523,25 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             : (action.property.client_id || null),
           portfolio_analog_links: action.property.portfolio_analog_links || [],
         };
-        delete propertyData.mortgage_calc_image;
-        Object.keys(propertyData).forEach(key => { if (propertyData[key] === undefined) delete propertyData[key]; });
+        delete rawData.mortgage_calc_image;
 
-        if (propertyData.deal_expenses !== undefined) {
-          propertyData.deal_expenses = propertyData.deal_expenses
-            ? (typeof propertyData.deal_expenses === 'string' ? propertyData.deal_expenses : JSON.stringify(propertyData.deal_expenses))
+        if (rawData.deal_expenses !== undefined) {
+          rawData.deal_expenses = rawData.deal_expenses
+            ? (typeof rawData.deal_expenses === 'string' ? rawData.deal_expenses : JSON.stringify(rawData.deal_expenses))
             : '[]';
         }
-        if (propertyData.client_shares !== undefined && propertyData.client_shares !== null) {
-          propertyData.client_shares = typeof propertyData.client_shares === 'string'
-            ? propertyData.client_shares
-            : JSON.stringify(propertyData.client_shares);
+        if (rawData.client_shares !== undefined && rawData.client_shares !== null) {
+          rawData.client_shares = typeof rawData.client_shares === 'string'
+            ? rawData.client_shares
+            : JSON.stringify(rawData.client_shares);
         }
+
+        const propertyData = {};
+        Object.keys(rawData).forEach(k => {
+          if (VALID_PROPERTY_COLUMNS.has(k) && rawData[k] !== undefined) {
+            propertyData[k] = rawData[k];
+          }
+        });
 
         result = await neonDb.insert('properties', propertyData);
 
@@ -522,8 +565,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       case 'UPDATE_PROPERTY': {
         const rawProp = action.property || { ...action.data, id: action.id };
-        const propertyData = sanitizeObj(rawProp);
-        const { id: pId, ...pData } = propertyData;
+        const rawPropertyObj = sanitizeObj(rawProp);
+        const { id: pId, ...pData } = rawPropertyObj;
         const normalizedData = {
           ...pData,
           deal_type:    pData.deal_type || 'sale',
@@ -555,9 +598,14 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             ? normalizedData.client_shares
             : JSON.stringify(normalizedData.client_shares);
         }
-        Object.keys(normalizedData).forEach(key => { if (normalizedData[key] === undefined) delete normalizedData[key]; });
+        const propertyData = {};
+        Object.keys(normalizedData).forEach(key => {
+          if (VALID_PROPERTY_COLUMNS.has(key) && normalizedData[key] !== undefined) {
+            propertyData[key] = normalizedData[key];
+          }
+        });
 
-        result = await neonDb.update('properties', pId, normalizedData);
+        result = await neonDb.update('properties', pId, propertyData);
 
         if (hasPassedDealStage(normalizedData)) {
           await neonDb.query(
@@ -584,9 +632,14 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       case 'PATCH_PROPERTY': {
         const { id: patchId, ...patchData } = action.patch;
-        Object.keys(patchData).forEach(k => { if (patchData[k] === undefined) delete patchData[k]; });
+        const safePatch = {};
+        Object.keys(patchData).forEach(k => {
+          if (VALID_PROPERTY_COLUMNS.has(k) && patchData[k] !== undefined) {
+            safePatch[k] = patchData[k];
+          }
+        });
         result = await neonDb.update('properties', patchId, {
-          ...patchData,
+          ...safePatch,
           updated_at: new Date().toISOString()
         });
         break;
@@ -1003,15 +1056,17 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         result = await neonDb.update('deals', dId, updateData);
 
         // Sync linked property status when deal status changes or deal is updated
-        if (updateData.property_id && updateData.status) {
-          const propStatus = updateData.status === 'closed' ? 'sold' : 'deal';
-          await neonDb.update('properties', updateData.property_id, {
+        const targetPropId = updateData.property_id || action.deal.property_id;
+        const targetDealStatus = updateData.status || action.deal.status;
+        if (targetPropId && targetDealStatus) {
+          const propStatus = targetDealStatus === 'closed' ? 'sold' : 'deal';
+          await neonDb.update('properties', targetPropId, {
             status: propStatus,
             updated_at: updateData.updated_at || new Date().toISOString()
           });
           await neonDb.query(
             `UPDATE matches SET status = 'rejected', updated_at = NOW() WHERE property_id = $1 AND status != 'rejected'`,
-            [updateData.property_id]
+            [targetPropId]
           );
         }
         break;

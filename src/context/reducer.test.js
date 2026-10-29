@@ -332,6 +332,58 @@ describe('reducer — CLOSE_DEAL', () => {
   })
 })
 
+// ─── Deals (ADD_DEAL & UPDATE_DEAL) ──────────────────────────────────────────
+
+describe('reducer — ADD_DEAL & UPDATE_DEAL property synchronization', () => {
+  it('ADD_DEAL with active status sets linked property to "deal"', () => {
+    const initial = makeState({
+      properties: [{ id: 'p10', status: 'meeting' }],
+      deals: []
+    })
+    const next = reducer(initial, {
+      type: 'ADD_DEAL',
+      deal: { id: 'd1', property_id: 'p10', status: 'active' }
+    })
+    expect(next.properties.find(p => p.id === 'p10').status).toBe('deal')
+  })
+
+  it('ADD_DEAL with closed status sets linked property to "sold"', () => {
+    const initial = makeState({
+      properties: [{ id: 'p10', status: 'meeting' }],
+      deals: []
+    })
+    const next = reducer(initial, {
+      type: 'ADD_DEAL',
+      deal: { id: 'd1', property_id: 'p10', status: 'closed' }
+    })
+    expect(next.properties.find(p => p.id === 'p10').status).toBe('sold')
+  })
+
+  it('UPDATE_DEAL with closed status sets linked property to "sold"', () => {
+    const initial = makeState({
+      properties: [{ id: 'p10', status: 'deal' }],
+      deals: [{ id: 'd1', property_id: 'p10', status: 'active' }]
+    })
+    const next = reducer(initial, {
+      type: 'UPDATE_DEAL',
+      deal: { id: 'd1', property_id: 'p10', status: 'closed' }
+    })
+    expect(next.properties.find(p => p.id === 'p10').status).toBe('sold')
+  })
+
+  it('UPDATE_DEAL retains previous property_id if omitted and updates property to "sold"', () => {
+    const initial = makeState({
+      properties: [{ id: 'p10', status: 'deal' }],
+      deals: [{ id: 'd1', property_id: 'p10', status: 'active' }]
+    })
+    const next = reducer(initial, {
+      type: 'UPDATE_DEAL',
+      deal: { id: 'd1', status: 'closed' }
+    })
+    expect(next.properties.find(p => p.id === 'p10').status).toBe('sold')
+  })
+})
+
 // ─── Showings ───────────────────────────────────────────────────────────────
 
 describe('reducer — showings', () => {

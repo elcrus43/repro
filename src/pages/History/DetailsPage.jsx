@@ -1,4 +1,4 @@
-import { ChevronLeft, Building2, Users, Clock, Calendar, MessageSquare, Pencil } from 'lucide-react';
+﻿import { ChevronLeft, Building2, Users, Clock, Calendar, MessageSquare, Pencil } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { getEventStatusLabel } from '../../utils/format';
@@ -144,7 +144,7 @@ export function DetailsPage() {
                         style={{ 
                             marginTop: 32, width: '100%', height: 52, borderRadius: 14, border: 'none', 
                             background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14,
-                            fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em',
+                            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em',
                             boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)'
                         }}
                     >

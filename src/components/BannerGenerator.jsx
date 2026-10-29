@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { X, Loader } from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
 import { useApp } from '../context/AppContext';
@@ -199,7 +199,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         const maxWidth = w - 2 * px0;
 
         // Pre-calculate address lines to prevent overlap with the phone number at the bottom
-        ctx.font = `700 ${addrSize}px Oswald,sans-serif`;
+        ctx.font = `700 ${addrSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         const addrLines = getWrappedLines(ctx, addr, maxWidth);
 
         // Split line or starting reference point for text elements
@@ -372,14 +372,14 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         
         ctx.fillStyle = isLight ? '#9CA3AF' : (isPhoto ? '#E2E8F0' : '#64748B');
         const catSize = IS ? 30 : 22;
-        ctx.font = `400 ${catSize}px Oswald,sans-serif`;
+        ctx.font = `400 ${catSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         const catY = textStartY + (IS ? 110 : 80);
         ctx.fillText(spacedCategory, px0, catY);
 
         // Price and Price per Sqm (placed on the same line to the right of the price)
         const priceText = formatNumber(property.price) + ' ₽';
         const priceSize = IS ? 96 : 80;
-        ctx.font = `700 ${priceSize}px Oswald,sans-serif`;
+        ctx.font = `700 ${priceSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         ctx.fillStyle = accentColor;
         const priceY = catY + (IS ? 110 : 80);
         ctx.fillText(priceText, px0, priceY);
@@ -390,13 +390,13 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
             const m2 = Math.round(property.price / property.area_total);
             const sqmText = `(${formatNumber(m2)} ₽/м²)`;
             const sqmSize = IS ? 44 : 36;
-            ctx.font = `300 ${sqmSize}px Oswald,sans-serif`;
+            ctx.font = `300 ${sqmSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
             ctx.fillStyle = isLight ? '#4B5563' : '#94A3B8';
             ctx.fillText(sqmText, px0 + priceWidth + (IS ? 36 : 24), priceY);
         }
 
         // Address drawing
-        ctx.font = `700 ${addrSize}px Oswald,sans-serif`;
+        ctx.font = `700 ${addrSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
         const addrY = priceY + (IS ? 100 : 75);
         
@@ -408,7 +408,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         const currentYAfterAddr = currentY;
 
         // Property details (rooms, area, floor)
-        ctx.font = `300 ${detailsSize}px Oswald,sans-serif`;
+        ctx.font = `300 ${detailsSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         ctx.fillStyle = isLight ? '#4B5563' : '#94A3B8';
         const detailsY = currentYAfterAddr + (IS ? 20 : 15);
         ctx.fillText(parts.join('  ·  '), px0, detailsY);
@@ -417,14 +417,14 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         const ctaText = 'подробнее по тел. ';
 
         // 1. Draw CTA text in light weight
-        ctx.font = `300 ${phoneSize}px Oswald,sans-serif`;
+        ctx.font = `300 ${phoneSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         ctx.fillStyle = isLight ? '#4B5563' : (isPhoto ? '#E2E8F0' : '#94A3B8');
         ctx.fillText(ctaText, px0, phy);
 
         const ctaWidth = ctx.measureText(ctaText).width;
 
         // 2. Draw actual phone number in bold
-        ctx.font = `700 ${phoneSize}px Oswald,sans-serif`;
+        ctx.font = `700 ${phoneSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
         ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
         ctx.fillText(activePhone, px0 + ctaWidth, phy);
 
@@ -468,7 +468,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
             ctx.textAlign = 'center';
             stickers.forEach(s => {
                 const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
-                ctx.font = `700 ${sf}px Oswald,sans-serif`;
+                ctx.font = `700 ${sf}px 'Medeo Sans', ui-sans-serif, sans-serif`;
                 const tw = ctx.measureText(txt.toUpperCase()).width + 48;
                 const sx = w - sp - tw;
                 
@@ -516,7 +516,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
 
                 {/* Controls */}
                 <div style={{ flex: isMobile ? 'none' : '0 0 280px', width: isMobile ? '100%' : 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 20, padding: 16, overflowY: 'auto', maxHeight: isMobile ? 'none' : '100%', boxShadow: '0 8px 32px rgba(0,0,0,0.08)' }}>
-                    <div style={{ fontFamily: 'Oswald', fontSize: 11, fontWeight: 300, letterSpacing: '0.14em', color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Баннер</div>
+                    <div style={{ fontFamily: 'Medeo Sans', fontSize: 11, fontWeight: 300, letterSpacing: '0.14em', color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase' }}>Баннер</div>
 
                     {/* Format */}
                     <Section label="ФОРМАТ">
@@ -544,7 +544,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                     background: 'var(--bg)', 
                                     color: 'var(--text)', 
                                     fontSize: 13, 
-                                    fontFamily: 'Oswald', 
+                                    fontFamily: 'Medeo Sans', 
                                     outline: 'none',
                                     boxSizing: 'border-box'
                                 }}
@@ -586,7 +586,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                                             background: isActive ? 'var(--primary-light, rgba(0, 82, 255, 0.1))' : 'transparent',
                                                             color: isActive ? activeColor : 'var(--text-muted)',
                                                             fontSize: 11,
-                                                            fontFamily: 'Oswald',
+                                                            fontFamily: 'Medeo Sans',
                                                             cursor: 'pointer',
                                                             transition: 'all 0.15s'
                                                         }}
@@ -619,7 +619,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                     background: 'var(--bg)', 
                                     color: 'var(--text)', 
                                     fontSize: 13, 
-                                    fontFamily: 'Oswald', 
+                                    fontFamily: 'Medeo Sans', 
                                     outline: 'none',
                                     boxSizing: 'border-box'
                                 }}
@@ -652,7 +652,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                                             background: isActive ? 'var(--primary-light, rgba(0, 82, 255, 0.1))' : 'transparent',
                                                             color: isActive ? activeColor : 'var(--text-muted)',
                                                             fontSize: 11,
-                                                            fontFamily: 'Oswald',
+                                                            fontFamily: 'Medeo Sans',
                                                             cursor: 'pointer',
                                                             transition: 'all 0.15s'
                                                         }}
@@ -879,7 +879,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                             border: 'none', 
                                             cursor: 'pointer', 
                                             fontSize: 13, 
-                                            fontFamily: 'Oswald', 
+                                            fontFamily: 'Medeo Sans', 
                                             fontWeight: isActive ? '700' : '400', 
                                             color: isActive ? activeColor : 'var(--text-muted)', 
                                             transition: 'color 0.15s',
@@ -905,7 +905,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                     background: 'var(--bg)', 
                                     color: 'var(--text)', 
                                     fontSize: 13, 
-                                    fontFamily: 'Oswald',
+                                    fontFamily: 'Medeo Sans',
                                     outline: 'none',
                                     marginTop: 6
                                 }}
@@ -922,11 +922,11 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                 setSelectedImages(prev => [...prev.slice(1), prev[0]]);
                             }
                         }}
-                            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontFamily: 'Oswald', transition: 'all 0.15s' }}>
+                            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontFamily: 'Medeo Sans', transition: 'all 0.15s' }}>
                             ↻ Сдвиг
                         </button>
                         <button onClick={dl}
-                            style={{ padding: '8px 12px', borderRadius: 10, border: 'none', background: activeColor, color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'Oswald', fontWeight: 700, letterSpacing: '0.06em', transition: 'all 0.15s' }}>
+                            style={{ padding: '8px 12px', borderRadius: 10, border: 'none', background: activeColor, color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'Medeo Sans', fontWeight: 700, letterSpacing: '0.06em', transition: 'all 0.15s' }}>
                             ↓ СКАЧАТЬ
                         </button>
                     </div>
@@ -967,7 +967,7 @@ function Chip({ active, color, onClick, children }) {
                 border: 'none', 
                 cursor: 'pointer', 
                 fontSize: 13, 
-                fontFamily: 'Oswald', 
+                fontFamily: 'Medeo Sans', 
                 letterSpacing: '0.05em', 
                 fontWeight: active ? '700' : '400', 
                 color: active ? color : 'var(--text-muted)', 

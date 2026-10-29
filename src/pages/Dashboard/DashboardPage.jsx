@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+﻿import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -823,7 +823,7 @@ export function DashboardPage() {
                             fontSize: 14, fontWeight: 400,
                             boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)',
                             border: '2px solid white',
-                            fontFamily: "'Oswald', sans-serif",
+                            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                             flexShrink: 0
                         }} onClick={() => navigate('/profile')}>
                             {user.full_name?.split(' ').map(n => n[0]).join('')}
@@ -1637,7 +1637,7 @@ export function DashboardPage() {
                                 const client = req ? state.clients.find(c => c.id === req.client_id) : null;
                                 return (
                                     <div key={m.id} className="card card-clickable" onClick={() => navigate(`/matches/${m.id}`)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 16, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.02)', background: 'var(--surface)' }}>
-                                        <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 400, fontSize: 13, fontFamily: "'Oswald', sans-serif" }}>
+                                        <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--accent-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#858518', fontWeight: 400, fontSize: 13, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif" }}>
                                             {m.score}%
                                         </div>
                                         <div style={{ flex: 1, minWidth: 0 }}>

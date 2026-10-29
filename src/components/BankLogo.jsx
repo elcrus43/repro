@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 
 export const RUSSIAN_BANKS = [
   { id: 'sber', name: 'Сбербанк', shortName: 'Сбер', color: '#1a9f29', bg: 'rgba(26,159,41,0.12)', border: 'rgba(26,159,41,0.3)' },
@@ -175,7 +175,7 @@ export function BankBadge({ bankName, amount, style = {} }) {
         fontSize: 11,
         fontWeight: 500,
         color: bank.textColor || bank.color,
-        fontFamily: "'Oswald', sans-serif",
+        fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
         letterSpacing: '0.01em',
         ...style
       }}

@@ -328,7 +328,15 @@ export function useDbDispatch(state, dispatch, onError) {
       if (!nextDeals.find(d => d.id === enhancedAction.deal.id)) {
         nextDeals.push(enhancedAction.deal);
       }
-      stateRef.current = { ...stateRef.current, deals: nextDeals };
+      const linkedPropId = enhancedAction.deal.property_id;
+      let nextProps = stateRef.current.properties || [];
+      if (linkedPropId) {
+        const targetPropStatus = enhancedAction.deal.status === 'closed' ? 'sold' : 'deal';
+        nextProps = nextProps.map(p =>
+          p.id === linkedPropId ? { ...p, status: targetPropStatus, updated_at: now } : p
+        );
+      }
+      stateRef.current = { ...stateRef.current, deals: nextDeals, properties: nextProps };
     }
     if (enhancedAction.type === 'DELETE_DEAL') {
       const nextDeals = (stateRef.current.deals || []).filter(d => d.id !== enhancedAction.id);
@@ -398,7 +406,7 @@ export function useDbDispatch(state, dispatch, onError) {
                   p.id === enhancedAction.patch.id ? { ...p, ...enhancedAction.patch } : p
                 );
               }
-              // Deals
+              // Deals & Linked Property in Cache
               if (enhancedAction.type === 'DELETE_DEAL') {
                 if (parsed.data.deals) parsed.data.deals = parsed.data.deals.filter(d => d.id !== enhancedAction.id);
               } else if (enhancedAction.type === 'UPDATE_DEAL' || enhancedAction.type === 'ADD_DEAL') {
@@ -406,6 +414,13 @@ export function useDbDispatch(state, dispatch, onError) {
                 const idx = parsed.data.deals.findIndex(d => d.id === enhancedAction.deal.id);
                 if (idx >= 0) parsed.data.deals[idx] = enhancedAction.deal;
                 else parsed.data.deals.push(enhancedAction.deal);
+
+                if (enhancedAction.deal.property_id && parsed.data.properties) {
+                  const targetStatus = enhancedAction.deal.status === 'closed' ? 'sold' : 'deal';
+                  parsed.data.properties = parsed.data.properties.map(p =>
+                    p.id === enhancedAction.deal.property_id ? { ...p, status: targetStatus, updated_at: now } : p
+                  );
+                }
               }
               parsed.ts = Date.now();
               localStorage.setItem(cacheKey, JSON.stringify(parsed));

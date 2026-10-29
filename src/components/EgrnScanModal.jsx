@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+﻿import React, { useState, useRef } from 'react';
 import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, User, Home, ChevronRight } from 'lucide-react';
 import { useToastContext } from './Toast';
 import { getToken } from '../lib/neon';
@@ -221,7 +221,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
 
   const overlayStyle = { position:'fixed',inset:0,zIndex:3000,background:'rgba(0,0,0,0.55)',backdropFilter:'blur(6px)',display:'flex',alignItems:'flex-end',justifyContent:'center' };
   const sheetStyle = { background:'var(--surface)',borderRadius:'28px 28px 0 0',width:'100%',maxWidth:600,maxHeight:'90vh',overflowY:'auto',padding:'28px 24px 40px',display:'flex',flexDirection:'column',gap:20 };
-  const btnBase = { border:'none',cursor:'pointer',fontFamily:"'Oswald',sans-serif" };
+  const btnBase = { border:'none',cursor:'pointer',fontFamily:"'Medeo Sans',ui-sans-serif,sans-serif" };
 
   return (
     <div style={overlayStyle} onClick={e=>{ if(e.target===e.currentTarget) onClose(); }}>
@@ -229,7 +229,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
         {/* Header */}
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
           <div>
-            <div style={{fontFamily:"'Oswald',sans-serif",fontSize:20,fontWeight:500,color:'var(--text)'}}>📄 Сканер ЕГРН</div>
+            <div style={{fontFamily:"'Medeo Sans',ui-sans-serif,sans-serif",fontSize:20,fontWeight:500,color:'var(--text)'}}>📄 Сканер ЕГРН</div>
             <div style={{fontSize:13,color:'var(--text-secondary)',marginTop:2}}>Загрузите выписку из ЕГРН — PDF или скриншот</div>
           </div>
           <button onClick={onClose} style={{...btnBase,width:36,height:36,borderRadius:10,background:'var(--bg-light)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-secondary)'}}>
@@ -278,7 +278,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
           <div style={{display:'flex',flexDirection:'column',gap:16}}>
             <div style={{display:'flex',alignItems:'center',gap:10}}>
               <CheckCircle size={20} style={{color:'#10b981'}}/>
-              <span style={{fontFamily:"'Oswald',sans-serif",fontSize:16,fontWeight:500,color:'var(--text)'}}>Данные распознаны</span>
+              <span style={{fontFamily:"'Medeo Sans',ui-sans-serif,sans-serif",fontSize:16,fontWeight:500,color:'var(--text)'}}>Данные распознаны</span>
               <button onClick={handleReset} style={{...btnBase,marginLeft:'auto',display:'flex',alignItems:'center',gap:6,padding:'4px 12px',borderRadius:10,background:'var(--bg-light)',fontSize:13,color:'var(--text-secondary)'}}>
                 <RefreshCw size={13}/> Другой файл
               </button>
@@ -288,7 +288,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
             <div style={{background:'var(--bg-light)',borderRadius:20,padding:'18px 16px',display:'flex',flexDirection:'column',gap:12}}>
               <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                 <Home size={16} style={{color:'var(--primary)'}}/>
-                <span style={{fontFamily:"'Oswald',sans-serif",fontSize:15,fontWeight:500,color:'var(--text)'}}>Объект недвижимости</span>
+                <span style={{fontFamily:"'Medeo Sans',ui-sans-serif,sans-serif",fontSize:15,fontWeight:500,color:'var(--text)'}}>Объект недвижимости</span>
               </div>
               {extracted.address && <Row label="Адрес" value={extracted.address}/>}
               {extracted.cadastral_number && <Row label="Кадастровый №" value={extracted.cadastral_number}/>}
@@ -307,7 +307,7 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
               <div key={idx} style={{background:'var(--bg-light)',borderRadius:20,padding:'18px 16px',display:'flex',flexDirection:'column',gap:12}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
                   <User size={16} style={{color:'#10b981'}}/>
-                  <span style={{fontFamily:"'Oswald',sans-serif",fontSize:15,fontWeight:500,color:'var(--text)'}}>Правообладатель {extracted.owners.length>1?`#${idx+1}`:''}</span>
+                  <span style={{fontFamily:"'Medeo Sans',ui-sans-serif,sans-serif",fontSize:15,fontWeight:500,color:'var(--text)'}}>Правообладатель {extracted.owners.length>1?`#${idx+1}`:''}</span>
                   {owner.share && <span style={{marginLeft:'auto',fontSize:12,color:'var(--text-secondary)',background:'var(--surface)',padding:'2px 8px',borderRadius:8}}>Доля {owner.share}</span>}
                 </div>
                 {owner.full_name && <Row label="ФИО" value={owner.full_name} bold/>}

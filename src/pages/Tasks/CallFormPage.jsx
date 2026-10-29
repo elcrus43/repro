@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -204,7 +204,7 @@ export function CallFormPage() {
                     </div>
 
                     <div className="form-submit-container" style={{ marginTop: 12 }}>
-                        <button type="submit" className="form-submit-btn card-clickable" style={{ height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Oswald', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                        <button type="submit" className="form-submit-btn card-clickable" style={{ height: 56, borderRadius: 16, border: 'none', background: 'var(--primary)', color: 'white', fontWeight: 800, fontSize: 14, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 8px 24px rgba(0, 82, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
                             <Phone size={20} />
                             {editId ? 'Сохранить изменения' : 'Запланировать звонок'}
                         </button>

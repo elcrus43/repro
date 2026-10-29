@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
@@ -120,7 +120,8 @@ export function ListPage() {
             advertising: [],
             selection: [],
             deposit: [],
-            deal: []
+            deal: [],
+            sold: []
         };
         filteredProperties.forEach(p => {
             const status = p.status || 'meeting';
@@ -328,7 +329,7 @@ export function ListPage() {
                                     boxShadow: filter === val ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
                                     color: filter === val ? 'var(--text)' : 'var(--text-secondary)',
                                     fontSize: 14, fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em',
-                                    fontFamily: "'Oswald', sans-serif",
+                                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
                                     cursor: 'pointer'
                                 }}
                             >
