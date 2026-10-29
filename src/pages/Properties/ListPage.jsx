@@ -1,13 +1,14 @@
-﻿import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
-import { Trash, MapPin, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download } from 'lucide-react';
+import { Trash, MapPin, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download, Copy } from 'lucide-react';
 import { PROPERTY_TYPES, COMMERCIAL_TYPES, LOCATION_LINES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PipelinePage } from './PipelinePage';
 import { useExport } from '../../hooks/useExport';
 import { useToastContext } from '../../components/Toast';
+import { CopyPropertyModal } from '../../components/CopyPropertyModal';
 
 
 
@@ -17,6 +18,7 @@ export function ListPage() {
     const user = state.currentUser;
     const { exportToCSV } = useExport();
     const { toast } = useToastContext();
+    const [copyModalProp, setCopyModalProp] = useState(null);
 
     const handleImportToProperties = async (item) => {
         if (!window.confirm('Импортировать этот объект подбора в активные объекты?')) return;
@@ -675,30 +677,60 @@ export function ListPage() {
                                                                 )}
                                                             </div>
 
-                                                            {/* PHONE ICON */}
-                                                            {(() => {
-                                                                const agent = state.profiles.find(p => p.id === prop.realtor_id) || (prop.realtor_id === user?.id ? user : null);
-                                                                const phone = agent?.phone;
-                                                                if (!phone) return null;
-                                                                return (
-                                                                    <a
-                                                                        href={`tel:${phone}`}
-                                                                        onClick={e => e.stopPropagation()}
-                                                                        style={{
-                                                                            position: 'absolute', top: 8, right: 8, zIndex: 10,
-                                                                            width: 30, height: 30, borderRadius: 10,
-                                                                            background: 'rgba(255,255,255,0.92)',
-                                                                            backdropFilter: 'blur(8px)',
-                                                                            border: '1px solid rgba(0,0,0,0.07)',
-                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                            color: 'var(--primary)', textDecoration: 'none',
-                                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                                                                        }}
-                                                                    >
-                                                                        <Phone size={14} strokeWidth={2} />
-                                                                    </a>
-                                                                );
-                                                            })()}
+                                                            {/* ACTIONS: COPY & PHONE */}
+                                                            <div 
+                                                                onClick={e => e.stopPropagation()} 
+                                                                style={{
+                                                                    position: 'absolute', top: 8, right: 8, zIndex: 10,
+                                                                    display: 'flex', alignItems: 'center', gap: 6
+                                                                }}
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setCopyModalProp(prop);
+                                                                    }}
+                                                                    title="Скопировать объект"
+                                                                    style={{
+                                                                        width: 30, height: 30, borderRadius: 10,
+                                                                        background: 'rgba(255,255,255,0.92)',
+                                                                        backdropFilter: 'blur(8px)',
+                                                                        border: '1px solid rgba(0,0,0,0.07)',
+                                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                        color: 'var(--text-secondary)',
+                                                                        cursor: 'pointer',
+                                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                                        padding: 0,
+                                                                        transition: 'all 0.15s ease'
+                                                                    }}
+                                                                >
+                                                                    <Copy size={13} strokeWidth={2} />
+                                                                </button>
+                                                                {(() => {
+                                                                    const agent = state.profiles.find(p => p.id === prop.realtor_id) || (prop.realtor_id === user?.id ? user : null);
+                                                                    const phone = agent?.phone;
+                                                                    if (!phone) return null;
+                                                                    return (
+                                                                        <a
+                                                                            href={`tel:${phone}`}
+                                                                            onClick={e => e.stopPropagation()}
+                                                                            title={`Позвонить: ${phone}`}
+                                                                            style={{
+                                                                                width: 30, height: 30, borderRadius: 10,
+                                                                                background: 'rgba(255,255,255,0.92)',
+                                                                                backdropFilter: 'blur(8px)',
+                                                                                border: '1px solid rgba(0,0,0,0.07)',
+                                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                                color: 'var(--primary)', textDecoration: 'none',
+                                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+                                                                            }}
+                                                                        >
+                                                                            <Phone size={14} strokeWidth={2} />
+                                                                        </a>
+                                                                    );
+                                                                })()}
+                                                            </div>
 
                                                             {/* CONTENT WRAPPER */}
                                                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -909,6 +941,12 @@ export function ListPage() {
                     </button>
                 </div>
             )}
+
+            <CopyPropertyModal
+                isOpen={Boolean(copyModalProp)}
+                onClose={() => setCopyModalProp(null)}
+                property={copyModalProp}
+            />
         </div>
     );
 }

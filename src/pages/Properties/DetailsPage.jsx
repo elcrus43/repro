@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -109,6 +109,7 @@ import { BannerGenerator } from '../../components/BannerGenerator';
 import { AdGenerator } from '../../components/AdGenerator';
 import { CmaReport } from '../../components/CmaReport';
 import { EgrnScanModal } from '../../components/EgrnScanModal';
+import { CopyPropertyModal } from '../../components/CopyPropertyModal';
 
 
 /* ─── NewBuildsSelection ─────────────────────────────────────────────────── */
@@ -427,6 +428,7 @@ export function DetailsPage() {
     const [showCma, setShowCma] = useState(false);
     const [showEgrn, setShowEgrn] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
+    const [showCopyModal, setShowCopyModal] = useState(false);
     const [coverSet, setCoverSet] = useState(false);
     const [copiedField, setCopiedField] = useState(null);
     const [isEditingMovable, setIsEditingMovable] = useState(false);
@@ -1046,6 +1048,9 @@ export function DetailsPage() {
                     </button>
                     <button className="icon-btn-calendar" onClick={() => navigate(`/history/new?property_id=${id}`)} title="Создать новое событие">
                         <Calendar size={18} />
+                    </button>
+                    <button className="icon-btn-edit" onClick={() => setShowCopyModal(true)} title="Скопировать объект" style={{ color: 'var(--primary)' }}>
+                        <Copy size={18} />
                     </button>
                     <button className="icon-btn-edit" onClick={() => navigate(`/properties/${id}/edit`)} title="Редактировать">
                         <Pencil size={18} />
@@ -3291,6 +3296,12 @@ export function DetailsPage() {
                         }}
                     />
                 )}
+
+                <CopyPropertyModal
+                    isOpen={showCopyModal}
+                    onClose={() => setShowCopyModal(false)}
+                    property={prop}
+                />
 
                 {/* ── MODAL: ЗАФИКСИРОВАТЬ ЛИД / ВХОДЯЩИЙ ЗВОНОК ── */}
                 {isAddLeadModalOpen && (

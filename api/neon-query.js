@@ -395,6 +395,37 @@ export function isPublicQuery(query) {
   return false;
 }
 
+export async function executeWithRetry(sql, queryText, queryParams = [], maxRetries = 2) {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await sql.query(queryText, queryParams);
+    } catch (err) {
+      lastError = err;
+      const msg = String(err?.message || '');
+      const code = String(err?.code || '');
+      const isTransient =
+        msg.includes('fetch failed') ||
+        msg.includes('connecting to database') ||
+        msg.includes('socket') ||
+        msg.includes('ECONNRESET') ||
+        msg.includes('ETIMEDOUT') ||
+        msg.includes('ENOTFOUND') ||
+        msg.includes('timeout') ||
+        code === 'ECONNRESET' ||
+        code === 'ETIMEDOUT' ||
+        code === 'UND_ERR_CONNECT_TIMEOUT';
+
+      if (!isTransient || attempt === maxRetries) {
+        throw err;
+      }
+      console.warn(`[neon-query] Transient DB error (attempt ${attempt + 1}/${maxRetries + 1}): ${msg}. Retrying in ${(attempt + 1) * 350}ms...`);
+      await new Promise(res => setTimeout(res, (attempt + 1) * 350));
+    }
+  }
+  throw lastError;
+}
+
 export default async function handler(req, res) {
   // ─── CORS ────────────────────────────────────────────────────
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -499,10 +530,23 @@ export default async function handler(req, res) {
     // ─── Проверка активности сессии в БД (Session Revocation) ───
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const sql = neon(NEON_DATABASE_URL);
-    const activeSessions = await sql.query(
-      'SELECT id FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW() LIMIT 1',
-      [tokenHash]
-    );
+    let activeSessions;
+    try {
+      activeSessions = await executeWithRetry(
+        sql,
+        'SELECT id FROM user_sessions WHERE token_hash = $1 AND expires_at > NOW() LIMIT 1',
+        [tokenHash]
+      );
+    } catch (dbErr) {
+      console.error('[neon-query] Session check DB error:', dbErr.message);
+      return res.status(503).json({
+        data: null,
+        error: {
+          message: 'База данных временно недоступна. Пожалуйста, повторите попытку.',
+          code: 'DB_UNAVAILABLE'
+        }
+      });
+    }
 
     if (!activeSessions || activeSessions.length === 0) {
       return res.status(401).json({
@@ -624,7 +668,7 @@ export default async function handler(req, res) {
   // ─── Выполнение запроса ───────────────────────────────────────
   try {
     const sql = neon(NEON_DATABASE_URL);
-    const rows = await sql.query(query, params);
+    const rows = await executeWithRetry(sql, query, params);
     const sanitizedRows = stripSensitiveFields(rows);
     return res.status(200).json({ data: sanitizedRows, error: null });
 
@@ -635,6 +679,9 @@ export default async function handler(req, res) {
     if (pgCode === '23505') clientMessage = 'Запись уже существует (дубликат)';
     else if (pgCode === '23503') clientMessage = `Связанный объект не найден (${err.detail || err.message})`;
     else if (pgCode === '42703') clientMessage = 'Колонка не найдена в базе данных';
+    else if (String(err.message).includes('fetch failed')) {
+      clientMessage = 'Не удалось подключиться к базе данных. Пожалуйста, повторите попытку.';
+    }
 
     return res.status(500).json({
       data: null,

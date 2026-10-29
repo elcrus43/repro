@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -682,7 +682,7 @@ export function FormPage() {
                     <ChevronLeft size={22} />
                 </button>
                 <div className="font-oswald" style={{ fontWeight: 300, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                    {id ? 'Редактирование' : 'Новый объект'}
+                    {id ? 'Редактирование' : (location.state?.isCopy ? 'Копия объекта' : 'Новый объект')}
                 </div>
                 <div style={{ width: 44 }}></div>
             </div>

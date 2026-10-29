@@ -42,7 +42,7 @@ function getUserId() {
 
 /* ─── Core request ──────────────────────────────────────────── */
 
-async function request(sql, params = []) {
+async function request(sql, params = [], attempt = 0) {
   const token  = getToken();
   const userId = getUserId();
 
@@ -71,13 +71,35 @@ async function request(sql, params = []) {
       return { data: null, error: { message: 'Сессия истекла', code: 'SESSION_EXPIRED' } };
     }
 
-    const json = await res.json();
-    return json;
+    const json = await res.json().catch(() => null);
+
+    // Автоматический повтор запроса при кратковременном сбое БД / холодном старте Neon (500/503)
+    if (attempt < 1 && (res.status === 500 || res.status === 503)) {
+      const errMsg = String(json?.error?.message || json?.error || '');
+      if (
+        errMsg.includes('fetch failed') ||
+        errMsg.includes('connecting to database') ||
+        errMsg.includes('не удалось подключиться') ||
+        json?.error?.code === 'DB_UNAVAILABLE'
+      ) {
+        console.warn(`[neonDb] Database connection hiccup, retrying query (attempt ${attempt + 1})...`);
+        await new Promise(r => setTimeout(r, 600));
+        return request(sql, params, attempt + 1);
+      }
+    }
+
+    return json || { data: null, error: { message: `Ошибка сервера (${res.status})`, code: 'SERVER_ERROR' } };
 
   } catch (err) {
     if (err.name === 'AbortError') {
       console.error('[neonDb] Request timed out after 12s');
       return { data: null, error: { message: 'Превышено время ожидания запроса (12с)', code: 'TIMEOUT' } };
+    }
+    // Сетевой сбой fetch — пробуем повторить 1 раз
+    if (attempt < 1) {
+      console.warn(`[neonDb] Network fetch failed, retrying query (attempt ${attempt + 1})...`, err.message);
+      await new Promise(r => setTimeout(r, 600));
+      return request(sql, params, attempt + 1);
     }
     console.error('[neonDb] Fetch error:', err.message);
     return { data: null, error: { message: 'Сетевая ошибка: ' + err.message, code: 'NETWORK' } };
