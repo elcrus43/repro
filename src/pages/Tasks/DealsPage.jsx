@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Pencil, Trash, CheckCircle, XCircle, Plus, TrendingUp, Calendar, DollarSign, ChevronLeft, ChevronRight, ChevronDown, Briefcase, User, MapPin, Wallet, Activity, MessageSquare, Scale, CreditCard, Home, Share2, ShieldCheck, ShieldAlert, Check, X, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -1028,15 +1028,9 @@ export function DealsPage() {
                             <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.registration_date || ''} onChange={e => handleFieldChange('registration_date', e.target.value)} />
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата передачи объекта</label>
-                                <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.handover_date} onChange={e => handleFieldChange('handover_date', e.target.value)} />
-                            </div>
-                            <div className="form-group">
-                                <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Стоимость передачи</label>
-                                <input className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300 }} value={newDeal.handover_amount} onChange={e => handleFieldChange('handover_amount', formatPriceInput(e.target.value))} />
-                            </div>
+                        <div className="form-group">
+                            <label className="font-oswald" style={{ fontSize: 10, fontWeight: 300, color: 'var(--text-muted)', marginBottom: 4, display: 'block' }}>Дата передачи объекта</label>
+                            <input type="datetime-local" className="form-input" style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontWeight: 300, padding: '0 8px' }} value={newDeal.handover_date} onChange={e => handleFieldChange('handover_date', e.target.value)} />
                         </div>
 
                         <div className="form-group">
@@ -1387,7 +1381,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
         }
 
         // 5. Handover
-        if (deal.handover_date || deal.handover_amount > 0) {
+        if (deal.handover_date) {
             events.push({
                 id: 'handover',
                 type: 'handover',
@@ -1400,16 +1394,17 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 badgeColor: 'var(--text-secondary)',
                 badgeBg: 'var(--surface, #ffffff)',
                 badgeBorder: '1px solid rgba(0, 82, 255, 0.2)',
-                amount: deal.handover_amount > 0 ? `${Number(deal.handover_amount).toLocaleString()} ₽` : null,
+                amount: null,
             });
         }
 
-        const STAGE_ORDER = { handover: 5, registration: 4, deal: 3, deposit: 2, contract: 1 };
+        const EVENT_ORDER = { contract: 1, deposit: 2, deal: 3, registration: 4, handover: 5 };
         return events.sort((a, b) => {
+            const orderDiff = (EVENT_ORDER[a.type] || 99) - (EVENT_ORDER[b.type] || 99);
+            if (orderDiff !== 0) return orderDiff;
             const timeA = a.date ? new Date(a.date).getTime() : 0;
             const timeB = b.date ? new Date(b.date).getTime() : 0;
-            if (timeB !== timeA) return timeB - timeA;
-            return (STAGE_ORDER[b.type] || 0) - (STAGE_ORDER[a.type] || 0);
+            return timeA - timeB;
         });
     }, [deal, resolvedContracts]);
 
@@ -1522,7 +1517,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
             setQuickEventData({
                 date: deal.handover_date ? toLocalISOString(deal.handover_date) : '',
                 location: '',
-                amount: deal.handover_amount ? formatPriceInput(String(deal.handover_amount)) : ''
+                amount: ''
             });
         } else if (type === 'contract') {
             setQuickEventData({
@@ -1537,7 +1532,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
         if (quickEventType === 'deal') return Boolean(deal.deal_date || deal.deal_location);
         if (quickEventType === 'deposit') return Boolean(deal.deposit_date || deal.deposit_amount);
         if (quickEventType === 'registration') return Boolean(deal.registration_date);
-        if (quickEventType === 'handover') return Boolean(deal.handover_date || deal.handover_amount);
+        if (quickEventType === 'handover') return Boolean(deal.handover_date);
         if (quickEventType === 'contract') return Boolean(deal.agency_contract_date);
         return false;
     }, [deal, quickEventType]);
@@ -1575,13 +1570,12 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                 registration_date: parseLocalDateTime(quickEventData.date)?.toISOString() || null
             };
         } else if (quickEventType === 'handover') {
-            if (!quickEventData.date && !quickEventData.amount) {
-                toast.error('Укажите дату или стоимость передачи');
+            if (!quickEventData.date) {
+                toast.error('Укажите дату передачи объекта');
                 return;
             }
             updates = {
-                handover_date: quickEventData.date ? parseLocalDateTime(quickEventData.date)?.toISOString() : null,
-                handover_amount: Number(parsePriceInput(String(quickEventData.amount))) || 0
+                handover_date: parseLocalDateTime(quickEventData.date)?.toISOString() || null
             };
         } else if (quickEventType === 'contract') {
             if (!quickEventData.date) {
@@ -2213,7 +2207,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         type="button"
                         onClick={() => {
                             if (!showQuickEvent) {
-                                handleSelectEventType('deal');
+                                const nextType = !deal.agency_contract_date ? 'contract' : (!deal.deposit_date && !deal.deposit_amount ? 'deposit' : (!deal.deal_date ? 'deal' : (!deal.registration_date ? 'registration' : 'handover')));
+                                handleSelectEventType(nextType);
                             }
                             setShowQuickEvent(prev => !prev);
                         }}
@@ -2253,11 +2248,11 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     }}>
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                             {[
-                                { key: 'deal', label: 'Сделка' },
+                                { key: 'contract', label: 'АД' },
                                 { key: 'deposit', label: 'Задаток' },
+                                { key: 'deal', label: 'Сделка' },
                                 { key: 'registration', label: 'Регистрация' },
-                                { key: 'handover', label: 'Передача' },
-                                { key: 'contract', label: 'Аг. договор' }
+                                { key: 'handover', label: 'Передача' }
                             ].map(tab => (
                                 <button
                                     key={tab.key}
@@ -2367,32 +2362,17 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                         )}
 
                         {quickEventType === 'handover' && (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
-                                <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
-                                        Дата передачи объекта
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        className="form-input"
-                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
-                                        value={quickEventData.date}
-                                        onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
-                                        Стоимость передачи
-                                    </label>
-                                    <input
-                                        type="text"
-                                        placeholder="Стоимость (₽)"
-                                        className="form-input"
-                                        style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 10px', width: '100%' }}
-                                        value={quickEventData.amount}
-                                        onChange={e => setQuickEventData(prev => ({ ...prev, amount: formatPriceInput(e.target.value) }))}
-                                    />
-                                </div>
+                            <div>
+                                <label style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, display: 'block', fontWeight: 500 }}>
+                                    Дата передачи объекта
+                                </label>
+                                <input
+                                    type="datetime-local"
+                                    className="form-input"
+                                    style={{ height: 38, borderRadius: 10, background: 'var(--bg-light)', border: '1px solid var(--border-light)', fontSize: 13, padding: '0 8px', width: '100%' }}
+                                    value={quickEventData.date}
+                                    onChange={e => setQuickEventData(prev => ({ ...prev, date: e.target.value }))}
+                                />
                             </div>
                         )}
 
@@ -2572,7 +2552,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             <button
                                 type="button"
                                 onClick={() => {
-                                    handleSelectEventType('deal');
+                                    const nextType = !deal.agency_contract_date ? 'contract' : (!deal.deposit_date && !deal.deposit_amount ? 'deposit' : (!deal.deal_date ? 'deal' : (!deal.registration_date ? 'registration' : 'handover')));
+                                    handleSelectEventType(nextType);
                                     setShowQuickEvent(true);
                                 }}
                                 style={{
