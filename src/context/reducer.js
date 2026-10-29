@@ -256,7 +256,44 @@ export function reducer(state, action) {
       const matches = propId
         ? state.matches.filter(m => m.property_id !== propId)
         : state.matches;
-      return { ...state, deals: [...state.deals, newDeal], properties, matches };
+
+      // Если сделка завершена — связанные агентские договоры считаются исполненными
+      let clients = state.clients;
+      if (newDeal.status === 'closed') {
+        const participantIds = [
+          ...(newDeal.seller_ids || (newDeal.seller_id ? [newDeal.seller_id] : [])),
+          ...(newDeal.buyer_ids || (newDeal.buyer_id ? [newDeal.buyer_id] : []))
+        ];
+        clients = state.clients.map(c => {
+          const isParticipant = participantIds.includes(c.id);
+          const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
+          if (rawContracts.length === 0) return c;
+          let changed = false;
+          const updatedContracts = rawContracts.map(ct => {
+            const isPropMatch = ct.property_id && ct.property_id === propId;
+            const isMatch = isPropMatch || (isParticipant && !ct.property_id);
+            if (isMatch && ct.status !== 'fulfilled') {
+              changed = true;
+              return {
+                ...ct,
+                status: 'fulfilled',
+                fulfilled_deal_id: newDeal.id,
+                fulfilled_at: newDeal.deal_date || new Date().toISOString()
+              };
+            }
+            return ct;
+          });
+          return changed ? { ...c, agency_contracts: updatedContracts } : c;
+        });
+      }
+
+      return {
+        ...state,
+        deals: [...state.deals, newDeal],
+        properties,
+        matches,
+        ...(clients === state.clients ? {} : { clients })
+      };
     }
 
     case 'UPDATE_DEAL': {
@@ -292,11 +329,42 @@ export function reducer(state, action) {
         ? state.matches.filter(m => !affectedPassedPropIds.includes(m.property_id))
         : state.matches;
 
+      // Если статус сделки стал 'closed' — связанные договоры считаются исполненными
+      let clients = state.clients;
+      if (effectiveDealStatus === 'closed') {
+        const participantIds = [
+          ...(incoming.seller_ids || (incoming.seller_id ? [incoming.seller_id] : [])),
+          ...(incoming.buyer_ids || (incoming.buyer_id ? [incoming.buyer_id] : []))
+        ];
+        clients = state.clients.map(c => {
+          const isParticipant = participantIds.includes(c.id);
+          const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
+          if (rawContracts.length === 0) return c;
+          let changed = false;
+          const updatedContracts = rawContracts.map(ct => {
+            const isPropMatch = ct.property_id && ct.property_id === propertyIdNow;
+            const isMatch = isPropMatch || (isParticipant && !ct.property_id);
+            if (isMatch && ct.status !== 'fulfilled') {
+              changed = true;
+              return {
+                ...ct,
+                status: 'fulfilled',
+                fulfilled_deal_id: incoming.id,
+                fulfilled_at: incoming.deal_date || new Date().toISOString()
+              };
+            }
+            return ct;
+          });
+          return changed ? { ...c, agency_contracts: updatedContracts } : c;
+        });
+      }
+
       return {
         ...state,
         deals: state.deals.map(d => d.id === incoming.id ? incoming : d),
         ...(properties === state.properties ? {} : { properties }),
         ...(matches === state.matches ? {} : { matches }),
+        ...(clients === state.clients ? {} : { clients })
       };
     }
 

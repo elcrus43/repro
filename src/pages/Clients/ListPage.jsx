@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
-import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList, FileText } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList, FileText, AlertTriangle, Clock } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { useExport } from '../../hooks/useExport';
 import { PipelinePage } from './PipelinePage';
 import { CLIENT_TYPE_LABELS } from '../../data/constants';
+import { getClientContractAlerts } from '../../utils/contractTerms';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
@@ -83,11 +84,21 @@ export function ListPage() {
         refused: '#ef4444'
     };
 
+    // Clients with contract alerts count
+    const clientsNeedingContractAttentionCount = useMemo(() => {
+        return (state.clients || [])
+            .filter(c => scope === 'all' || c.realtor_id === user?.id)
+            .filter(c => getClientContractAlerts(c, new Date(), { deals: state.deals }).needsAttention).length;
+    }, [state.clients, state.deals, scope, user?.id]);
+
     // Memoized filtered clients
     const filteredClients = useMemo(() => {
         return state.clients
             .filter(c => scope === 'all' || c.realtor_id === user?.id)
             .filter(c => {
+                if (filter === 'contract_alert') {
+                    return getClientContractAlerts(c, new Date(), { deals: state.deals }).needsAttention;
+                }
                 const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
                 const isAgent = types.includes('agent');
                 const isLawyer = types.includes('lawyer');
@@ -251,25 +262,42 @@ export function ListPage() {
 
                     <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
                         {[
-                            ['all', 'Все'], ['buyer', 'Покупатели'], ['seller', 'Продавцы'], ['legal_entity', 'Юрлица'], ['developer', 'Застройщики'], ['agent', 'Агенты'], ['lawyer', 'Юристы']
-                        ].map(([val, label]) => (
-                            <button 
-                                key={val} 
-                                className={`tab-filter ${filter === val ? 'active' : ''}`} 
-                                onClick={() => setFilter(val)}
-                                style={{ 
-                                    whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 10, border: '1px solid',
-                                    borderColor: filter === val ? 'var(--primary)' : 'var(--border)',
-                                    background: filter === val ? 'var(--primary)' : 'var(--surface)',
-                                    color: filter === val ? '#ffffff' : 'var(--text-secondary)',
-                                    fontSize: 13, fontWeight: 500,
-                                    boxShadow: filter === val ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
-                                    cursor: 'pointer', transition: 'all 0.18s ease'
-                                }}
-                            >
-                                {label}
-                            </button>
-                        ))}
+                            ['all', 'Все'],
+                            ['buyer', 'Покупатели'],
+                            ['seller', 'Продавцы'],
+                            ['contract_alert', clientsNeedingContractAttentionCount > 0 ? `⚠️ Контроль АД (${clientsNeedingContractAttentionCount})` : 'Контроль АД'],
+                            ['legal_entity', 'Юрлица'],
+                            ['developer', 'Застройщики'],
+                            ['agent', 'Агенты'],
+                            ['lawyer', 'Юристы']
+                        ].map(([val, label]) => {
+                            const isAlertTab = val === 'contract_alert';
+                            const hasAlerts = isAlertTab && clientsNeedingContractAttentionCount > 0;
+                            return (
+                                <button 
+                                    key={val} 
+                                    className={`tab-filter ${filter === val ? 'active' : ''}`} 
+                                    onClick={() => setFilter(val)}
+                                    style={{ 
+                                        whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 10, border: '1px solid',
+                                        borderColor: filter === val 
+                                            ? (hasAlerts ? '#ef4444' : 'var(--primary)') 
+                                            : (hasAlerts ? 'rgba(239, 68, 68, 0.4)' : 'var(--border)'),
+                                        background: filter === val 
+                                            ? (hasAlerts ? '#ef4444' : 'var(--primary)') 
+                                            : (hasAlerts ? 'rgba(239, 68, 68, 0.08)' : 'var(--surface)'),
+                                        color: filter === val 
+                                            ? '#ffffff' 
+                                            : (hasAlerts ? '#dc2626' : 'var(--text-secondary)'),
+                                        fontSize: 13, fontWeight: hasAlerts ? 600 : 500,
+                                        boxShadow: filter === val ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
+                                        cursor: 'pointer', transition: 'all 0.18s ease'
+                                    }}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -370,27 +398,126 @@ export function ListPage() {
 
                                     {/* Right: Role Badges */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '42%' }}>
-                                        {Boolean(client.has_agency_contract || client.agency_contract_date) && (
-                                            <span 
-                                                title={`Агентский договор заключен${client.agency_contract_date ? ` от ${new Date(client.agency_contract_date).toLocaleDateString('ru-RU')}` : ''}`}
-                                                style={{ 
-                                                    fontSize: 11, 
-                                                    color: '#059669', 
-                                                    fontWeight: 600, 
-                                                    background: '#ecfdf5', 
-                                                    border: '1px solid #10b981', 
-                                                    padding: '3px 7px', 
-                                                    borderRadius: 6, 
-                                                    whiteSpace: 'nowrap',
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: 3
-                                                }}
-                                            >
-                                                <FileText size={11} />
-                                                <span>АД</span>
-                                            </span>
-                                        )}
+                                        {(() => {
+                                            const hasAnyContract = Boolean(client.has_agency_contract || client.agency_contract_date || (Array.isArray(client.agency_contracts) && client.agency_contracts.length > 0));
+                                            if (!hasAnyContract) return null;
+                                            const cAlerts = getClientContractAlerts(client, new Date(), { deals: state.deals });
+                                            if (cAlerts.hasExpired) {
+                                                return (
+                                                    <span 
+                                                        title="Внимание: срок агентского договора истёк! Требуется продление (если доступно) или перезаключение."
+                                                        style={{ 
+                                                            fontSize: 11, 
+                                                            color: '#dc2626', 
+                                                            fontWeight: 700, 
+                                                            background: 'rgba(239, 68, 68, 0.12)', 
+                                                            border: '1.5px solid #ef4444', 
+                                                            padding: '3px 7px', 
+                                                            borderRadius: 6, 
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3
+                                                        }}
+                                                    >
+                                                        <AlertTriangle size={11} />
+                                                        <span>АД истёк!</span>
+                                                    </span>
+                                                );
+                                            }
+                                            if (cAlerts.hasUrgentExpiring) {
+                                                return (
+                                                    <span 
+                                                        title="Срочное напоминание: до окончания срока договора осталось менее 7 дней! Необходимо переподписать АД."
+                                                        style={{ 
+                                                            fontSize: 11, 
+                                                            color: '#ea580c', 
+                                                            fontWeight: 700, 
+                                                            background: 'rgba(234, 88, 12, 0.14)', 
+                                                            border: '1.5px solid #ea580c', 
+                                                            padding: '3px 7px', 
+                                                            borderRadius: 6, 
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3
+                                                        }}
+                                                    >
+                                                        <Clock size={11} />
+                                                        <span>Переподписать АД</span>
+                                                    </span>
+                                                );
+                                            }
+                                            if (cAlerts.hasExpiring) {
+                                                return (
+                                                    <span 
+                                                        title="Внимание: срок агентского договора истекает в ближайшие 14 дней!"
+                                                        style={{ 
+                                                            fontSize: 11, 
+                                                            color: '#d97706', 
+                                                            fontWeight: 600, 
+                                                            background: 'rgba(245, 158, 11, 0.12)', 
+                                                            border: '1px solid #f59e0b', 
+                                                            padding: '3px 7px', 
+                                                            borderRadius: 6, 
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3
+                                                        }}
+                                                    >
+                                                        <Clock size={11} />
+                                                        <span>АД истекает</span>
+                                                    </span>
+                                                );
+                                            }
+                                            const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
+                                            const allFulfilled = rawContracts.length > 0 && rawContracts.every(ct => ct.status === 'fulfilled');
+                                            if (allFulfilled || client.status === 'deal_closed') {
+                                                return (
+                                                    <span 
+                                                        title="Агентский договор исполнен (сделка успешно завершена)"
+                                                        style={{ 
+                                                            fontSize: 11, 
+                                                            color: '#059669', 
+                                                            fontWeight: 600, 
+                                                            background: 'rgba(16, 185, 129, 0.12)', 
+                                                            border: '1px solid rgba(16, 185, 129, 0.35)', 
+                                                            padding: '3px 7px', 
+                                                            borderRadius: 6, 
+                                                            whiteSpace: 'nowrap',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 3
+                                                        }}
+                                                    >
+                                                        <FileText size={11} />
+                                                        <span>АД исполнен</span>
+                                                    </span>
+                                                );
+                                            }
+                                            return (
+                                                <span 
+                                                    title={`Агентский договор заключен${client.agency_contract_date ? ` от ${new Date(client.agency_contract_date).toLocaleDateString('ru-RU')}` : ''}`}
+                                                    style={{ 
+                                                        fontSize: 11, 
+                                                        color: '#059669', 
+                                                        fontWeight: 600, 
+                                                        background: '#ecfdf5', 
+                                                        border: '1px solid #10b981', 
+                                                        padding: '3px 7px', 
+                                                        borderRadius: 6, 
+                                                        whiteSpace: 'nowrap',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 3
+                                                    }}
+                                                >
+                                                    <FileText size={11} />
+                                                    <span>АД</span>
+                                                </span>
+                                            );
+                                        })()}
                                         {client.client_types?.map(t => {
                                             const isAgent = t === 'agent';
                                             const isLegal = t === 'legal_entity';

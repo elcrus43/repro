@@ -1,16 +1,18 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import {
     Sparkles, Users, Home, Search, Target, ArrowRight, Cake,
     Check, Calendar, Clock, Phone, Plus, AlertCircle, CheckCircle2, ChevronRight,
-    ChevronLeft, Pencil, Trash2, X, Handshake, FileCheck, UserPlus
+    ChevronLeft, Pencil, Trash2, X, Handshake, FileCheck, UserPlus,
+    FileText, AlertTriangle, RotateCw
 } from 'lucide-react';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { nanoid } from '../../utils/nanoid';
 import { toLocalISOString, parseLocalDateTime, formatPhone, stripPhone } from '../../utils/format';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { getClientContractAlerts, getContractStatusInfo, formatContractDate } from '../../utils/contractTerms';
 
 export function DashboardPage() {
     const { state, dispatch } = useApp();
@@ -65,6 +67,28 @@ export function DashboardPage() {
             .slice(0, 5),
         [myMatches]
     );
+
+    // Контроль сроков агентских договоров (АД)
+    const contractsNeedingAttention = useMemo(() => {
+        const isAdmin = state.currentUser?.role === 'admin';
+        const userId = state.currentUser?.id;
+        const list = [];
+        (state.clients || []).forEach(c => {
+            if (!isAdmin && c.realtor_id !== userId) return;
+            const alerts = getClientContractAlerts(c, new Date(), { deals: state.deals });
+            if (alerts.needsAttention) {
+                alerts.alerts.forEach(a => {
+                    list.push({
+                        client: c,
+                        contract: a.contract,
+                        info: a.info,
+                        type: a.type
+                    });
+                });
+            }
+        });
+        return list.sort((a, b) => (a.info.daysLeft ?? 0) - (b.info.daysLeft ?? 0));
+    }, [state.clients, state.deals, state.currentUser?.role, state.currentUser?.id]);
 
     // Хелпер даты YYYY-MM-DD
     const toLocalDateStr = (dateOrStr) => {
@@ -1622,6 +1646,124 @@ export function DashboardPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Контроль агентских договоров (АД) */}
+                {contractsNeedingAttention.length > 0 && (
+                    <div style={{
+                        background: 'var(--surface)',
+                        borderRadius: 20,
+                        border: '1px solid var(--border-light)',
+                        padding: '14px 16px',
+                        boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 12
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{
+                                    width: 32, height: 32, borderRadius: 10,
+                                    background: contractsNeedingAttention.some(i => i.type === 'expired') ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                    color: contractsNeedingAttention.some(i => i.type === 'expired') ? '#ef4444' : '#d97706',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <FileText size={16} />
+                                </div>
+                                <div>
+                                    <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)', lineHeight: 1.1 }}>
+                                        Контроль агентских договоров
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                        Продление возможно строго 1 раз на тот же срок
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{
+                                    fontSize: 11,
+                                    fontWeight: 700,
+                                    padding: '3px 8px',
+                                    borderRadius: 8,
+                                    background: contractsNeedingAttention.some(i => i.type === 'expired') ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                    color: contractsNeedingAttention.some(i => i.type === 'expired') ? '#dc2626' : '#d97706',
+                                    border: contractsNeedingAttention.some(i => i.type === 'expired') ? '1px solid rgba(239, 68, 68, 0.3)' : '1px solid rgba(245, 158, 11, 0.3)'
+                                }}>
+                                    {contractsNeedingAttention.length} треб. внимания
+                                </span>
+                                <span
+                                    style={{ fontSize: 12, fontWeight: 500, color: 'var(--primary)', cursor: 'pointer' }}
+                                    onClick={() => navigate('/clients?filter=contract_alert')}
+                                >
+                                    В клиентах →
+                                </span>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {contractsNeedingAttention.slice(0, 5).map((item, idx) => {
+                                const prop = state.properties.find(p => p.id === item.contract.property_id);
+                                const isExpired = item.type === 'expired';
+                                return (
+                                    <div
+                                        key={item.contract.id || idx}
+                                        className="card-clickable"
+                                        onClick={() => navigate(`/clients/${item.client.id}`)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 12,
+                                            padding: '10px 12px',
+                                            borderRadius: 14,
+                                            background: isExpired ? 'rgba(239, 68, 68, 0.04)' : 'rgba(245, 158, 11, 0.04)',
+                                            border: isExpired ? '1px solid rgba(239, 68, 68, 0.25)' : '1px solid rgba(245, 158, 11, 0.25)',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
+                                            background: isExpired ? 'rgba(239, 68, 68, 0.12)' : 'rgba(245, 158, 11, 0.12)',
+                                            color: isExpired ? '#ef4444' : '#d97706',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                        }}>
+                                            {isExpired ? <AlertTriangle size={15} /> : <Clock size={15} />}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                                    {item.client.full_name || 'Клиент'}
+                                                </span>
+                                                <span style={{
+                                                    fontSize: 10,
+                                                    fontWeight: 600,
+                                                    padding: '2px 6px',
+                                                    borderRadius: 6,
+                                                    background: item.info.badge.bg,
+                                                    color: item.info.badge.color,
+                                                    border: `1px solid ${item.info.badge.border}`
+                                                }}>
+                                                    {item.info.badge.label}
+                                                </span>
+                                                {item.info.isExtended ? (
+                                                    <span style={{ fontSize: 9, fontWeight: 600, padding: '2px 5px', borderRadius: 4, background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed' }}>
+                                                        Продлен (макс.)
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ fontSize: 9, fontWeight: 500, padding: '2px 5px', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-muted)' }}>
+                                                        Доступно продление
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {item.contract.type || 'Агентский договор'}{prop ? ` · ${prop.address || prop.city}` : ''}
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={16} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 {/* New Matches Feed */}
                 {newMatches.length > 0 && (

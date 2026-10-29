@@ -110,6 +110,7 @@ import { AdGenerator } from '../../components/AdGenerator';
 import { CmaReport } from '../../components/CmaReport';
 import { EgrnScanModal } from '../../components/EgrnScanModal';
 import { CopyPropertyModal } from '../../components/CopyPropertyModal';
+import { TaskModal } from '../../components/TaskModal';
 
 
 /* ─── NewBuildsSelection ─────────────────────────────────────────────────── */
@@ -429,6 +430,7 @@ export function DetailsPage() {
     const [showEgrn, setShowEgrn] = useState(false);
     const [showGallery, setShowGallery] = useState(false);
     const [showCopyModal, setShowCopyModal] = useState(false);
+    const [taskModalLead, setTaskModalLead] = useState(null);
     const [coverSet, setCoverSet] = useState(false);
     const [copiedField, setCopiedField] = useState(null);
     const [isEditingMovable, setIsEditingMovable] = useState(false);
@@ -1416,42 +1418,70 @@ export function DetailsPage() {
                             </div>
                         </div>
 
-                        {leads.length > 0 && (
-                            <div style={{ position: 'relative', width: 220 }}>
-                                <input
-                                    type="text"
-                                    placeholder="Поиск лида..."
-                                    value={leadSearchQuery}
-                                    onChange={e => setLeadSearchQuery(e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        height: 34,
-                                        padding: '0 10px 0 30px',
-                                        borderRadius: 10,
-                                        border: '1px solid var(--border)',
-                                        background: 'var(--bg-light)',
-                                        color: 'var(--text)',
-                                        fontSize: 12,
-                                        outline: 'none',
-                                        boxSizing: 'border-box'
-                                    }}
-                                />
-                                <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                                {leadSearchQuery && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setLeadSearchQuery('')}
+                        {/* Search & Add Lead Button */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            {leads.length > 0 && (
+                                <div style={{ position: 'relative', width: 200 }}>
+                                    <input
+                                        type="text"
+                                        placeholder="Поиск лида..."
+                                        value={leadSearchQuery}
+                                        onChange={e => setLeadSearchQuery(e.target.value)}
                                         style={{
-                                            position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
-                                            background: 'transparent', border: 'none', color: 'var(--text-muted)',
-                                            cursor: 'pointer', padding: 2, display: 'flex'
+                                            width: '100%',
+                                            height: 34,
+                                            padding: '0 10px 0 30px',
+                                            borderRadius: 10,
+                                            border: '1px solid var(--border)',
+                                            background: 'var(--bg-light)',
+                                            color: 'var(--text)',
+                                            fontSize: 12,
+                                            outline: 'none',
+                                            boxSizing: 'border-box'
                                         }}
-                                    >
-                                        <X size={12} />
-                                    </button>
-                                )}
-                            </div>
-                        )}
+                                    />
+                                    <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    {leadSearchQuery && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setLeadSearchQuery('')}
+                                            style={{
+                                                position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)',
+                                                background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                                                cursor: 'pointer', padding: 2, display: 'flex'
+                                            }}
+                                        >
+                                            <X size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => handleOpenAddLead()}
+                                style={{
+                                    height: 34,
+                                    padding: '0 12px',
+                                    borderRadius: 10,
+                                    border: 'none',
+                                    background: 'var(--primary-light)',
+                                    color: 'var(--primary)',
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                    transition: 'all 0.15s ease',
+                                    boxShadow: '0 2px 8px rgba(37,99,235,0.08)'
+                                }}
+                                title="Зафиксировать звонок / лид"
+                            >
+                                <Plus size={14} />
+                                <span>Новый лид</span>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Filter Pills (only shown if there are leads) */}
@@ -1554,15 +1584,25 @@ export function DetailsPage() {
                                     <div
                                         key={lead.client.id}
                                         style={{
-                                            borderRadius: 16,
-                                            border: '1px solid var(--border)',
-                                            background: 'var(--surface)',
-                                            padding: '14px 16px',
-                                            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                                            borderRadius: 18,
+                                            border: '1.5px solid rgba(37, 99, 235, 0.18)',
+                                            borderLeft: `5px solid ${cfg.color || 'var(--primary)'}`,
+                                            background: 'linear-gradient(180deg, var(--surface) 0%, var(--bg-light) 100%)',
+                                            padding: '16px 18px',
+                                            boxShadow: '0 4px 20px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.04)',
                                             display: 'flex',
                                             flexDirection: 'column',
-                                            gap: 10,
-                                            transition: 'box-shadow 0.2s ease, border-color 0.2s ease'
+                                            gap: 12,
+                                            transition: 'all 0.2s ease',
+                                            position: 'relative'
+                                        }}
+                                        onMouseEnter={e => {
+                                            e.currentTarget.style.boxShadow = '0 8px 26px rgba(37, 99, 235, 0.12)';
+                                            e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.35)';
+                                        }}
+                                        onMouseLeave={e => {
+                                            e.currentTarget.style.boxShadow = '0 4px 20px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.04)';
+                                            e.currentTarget.style.borderColor = 'rgba(37, 99, 235, 0.18)';
                                         }}
                                     >
                                         {/* Header: Client Info & Status Badge */}
@@ -1571,18 +1611,19 @@ export function DetailsPage() {
                                                 <div
                                                     onClick={() => navigate(`/clients/${lead.client.id}`)}
                                                     style={{
-                                                        width: 36,
-                                                        height: 36,
-                                                        borderRadius: '50%',
-                                                        background: 'rgba(59, 130, 246, 0.1)',
-                                                        color: 'var(--primary)',
+                                                        width: 38,
+                                                        height: 38,
+                                                        borderRadius: 12,
+                                                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                                                        color: '#ffffff',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justifyContent: 'center',
                                                         fontSize: 13,
-                                                        fontWeight: 600,
+                                                        fontWeight: 700,
                                                         flexShrink: 0,
-                                                        cursor: 'pointer'
+                                                        cursor: 'pointer',
+                                                        boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
                                                     }}
                                                     title="Перейти в карточку клиента"
                                                 >
@@ -1893,24 +1934,25 @@ export function DetailsPage() {
                                             </button>
                                             <button
                                                 type="button"
-                                                onClick={() => navigate(`/tasks/new?property_id=${id}&client_id=${lead.client.id}`)}
+                                                onClick={() => setTaskModalLead(lead)}
                                                 style={{
                                                     height: 30,
-                                                    padding: '0 8px',
-                                                    borderRadius: 6,
-                                                    border: 'none',
+                                                    padding: '0 10px',
+                                                    borderRadius: 8,
+                                                    border: '1px solid rgba(37, 99, 235, 0.2)',
                                                     background: 'var(--primary-light)',
                                                     color: 'var(--primary)',
                                                     fontSize: 11,
-                                                    fontWeight: 500,
+                                                    fontWeight: 600,
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: 4,
-                                                    cursor: 'pointer'
+                                                    gap: 5,
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.08)'
                                                 }}
                                                 title="Поставить задачу по клиенту"
                                             >
-                                                <Clock size={11} />
+                                                <Clock size={12} />
                                                 <span>Задача</span>
                                             </button>
                                         </div>
@@ -3300,6 +3342,13 @@ export function DetailsPage() {
                 <CopyPropertyModal
                     isOpen={showCopyModal}
                     onClose={() => setShowCopyModal(false)}
+                    property={prop}
+                />
+
+                <TaskModal
+                    isOpen={Boolean(taskModalLead)}
+                    onClose={() => setTaskModalLead(null)}
+                    client={taskModalLead?.client}
                     property={prop}
                 />
 

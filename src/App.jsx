@@ -306,6 +306,7 @@ function AppRoutes() {
 
           {/* Tasks */}
           <Route path="/tasks" element={<RequireAuth><TasksPage /></RequireAuth>} />
+          <Route path="/tasks/new" element={<Navigate to="/history/new" replace />} />
           <Route path="/tasks/meeting-owner" element={<RequireAuth><MeetingOwnerFormPage /></RequireAuth>} />
           <Route path="/tasks/call" element={<RequireAuth><CallFormPage /></RequireAuth>} />
 

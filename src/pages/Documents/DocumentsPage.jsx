@@ -429,7 +429,7 @@ export function DocumentsPage() {
     // Быстрое модальное окно создания клиента
     const [quickModalConfig, setQuickModalConfig] = useState({ isOpen: false, role: 'buyer', initialName: '' });
 
-    // Условия договора (вознаграждение и срок)
+    // Условия договора (вознаграждение, срок, статус)
     const [commission, setCommission] = useState(() => prefill.commission ? String(prefill.commission) : '');
     const [contractEndDate, setContractEndDate] = useState(() => {
         if (prefill.contractEndDate) return prefill.contractEndDate;
@@ -437,6 +437,12 @@ export function DocumentsPage() {
         d.setMonth(d.getMonth() + 2);
         return d.toISOString().split('T')[0];
     });
+    const [contractStatus, setContractStatus] = useState(() => prefill.contractStatus || 'active');
+
+    // Сброс статуса сохранения при изменении условий
+    useEffect(() => {
+        setIsSavedToCrm(false);
+    }, [commission, contractEndDate, contractStatus]);
 
     // 3-сторонний договор оказания услуг
     const [service1Cost, setService1Cost] = useState(() => prefill.service1Cost ? String(prefill.service1Cost) : '5 000');
@@ -629,8 +635,17 @@ export function DocumentsPage() {
             }
         }
         const targetId = isAgencySale ? (sellerId || buyerId) : (buyerId || sellerId);
-        return state.clients.find(c => String(c.id) === String(targetId)) || null;
-    }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, state.deals, state.clients]);
+        if (targetId) {
+            return state.clients.find(c => String(c.id) === String(targetId)) || null;
+        }
+        if (propertyId) {
+            const prop = state.properties.find(p => String(p.id) === String(propertyId));
+            if (prop?.client_id) {
+                return state.clients.find(c => String(c.id) === String(prop.client_id)) || null;
+            }
+        }
+        return null;
+    }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, propertyId, state.deals, state.clients, state.properties]);
 
     // Список договоров выбранного клиента
     const clientContracts = useMemo(() => {
@@ -685,8 +700,47 @@ export function DocumentsPage() {
             if (c.valid_until) {
                 setContractEndDate(c.valid_until.split('T')[0]);
             }
+            if (c.status) {
+                setContractStatus(c.status === 'terminated' ? 'closed' : c.status);
+            }
         }
     };
+
+    // Автоподгрузка условий договора из карточки клиента
+    useEffect(() => {
+        if (!activeClient) return;
+        const rawContracts = Array.isArray(activeClient.agency_contracts) ? activeClient.agency_contracts : [];
+        if (rawContracts.length > 0) {
+            const matched = (propertyId ? rawContracts.find(c => String(c.property_id) === String(propertyId)) : null) || 
+                            rawContracts.find(c => c.status === 'active') || 
+                            rawContracts[0];
+            if (matched) {
+                if (matched.commission && !commission) {
+                    setCommission(Number(matched.commission).toLocaleString('ru-RU'));
+                }
+                if (matched.valid_until && !prefill.contractEndDate) {
+                    setContractEndDate(matched.valid_until.split('T')[0]);
+                }
+                if (matched.status) {
+                    setContractStatus(matched.status === 'terminated' ? 'closed' : matched.status);
+                }
+            }
+        }
+    }, [activeClient?.id, propertyId]);
+
+    // Автоподгрузка условий из объекта недвижимости
+    useEffect(() => {
+        if (!activeProperty) return;
+        if (activeProperty.commission && !commission) {
+            setCommission(Number(activeProperty.commission).toLocaleString('ru-RU'));
+        }
+        if (activeProperty.contract_end_date && !prefill.contractEndDate) {
+            setContractEndDate(activeProperty.contract_end_date.split('T')[0]);
+        }
+        if (activeProperty.contract_status) {
+            setContractStatus(activeProperty.contract_status === 'terminated' ? 'closed' : activeProperty.contract_status);
+        }
+    }, [activeProperty?.id]);
 
     /* ── Черновик реквизитов клиента ──────────────────────────────────────── */
     const [clientDraft, setClientDraft] = useState({
@@ -974,6 +1028,9 @@ export function DocumentsPage() {
         setIsSavingToCrm(true);
         try {
             const isLegal = Boolean(clientDraft.is_legal_entity);
+            const cleanComm = Number(String(commission).replace(/\D/g, '')) || 0;
+            const validUntilIso = contractEndDate ? (contractEndDate.includes('T') ? contractEndDate : `${contractEndDate}T23:59:59.000Z`) : null;
+
             if (activeClient) {
                 const series = clientDraft.passport_series?.trim() || '';
                 const number = clientDraft.passport_number?.trim() || '';
@@ -1006,6 +1063,60 @@ export function DocumentsPage() {
                     ? Array.from(new Set([...(activeClient.client_types || []), 'legal_entity']))
                     : (activeClient.client_types || []).filter(t => t !== 'legal_entity');
 
+                // Синхронизация условий агентского договора в agency_contracts клиента
+                const existingContracts = Array.isArray(activeClient.agency_contracts) ? [...activeClient.agency_contracts] : [];
+                let updatedContracts;
+                const matchIdx = existingContracts.findIndex(c => 
+                    (selectedContractId && c.id === selectedContractId) ||
+                    (!selectedContractId && propertyId && String(c.property_id) === String(propertyId))
+                );
+
+                const contractType = selectedTemplateMeta?.title || (isAgencySale ? 'АД ЮСС Продажа' : 'АД ЮСС Покупка');
+
+                if (matchIdx >= 0) {
+                    updatedContracts = existingContracts.map((c, i) => {
+                        if (i === matchIdx) {
+                            return {
+                                ...c,
+                                commission: cleanComm > 0 ? cleanComm : c.commission,
+                                valid_until: validUntilIso || c.valid_until,
+                                status: contractStatus,
+                                property_id: propertyId || activeProperty?.id || c.property_id || null,
+                                updated_at: new Date().toISOString()
+                            };
+                        }
+                        return c;
+                    });
+                } else if (existingContracts.length > 0 && !selectedContractId) {
+                    updatedContracts = existingContracts.map((c, i) => {
+                        if (i === 0) {
+                            return {
+                                ...c,
+                                commission: cleanComm > 0 ? cleanComm : c.commission,
+                                valid_until: validUntilIso || c.valid_until,
+                                status: contractStatus,
+                                property_id: propertyId || activeProperty?.id || c.property_id || null,
+                                updated_at: new Date().toISOString()
+                            };
+                        }
+                        return c;
+                    });
+                } else {
+                    const newContract = {
+                        id: `contract_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                        type: contractType,
+                        contract_date: new Date().toISOString().split('T')[0],
+                        valid_until: validUntilIso,
+                        commission: cleanComm > 0 ? cleanComm : null,
+                        status: contractStatus,
+                        property_id: propertyId || activeProperty?.id || null,
+                        created_at: new Date().toISOString()
+                    };
+                    updatedContracts = [newContract, ...existingContracts];
+                }
+
+                const primaryContract = updatedContracts.find(c => c.status === 'active') || updatedContracts[0];
+
                 const updatedClient = {
                     ...activeClient,
                     is_legal_entity: isLegal,
@@ -1027,6 +1138,10 @@ export function DocumentsPage() {
                     birth_date: birthDateStr,
                     reg_address: regAddressStr,
                     passport: isLegal ? '' : passportStr,
+                    agency_contracts: updatedContracts,
+                    has_agency_contract: contractStatus === 'active',
+                    agency_contract_date: primaryContract ? primaryContract.contract_date : activeClient.agency_contract_date,
+                    agency_contract_property_id: primaryContract ? primaryContract.property_id : activeClient.agency_contract_property_id,
                     passport_details: {
                         ...(activeClient.passport_details || {}),
                         series: isLegal ? '' : series,
@@ -1050,6 +1165,20 @@ export function DocumentsPage() {
 
                 const baseType = isAgencySale ? 'seller' : 'buyer';
                 const clientTypes = isLegal ? [baseType, 'legal_entity'] : [baseType];
+
+                const initialContracts = [];
+                if (cleanComm > 0 || contractEndDate || contractStatus) {
+                    initialContracts.push({
+                        id: `contract_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                        type: selectedTemplateMeta?.title || (isAgencySale ? 'АД ЮСС Продажа' : 'АД ЮСС Покупка'),
+                        contract_date: new Date().toISOString().split('T')[0],
+                        valid_until: validUntilIso,
+                        commission: cleanComm > 0 ? cleanComm : null,
+                        status: contractStatus,
+                        property_id: propertyId || null,
+                        created_at: new Date().toISOString()
+                    });
+                }
 
                 const newClient = {
                     id: `client_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -1086,6 +1215,10 @@ export function DocumentsPage() {
                     reg_address: regAddressStr,
                     passport: isLegal ? '' : passportStr,
                     client_types: clientTypes,
+                    agency_contracts: initialContracts,
+                    has_agency_contract: contractStatus === 'active',
+                    agency_contract_date: initialContracts[0]?.contract_date || new Date().toISOString().split('T')[0],
+                    agency_contract_property_id: initialContracts[0]?.property_id || null,
                     status: 'active',
                     realtor_id: state.currentUser?.id,
                     created_at: new Date().toISOString(),
@@ -1115,6 +1248,10 @@ export function DocumentsPage() {
                     cadastral_number: propDraft.cadastral_number?.trim() || activeProperty.cadastral_number,
                     area_total: parsedArea !== null ? parsedArea : activeProperty.area_total,
                     price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : activeProperty.price,
+                    commission: cleanComm > 0 ? cleanComm : activeProperty.commission,
+                    contract_end_date: contractEndDate || activeProperty.contract_end_date,
+                    contract_status: contractStatus,
+                    movable_property: movableProperty?.trim() || activeProperty.movable_property || '',
                 };
                 await dispatch({ type: 'UPDATE_PROPERTY', property: updatedProperty });
             } else if (propDraft.address?.trim() || propDraft.property_kind?.trim()) {
@@ -1126,6 +1263,10 @@ export function DocumentsPage() {
                     cadastral_number: propDraft.cadastral_number?.trim() || '',
                     area_total: parsedArea !== null ? parsedArea : null,
                     price: propDraft.price ? Number(String(propDraft.price).replace(/\D/g, '')) : null,
+                    commission: cleanComm > 0 ? cleanComm : null,
+                    contract_end_date: contractEndDate || null,
+                    contract_status: contractStatus,
+                    movable_property: movableProperty?.trim() || '',
                     client_id: activeClient?.id || sellerId || buyerId || null,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString(),
@@ -1137,16 +1278,18 @@ export function DocumentsPage() {
             if (sourceMode === 'deal' && selectedDealId) {
                 const currentDeal = state.deals.find(d => d.id === selectedDealId);
                 if (currentDeal) {
-                    const cleanComm = Number(String(commission).replace(/\D/g, '')) || 0;
                     const updatedDeal = { ...currentDeal };
                     if (cleanComm > 0) updatedDeal.commission = cleanComm;
                     if (contractEndDate) updatedDeal.contract_end_date = contractEndDate;
+                    if (contractStatus === 'fulfilled' && updatedDeal.status !== 'closed') {
+                        updatedDeal.status = 'closed';
+                    }
                     await dispatch({ type: 'UPDATE_DEAL', deal: updatedDeal });
                 }
             }
 
             setIsSavedToCrm(true);
-            toast?.success?.('Данные сохранены в карточку клиента в CRM!');
+            toast?.success?.('Условия договора и реквизиты сохранены в CRM!');
         } catch (err) {
             console.error('Failed to save to CRM:', err);
             toast?.error?.('Ошибка при сохранении данных в CRM');
@@ -1223,6 +1366,11 @@ export function DocumentsPage() {
             deal = { ...(deal || {}), contract_end_date: contractEndDate };
         }
 
+        // Подставляем статус договора
+        if (contractStatus) {
+            deal = { ...(deal || {}), contract_status: contractStatus };
+        }
+
         const isRealtorSelfEmployed = (realtorTaxStatus || 'Самозанятый').toLowerCase().includes('самозанят');
         const effectiveRealtor = {
             ...(realtor || {}),
@@ -1247,7 +1395,7 @@ export function DocumentsPage() {
             realtor: effectiveRealtor,
             agencyName: agencyCustomName || agencyName || 'ИП Муравьевой Ю.А.',
             city: city || property?.city || 'г. Киров',
-            deal, contractEndDate,
+            deal, contractEndDate, contractStatus,
             service1Cost, service2Cost, actDate,
             movableProperty: movableProperty || property?.movable_property || '',
             realtorTaxStatus,
@@ -1264,7 +1412,7 @@ export function DocumentsPage() {
             authPersonRegAddress: clientDraft.auth_person_reg_address,
             authPersonClient,
         };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, realtorDraft, agencyName, agencyCustomName, city, enrichedClient, enrichedProperty, commission, contractEndDate, service1Cost, service2Cost, actDate, movableProperty, clientDraft, realtorTaxStatus, activeClient]);
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, realtorDraft, agencyName, agencyCustomName, city, enrichedClient, enrichedProperty, commission, contractEndDate, contractStatus, service1Cost, service2Cost, actDate, movableProperty, clientDraft, realtorTaxStatus, activeClient]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -2589,6 +2737,19 @@ export function DocumentsPage() {
                             </span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                            {!isServicesRent3Party && selectedTemplate !== 'act' && selectedTemplate !== 'key_act' && (
+                                <span style={{
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    padding: '2px 7px',
+                                    borderRadius: 6,
+                                    background: contractStatus === 'active' ? 'rgba(16, 185, 129, 0.12)' : (contractStatus === 'fulfilled' ? 'rgba(5, 150, 105, 0.16)' : 'rgba(100, 116, 139, 0.12)'),
+                                    color: contractStatus === 'active' ? '#059669' : (contractStatus === 'fulfilled' ? '#047857' : '#64748b'),
+                                    border: `1px solid ${contractStatus === 'active' ? 'rgba(16, 185, 129, 0.3)' : (contractStatus === 'fulfilled' ? 'rgba(5, 150, 105, 0.35)' : 'rgba(100, 116, 139, 0.25)')}`
+                                }}>
+                                    {contractStatus === 'active' ? 'Действующий' : contractStatus === 'fulfilled' ? 'Исполнен' : 'Закрыт'}
+                                </span>
+                            )}
                             <button
                                 type="button"
                                 onClick={() => toggleSection('contractParams')}
@@ -2857,6 +3018,53 @@ export function DocumentsPage() {
                                 </>
                             ) : (
                                 <>
+                                    {/* Статус агентского договора */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 4 }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Статус договора (АД)</span>
+                                            <span style={{
+                                                fontSize: 10,
+                                                fontWeight: 600,
+                                                color: contractStatus === 'active' ? '#059669' : (contractStatus === 'fulfilled' ? '#047857' : '#64748b')
+                                            }}>
+                                                {contractStatus === 'active' ? '● В работе' : contractStatus === 'fulfilled' ? '✓ Завершен' : '✖ Расторгнут / закрыт'}
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                                            {[
+                                                { id: 'active', label: 'Действующий', color: '#059669', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.35)' },
+                                                { id: 'fulfilled', label: 'Исполнен', color: '#047857', bg: 'rgba(5, 150, 105, 0.16)', border: 'rgba(5, 150, 105, 0.4)' },
+                                                { id: 'closed', label: 'Закрыт', color: '#64748b', bg: 'rgba(100, 116, 139, 0.12)', border: 'rgba(100, 116, 139, 0.3)' }
+                                            ].map(st => {
+                                                const isSel = contractStatus === st.id;
+                                                return (
+                                                    <button
+                                                        key={st.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setContractStatus(st.id);
+                                                            setIsSavedToCrm(false);
+                                                        }}
+                                                        style={{
+                                                            padding: '6px 4px',
+                                                            borderRadius: 8,
+                                                            fontSize: 11,
+                                                            fontWeight: isSel ? 700 : 500,
+                                                            border: isSel ? `1.5px solid ${st.border}` : '1px solid var(--border)',
+                                                            background: isSel ? st.bg : 'var(--bg)',
+                                                            color: isSel ? st.color : 'var(--text-secondary)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease',
+                                                            textAlign: 'center'
+                                                        }}
+                                                    >
+                                                        {st.label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
                                     {/* Стандартный агентский договор */}
                                     <div>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, marginBottom: 2 }}>
@@ -2940,6 +3148,21 @@ export function DocumentsPage() {
                                     </div>
                                 </>
                             )}
+
+                            {/* Кнопка сохранения условий в CRM */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                                <button
+                                    type="button"
+                                    className="btn-compact btn-compact-primary"
+                                    onClick={handleSaveToCrm}
+                                    disabled={isSavingToCrm || (!activeClient && !activeProperty && !selectedDealId)}
+                                    style={{ background: isSavedToCrm ? '#10b981' : 'var(--primary)' }}
+                                    title="Сохранить условия договора и статус в CRM"
+                                >
+                                    {isSavingToCrm ? <Loader2 size={13} className="animate-spin" /> : (isSavedToCrm ? <Check size={13} /> : <Save size={13} />)}
+                                    {isSavingToCrm ? 'Сохранение...' : (isSavedToCrm ? 'Сохранено' : 'Сохранить условия')}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>

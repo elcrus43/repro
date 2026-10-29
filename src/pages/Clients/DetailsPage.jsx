@@ -29,8 +29,19 @@ import {
     Link2,
     Unlink2,
     MapPin,
-    Landmark
+    Landmark,
+    Clock,
+    RotateCw,
+    CheckCircle2
 } from 'lucide-react';
+import {
+    DEFAULT_CONTRACT_DURATION_MONTHS,
+    CONTRACT_DURATION_OPTIONS,
+    calculateContractEndDate,
+    formatContractDate,
+    getContractStatusInfo,
+    getClientContractAlerts
+} from '../../utils/contractTerms';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed', 'deal'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
@@ -57,6 +68,8 @@ export function DetailsPage() {
     const [contractForm, setContractForm] = useState({
         type: 'АД Продажа',
         date: '',
+        duration_months: DEFAULT_CONTRACT_DURATION_MONTHS,
+        is_extended: false,
         property_id: '',
         status: 'active',
         comment: ''
@@ -78,7 +91,12 @@ export function DetailsPage() {
         return [];
     }, [client?.agency_contracts, client?.has_agency_contract, client?.agency_contract_date, client?.id, client?.agency_contract_property_id]);
 
-    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated'), [clientContracts]);
+    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled'), [clientContracts]);
+    const fulfilledContracts = useMemo(() => clientContracts.filter(c => c && c.status === 'fulfilled'), [clientContracts]);
+
+    const clientAlerts = useMemo(() => {
+        return getClientContractAlerts(client, new Date(), { deals: state.deals });
+    }, [client, state.deals]);
 
     // Состояние для юридического лица и уполномоченного лица
     const isLegalEntity = client?.client_types?.includes('legal_entity');
@@ -450,7 +468,7 @@ export function DetailsPage() {
     function openAddContractModal() {
         setEditingContractId(null);
         let defaultType = 'АД Продажа';
-        const types = client.client_types || [];
+        const types = client?.client_types || [];
         if (types.some(t => ['landlord', 'lessor'].includes(t))) {
             defaultType = 'АД Аренда с наймодателем';
         } else if (types.some(t => ['tenant', 'lessee'].includes(t))) {
@@ -461,6 +479,8 @@ export function DetailsPage() {
         setContractForm({
             type: defaultType,
             date: new Date().toISOString().split('T')[0],
+            duration_months: DEFAULT_CONTRACT_DURATION_MONTHS,
+            is_extended: false,
             property_id: myProperties[0]?.id || '',
             status: 'active',
             comment: ''
@@ -473,11 +493,72 @@ export function DetailsPage() {
         setContractForm({
             type: c.type || 'АД Продажа',
             date: c.contract_date ? c.contract_date.split('T')[0] : new Date().toISOString().split('T')[0],
+            duration_months: Number(c.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS,
+            is_extended: Boolean(c.is_extended || c.extension_count > 0),
             property_id: c.property_id || '',
             status: c.status || 'active',
             comment: c.comment || ''
         });
         setIsContractModalOpen(true);
+    }
+
+    function handleExtendContract(contractId) {
+        const target = clientContracts.find(c => c.id === contractId);
+        if (!target) return;
+        if (target.is_extended || target.extension_count > 0) {
+            toast.error('Этот договор уже был продлен. Продление допускается строго 1 раз на тот же срок! Для продолжения работы оформите перезаключение.');
+            return;
+        }
+        const duration = Number(target.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
+        const nowIso = new Date().toISOString();
+        const startIso = target.contract_date || nowIso;
+        const newValidUntil = calculateContractEndDate(startIso, duration, true);
+
+        const updatedContracts = clientContracts.map(c => {
+            if (c.id === contractId) {
+                return {
+                    ...c,
+                    duration_months: duration,
+                    is_extended: true,
+                    extension_count: 1,
+                    extended_at: nowIso,
+                    valid_until: newValidUntil ? newValidUntil.toISOString() : null,
+                    updated_at: nowIso
+                };
+            }
+            return c;
+        });
+
+        const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
+        const primary = activeList[0] || updatedContracts[0] || null;
+
+        const updatedClient = {
+            ...client,
+            agency_contracts: updatedContracts,
+            agency_contract_date: primary ? primary.contract_date : null,
+            agency_contract_property_id: primary ? primary.property_id : null,
+            has_agency_contract: activeList.length > 0,
+            updated_at: nowIso
+        };
+
+        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+        toast.success(`Договор продлен на ${duration} мес. (до ${formatContractDate(newValidUntil)}). Обратите внимание: повторное продление невозможно, далее потребуется перезаключение.`);
+    }
+
+    function handleRenewContract(contract) {
+        setEditingContractId(null);
+        const duration = Number(contract?.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
+        setContractForm({
+            type: contract?.type || 'АД Продажа',
+            date: new Date().toISOString().split('T')[0],
+            duration_months: duration,
+            is_extended: false,
+            property_id: contract?.property_id || '',
+            status: 'active',
+            comment: contract?.comment ? `Перезаключение (ранее: ${contract.comment})` : 'Перезаключение договора'
+        });
+        setIsContractModalOpen(true);
+        toast.info('Оформление нового договора взамен истекшего (перезаключение)');
     }
 
     function handleSaveContract(e) {
@@ -487,17 +568,29 @@ export function DetailsPage() {
             return;
         }
         const dateIso = contractForm.date.includes('T') ? contractForm.date : `${contractForm.date}T00:00:00.000Z`;
+        const durationMonths = Number(contractForm.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
+        const isExtended = Boolean(contractForm.is_extended);
+        const calculatedEnd = calculateContractEndDate(dateIso, durationMonths, isExtended);
+        const validUntilIso = calculatedEnd ? calculatedEnd.toISOString() : null;
+
         let updatedContracts;
         if (editingContractId) {
+            const existing = clientContracts.find(c => c.id === editingContractId);
             updatedContracts = clientContracts.map(c => {
                 if (c.id === editingContractId) {
                     return {
                         ...c,
                         type: contractForm.type,
                         contract_date: dateIso,
+                        duration_months: durationMonths,
+                        is_extended: isExtended,
+                        extension_count: isExtended ? 1 : 0,
+                        extended_at: isExtended ? (existing?.extended_at || new Date().toISOString()) : null,
+                        valid_until: validUntilIso,
                         property_id: contractForm.property_id || null,
                         status: contractForm.status || 'active',
-                        comment: contractForm.comment ? contractForm.comment.trim() : ''
+                        comment: contractForm.comment ? contractForm.comment.trim() : '',
+                        updated_at: new Date().toISOString()
                     };
                 }
                 return c;
@@ -507,6 +600,11 @@ export function DetailsPage() {
                 id: nanoid(),
                 type: contractForm.type,
                 contract_date: dateIso,
+                duration_months: durationMonths,
+                is_extended: isExtended,
+                extension_count: isExtended ? 1 : 0,
+                extended_at: isExtended ? new Date().toISOString() : null,
+                valid_until: validUntilIso,
                 property_id: contractForm.property_id || null,
                 status: contractForm.status || 'active',
                 comment: contractForm.comment ? contractForm.comment.trim() : '',
@@ -515,7 +613,7 @@ export function DetailsPage() {
             updatedContracts = [newContract, ...clientContracts];
         }
 
-        const activeList = updatedContracts.filter(c => c && c.status !== 'terminated');
+        const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
         const primary = activeList[0] || updatedContracts[0] || null;
 
         const updatedClient = {
@@ -535,7 +633,7 @@ export function DetailsPage() {
     function handleDeleteContract(contractId) {
         if (window.confirm('Удалить этот агентский договор?')) {
             const updatedContracts = clientContracts.filter(c => c.id !== contractId);
-            const activeList = updatedContracts.filter(c => c && c.status !== 'terminated');
+            const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
             const primary = activeList[0] || updatedContracts[0] || null;
 
             const updatedClient = {
@@ -715,72 +813,100 @@ export function DetailsPage() {
     const avatarBg = colors[initial.charCodeAt(0) % colors.length];
 
     return (
-        <div className="page fade-in" style={{ background: 'var(--surface)' }}>
+        <div className="page fade-in" style={{ background: 'var(--bg)' }}>
             {/* ── Topbar ── */}
             <div className="topbar sticky" style={{
-                background: 'var(--topbar-bg)', backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px', borderBottom: '1px solid var(--border-light)',
+                background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(160%)',
+                padding: '12px 18px', borderBottom: '1px solid var(--border-light)',
                 zIndex: 1000, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
             }}>
                 <button onClick={() => navigate('/clients')} className="card-clickable" style={{
-                    width: 44, height: 44, borderRadius: 14, border: 'none',
+                    width: 38, height: 38, borderRadius: 12, border: '1px solid var(--border-light)',
                     background: 'var(--surface)', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', color: 'var(--text)'
+                    justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', color: 'var(--text)'
                 }}>
-                    <ChevronLeft size={20} />
+                    <ChevronLeft size={18} />
                 </button>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 300, letterSpacing: '0.01em', color: 'var(--text)' }}>
+                    <span style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em', color: 'var(--text)' }}>
                         Профиль клиента
                     </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Управление</span>
+                    <span style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>Карточка CRM</span>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button 
                         className="card-clickable" 
                         onClick={handleCreateDocument}
                         title="Создать документ"
                         style={{
-                            width: 44, height: 44, borderRadius: 14, border: 'none',
+                            width: 38, height: 38, borderRadius: 12, border: '1px solid var(--border-light)',
                             background: 'var(--surface)', color: 'var(--primary)', display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', cursor: 'pointer'
+                            justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', cursor: 'pointer'
                         }}
                     >
-                        <FileText size={18} />
+                        <FileText size={17} />
                     </button>
                     <button 
                         className="card-clickable" 
                         onClick={() => navigate(`/clients/${id}/edit`)} 
                         title="Редактировать"
                         style={{
-                            width: 44, height: 44, borderRadius: 14, border: 'none',
+                            width: 38, height: 38, borderRadius: 12, border: '1px solid var(--border-light)',
                             background: 'var(--surface)', color: 'var(--text)', display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', cursor: 'pointer'
+                            justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', cursor: 'pointer'
                         }}
                     >
-                        <Pencil size={18} />
+                        <Pencil size={17} />
                     </button>
                     <button 
                         className="card-clickable" 
                         onClick={handleDeleteClient} 
                         title="Удалить клиента"
                         style={{
-                            width: 44, height: 44, borderRadius: 14, border: 'none',
-                            background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', display: 'flex', alignItems: 'center',
-                            justifyContent: 'center', boxShadow: '0 2px 8px rgba(239,68,68,0.1)', cursor: 'pointer'
+                            width: 38, height: 38, borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.2)',
+                            background: 'rgba(239, 68, 68, 0.06)', color: '#ef4444', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', cursor: 'pointer'
                         }}
                     >
-                        <Trash2 size={18} />
+                        <Trash2 size={17} />
                     </button>
                 </div>
             </div>
 
-            <div className="page-content" style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="page-content" style={{ padding: '16px 18px 120px', display: 'flex', flexDirection: 'column', gap: 14 }}>
 
                 {/* ── Профиль ── */}
-                <div className="card" style={{ padding: '28px 24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)', textAlign: 'center' }}>
-                    <div className="font-oswald" style={{ fontSize: 24, fontWeight: 300, color: 'var(--text)', marginBottom: 8 }}>{client.full_name}</div>
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' }}>
+                <div className="card" style={{
+                    padding: '22px 24px',
+                    border: '1px solid var(--border-light)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                    borderRadius: 20,
+                    background: 'var(--surface)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center'
+                }}>
+                    <div style={{
+                        width: 52,
+                        height: 52,
+                        borderRadius: 18,
+                        background: 'rgba(0, 82, 255, 0.08)',
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 18,
+                        fontWeight: 700,
+                        marginBottom: 10,
+                        border: '1px solid rgba(0, 82, 255, 0.15)'
+                    }}>
+                        {(client.full_name || 'К').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: 21, fontWeight: 600, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.01em' }}>
+                        {client.full_name}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
                         {!isEditingTypes ? (
                             <>
                                 {client.client_types?.map(t => {
@@ -792,15 +918,15 @@ export function DetailsPage() {
                                             onClick={() => setIsEditingTypes(true)}
                                             className="card-clickable"
                                             style={{
-                                                padding: '6px 12px',
-                                                borderRadius: 10,
+                                                padding: '4px 10px',
+                                                borderRadius: 8,
                                                 fontSize: 11,
-                                                fontWeight: (isAgent || isLegal) ? 600 : 300,
-                                                background: isAgent ? '#ecfdf5' : (isLegal ? 'rgba(2, 132, 199, 0.1)' : 'var(--primary-light)'),
-                                                color: isAgent ? '#059669' : (isLegal ? '#0284c7' : 'var(--primary)'),
-                                                border: isAgent ? '1px solid #10b981' : (isLegal ? '1px solid rgba(2, 132, 199, 0.3)' : 'none'),
+                                                fontWeight: 500,
+                                                background: isAgent ? 'rgba(16, 185, 129, 0.1)' : (isLegal ? 'rgba(2, 132, 199, 0.1)' : 'var(--bg-light)'),
+                                                color: isAgent ? '#059669' : (isLegal ? '#0284c7' : 'var(--text-secondary)'),
+                                                border: isAgent ? '1px solid rgba(16, 185, 129, 0.25)' : (isLegal ? '1px solid rgba(2, 132, 199, 0.25)' : '1px solid var(--border-light)'),
                                                 cursor: 'pointer',
-                                                transition: 'all 0.2s'
+                                                transition: 'all 0.15s ease'
                                             }}
                                             title="Нажмите, чтобы изменить типы"
                                         >
@@ -810,8 +936,8 @@ export function DetailsPage() {
                                 })}
                             </>
                         ) : (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '16px', borderRadius: 20, width: '100%', marginTop: 8 }}>
-                                <div style={{ width: '100%', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, fontWeight: 500 }}>Выберите типы клиента:</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '14px', borderRadius: 16, width: '100%', marginTop: 6, border: '1px solid var(--border-light)' }}>
+                                <div style={{ width: '100%', fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 2, fontWeight: 500 }}>Выберите типы клиента:</div>
                                 {CLIENT_TYPES.map(({ id: typeId, label }) => {
                                     const isActive = client.client_types?.includes(typeId);
                                     return (
@@ -820,56 +946,53 @@ export function DetailsPage() {
                                             onClick={() => handleToggleType(typeId)}
                                             className="card-clickable"
                                             style={{
-                                                padding: '6px 14px',
-                                                borderRadius: 10,
-                                                fontSize: 12,
+                                                padding: '5px 12px',
+                                                borderRadius: 8,
+                                                fontSize: 11.5,
                                                 fontWeight: isActive ? 600 : 400,
                                                 background: isActive ? 'var(--primary)' : 'var(--surface)',
                                                 color: isActive ? '#fff' : 'var(--text)',
                                                 border: isActive ? 'none' : '1px solid var(--border-light)',
                                                 cursor: 'pointer',
-                                                transition: 'all 0.2s'
+                                                transition: 'all 0.15s ease'
                                             }}
                                         >
                                             {label}
                                         </button>
                                     );
                                 })}
-                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 10 }}>
+                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
                                     <button
                                         type="button"
                                         onClick={() => setIsEditingTypes(false)}
                                         className="card-clickable"
                                         style={{
-                                            padding: '8px 24px',
-                                            borderRadius: 12,
-                                            fontSize: 12,
+                                            padding: '6px 20px',
+                                            borderRadius: 10,
+                                            fontSize: 11.5,
                                             fontWeight: 600,
-                                            background: 'var(--success)',
+                                            background: '#10b981',
                                             color: '#fff',
                                             border: 'none',
                                             cursor: 'pointer',
                                             display: 'inline-flex',
                                             alignItems: 'center',
-                                            gap: 6,
-                                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.25)'
+                                            gap: 5
                                         }}
                                     >
-                                        <Check size={14} /> Готово
+                                        <Check size={13} /> Готово
                                     </button>
                                 </div>
                             </div>
                         )}
                     </div>
 
-
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 14, fontSize: 13, color: 'var(--text-secondary)' }}>
-                        <a href={`tel:+${stripPhone(client.phone)}`} onClick={handleCall} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 400 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                        <a href={`tel:+${stripPhone(client.phone)}`} onClick={handleCall} style={{ color: 'var(--text)', textDecoration: 'none', fontWeight: 500 }}>
                             {formatPhone(client.phone)}
                         </a>
                         {client.email && (
-                            <a href={`mailto:${client.email}`} style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 11, fontWeight: 300 }}>
+                            <a href={`mailto:${client.email}`} style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 11.5 }}>
                                 {client.email}
                             </a>
                         )}
@@ -880,29 +1003,59 @@ export function DetailsPage() {
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', gap: 12, marginTop: 12, justifyContent: 'center' }}>
-                        <a href={`tel:+${stripPhone(client.phone)}`} className="card-clickable" onClick={handleCall} style={{
-                            width: 48, height: 48, borderRadius: 16, background: 'var(--bg-light)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)'
-                        }}><Phone size={20} /></a>
-                        <a href={`https://wa.me/${stripPhone(client.phone)}`} target="_blank" rel="noopener noreferrer" className="card-clickable" style={{
-                            width: 48, height: 48, borderRadius: 16, background: '#e7f9ee',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#25D366'
-                        }}>
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.634 1.437h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                    {/* Спокойные кнопки связи */}
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        <a
+                            href={`tel:+${stripPhone(client.phone)}`}
+                            className="card-clickable"
+                            onClick={handleCall}
+                            title="Позвонить"
+                            style={{
+                                width: 40, height: 40, borderRadius: 12,
+                                background: 'var(--bg-light)',
+                                border: '1px solid var(--border-light)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: 'var(--text)'
+                            }}
+                        >
+                            <Phone size={17} />
                         </a>
-                        <a href={`https://t.me/+${stripPhone(client.phone)}`} target="_blank" rel="noopener noreferrer" className="card-clickable" style={{
-                            width: 48, height: 48, borderRadius: 16, background: '#e1f3ff',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0088cc'
-                        }}>
-                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
+                        <a
+                            href={`https://wa.me/${stripPhone(client.phone)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="card-clickable"
+                            title="WhatsApp"
+                            style={{
+                                width: 40, height: 40, borderRadius: 12,
+                                background: 'rgba(34, 197, 94, 0.08)',
+                                border: '1px solid rgba(34, 197, 94, 0.25)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#16a34a'
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.634 1.437h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                        </a>
+                        <a
+                            href={`https://t.me/+${stripPhone(client.phone)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="card-clickable"
+                            title="Telegram"
+                            style={{
+                                width: 40, height: 40, borderRadius: 12,
+                                background: 'rgba(2, 132, 199, 0.08)',
+                                border: '1px solid rgba(2, 132, 199, 0.25)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#0284c7'
+                            }}
+                        >
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
                         </a>
                     </div>
 
-
-
                     {client.client_types?.includes('buyer') && (
-                        <div style={{ marginTop: 16 }}>
+                        <div style={{ marginTop: 12 }}>
                             <button
                                 onClick={() => navigate(`/requests/new?client=${id}`)}
                                 className="card-clickable"
@@ -910,18 +1063,19 @@ export function DetailsPage() {
                                     display: 'inline-flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    gap: 6,
-                                    padding: '8px 16px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#d97706',
-                                    fontSize: 13,
+                                    gap: 5,
+                                    padding: '5px 12px',
+                                    borderRadius: 8,
+                                    border: '1px solid rgba(217, 119, 6, 0.25)',
+                                    background: 'rgba(217, 119, 6, 0.06)',
+                                    color: '#b45309',
+                                    fontSize: 12,
                                     fontWeight: 500,
                                     cursor: 'pointer',
                                     transition: 'opacity 0.2s'
                                 }}
                             >
-                                <Plus size={15} /> Создать запрос
+                                <Plus size={13} /> Создать запрос
                             </button>
                         </div>
                     )}
@@ -930,10 +1084,10 @@ export function DetailsPage() {
                 {/* ── Компактная статистика ── */}
                 {!client.client_types?.includes('lawyer') && (
                     <div className="card" style={{ 
-                        padding: '16px 20px', 
-                        border: 'none', 
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)', 
-                        borderRadius: 24, 
+                        padding: '14px 16px', 
+                        border: '1px solid var(--border-light)', 
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)', 
+                        borderRadius: 18, 
                         background: 'var(--surface)', 
                         display: 'flex', 
                         alignItems: 'center', 
@@ -946,14 +1100,14 @@ export function DetailsPage() {
                             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
                             title={`${formatNumber(totalCommission)} ₽`}
                         >
-                            <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#10b981', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: '#059669', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
                                 {formatNumber(totalCommission)} ₽
                             </div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Комиссия</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Комиссия</div>
                         </div>
 
                         {/* Разделитель */}
-                        <div style={{ width: 1, height: 32, background: 'var(--border-light)', flexShrink: 0 }} />
+                        <div style={{ width: 1, height: 26, background: 'var(--border-light)', flexShrink: 0 }} />
 
                         {/* Объектов */}
                         <div 
@@ -961,12 +1115,12 @@ export function DetailsPage() {
                             onClick={() => navigate(`/properties?client=${id}`)} 
                             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
                         >
-                            <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: 'var(--primary)', lineHeight: 1 }}>{myProperties.length}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Объектов</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{myProperties.length}</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Объектов</div>
                         </div>
 
                         {/* Разделитель */}
-                        <div style={{ width: 1, height: 32, background: 'var(--border-light)', flexShrink: 0 }} />
+                        <div style={{ width: 1, height: 26, background: 'var(--border-light)', flexShrink: 0 }} />
 
                         {/* Запросов */}
                         <div 
@@ -974,12 +1128,12 @@ export function DetailsPage() {
                             onClick={() => navigate(`/requests?client=${id}`)} 
                             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
                         >
-                            <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#f59e0b', lineHeight: 1 }}>{myRequests.length}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Запросов</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{myRequests.length}</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Запросов</div>
                         </div>
 
                         {/* Разделитель */}
-                        <div style={{ width: 1, height: 32, background: 'var(--border-light)', flexShrink: 0 }} />
+                        <div style={{ width: 1, height: 26, background: 'var(--border-light)', flexShrink: 0 }} />
 
                         {/* Сделок */}
                         <div 
@@ -987,8 +1141,8 @@ export function DetailsPage() {
                             onClick={() => navigate('/tasks')} 
                             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
                         >
-                            <div className="font-oswald" style={{ fontSize: 18, fontWeight: 300, color: '#10b981', lineHeight: 1 }}>{myDeals.length}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 300, marginTop: 4 }}>Сделок</div>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{myDeals.length}</div>
+                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Сделок</div>
                         </div>
                     </div>
                 )}
@@ -996,39 +1150,39 @@ export function DetailsPage() {
                 {/* ── Реквизиты организации (для юридических лиц) ── */}
                 {isLegalEntity && (
                     <div className="card" style={{
-                        padding: '22px 24px',
-                        border: 'none',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                        borderRadius: 28,
+                        padding: '20px 22px',
+                        border: '1px solid var(--border-light)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                        borderRadius: 20,
                         background: 'var(--surface)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 16
+                        gap: 14
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{
-                                    width: 44, height: 44, borderRadius: 14,
+                                    width: 38, height: 38, borderRadius: 11,
                                     background: 'rgba(2, 132, 199, 0.1)',
                                     color: '#0284c7',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     flexShrink: 0
                                 }}>
-                                    <Building2 size={22} />
+                                    <Building2 size={19} />
                                 </div>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                                             Реквизиты организации
                                         </span>
                                         <span style={{
                                             fontSize: 11,
                                             fontWeight: 600,
-                                            padding: '3px 8px',
-                                            borderRadius: 8,
-                                            background: 'rgba(2, 132, 199, 0.1)',
+                                            padding: '2px 7px',
+                                            borderRadius: 6,
+                                            background: 'rgba(2, 132, 199, 0.08)',
                                             color: '#0284c7',
-                                            border: '1px solid rgba(2, 132, 199, 0.25)'
+                                            border: '1px solid rgba(2, 132, 199, 0.2)'
                                         }}>
                                             Юрлицо
                                         </span>
@@ -1044,18 +1198,18 @@ export function DetailsPage() {
                                 style={{
                                     display: 'inline-flex',
                                     alignItems: 'center',
-                                    gap: 6,
-                                    padding: '8px 14px',
-                                    borderRadius: 12,
+                                    gap: 5,
+                                    padding: '6px 12px',
+                                    borderRadius: 10,
                                     border: '1px solid var(--border-light)',
                                     background: 'var(--bg-light)',
                                     color: 'var(--text)',
-                                    fontSize: 12,
+                                    fontSize: 11.5,
                                     fontWeight: 500,
                                     cursor: 'pointer'
                                 }}
                             >
-                                <Pencil size={13} /> Редактировать
+                                <Pencil size={12} /> Редактировать
                             </button>
                         </div>
 
@@ -1064,9 +1218,9 @@ export function DetailsPage() {
                             display: 'grid',
                             gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
                             gap: 12,
-                            padding: 16,
+                            padding: 14,
                             background: 'var(--bg-light)',
-                            borderRadius: 18
+                            borderRadius: 14
                         }}>
                             <div>
                                 <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
@@ -1232,40 +1386,40 @@ export function DetailsPage() {
                 {/* ── Уполномоченное лицо / Представитель (для юрлиц) ── */}
                 {isLegalEntity && (
                     <div className="card" style={{
-                        padding: '22px 24px',
-                        border: 'none',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                        borderRadius: 28,
+                        padding: '20px 22px',
+                        border: '1px solid var(--border-light)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                        borderRadius: 20,
                         background: 'var(--surface)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 16
+                        gap: 14
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{
-                                    width: 44, height: 44, borderRadius: 14,
+                                    width: 38, height: 38, borderRadius: 11,
                                     background: (authPersonClient || client.authorized_person?.name) ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-light)',
                                     color: (authPersonClient || client.authorized_person?.name) ? '#0284c7' : 'var(--text-muted)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     flexShrink: 0
                                 }}>
-                                    <UserCheck size={22} />
+                                    <UserCheck size={19} />
                                 </div>
                                 <div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                                             Уполномоченное лицо
                                         </span>
                                         {(authPersonClient || client.authorized_person?.name) && (
                                             <span style={{
                                                 fontSize: 11,
                                                 fontWeight: 600,
-                                                padding: '3px 8px',
-                                                borderRadius: 8,
-                                                background: 'rgba(2, 132, 199, 0.1)',
+                                                padding: '2px 7px',
+                                                borderRadius: 6,
+                                                background: 'rgba(2, 132, 199, 0.08)',
                                                 color: '#0284c7',
-                                                border: '1px solid rgba(2, 132, 199, 0.25)'
+                                                border: '1px solid rgba(2, 132, 199, 0.2)'
                                             }}>
                                                 {authPersonClient ? 'Привязано физлицо' : 'Указано вручную'}
                                             </span>
@@ -1543,50 +1697,63 @@ export function DetailsPage() {
 
                 {/* ── Агентские договоры ── */}
                 <div className="card" style={{
-                    padding: '22px 24px',
-                    border: 'none',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                    borderRadius: 28,
+                    padding: '20px 22px',
+                    border: '1px solid var(--border-light)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                    borderRadius: 20,
                     background: 'var(--surface)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 16
+                    gap: 14
                 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                             <div style={{
-                                width: 44, height: 44, borderRadius: 14,
-                                background: activeContracts.length > 0 ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-light)',
+                                width: 38, height: 38, borderRadius: 11,
+                                background: activeContracts.length > 0 ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-light)',
                                 color: activeContracts.length > 0 ? '#10b981' : 'var(--text-muted)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 flexShrink: 0
                             }}>
-                                <FileText size={22} />
+                                <FileText size={19} />
                             </div>
                             <div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                                         Агентские договоры
                                     </span>
                                     {activeContracts.length > 0 && (
                                         <span style={{
                                             fontSize: 11,
                                             fontWeight: 600,
-                                            padding: '3px 8px',
-                                            borderRadius: 8,
+                                            padding: '2px 7px',
+                                            borderRadius: 6,
                                             background: '#ecfdf5',
                                             color: '#059669',
                                             border: '1px solid #10b98140'
                                         }}>
-                                            {activeContracts.length} {activeContracts.length === 1 ? 'активный' : (activeContracts.length < 5 ? 'активных' : 'активных')}
+                                            {activeContracts.length} в работе
                                         </span>
                                     )}
-                                    {activeContracts.length === 0 && clientContracts.length > 0 && (
+                                    {fulfilledContracts.length > 0 && (
+                                        <span style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            padding: '2px 7px',
+                                            borderRadius: 6,
+                                            background: 'rgba(16, 185, 129, 0.1)',
+                                            color: '#059669',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)'
+                                        }}>
+                                            {fulfilledContracts.length} исполнен
+                                        </span>
+                                    )}
+                                    {activeContracts.length === 0 && fulfilledContracts.length === 0 && clientContracts.length > 0 && (
                                         <span style={{
                                             fontSize: 11,
                                             fontWeight: 500,
-                                            padding: '3px 8px',
-                                            borderRadius: 8,
+                                            padding: '2px 7px',
+                                            borderRadius: 6,
                                             background: 'var(--bg-light)',
                                             color: 'var(--text-muted)',
                                             border: '1px solid var(--border-light)'
@@ -1596,7 +1763,7 @@ export function DetailsPage() {
                                     )}
                                 </div>
                                 {clientContracts.length > 0 && (
-                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                                         Договоры по объектам клиента
                                     </div>
                                 )}
@@ -1609,17 +1776,60 @@ export function DetailsPage() {
                                 className="card-clickable"
                                 onClick={openAddContractModal}
                                 style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '8px 14px', borderRadius: 12, border: 'none',
-                                    background: 'linear-gradient(135deg, #0052ff 0%, #0041cc 100%)',
-                                    color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                                    boxShadow: '0 2px 8px rgba(0,82,255,0.2)'
+                                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                                    padding: '6px 12px', borderRadius: 10, border: 'none',
+                                    background: 'var(--primary)',
+                                    color: '#fff', fontSize: 11.5, fontWeight: 500, cursor: 'pointer',
+                                    boxShadow: '0 1px 4px rgba(0,82,255,0.15)'
                                 }}
                             >
-                                <Plus size={14} /> Добавить
+                                <Plus size={13} /> Добавить
                             </button>
                         )}
                     </div>
+
+                    {/* Предупреждение о соблюдении сроков договоров и напоминание за 7 дней */}
+                    {clientAlerts.needsAttention && (
+                        <div style={{
+                            padding: '12px 16px',
+                            borderRadius: 16,
+                            background: clientAlerts.hasExpired 
+                                ? 'rgba(239, 68, 68, 0.08)' 
+                                : (clientAlerts.hasUrgentExpiring ? 'rgba(245, 158, 11, 0.14)' : 'rgba(245, 158, 11, 0.08)'),
+                            border: clientAlerts.hasExpired 
+                                ? '1px solid rgba(239, 68, 68, 0.35)' 
+                                : (clientAlerts.hasUrgentExpiring ? '1.5px solid rgba(245, 158, 11, 0.45)' : '1px solid rgba(245, 158, 11, 0.3)'),
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 12
+                        }}>
+                            <AlertTriangle 
+                                size={20} 
+                                color={clientAlerts.hasExpired ? '#ef4444' : '#d97706'} 
+                                style={{ flexShrink: 0, marginTop: 1 }} 
+                            />
+                            <div style={{ flex: 1, fontSize: 12, lineHeight: 1.5 }}>
+                                <div style={{ 
+                                    fontWeight: 700, 
+                                    color: clientAlerts.hasExpired ? '#dc2626' : (clientAlerts.hasUrgentExpiring ? '#b45309' : '#d97706'), 
+                                    marginBottom: 2 
+                                }}>
+                                    {clientAlerts.hasExpired 
+                                        ? 'Внимание: есть истёкшие агентские договоры!' 
+                                        : (clientAlerts.hasUrgentExpiring 
+                                            ? '🔔 Срочное напоминание: осталось менее 7 дней до окончания АД!' 
+                                            : 'Внимание: приближается окончание срока действия договора!')}
+                                </div>
+                                <div style={{ color: 'var(--text-secondary)' }}>
+                                    {clientAlerts.hasExpired
+                                        ? 'Согласно регламенту, продление договора допускается строго 1 раз на тот же срок. Если продление уже использовано, необходимо оформить перезаключение.'
+                                        : (clientAlerts.hasUrgentExpiring 
+                                            ? 'Срок действия договора истекает в течение 7 дней! Необходимо срочно переподписать новый договор или продлить действующий (если продление еще не использовано).'
+                                            : 'Срок договора истекает в течение 14 дней. Подготовьте продление или переподписание договора.')}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {clientContracts.length === 0 ? (
                         <div style={{
@@ -1654,7 +1864,8 @@ export function DetailsPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                             {clientContracts.map(c => {
                                 const typeCfg = getContractTypeConfig(c.type);
-                                const isTerminated = c.status === 'terminated';
+                                const info = getContractStatusInfo(c, new Date(), { deals: state.deals, client });
+                                const isTerminated = c.status === 'terminated' || c.status === 'closed';
                                 const contractProp = state.properties.find(p => p.id === c.property_id);
                                 return (
                                     <div
@@ -1666,7 +1877,13 @@ export function DetailsPage() {
                                             display: 'flex',
                                             flexDirection: 'column',
                                             gap: 10,
-                                            border: isTerminated ? '1px dashed var(--border-light)' : '1px solid var(--border-light)',
+                                            border: info?.isFulfilled
+                                                ? '1.5px solid rgba(16, 185, 129, 0.35)'
+                                                : (info?.isOverdue
+                                                    ? '1.5px solid rgba(239, 68, 68, 0.4)'
+                                                    : info?.isUrgentReSign
+                                                        ? '1.5px solid rgba(245, 158, 11, 0.45)'
+                                                        : (isTerminated ? '1px dashed var(--border-light)' : '1px solid var(--border-light)')),
                                             opacity: isTerminated ? 0.75 : 1
                                         }}
                                     >
@@ -1683,29 +1900,86 @@ export function DetailsPage() {
                                                 }}>
                                                     {c.type || 'АД Продажа'}
                                                 </span>
-                                                <span style={{
-                                                    fontSize: 11,
-                                                    fontWeight: 500,
-                                                    padding: '2px 8px',
-                                                    borderRadius: 6,
-                                                    background: isTerminated ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                                                    color: isTerminated ? '#ef4444' : '#059669'
-                                                }}>
-                                                    {isTerminated ? 'Расторгнут' : 'Действует'}
-                                                </span>
-                                                <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                                    от {c.contract_date ? formatDate(c.contract_date) : '—'}
-                                                </span>
+                                                {/* Expiry / Fulfilled Badge */}
+                                                {info?.badge && (
+                                                    <span style={{
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        padding: '2px 8px',
+                                                        borderRadius: 6,
+                                                        background: info.badge.bg,
+                                                        color: info.badge.color,
+                                                        border: `1px solid ${info.badge.border}`,
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }}>
+                                                        {info.isFulfilled && <CheckCircle2 size={12} />}
+                                                        {info.isUrgentReSign && <Clock size={12} />}
+                                                        {info.badge.label}
+                                                    </span>
+                                                )}
+                                                {/* Prolongation Badge (only if NOT fulfilled and NOT terminated) */}
+                                                {!isTerminated && !info?.isFulfilled && (
+                                                    <span style={{
+                                                        fontSize: 10,
+                                                        fontWeight: 600,
+                                                        padding: '2px 7px',
+                                                        borderRadius: 6,
+                                                        background: info?.isExtended ? 'rgba(124, 58, 237, 0.1)' : 'var(--surface)',
+                                                        color: info?.isExtended ? '#7c3aed' : 'var(--text-muted)',
+                                                        border: info?.isExtended ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid var(--border-light)'
+                                                    }}>
+                                                        {info?.isExtended ? 'Продлен 1 раз (макс.)' : 'Доступно 1 продление'}
+                                                    </span>
+                                                )}
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                {/* Button: Продлить (+X мес) if not extended yet & NOT fulfilled */}
+                                                {info?.canExtend && !info?.isFulfilled && (
+                                                    <button
+                                                        type="button"
+                                                        className="card-clickable"
+                                                        onClick={() => handleExtendContract(c.id)}
+                                                        style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                            padding: '6px 11px', borderRadius: 10,
+                                                            border: '1px solid #10b981', background: '#ecfdf5',
+                                                            color: '#059669', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                                        }}
+                                                        title={`Продлить договор на тот же срок (+${info.durationMonths} мес.). Допускается строго 1 раз.`}
+                                                    >
+                                                        <RotateCw size={12} /> Продлить (+{info.durationMonths} мес.)
+                                                    </button>
+                                                )}
+
+                                                {/* Button: Перезаключить / Переподписать if expired or 7-day reminder */}
+                                                {!info?.isFulfilled && (info?.needsRenewal || info?.isOverdue || info?.isUrgentReSign || (info?.isExpiring && info?.isExtended)) && (
+                                                    <button
+                                                        type="button"
+                                                        className="card-clickable"
+                                                        onClick={() => handleRenewContract(c)}
+                                                        style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                                                            padding: '6px 12px', borderRadius: 10, border: 'none',
+                                                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                                            color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                                            boxShadow: '0 2px 6px rgba(245,158,11,0.25)'
+                                                        }}
+                                                        title="Переподписать новый агентский договор с клиентом"
+                                                    >
+                                                        <Plus size={13} /> {info?.isUrgentReSign ? 'Переподписать АД' : 'Перезаключить'}
+                                                    </button>
+                                                )}
+
                                                 <button
                                                     type="button"
                                                     className="card-clickable"
                                                     onClick={() => handleCreateDocumentForContract(c)}
                                                     style={{
                                                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                        padding: '6px 12px', borderRadius: 10, border: 'none',
+                                                        padding: '6px 11px', borderRadius: 10, border: 'none',
                                                         background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                                         color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
                                                         boxShadow: '0 2px 6px rgba(16,185,129,0.2)'
@@ -1744,6 +2018,53 @@ export function DetailsPage() {
                                                 </button>
                                             </div>
                                         </div>
+
+                                        {/* Contract Dates Row */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                <Calendar size={13} style={{ color: 'var(--text-muted)' }} />
+                                                <span>Заключен: <strong style={{ color: 'var(--text)' }}>{formatContractDate(info?.startDate)}</strong></span>
+                                            </div>
+                                            {info?.isFulfilled ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#059669', fontWeight: 600 }}>
+                                                    <CheckCircle2 size={13} />
+                                                    <span>Исполнен по закрытой сделке (пролонгация не требуется)</span>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                        <Clock size={13} style={{ color: 'var(--text-muted)' }} />
+                                                        <span>Действует до: <strong style={{ color: info?.isOverdue ? '#dc2626' : (info?.isExpiring ? '#d97706' : 'var(--text)') }}>{formatContractDate(info?.endDate)}</strong></span>
+                                                    </div>
+                                                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                        (срок: {info?.durationMonths} мес.{info?.isExtended ? ` + ${info.durationMonths} мес. продл.` : ''})
+                                                    </span>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Warning strip if expired or expiring (with 7-day reminder) */}
+                                        {info?.warning && !info?.isFulfilled && (
+                                            <div style={{
+                                                padding: '8px 12px',
+                                                borderRadius: 10,
+                                                background: info.isOverdue 
+                                                    ? 'rgba(239, 68, 68, 0.08)' 
+                                                    : (info.isUrgentReSign ? 'rgba(245, 158, 11, 0.14)' : 'rgba(245, 158, 11, 0.08)'),
+                                                border: info.isOverdue 
+                                                    ? '1px solid rgba(239, 68, 68, 0.25)' 
+                                                    : (info.isUrgentReSign ? '1.5px solid rgba(245, 158, 11, 0.45)' : '1px solid rgba(245, 158, 11, 0.25)'),
+                                                color: info.isOverdue ? '#dc2626' : '#b45309',
+                                                fontSize: 11,
+                                                lineHeight: 1.45,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 8
+                                            }}>
+                                                <Clock size={14} style={{ flexShrink: 0, color: info.isOverdue ? '#dc2626' : '#d97706' }} />
+                                                <span style={{ flex: 1 }}>{info.warning}</span>
+                                            </div>
+                                        )}
 
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
                                             <Home size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
@@ -1791,40 +2112,48 @@ export function DetailsPage() {
                     )}
                 </div>
                 {!client.client_types?.includes('lawyer') && (
-                    <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
-                            <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>Последняя активность</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div className="card" style={{
+                        padding: '20px 22px',
+                        border: '1px solid var(--border-light)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                        borderRadius: 20,
+                        background: 'var(--surface)'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Последняя активность</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                 <button
                                     className="card-clickable"
                                     onClick={() => openQuickModal('meeting')}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 5,
-                                        padding: '6px 12px', borderRadius: 12, border: 'none',
-                                        background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                                        color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                                        boxShadow: '0 2px 8px rgba(139, 92, 246, 0.25)'
+                                        padding: '5px 12px', borderRadius: 10,
+                                        background: 'rgba(124, 58, 237, 0.08)',
+                                        color: '#7c3aed',
+                                        border: '1px solid rgba(124, 58, 237, 0.25)',
+                                        fontSize: 11.5, fontWeight: 500, cursor: 'pointer'
                                     }}
                                     title="Быстро добавить встречу"
                                 >
-                                    <Calendar size={14} /> + Встреча
+                                    <Calendar size={13} /> + Встреча
                                 </button>
                                 <button
                                     className="card-clickable"
                                     onClick={() => openQuickModal('call')}
                                     style={{
                                         display: 'flex', alignItems: 'center', gap: 5,
-                                        padding: '6px 12px', borderRadius: 12, border: 'none',
-                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                        color: '#fff', fontSize: 12, fontWeight: 500, cursor: 'pointer',
-                                        boxShadow: '0 2px 8px rgba(59, 130, 246, 0.25)'
+                                        padding: '5px 12px', borderRadius: 10,
+                                        background: 'rgba(0, 82, 255, 0.08)',
+                                        color: 'var(--primary)',
+                                        border: '1px solid rgba(0, 82, 255, 0.25)',
+                                        fontSize: 11.5, fontWeight: 500, cursor: 'pointer'
                                     }}
                                     title="Быстро добавить звонок"
                                 >
-                                    <Phone size={14} /> + Звонок
+                                    <Phone size={13} /> + Звонок
                                 </button>
-                                <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)} title="Добавить другое событие" style={{ width: 32, height: 32, borderRadius: 10 }}>
-                                    <Plus size={16} />
+                                <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)} title="Добавить другое событие" style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid var(--border-light)' }}>
+                                    <Plus size={15} />
                                 </button>
                             </div>
                         </div>
@@ -2073,25 +2402,33 @@ export function DetailsPage() {
                 )}
 
                 {/* ── Сделки клиента ───────────────────────────────── */}
-                <div className="card" style={{ padding: '28px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 32, background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 18, letterSpacing: '0.02em', color: 'var(--text)' }}>
+                <div className="card" style={{
+                    padding: '20px 22px',
+                    border: '1px solid var(--border-light)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                    borderRadius: 20,
+                    background: 'var(--surface)'
+                }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                             Сделки {client.client_types?.includes('lawyer') && `(${myDeals.length})`}
                         </div>
                         {!client.client_types?.includes('lawyer') && (
                             <button className="card-clickable" onClick={handleCreateDeal} style={{
-                                display: 'flex', alignItems: 'center', gap: 6,
-                                padding: '8px 14px', borderRadius: 12, border: 'none',
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                color: '#fff', fontSize: 12, fontWeight: 300
+                                display: 'flex', alignItems: 'center', gap: 5,
+                                padding: '6px 12px', borderRadius: 10,
+                                background: 'rgba(16, 185, 129, 0.08)',
+                                color: '#059669',
+                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                fontSize: 11.5, fontWeight: 500, cursor: 'pointer'
                             }}>
-                                <Briefcase size={14} /> Создать сделку
+                                <Briefcase size={13} /> Создать сделку
                             </button>
                         )}
                     </div>
 
                     {myDeals.length === 0 ? (
-                        <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, opacity: 0.6 }}>
+                        <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13, opacity: 0.7 }}>
                             Сделок пока нет
                         </div>
                     ) : (
@@ -2126,14 +2463,14 @@ export function DetailsPage() {
 
                                 return (
                                     <div key={d.id} className="card-clickable" onClick={() => navigate('/tasks')}
-                                        style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        style={{ padding: '12px 14px', background: 'var(--bg-light)', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
-                                                <Briefcase size={16} />
+                                            <div style={{ width: 34, height: 34, borderRadius: 10, background: `${color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color }}>
+                                                <Briefcase size={15} />
                                             </div>
                                             <div>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                                    <div style={{ fontSize: 10, fontWeight: 300, color }}>
+                                                    <div style={{ fontSize: 10, fontWeight: 500, color }}>
                                                         {dealStatusLabel[d.status] || 'Сделка'} · {roleLabel}
                                                     </div>
                                                     {dealHasContract ? (
@@ -2146,13 +2483,13 @@ export function DetailsPage() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div style={{ fontSize: 14, fontWeight: 300 }}>{d.title}</div>
+                                                <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>{d.title}</div>
                                                 {d.price > 0 && (
-                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>{formatNumber(d.price)} ₽</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatNumber(d.price)} ₽</div>
                                                 )}
                                             </div>
                                         </div>
-                                        <ChevronRight size={16} color="var(--text-muted)" />
+                                        <ChevronRight size={15} color="var(--text-muted)" />
                                     </div>
                                 );
                             })}
@@ -2162,31 +2499,31 @@ export function DetailsPage() {
 
                 {/* ── Блок проверки по госреестрам (ФССП, МВД, Федресурс, ФНС) ── */}
                 <div className="card" style={{
-                    padding: '20px 24px',
-                    border: 'none',
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                    borderRadius: 28,
+                    padding: '18px 22px',
+                    border: '1px solid var(--border-light)',
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                    borderRadius: 20,
                     background: 'var(--surface)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     flexWrap: 'wrap',
-                    gap: 16
+                    gap: 14
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <div style={{
-                            width: 44, height: 44, borderRadius: 14,
+                            width: 38, height: 38, borderRadius: 11,
                             background: 'rgba(16, 185, 129, 0.1)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             color: '#10b981', flexShrink: 0
                         }}>
-                            <ShieldCheck size={22} />
+                            <ShieldCheck size={20} />
                         </div>
                         <div>
-                            <div className="font-oswald" style={{ fontSize: 17, fontWeight: 500, color: 'var(--text)' }}>
+                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
                                 Проверка благонадёжности
                             </div>
-                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
                                 ФССП (долги), МВД (паспорт), Федресурс (банкротство), ФНС и нотариат
                             </div>
                         </div>
@@ -2197,22 +2534,22 @@ export function DetailsPage() {
                         onClick={handleStartVerification}
                         className="card-clickable"
                         style={{
-                            padding: '10px 18px',
-                            borderRadius: 12,
+                            padding: '8px 16px',
+                            borderRadius: 10,
                             border: 'none',
                             background: '#10b981',
                             color: '#ffffff',
-                            fontSize: 13,
+                            fontSize: 12.5,
                             fontWeight: 600,
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: 8,
+                            gap: 6,
                             cursor: 'pointer',
-                            boxShadow: '0 2px 10px rgba(16,185,129,0.25)',
+                            boxShadow: '0 1px 4px rgba(16,185,129,0.2)',
                             width: 'auto'
                         }}
                     >
-                        <ShieldCheck size={16} />
+                        <ShieldCheck size={15} />
                         <span>Проверить в ФССП, МВД</span>
                     </button>
                 </div>
@@ -2222,25 +2559,25 @@ export function DetailsPage() {
                     onClick={handleDeleteClient}
                     className="card-clickable client-delete-btn"
                     style={{
-                        padding: '12px 24px',
-                        borderRadius: 16,
+                        padding: '8px 18px',
+                        borderRadius: 10,
                         border: '1px solid rgba(239, 68, 68, 0.2)',
-                        background: 'rgba(239, 68, 68, 0.05)',
+                        background: 'transparent',
                         color: '#ef4444',
                         fontWeight: 500,
-                        fontSize: 13,
+                        fontSize: 12,
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 8,
+                        gap: 6,
                         cursor: 'pointer',
-                        marginTop: 10,
-                        maxWidth: 240,
+                        marginTop: 6,
+                        maxWidth: 200,
                         alignSelf: 'center',
                         width: 'auto'
                     }}
                 >
-                    <Trash2 size={16} />
+                    <Trash2 size={14} />
                     <span>Удалить клиента</span>
                 </button>
             </div>
@@ -2428,6 +2765,54 @@ export function DetailsPage() {
 
                                 <div>
                                     <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Срок действия *
+                                    </label>
+                                    <select
+                                        className="form-select"
+                                        value={contractForm.duration_months}
+                                        onChange={e => setContractForm({ ...contractForm, duration_months: Number(e.target.value) })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    >
+                                        {CONTRACT_DURATION_OPTIONS.map(opt => (
+                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Блок продления договора (правило: 1 раз на тот же срок) */}
+                            <div style={{
+                                padding: '12px 14px',
+                                borderRadius: 14,
+                                background: contractForm.is_extended ? 'rgba(124, 58, 237, 0.06)' : 'var(--bg-light)',
+                                border: contractForm.is_extended ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid var(--border-light)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 6
+                            }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={contractForm.is_extended}
+                                        onChange={e => setContractForm({ ...contractForm, is_extended: e.target.checked })}
+                                        style={{ width: 18, height: 18, accentColor: '#7c3aed', cursor: 'pointer' }}
+                                    />
+                                    <span>Продлен на тот же срок (+{contractForm.duration_months} мес.)</span>
+                                </label>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 28, lineHeight: 1.4 }}>
+                                    Регламент: продление возможно <strong>строго 1 раз</strong> на тот же срок. Если продление уже использовано, требуется перезаключение.
+                                </div>
+                                {contractForm.date && (
+                                    <div style={{ fontSize: 11, fontWeight: 600, color: contractForm.is_extended ? '#7c3aed' : '#059669', paddingLeft: 28, marginTop: 2 }}>
+                                        Окончание договора: {formatContractDate(calculateContractEndDate(contractForm.date, contractForm.duration_months, contractForm.is_extended))}
+                                        {contractForm.is_extended ? ' (с учётом продления)' : ''}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
                                         Статус договора
                                     </label>
                                     <select
@@ -2436,8 +2821,10 @@ export function DetailsPage() {
                                         onChange={e => setContractForm({ ...contractForm, status: e.target.value })}
                                         style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
                                     >
-                                        <option value="active">Действует</option>
-                                        <option value="terminated">Расторгнут / Завершен</option>
+                                        <option value="active">Действующий</option>
+                                        <option value="fulfilled">Исполнен</option>
+                                        <option value="closed">Закрыт</option>
+                                        {contractForm.status === 'terminated' && <option value="terminated">Закрыт (архив)</option>}
                                     </select>
                                 </div>
                             </div>
