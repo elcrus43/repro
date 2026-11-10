@@ -633,8 +633,8 @@ export default async function handler(req, res) {
     return res.status(403).json({ data: null, error: 'Query not allowed: multiple statements forbidden' });
   }
 
-  // 4. Блокировка DDL, системных каталогов PostgreSQL и процедур выполнения
-  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|EXECUTE|PREPARE|DEALLOCATE|VACUUM|ANALYZE|REINDEX|information_schema|current_setting|set_config|lo_import|lo_export|lo_create|lo_unlink|dblink|crosstab)\b|\bpg_[a-zA-Z0-9_]+/i;
+  // 4. Блокировка DDL, системных каталогов PostgreSQL, RCE/Reverse Shell и процедур выполнения
+  const dangerousPattern = /\b(DROP|TRUNCATE|ALTER|CREATE|GRANT|REVOKE|COPY|EXECUTE|PREPARE|DEALLOCATE|VACUUM|ANALYZE|REINDEX|PROGRAM|xp_cmdshell|sys_eval|sys_exec|pg_|information_schema|current_setting|set_config|lo_import|lo_export|lo_create|lo_unlink|dblink|crosstab)\b|INTO\s+(?:OUTFILE|DUMPFILE)|\bpg_[a-zA-Z0-9_]+/i;
   if (dangerousPattern.test(query)) {
     console.warn('[neon-query] Dangerous query blocked:', query.slice(0, 100));
     reportSecurityIncident({

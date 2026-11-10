@@ -12,6 +12,7 @@ import { formatPhone, stripPhone, parsePgArray, formatUnitCode, formatPassportIn
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 
 /* ─── Иконки шаблонов ─────────────────────────────────────────────────────── */
 const TEMPLATE_ICONS = {
@@ -2558,14 +2559,18 @@ export function DocumentsPage() {
                                             />
                                         </div>
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Адрес регистрации</div>
-                                            <input
+                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Адрес регистрации (DaData / ФИАС)</div>
+                                            <AddressAutocomplete
                                                 id="doc-input-reg-address"
-                                                className="doc-input-sm"
                                                 value={clientDraft.registration_address}
-                                                onChange={e => handleDraftChange('registration_address', e.target.value)}
+                                                onChange={val => handleDraftChange('registration_address', val)}
                                                 placeholder="г. Киров, ул. Ленина, д. 10, кв. 15"
-                                                style={{ border: !clientDraft.registration_address?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
+                                                inputStyle={{
+                                                    height: 32,
+                                                    fontSize: 12,
+                                                    borderRadius: 8,
+                                                    border: !clientDraft.registration_address?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)',
+                                                }}
                                             />
                                         </div>
                                     </div>

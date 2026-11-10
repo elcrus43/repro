@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Camera, Upload, X, Loader2, CheckCircle, AlertTriangle, Eye, RefreshCw, ChevronRight, Info, Sparkles } from 'lucide-react';
 import { useToastContext } from './Toast';
 import { getToken } from '../lib/neon';
+import { AddressAutocomplete } from './AddressAutocomplete';
 
 /**
  * Конвертирует File в base64-строку (без data URI-префикса)
@@ -400,17 +401,34 @@ export function PassportScanModal({ isOpen, onClose, onExtracted }) {
                     borderRadius: 12, border: `1px solid ${extracted[field.key] ? '#a7f3d0' : '#e2e8f0'}`
                   }}>
                     <div style={{ fontSize: 10, color: '#64748b', fontWeight: 500, marginBottom: 2 }}>{field.label}</div>
-                    <input
-                      type={field.type}
-                      value={extracted[field.key] || ''}
-                      placeholder={`${field.placeholder} (не распознано)`}
-                      onChange={e => setExtracted(prev => ({ ...prev, [field.key]: e.target.value }))}
-                      style={{
-                        fontSize: 13, fontWeight: 600,
-                        color: extracted[field.key] ? '#0f172a' : '#94a3b8',
-                        border: 'none', background: 'none', width: '100%', outline: 'none', padding: 0
-                      }}
-                    />
+                    {field.key === 'reg_address' ? (
+                      <AddressAutocomplete
+                        value={extracted[field.key] || ''}
+                        placeholder={`${field.placeholder} (не распознано)`}
+                        onChange={val => setExtracted(prev => ({ ...prev, [field.key]: val }))}
+                        inputStyle={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: extracted[field.key] ? '#0f172a' : '#94a3b8',
+                          border: 'none',
+                          background: 'none',
+                          paddingLeft: 30,
+                          height: 'auto',
+                        }}
+                      />
+                    ) : (
+                      <input
+                        type={field.type}
+                        value={extracted[field.key] || ''}
+                        placeholder={`${field.placeholder} (не распознано)`}
+                        onChange={e => setExtracted(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        style={{
+                          fontSize: 13, fontWeight: 600,
+                          color: extracted[field.key] ? '#0f172a' : '#94a3b8',
+                          border: 'none', background: 'none', width: '100%', outline: 'none', padding: 0
+                        }}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

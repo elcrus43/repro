@@ -52,9 +52,17 @@ app.include_router(public_router) # Public routes without /api/v1 prefix for sho
 
 @app.api_route("/supabase-proxy/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
 async def supabase_proxy(path: str, request: Request):
-    target_url = f"https://hxivaohzugahjyuaahxc.supabase.co/{path}"
+    # Защита от SSRF и обратных сетевых вызовов: проверяем path и query
+    if any(blocked in path for blocked in ["@", "://", "..", "\0", "\r", "\n"]):
+        return Response(content='{"error": "Invalid proxy path"}', status_code=400, media_type="application/json")
+    
+    clean_path = path.lstrip("/")
+    target_url = f"https://hxivaohzugahjyuaahxc.supabase.co/{clean_path}"
     if request.url.query:
-        target_url += f"?{request.url.query}"
+        query_str = str(request.url.query)
+        if any(blocked in query_str for blocked in ["@", "://", "\0", "\r", "\n"]):
+            return Response(content='{"error": "Invalid proxy query"}', status_code=400, media_type="application/json")
+        target_url += f"?{query_str}"
     
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -63,7 +71,7 @@ async def supabase_proxy(path: str, request: Request):
     
     body = await request.body()
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=30.0, follow_redirects=False) as client:
         res = await client.request(
             method=request.method,
             url=target_url,

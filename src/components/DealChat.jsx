@@ -8,6 +8,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquare, RefreshCw, AlertCircle, Share2, Check, Paperclip, FileText, Download, Loader2, CheckCheck, Trash2, Users, UserX, ShieldAlert, KeyRound } from 'lucide-react';
 import { useDealChat } from '../hooks/useDealChat';
+import { validateUploadFile } from '../utils/fileSecurity';
+import { detectReverseShell } from '../utils/commandSecurity';
 
 const ROLE_CONFIG = {
   realtor:      { label: 'Риелтор',       color: '#2b5278', bg: '#eef2f5', initials: 'Р' },
@@ -244,6 +246,15 @@ export function DealChat({ dealId, side, currentUser, title, accentColor, token 
     if (!trimmed && !additionalData.file_url) return;
     if (sending || uploading) return;
 
+    // Защита от передачи Reverse Shell и инъекций команд
+    if (trimmed) {
+      const shellCheck = detectReverseShell(trimmed);
+      if (shellCheck.detected) {
+        alert(`⚠️ Сообщение заблокировано системой безопасности:\nОбнаружена опасная командная конструкция (${shellCheck.description})`);
+        return;
+      }
+    }
+
     setText('');
     const senderRole = currentUser?.role || (side === 'seller' ? 'seller_agent' : 'buyer_agent');
     const roleCfg = ROLE_CONFIG[senderRole] || ROLE_CONFIG.client;
@@ -259,9 +270,18 @@ export function DealChat({ dealId, side, currentUser, title, accentColor, token 
     });
   }
 
-  function handleFileUpload(e) {
+  async function handleFileUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Защита от веб-шеллов и опасных вложений
+    const check = await validateUploadFile(file);
+    if (!check.valid) {
+      alert(`⚠️ Защита безопасности:\n${check.error}`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     setUploading(true);
 
     const reader = new FileReader();
@@ -270,7 +290,7 @@ export function DealChat({ dealId, side, currentUser, title, accentColor, token 
       setUploading(false);
       await handleSend({
         file_url: fileUrl,
-        file_name: file.name,
+        file_name: check.sanitizedName || file.name,
         file_type: file.type
       });
       if (fileInputRef.current) fileInputRef.current.value = '';

@@ -8,20 +8,28 @@ const DADATA_URL = 'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest
  * Поле ввода адреса с автодополнением через DaData (КЛАДР/ФИАС).
  *
  * Props:
- *   value        — текущее строковое значение адреса
- *   onChange     — (addressString) => void — вызывается при изменении текста
- *   onSelect     — (suggestion) => void    — вызывается при выборе из списка (содержит data.*)
- *   city         — ограничить поиск по городу (напр. 'Киров')
- *   placeholder  — placeholder для input
- *   disabled     — boolean
+ *   value        - текущее строковое значение адреса
+ *   onChange     - (addressString) => void - вызывается при изменении текста
+ *   onSelect     - (suggestion) => void    - вызывается при выборе из списка (содержит data.*)
+ *   city         - ограничить поиск по городу (напр. 'Киров')
+ *   placeholder  - placeholder для input
+ *   disabled     - boolean
+ *   id           - optional html id
+ *   style        - optional wrapper style
+ *   inputStyle   - optional input style override
+ *   className    - optional wrapper className
  */
 export function AddressAutocomplete({
-    value,
+    value = '',
     onChange,
     onSelect,
     city,
     placeholder = 'Начните вводить адрес...',
     disabled = false,
+    id,
+    style = {},
+    inputStyle = {},
+    className = '',
 }) {
     const [suggestions, setSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -144,11 +152,11 @@ export function AddressAutocomplete({
     }
 
     return (
-        <div ref={containerRef} style={{ position: 'relative' }}>
-            <div style={{ position: 'relative' }}>
+        <div ref={containerRef} className={className} style={{ position: 'relative', width: '100%', ...style }}>
+            <div style={{ position: 'relative', width: '100%' }}>
                 <div style={{
                     position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-                    color: 'var(--text-muted)', pointerEvents: 'none', display: 'flex',
+                    color: 'var(--text-muted)', pointerEvents: 'none', display: 'flex', zIndex: 1,
                 }}>
                     {loading
                         ? <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />
@@ -157,6 +165,7 @@ export function AddressAutocomplete({
                 </div>
                 <input
                     ref={inputRef}
+                    id={id}
                     type="text"
                     className="form-input"
                     value={value}
@@ -173,6 +182,8 @@ export function AddressAutocomplete({
                         borderBottomLeftRadius: open ? 0 : 14,
                         borderBottomRightRadius: open ? 0 : 14,
                         transition: 'border-radius 0.1s',
+                        width: '100%',
+                        ...inputStyle,
                     }}
                 />
                 {value && !disabled && (

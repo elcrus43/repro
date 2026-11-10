@@ -6,6 +6,7 @@ import { formatPhone, stripPhone, formatPassportDisplay, parsePassportInput, for
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
+import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { CLIENT_SOURCES, CLIENT_TYPES } from '../../data/constants';
 import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake, Calendar, Building2, Search, UserCheck, Link2, Unlink2 } from 'lucide-react';
 
@@ -1367,16 +1368,23 @@ export function FormPage() {
                                     />
                                 </div>
 
-                                {/* Адрес регистрации — полная строка */}
+                                {/* Адрес регистрации — подсказки DaData / КЛАДР / ФИАС */}
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Адрес регистрации</label>
-                                    <textarea
-                                        className="form-textarea"
-                                        style={{ minHeight: 64, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: '10px 14px', resize: 'none' }}
-                                        value={form.passport_details?.registration_address || ''}
-                                        onChange={e => setPassport('registration_address', e.target.value)}
-                                        placeholder="г. Москва, ул..."
-                                        rows={2}
+                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Адрес регистрации (DaData / ФИАС)</label>
+                                    <AddressAutocomplete
+                                        value={form.passport_details?.registration_address || form.reg_address || ''}
+                                        onChange={val => {
+                                            setPassport('registration_address', val);
+                                            setF('reg_address', val);
+                                        }}
+                                        placeholder="г. Москва, ул. Ленина, д. 10..."
+                                        inputStyle={{
+                                            height: 44,
+                                            borderRadius: 12,
+                                            background: 'var(--bg-light)',
+                                            border: 'none',
+                                            fontSize: 13,
+                                        }}
                                     />
                                 </div>
 

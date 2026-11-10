@@ -3,6 +3,7 @@ import { X, Building2, MapPin, DollarSign, Calendar, Layers, Link as LinkIcon, I
 import { KIROV_DEVELOPERS, HOUSING_CLASSES, FINISHING_OPTIONS, saveDevelopment } from '../../data/developmentsData';
 import { KIROV_DISTRICTS } from '../../data/location';
 import { useToastContext } from '../../components/Toast';
+import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 
 export function DevelopmentFormModal({
   initialData = null,
@@ -194,13 +195,21 @@ export function DevelopmentFormModal({
             </div>
 
             <div className="form-field">
-              <label>Адрес в Кирове *</label>
-              <input
-                type="text"
+              <label>Адрес в Кирове (DaData / ФИАС) *</label>
+              <AddressAutocomplete
+                city="Киров"
                 placeholder="ул. Ленина, 150"
                 value={formData.address}
-                onChange={(e) => handleChange('address', e.target.value)}
-                required
+                onChange={(val) => handleChange('address', val)}
+                onSelect={(s) => {
+                  if (s?.data?.geo_lat && s?.data?.geo_lon) {
+                    handleChange('lat', parseFloat(s.data.geo_lat));
+                    handleChange('lng', parseFloat(s.data.geo_lon));
+                  }
+                  if (s?.data?.city_district && !formData.district) {
+                    handleChange('district', s.data.city_district);
+                  }
+                }}
               />
             </div>
           </div>

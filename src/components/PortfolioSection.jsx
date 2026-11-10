@@ -11,6 +11,7 @@ import { estimateOffline } from '../utils/estimation';
 import { API_BASE } from '../config';
 import { nanoid } from '../utils/nanoid';
 import { RENOVATION_LABELS, BUILDING_TYPES } from '../data/constants';
+import { validateUploadFile } from '../utils/fileSecurity';
 
 function escapeHtml(str) {
     if (str == null) return '';
@@ -248,8 +249,14 @@ export function PortfolioSection({ property, currentUser, onClose, onUpdate }) {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
         for (const file of files) {
+            const check = await validateUploadFile(file);
+            if (!check.valid) {
+                alert(`⚠️ Ошибка безопасности файла "${file.name}":\n${check.error}`);
+                continue;
+            }
             const tempId = nanoid();
-            const newFile = { id: tempId, name: file.name, url: URL.createObjectURL(file), type: file.type, loading: true };
+            const safeName = check.sanitizedName || file.name;
+            const newFile = { id: tempId, name: safeName, url: URL.createObjectURL(file), type: file.type, loading: true };
             let setFiles, field;
             if (section === 'mortgage') { setFiles = setMortgageFiles; field = 'portfolio_mortgage_files'; }
             else if (section === 'new_builds') { setFiles = setNewBuildsFiles; field = 'portfolio_new_builds_files'; }
