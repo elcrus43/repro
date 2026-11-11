@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate, formatPriceInput, parsePriceInput } from '../../utils/format';
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate, formatPriceInput, parsePriceInput, parsePgArray } from '../../utils/format';
 import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES, CLIENT_TYPES, CLIENT_TYPE_LABELS } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
@@ -32,7 +32,8 @@ import {
     Landmark,
     Clock,
     RotateCw,
-    CheckCircle2
+    CheckCircle2,
+    Users
 } from 'lucide-react';
 import {
     DEFAULT_CONTRACT_DURATION_MONTHS,
@@ -81,7 +82,8 @@ export function DetailsPage() {
         price: '',
         commission: '',
         status: 'active',
-        comment: ''
+        comment: '',
+        co_client_ids: []
     });
 
     const clientContracts = useMemo(() => {
@@ -488,6 +490,8 @@ export function DetailsPage() {
         const endStr = initialEnd ? initialEnd.toISOString().split('T')[0] : '';
         const firstProp = myProperties[0] || null;
 
+        const firstOwners = firstProp ? parsePgArray(firstProp.client_ids) : [];
+        const initCoIds = firstOwners.length > 1 ? Array.from(new Set([id, ...firstOwners])) : [id];
         setContractForm({
             id: null,
             contract_number: '',
@@ -500,7 +504,8 @@ export function DetailsPage() {
             price: firstProp?.price ? formatPriceInput(firstProp.price) : '',
             commission: '',
             status: 'active',
-            comment: ''
+            comment: '',
+            co_client_ids: initCoIds
         });
         setIsContractModalOpen(true);
     }
@@ -535,6 +540,10 @@ export function DetailsPage() {
             if (d) commStr = `${formatPriceInput(d)} ₽`;
         }
 
+        const initCoIds = Array.isArray(c.co_client_ids) && c.co_client_ids.length > 0
+            ? Array.from(new Set(c.co_client_ids.map(String)))
+            : [id];
+
         setContractForm({
             id: c.id,
             contract_number: c.contract_number || '',
@@ -547,7 +556,8 @@ export function DetailsPage() {
             price: c.price ? formatPriceInput(c.price) : '',
             commission: commStr,
             status: c.status || 'active',
-            comment: c.comment || ''
+            comment: c.comment || '',
+            co_client_ids: initCoIds
         });
         setIsContractModalOpen(true);
     }
@@ -564,20 +574,17 @@ export function DetailsPage() {
         const startIso = target.contract_date || nowIso;
         const newValidUntil = calculateContractEndDate(startIso, duration, true);
 
-        const updatedContracts = clientContracts.map(c => {
-            if (c.id === contractId) {
-                return {
-                    ...c,
-                    duration_months: duration,
-                    is_extended: true,
-                    extension_count: 1,
-                    extended_at: nowIso,
-                    valid_until: newValidUntil ? newValidUntil.toISOString() : null,
-                    updated_at: nowIso
-                };
-            }
-            return c;
+        const extendItem = (c) => ({
+            ...c,
+            duration_months: duration,
+            is_extended: true,
+            extension_count: 1,
+            extended_at: nowIso,
+            valid_until: newValidUntil ? newValidUntil.toISOString() : null,
+            updated_at: nowIso
         });
+
+        const updatedContracts = clientContracts.map(c => c.id === contractId ? extendItem(c) : c);
 
         const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
         const primary = activeList[0] || updatedContracts[0] || null;
@@ -592,6 +599,28 @@ export function DetailsPage() {
         };
 
         dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+
+        if (target.group_id) {
+            state.clients.forEach(sib => {
+                if (sib.id === client.id) return;
+                const sibList = Array.isArray(sib.agency_contracts) ? sib.agency_contracts : [];
+                if (!sibList.some(sc => sc.group_id === target.group_id)) return;
+                const sibUpdated = sibList.map(sc => sc.group_id === target.group_id ? extendItem(sc) : sc);
+                const sibActive = sibUpdated.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
+                const sibPrimary = sibActive[0] || sibUpdated[0] || null;
+                dispatch({
+                    type: 'UPDATE_CLIENT',
+                    client: {
+                        ...sib,
+                        agency_contracts: sibUpdated,
+                        agency_contract_date: sibPrimary ? sibPrimary.contract_date : null,
+                        agency_contract_property_id: sibPrimary ? sibPrimary.property_id : null,
+                        has_agency_contract: sibActive.length > 0,
+                        updated_at: nowIso
+                    }
+                });
+            });
+        }
         toast.success(`Договор продлен на ${duration} мес. (до ${formatContractDate(newValidUntil)}). Обратите внимание: повторное продление невозможно, далее потребуется перезаключение.`);
     }
 
@@ -613,7 +642,8 @@ export function DetailsPage() {
             price: contract?.price ? formatPriceInput(contract.price) : '',
             commission: contract?.commission || '',
             status: 'active',
-            comment: contract?.comment ? `Перезаключение (ранее: ${contract.comment})` : 'Перезаключение договора'
+            comment: contract?.comment ? `Перезаключение (ранее: ${contract.comment})` : 'Перезаключение договора',
+            co_client_ids: Array.isArray(contract?.co_client_ids) && contract.co_client_ids.length > 0 ? contract.co_client_ids : [id]
         });
         setIsContractModalOpen(true);
         toast.info('Оформление нового договора взамен истекшего (перезаключение)');
@@ -637,34 +667,16 @@ export function DetailsPage() {
             validUntilIso = calculatedEnd ? calculatedEnd.toISOString() : null;
         }
 
-        let updatedContracts;
-        if (editingContractId) {
-            const existing = clientContracts.find(c => c.id === editingContractId);
-            updatedContracts = clientContracts.map(c => {
-                if (c.id === editingContractId) {
-                    return {
-                        ...c,
-                        contract_number: contractForm.contract_number ? contractForm.contract_number.trim() : '',
-                        type: contractForm.type,
-                        contract_date: dateIso,
-                        valid_until: validUntilIso,
-                        duration_months: durationMonths,
-                        is_extended: isExtended,
-                        extension_count: isExtended ? 1 : 0,
-                        extended_at: isExtended ? (existing?.extended_at || new Date().toISOString()) : null,
-                        property_id: contractForm.property_id || null,
-                        price: contractForm.price ? (Number(parsePriceInput(String(contractForm.price))) || null) : null,
-                        commission: contractForm.commission ? contractForm.commission.trim() : '',
-                        status: contractForm.status || 'active',
-                        comment: contractForm.comment ? contractForm.comment.trim() : '',
-                        updated_at: new Date().toISOString()
-                    };
-                }
-                return c;
-            });
-        } else {
-            const newContract = {
-                id: nanoid(),
+        const coIds = Array.from(new Set([id, ...(contractForm.co_client_ids || []).map(String)]));
+        const isMulti = coIds.length > 1;
+        const existingTarget = editingContractId ? clientContracts.find(c => c.id === editingContractId) : null;
+        const groupId = existingTarget?.group_id || (isMulti ? `group_${nanoid()}` : null);
+        const nowIso = new Date().toISOString();
+
+        const buildContractEntry = (base) => {
+            const next = {
+                ...(base || {}),
+                id: base?.id || nanoid(),
                 contract_number: contractForm.contract_number ? contractForm.contract_number.trim() : '',
                 type: contractForm.type,
                 contract_date: dateIso,
@@ -672,45 +684,78 @@ export function DetailsPage() {
                 duration_months: durationMonths,
                 is_extended: isExtended,
                 extension_count: isExtended ? 1 : 0,
-                extended_at: isExtended ? new Date().toISOString() : null,
+                extended_at: isExtended ? (base?.extended_at || nowIso) : null,
                 property_id: contractForm.property_id || null,
                 price: contractForm.price ? (Number(parsePriceInput(String(contractForm.price))) || null) : null,
                 commission: contractForm.commission ? contractForm.commission.trim() : '',
                 status: contractForm.status || 'active',
                 comment: contractForm.comment ? contractForm.comment.trim() : '',
-                created_at: new Date().toISOString()
+                updated_at: nowIso,
+                ...(base ? {} : { created_at: nowIso }),
             };
-            updatedContracts = [newContract, ...clientContracts];
-        }
-
-        const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
-        const primary = activeList[0] || updatedContracts[0] || null;
-
-        let nextStatus = client.status;
-        let nextStage = client.pipeline_stage;
-        if (activeList.length > 0 && client.status !== 'refused') {
-            nextStatus = 'active';
-            nextStage = 'active';
-        }
-
-        const updatedClient = {
-            ...client,
-            status: nextStatus,
-            ...(nextStage ? { pipeline_stage: nextStage } : {}),
-            agency_contracts: updatedContracts,
-            agency_contract_date: primary ? primary.contract_date : null,
-            agency_contract_property_id: primary ? primary.property_id : null,
-            has_agency_contract: activeList.length > 0,
-            updated_at: new Date().toISOString()
+            if (groupId) next.group_id = groupId;
+            if (isMulti) next.co_client_ids = coIds;
+            else delete next.co_client_ids;
+            return next;
         };
 
-        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
-        toast.success(editingContractId ? 'Договор обновлен' : 'Агентский договор добавлен');
+        const buildUpdatedClientObj = (targetClient, listForClient) => {
+            const activeList = listForClient.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
+            const primary = activeList[0] || listForClient[0] || null;
+            let nextStatus = targetClient.status;
+            let nextStage = targetClient.pipeline_stage;
+            if (activeList.length > 0 && targetClient.status !== 'refused') {
+                nextStatus = 'active';
+                nextStage = 'active';
+            }
+            return {
+                ...targetClient,
+                status: nextStatus,
+                ...(nextStage ? { pipeline_stage: nextStage } : {}),
+                agency_contracts: listForClient,
+                agency_contract_date: primary ? primary.contract_date : null,
+                agency_contract_property_id: primary ? primary.property_id : null,
+                has_agency_contract: activeList.length > 0,
+                updated_at: nowIso
+            };
+        };
+
+        let updatedContracts;
+        if (editingContractId) {
+            updatedContracts = clientContracts.map(c => (c.id === editingContractId ? buildContractEntry(c) : c));
+        } else {
+            updatedContracts = [buildContractEntry(null), ...clientContracts];
+        }
+
+        dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(client, updatedContracts) });
+
+        // Синхронизируем с сособственниками (и удаляем у отвязанных при наличии group_id)
+        if (groupId) {
+            state.clients.forEach(sib => {
+                if (sib.id === client.id) return;
+                const sibList = Array.isArray(sib.agency_contracts) ? sib.agency_contracts : [];
+                const isSelectedCoOwner = coIds.includes(String(sib.id));
+                const existingSibIdx = sibList.findIndex(sc => sc.group_id === groupId);
+
+                if (isSelectedCoOwner) {
+                    const nextSibList = existingSibIdx >= 0
+                        ? sibList.map((sc, i) => (i === existingSibIdx ? buildContractEntry(sc) : sc))
+                        : [buildContractEntry(null), ...sibList];
+                    dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(sib, nextSibList) });
+                } else if (existingSibIdx >= 0) {
+                    const nextSibList = sibList.filter((_, i) => i !== existingSibIdx);
+                    dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(sib, nextSibList) });
+                }
+            });
+        }
+
+        toast.success(editingContractId ? 'Договор обновлен' : (isMulti ? `Агентский договор добавлен для ${coIds.length} лиц` : 'Агентский договор добавлен'));
         setIsContractModalOpen(false);
     }
 
     function handleDeleteContract(contractId) {
         if (window.confirm('Удалить этот агентский договор?')) {
+            const target = clientContracts.find(c => c.id === contractId);
             const updatedContracts = clientContracts.filter(c => c.id !== contractId);
             const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
             const primary = activeList[0] || updatedContracts[0] || null;
@@ -724,6 +769,28 @@ export function DetailsPage() {
                 updated_at: new Date().toISOString()
             };
             dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+
+            if (target?.group_id) {
+                state.clients.forEach(sib => {
+                    if (sib.id === client.id) return;
+                    const sibList = Array.isArray(sib.agency_contracts) ? sib.agency_contracts : [];
+                    if (!sibList.some(sc => sc.group_id === target.group_id)) return;
+                    const nextSibList = sibList.filter(sc => sc.group_id !== target.group_id);
+                    const sibActive = nextSibList.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
+                    const sibPrimary = sibActive[0] || nextSibList[0] || null;
+                    dispatch({
+                        type: 'UPDATE_CLIENT',
+                        client: {
+                            ...sib,
+                            agency_contracts: nextSibList,
+                            agency_contract_date: sibPrimary ? sibPrimary.contract_date : null,
+                            agency_contract_property_id: sibPrimary ? sibPrimary.property_id : null,
+                            has_agency_contract: sibActive.length > 0,
+                            updated_at: new Date().toISOString()
+                        }
+                    });
+                });
+            }
             toast.success('Агентский договор удален');
             if (editingContractId === contractId) {
                 setIsContractModalOpen(false);
@@ -759,11 +826,16 @@ export function DetailsPage() {
             buyerId = id;
         }
 
+        const coIds = Array.isArray(contract.co_client_ids) && contract.co_client_ids.length > 0
+            ? contract.co_client_ids.map(String)
+            : [id];
+
         navigate('/documents', {
             state: {
                 docPrefill: {
                     sellerId,
                     buyerId,
+                    coPrincipalIds: coIds,
                     propertyId: prop?.id || '',
                     template,
                     contractId: contract.id,
@@ -783,11 +855,14 @@ export function DetailsPage() {
             const isSeller = client.client_types?.some(t => ['seller', 'landlord', 'lessor'].includes(t));
             const isRent = client.client_types?.some(t => ['landlord', 'tenant', 'lessor', 'lessee'].includes(t));
             const clientProp = myProperties[0];
+            const propOwners = clientProp ? parsePgArray(clientProp.client_ids).map(String) : [];
+            const coIds = (isSeller && propOwners.length > 1) ? Array.from(new Set([id, ...propOwners])) : [id];
             navigate('/documents', {
                 state: {
                     docPrefill: {
                         sellerId: isSeller ? id : '',
                         buyerId: isSeller ? '' : id,
+                        coPrincipalIds: coIds,
                         propertyId: clientProp?.id || '',
                         template: isRent ? 'rent' : (isSeller ? 'agency_sale_1' : 'yuss_buy_1'),
                         hideOtherTemplates: true,
@@ -2089,6 +2164,22 @@ export function DetailsPage() {
                                                         {info.badge.label}
                                                     </span>
                                                 )}
+                                                {Array.isArray(c.co_client_ids) && c.co_client_ids.length > 1 && (
+                                                    <span style={{
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        padding: '3px 8px',
+                                                        borderRadius: 7,
+                                                        background: 'rgba(0, 82, 255, 0.08)',
+                                                        color: 'var(--primary)',
+                                                        border: '1px solid rgba(0, 82, 255, 0.25)',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }}>
+                                                        <Users size={11} /> Совместный ({c.co_client_ids.length})
+                                                    </span>
+                                                )}
                                             </div>
 
                                             {/* Правый верхний угол: Кнопки "Редактировать" и "Удалить", а под ними — кнопка "Документ" */}
@@ -2244,6 +2335,42 @@ export function DetailsPage() {
                                                 </span>
                                             )}
                                         </div>
+
+                                        {Array.isArray(c.co_client_ids) && c.co_client_ids.length > 1 && (() => {
+                                            const coClients = c.co_client_ids
+                                                .filter(cid => String(cid) !== String(client.id))
+                                                .map(cid => state.clients.find(sc => String(sc.id) === String(cid)))
+                                                .filter(Boolean);
+                                            if (coClients.length === 0) return null;
+                                            return (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', fontSize: 12 }}>
+                                                    <Users size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                                    <span style={{ color: 'var(--text-muted)' }}>Сособственники:</span>
+                                                    {coClients.map(co => (
+                                                        <span
+                                                            key={co.id}
+                                                            onClick={() => navigate(`/clients/${co.id}`)}
+                                                            style={{
+                                                                fontSize: 11.5,
+                                                                fontWeight: 600,
+                                                                padding: '2px 8px',
+                                                                borderRadius: 7,
+                                                                background: 'rgba(0, 82, 255, 0.06)',
+                                                                color: 'var(--primary)',
+                                                                border: '1px solid rgba(0, 82, 255, 0.2)',
+                                                                cursor: 'pointer',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 3
+                                                            }}
+                                                        >
+                                                            {co.full_name}
+                                                            <ChevronRight size={11} />
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
 
                                         {c.comment && (
                                             <div style={{
@@ -3074,10 +3201,13 @@ export function DetailsPage() {
                                             onChange={e => {
                                                 const pId = e.target.value;
                                                 const selProp = state.properties.find(p => p.id === pId);
+                                                const pOwners = selProp ? parsePgArray(selProp.client_ids).map(String) : [];
+                                                const nextCoIds = pOwners.length > 1 ? Array.from(new Set([id, ...pOwners])) : [id];
                                                 setContractForm({
                                                     ...contractForm,
                                                     property_id: pId,
-                                                    price: (!contractForm.price && selProp?.price) ? formatPriceInput(selProp.price) : contractForm.price
+                                                    price: (!contractForm.price && selProp?.price) ? formatPriceInput(selProp.price) : contractForm.price,
+                                                    co_client_ids: nextCoIds
                                                 });
                                             }}
                                             style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
@@ -3103,6 +3233,60 @@ export function DetailsPage() {
                                             </optgroup>
                                         </select>
                                     </div>
+
+                                    {/* Сособственники по договору (если у объекта несколько владельцев) */}
+                                    {(() => {
+                                        const selProp = state.properties.find(p => p.id === contractForm.property_id);
+                                        const propOwners = selProp ? parsePgArray(selProp.client_ids).map(String) : [];
+                                        const otherCandidateIds = Array.from(new Set([
+                                            ...propOwners,
+                                            ...(contractForm.co_client_ids || []).map(String)
+                                        ])).filter(cid => cid !== String(id));
+                                        if (otherCandidateIds.length === 0) return null;
+                                        return (
+                                            <div style={{
+                                                padding: '10px 12px',
+                                                borderRadius: 12,
+                                                background: 'var(--bg-light)',
+                                                border: '1px solid var(--border-light)',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                gap: 6
+                                            }}>
+                                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                    <Users size={12} style={{ color: 'var(--primary)' }} />
+                                                    Сособственники в договоре
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                    {otherCandidateIds.map(cid => {
+                                                        const co = state.clients.find(c => String(c.id) === String(cid));
+                                                        if (!co) return null;
+                                                        const isChecked = (contractForm.co_client_ids || []).map(String).includes(String(cid));
+                                                        const share = selProp?.client_shares?.[co.id];
+                                                        return (
+                                                            <label key={co.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text)', cursor: 'pointer' }}>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isChecked}
+                                                                    onChange={e => {
+                                                                        const curr = (contractForm.co_client_ids || [id]).map(String);
+                                                                        const next = e.target.checked
+                                                                            ? Array.from(new Set([...curr, String(co.id)]))
+                                                                            : curr.filter(x => x !== String(co.id));
+                                                                        setContractForm({ ...contractForm, co_client_ids: next });
+                                                                    }}
+                                                                />
+                                                                <span style={{ flex: 1, fontWeight: 500 }}>{co.full_name}</span>
+                                                                {share && (
+                                                                    <span style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 600 }}>Доля: {share}</span>
+                                                                )}
+                                                            </label>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
 
                                     {/* Финансовые условия: Сумма и Комиссия */}
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

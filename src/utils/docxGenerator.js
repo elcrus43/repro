@@ -577,22 +577,264 @@ function arialPara(children, opts = {}) {
     });
 }
 
-function buildYussBuy1Contract(data) {
-    const principal = data.buyer || data.seller; // Принципал
-    const p = principal?.passport_details || {};
-    const deal = data.deal;
+export function resolvePrincipals(data, isSaleSide = true) {
+    if (Array.isArray(data?.principals) && data.principals.length > 0) {
+        return data.principals.filter(Boolean);
+    }
+    const single = isSaleSide ? (data?.seller || data?.buyer) : (data?.buyer || data?.seller);
+    return single ? [single] : [];
+}
 
+function extractPrincipalPersonDetails(principal, data, opts = {}) {
+    const p = principal?.passport_details || {};
     const fullName = fmt(principal?.full_name);
-    const birthDate = principal?.birth_date ? fmtDate(principal.birth_date) : (p.birth_date ? fmtDate(p.birth_date) : '________________________________________');
-    const series = fmt(p.series, '_________________');
-    const number = fmt(p.number, '__________________________');
-    const issuedBy = fmt(p.issued_by, '_____________________________________________________________________________________________________________________________________________________________________________________________________________');
-    const issueDate = p.issue_date ? fmtDate(p.issue_date) : '________________';
-    const regAddress = fmt(p.registration_address || principal?.reg_address || principal?.address, '_______________________________________________________________________________________________________________________');
+    const birthDate = principal?.birth_date
+        ? fmtDate(principal.birth_date)
+        : (p.birth_date ? fmtDate(p.birth_date) : '________________________________________');
+    const seriesFallback = opts.seriesFallback || '_________________';
+    const numberFallback = opts.numberFallback || '__________________________';
+    const issuedByFallback = opts.issuedByFallback || '_____________________________________________________________________________________________________________________________________________________________________________________________________________';
+    const issueDateFallback = opts.issueDateFallback || '________________';
+    const regAddressFallback = opts.regAddressFallback || '_______________________________________________________________________________________________________________________';
+
+    const series = fmt(p.series, seriesFallback);
+    const number = fmt(p.number, numberFallback);
+    const issuedBy = fmt(p.issued_by, issuedByFallback);
+    const issueDate = p.issue_date ? fmtDate(p.issue_date) : issueDateFallback;
+    const regAddress = fmt(p.registration_address || principal?.reg_address || principal?.address, regAddressFallback);
     const phone = fmt(formatPhone(principal?.phone) || principal?.phone, '______________________________________________');
 
     const leg = extractLegalEntityDetails(principal, fullName);
-    const isLegal = Boolean(data.isLegalEntity || leg.isLegal);
+    const isLegal = Boolean((opts.allowGlobalLegalOverride && data?.isLegalEntity) || leg.isLegal);
+
+    return {
+        fullName,
+        shortName: toShortName(principal?.full_name),
+        birthDate,
+        series,
+        number,
+        issuedBy,
+        issueDate,
+        regAddress,
+        phone,
+        leg,
+        isLegal,
+    };
+}
+
+function buildAgencyPrincipalsPreambleDocx(principalsList, data, opts = {}) {
+    const variant = opts.variant || 'standard'; // 'standard' | 'rent_landlord'
+    const list = principalsList.length > 0 ? principalsList : [null];
+    const isMulti = list.length > 1;
+    const detailOpts = variant === 'rent_landlord'
+        ? {
+            seriesFallback: '____________',
+            numberFallback: '____________',
+            issuedByFallback: '_____________________________________________________________________ ______________________',
+            issueDateFallback: '_________ года',
+            regAddressFallback: '___________________________________________________________________________________________________________________',
+            allowGlobalLegalOverride: !isMulti,
+        }
+        : { allowGlobalLegalOverride: !isMulti };
+
+    const paragraphs = [];
+
+    list.forEach((principal, idx) => {
+        const info = extractPrincipalPersonDetails(principal, data, detailOpts);
+        const isFirst = idx === 0;
+        const isLast = idx === list.length - 1;
+        const endingText = isLast
+            ? (isMulti
+                ? ', именуемые в дальнейшем совместно '
+                : (variant === 'rent_landlord' ? ' именуемый(-ая,-ые) в дальнейшем ' : ', именуемый(-ая) в дальнейшем '))
+            : ',';
+
+        if (info.isLegal) {
+            const { leg, phone } = info;
+            const prefix = isFirst ? '' : 'и ';
+            const runs = [
+                ...(prefix ? [arialRun(prefix)] : []),
+                arialBold(leg.name),
+                arialRun(`, ОГРН ${leg.ogrn}, ИНН ${leg.inn}`),
+                ...(leg.kpp ? [arialRun(`, КПП ${leg.kpp}`)] : []),
+                arialRun(`, адрес места нахождения: ${leg.legalAddress}, в лице `),
+                arialRun(`${leg.position} `),
+                arialBold(leg.authName),
+                arialRun(`, действующего(-ей) на основании ${leg.basis}, телефон: ${phone}`),
+            ];
+            if (isLast) {
+                runs.push(arialRun(isMulti ? ', именуемые в дальнейшем совместно ' : ', именуемое в дальнейшем '));
+                runs.push(arialBold('«Принципал»'));
+                runs.push(arialRun(', с одной стороны,'));
+            } else {
+                runs.push(arialRun(','));
+            }
+            paragraphs.push(arialPara(runs, { indent: true, afterPt: isLast ? 6 : 4 }));
+            return;
+        }
+
+        if (variant === 'rent_landlord') {
+            const prefix = isFirst ? 'Мы, Гр. ' : 'и Гр. ';
+            paragraphs.push(arialPara([
+                arialRun(prefix),
+                arialBold(info.fullName),
+                arialRun(`, дата рождения: ${info.birthDate}, паспорт РФ серия `),
+                arialBold(info.series),
+                arialRun(' номер '),
+                arialBold(info.number),
+                arialRun(` выдан ${info.issueDate} года ${info.issuedBy} зарегистрированный(-ая) по адресу: ${info.regAddress}${isLast ? '' : ','}`),
+            ], { indent: true, afterPt: 3 }));
+
+            if (isLast) {
+                paragraphs.push(arialPara([
+                    arialRun(isMulti ? 'именуемые в дальнейшем совместно ' : 'именуемый(-ая,-ые) в дальнейшем '),
+                    arialBold('«Принципал»'),
+                    arialRun(', с одной стороны,'),
+                ], { indent: true, afterPt: 6 }));
+            }
+            return;
+        }
+
+        const prefix = isFirst ? 'Мы, ' : 'и ';
+        paragraphs.push(arialPara([
+            arialRun(prefix),
+            arialBold(info.fullName),
+            arialRun(','),
+        ], { indent: true, afterPt: 3 }));
+        paragraphs.push(arialPara([
+            arialRun(`дата рождения: ${info.birthDate}, паспорт серия `),
+            arialBold(info.series),
+            arialRun(' номер '),
+            arialBold(info.number),
+            arialRun(` выдан ${info.issuedBy} дата выдачи: ${info.issueDate},`),
+        ], { indent: true, afterPt: 3 }));
+        paragraphs.push(arialPara([
+            arialRun(`зарегистрированный(-ая) по адресу: ${info.regAddress},`),
+        ], { indent: true, afterPt: 3 }));
+
+        if (isLast) {
+            paragraphs.push(arialPara([
+                arialRun(`телефон: ${info.phone}${endingText}`),
+                arialBold('«Принципал»'),
+                arialRun(', с одной стороны,'),
+            ], { indent: true, afterPt: 6 }));
+        } else {
+            paragraphs.push(arialPara([
+                arialRun(`телефон: ${info.phone},`),
+            ], { indent: true, afterPt: 4 }));
+        }
+    });
+
+    return paragraphs;
+}
+
+function buildAgencyPrincipalsSignaturesDocx(principalsList, data) {
+    const list = principalsList.length > 0 ? principalsList : [null];
+    const isMulti = list.length > 1;
+    const blocks = [];
+
+    list.forEach((principal, idx) => {
+        const info = extractPrincipalPersonDetails(principal, data, { allowGlobalLegalOverride: !isMulti });
+        const label = isMulti
+            ? `Принципал ${idx + 1}${principal?.full_name ? ` (${info.fullName})` : ''}:`
+            : 'Принципал:';
+
+        if (info.isLegal) {
+            const { leg } = info;
+            blocks.push(
+                new Paragraph({
+                    children: [arialBold(label)],
+                    spacing: { line: 260, before: 60, after: 20 },
+                }),
+                new Paragraph({
+                    children: [arialRun(leg.name)],
+                    spacing: { line: 260, after: 20 },
+                }),
+                new Paragraph({
+                    children: [arialRun(`ОГРН: ${leg.ogrn}, ИНН: ${leg.inn}${leg.kpp ? `, КПП: ${leg.kpp}` : ''}`)],
+                    spacing: { line: 260, after: 20 },
+                }),
+                new Paragraph({
+                    children: [arialRun(`Юр. адрес: ${leg.legalAddress}`)],
+                    spacing: { line: 260, after: 40 },
+                }),
+                new Paragraph({
+                    children: [
+                        arialRun(`${leg.position}: ____________________ / `),
+                        arialBold(leg.authShort),
+                        arialRun(' /    М.П.'),
+                    ],
+                    spacing: { line: 260, after: 120 },
+                })
+            );
+            return;
+        }
+
+        if (isMulti) {
+            blocks.push(
+                new Paragraph({
+                    children: [arialBold(label)],
+                    spacing: { line: 260, before: idx === 0 ? 60 : 80, after: 20 },
+                }),
+                new Paragraph({
+                    children: [arialRun('\u00A0')],
+                    border: {
+                        bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+                    },
+                    spacing: { line: 260, after: 0 },
+                }),
+                new Paragraph({
+                    children: [arialRun('\u00A0')],
+                    border: {
+                        bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+                    },
+                    spacing: { line: 260, after: 80 },
+                })
+            );
+        } else {
+            blocks.push(
+                new Paragraph({
+                    children: [arialRun('Принципал:')],
+                    border: {
+                        bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+                    },
+                    spacing: { line: 260, after: 0 },
+                }),
+                new Paragraph({
+                    children: [arialRun('\u00A0')],
+                    border: {
+                        bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+                    },
+                    spacing: { line: 260, after: 0 },
+                }),
+                new Paragraph({
+                    children: [arialRun('\u00A0')],
+                    border: {
+                        bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
+                    },
+                    spacing: { line: 260, after: 0 },
+                }),
+                new Paragraph({
+                    children: [arialRun('\u00A0')],
+                    spacing: { line: 260, after: 120 },
+                })
+            );
+        }
+    });
+
+    return blocks;
+}
+
+function getAgencyCopiesClauseText(principalsList) {
+    if (principalsList.length > 1) {
+        return `6.6. Договор составлен в ${principalsList.length + 1} экземплярах, имеющих одинаковую юридическую силу, по одному экземпляру для каждого из лиц на стороне Принципала и один для Агента.`;
+    }
+    return '6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.';
+}
+
+export function buildYussBuy1Contract(data) {
+    const principals = resolvePrincipals(data, false);
+    const deal = data.deal;
 
     const rawComm = deal?.commission || data.property?.commission;
     const cleanComm = rawComm ? Number(String(rawComm).replace(/\D/g, '')) : 0;
@@ -610,40 +852,7 @@ function buildYussBuy1Contract(data) {
             arialRun(`«${todayStr}»`),
         ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
 
-        ...(isLegal ? [
-            arialPara([
-                arialBold(leg.name),
-                arialRun(`, ОГРН ${leg.ogrn}, ИНН ${leg.inn}`),
-                leg.kpp ? arialRun(`, КПП ${leg.kpp}`) : arialRun(''),
-                arialRun(`, адрес места нахождения: ${leg.legalAddress}, в лице `),
-                arialRun(`${leg.position} `),
-                arialBold(leg.authName),
-                arialRun(`, действующего(-ей) на основании ${leg.basis}, телефон: ${phone}, именуемое в дальнейшем `),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }),
-        ] : [
-            arialPara([
-                arialRun('Мы, '),
-                arialBold(fullName),
-                arialRun(','),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun(`дата рождения: ${birthDate}, паспорт серия `),
-                arialBold(series),
-                arialRun(' номер '),
-                arialBold(number),
-                arialRun(` выдан ${issuedBy} дата выдачи: ${issueDate},`),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun(`зарегистрированный(-ая) по адресу: ${regAddress},`),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun(`телефон: ${phone}, именуемый(-ая) в дальнейшем `),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }),
-        ]),
+        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'standard' }),
 
         arialPara([
             arialRun('и '),
@@ -703,62 +912,11 @@ function buildYussBuy1Contract(data) {
         arialPara([arialRun('6.3. Настоящим пунктом Принципал подтверждает, что у него отсутствуют какие-либо обстоятельства и ситуации, которые препятствуют или могут препятствовать заключению им законным образом настоящего Агентского договора и впоследствии – сделки с объектом недвижимости.')], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.4. Принципал дает согласие на получение от Агента рекламной и иной информации, необходимой для осуществления деятельности Агента, путем направления сообщений смс на телефон, электронных писем на электронную почту, указанных Принципалом в настоящем договоре.')], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок, необходимый для исполнения Агентского договора.')], { indent: true, afterPt: 3 }),
-        arialPara([arialRun('6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun(getAgencyCopiesClauseText(principals))], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.7. Настоящим стороны Договора заверяют и гарантируют, что они и близкие родственники не имеют гражданства иностранных(ого) государств(а), совершающих(его) в отношении Российской Федерации, российских юридических и физических лиц недружественные действия, а также местом регистрации, местом преимущественного пребывания, местом преимущественного ведения хозяйственной деятельности или извлечения прибыли от деятельности не являются(ется) указанные(ое) государства(о) и территория(ии), перечень которых установлен Распоряжением Правительства Российской Федерации от 05.03.2022 N 430-р «Об утверждении перечня иностранных государств и территорий, совершающих недружественные действия в отношении Российской Федерации, российских юридических и физических лиц».')], { indent: true, afterPt: 10 }),
 
         arialPara([arialBold('7. Подписи сторон')], { afterPt: 6, beforePt: 6 }),
-        ...(isLegal ? [
-            new Paragraph({
-                children: [arialBold('Принципал:')],
-                spacing: { line: 260, before: 60, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(leg.name)],
-                spacing: { line: 260, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(`ОГРН: ${leg.ogrn}, ИНН: ${leg.inn}${leg.kpp ? `, КПП: ${leg.kpp}` : ''}`)],
-                spacing: { line: 260, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(`Юр. адрес: ${leg.legalAddress}`)],
-                spacing: { line: 260, after: 40 },
-            }),
-            new Paragraph({
-                children: [
-                    arialRun(`${leg.position}: ____________________ / `),
-                    arialBold(leg.authShort),
-                    arialRun(' /    М.П.'),
-                ],
-                spacing: { line: 260, after: 120 },
-            }),
-        ] : [
-            new Paragraph({
-                children: [arialRun('Принципал:')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                spacing: { line: 260, after: 120 },
-            }),
-        ]),
+        ...buildAgencyPrincipalsSignaturesDocx(principals, data),
         new Paragraph({
             children: [arialRun('Агент:')],
             spacing: { line: 260, before: 60, after: 0 },
@@ -804,23 +962,10 @@ function buildYussBuy1Contract(data) {
 
 /* ─── Шаблон: Агентский договор — Продажа (1 принципал) ──────────────────── */
 
-function buildAgencySale1Contract(data) {
-    const principal = data.seller || data.buyer; // Принципал (собственник/продавец)
-    const p = principal?.passport_details || {};
+export function buildAgencySale1Contract(data) {
+    const principals = resolvePrincipals(data, true);
     const deal = data.deal;
     const property = data.property;
-
-    const fullName = fmt(principal?.full_name);
-    const birthDate = principal?.birth_date ? fmtDate(principal.birth_date) : (p.birth_date ? fmtDate(p.birth_date) : '________________________________________');
-    const series = fmt(p.series, '_________________');
-    const number = fmt(p.number, '__________________________');
-    const issuedBy = fmt(p.issued_by, '_____________________________________________________________________________________________________________________________________________________________________________________________________________');
-    const issueDate = p.issue_date ? fmtDate(p.issue_date) : '________________';
-    const regAddress = fmt(p.registration_address || principal?.reg_address || principal?.address, '_______________________________________________________________________________________________________________________');
-    const phone = fmt(formatPhone(principal?.phone) || principal?.phone, '______________________________________________');
-
-    const leg = extractLegalEntityDetails(principal, fullName);
-    const isLegal = Boolean(data.isLegalEntity || leg.isLegal);
 
     // Характеристики объекта недвижимости для таблицы
     const propKind = formatPropertyKind(property);
@@ -890,40 +1035,7 @@ function buildAgencySale1Contract(data) {
             arialRun(`«${todayStr}»`),
         ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
 
-        ...(isLegal ? [
-            arialPara([
-                arialBold(leg.name),
-                arialRun(`, ОГРН ${leg.ogrn}, ИНН ${leg.inn}`),
-                leg.kpp ? arialRun(`, КПП ${leg.kpp}`) : arialRun(''),
-                arialRun(`, адрес места нахождения: ${leg.legalAddress}, в лице `),
-                arialRun(`${leg.position} `),
-                arialBold(leg.authName),
-                arialRun(`, действующего(-ей) на основании ${leg.basis}, телефон: ${phone}, именуемое в дальнейшем `),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }),
-        ] : [
-            arialPara([
-                arialRun('Мы, '),
-                arialBold(fullName),
-                arialRun(','),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun(`дата рождения: ${birthDate}, паспорт серия `),
-                arialBold(series),
-                arialRun(' номер '),
-                arialBold(number),
-                arialRun(` выдан ${issuedBy} дата выдачи: ${issueDate},`),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun(`зарегистрированный(-ая) по адресу: ${regAddress},`),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun(`телефон: ${phone}, именуемый(-ая) в дальнейшем `),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }),
-        ]),
+        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'standard' }),
 
         arialPara([
             arialRun('и '),
@@ -1000,62 +1112,11 @@ function buildAgencySale1Contract(data) {
         arialPara([arialRun('6.3. Настоящим пунктом Принципал подтверждает, что у него отсутствуют какие-либо обстоятельства и ситуации, которые препятствуют или могут препятствовать заключению им законным образом настоящего Агентского договора и впоследствии – сделки с объектом недвижимости.')], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.4. Принципал дает согласие на получение от Агента рекламной и иной информации, необходимой для осуществления деятельности Агента, путем направления сообщений смс на телефон, электронных писем на электронную почту, указанных Принципалом в настоящем договоре.')], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок действия настоящего договора.')], { indent: true, afterPt: 3 }),
-        arialPara([arialRun('6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.')], { indent: true, afterPt: 3 }),
+        arialPara([arialRun(getAgencyCopiesClauseText(principals))], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.7. Настоящим стороны Договора заверяют и гарантируют, что они и близкие родственники не имеют гражданства иностранных(ого) государств(а), совершающих(его) в отношении Российской Федерации, российских юридических и физических лиц недружественные действия, а также местом регистрации, местом преимущественного пребывания, местом преимущественного ведения хозяйственной деятельности или извлечения прибыли от деятельности не являются(ется) указанные(ое) государства(о) и территория(ии), перечень которых установлен Распоряжением Правительства Российской Федерации от 05.03.2022 N 430-р «Об утверждении перечня иностранных государств и территорий, совершающих недружественные действия в отношении Российской Федерации, российских юридических и физических лиц».')], { indent: true, afterPt: 10 }),
 
         arialPara([arialBold('7. Подписи сторон')], { afterPt: 6, beforePt: 6 }),
-        ...(isLegal ? [
-            new Paragraph({
-                children: [arialBold('Принципал:')],
-                spacing: { line: 260, before: 60, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(leg.name)],
-                spacing: { line: 260, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(`ОГРН: ${leg.ogrn}, ИНН: ${leg.inn}${leg.kpp ? `, КПП: ${leg.kpp}` : ''}`)],
-                spacing: { line: 260, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(`Юр. адрес: ${leg.legalAddress}`)],
-                spacing: { line: 260, after: 40 },
-            }),
-            new Paragraph({
-                children: [
-                    arialRun(`${leg.position}: ____________________ / `),
-                    arialBold(leg.authShort),
-                    arialRun(' /    М.П.'),
-                ],
-                spacing: { line: 260, after: 120 },
-            }),
-        ] : [
-            new Paragraph({
-                children: [arialRun('Принципал:')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                spacing: { line: 260, after: 120 },
-            }),
-        ]),
+        ...buildAgencyPrincipalsSignaturesDocx(principals, data),
         new Paragraph({
             children: [arialRun('Агент:')],
             spacing: { line: 260, before: 60, after: 0 },
@@ -1101,23 +1162,10 @@ function buildAgencySale1Contract(data) {
 
 /* ─── Шаблон: АД Найм с наймодателем ─────────────────────────────────────── */
 
-function buildAgencyRentLandlord1Contract(data) {
-    const principal = data.seller || data.buyer; // Принципал (Наймодатель / Собственник)
-    const p = principal?.passport_details || {};
+export function buildAgencyRentLandlord1Contract(data) {
+    const principals = resolvePrincipals(data, true);
     const deal = data.deal;
     const property = data.property;
-
-    const fullName = fmt(principal?.full_name);
-    const birthDate = principal?.birth_date ? fmtDate(principal.birth_date) : (p.birth_date ? fmtDate(p.birth_date) : '________________________________________');
-    const series = fmt(p.series, '____________');
-    const number = fmt(p.number, '____________');
-    const issuedBy = fmt(p.issued_by, '_____________________________________________________________________ ______________________');
-    const issueDate = p.issue_date ? fmtDate(p.issue_date) : '_________ года';
-    const regAddress = fmt(p.registration_address || principal?.reg_address || principal?.address, '___________________________________________________________________________________________________________________');
-    const phone = fmt(formatPhone(principal?.phone) || principal?.phone, '______________________________________________');
-
-    const leg = extractLegalEntityDetails(principal, fullName);
-    const isLegal = Boolean(data.isLegalEntity || leg.isLegal);
 
     // Характеристики объекта недвижимости для таблицы
     const propKind = formatPropertyKind(property);
@@ -1187,34 +1235,7 @@ function buildAgencyRentLandlord1Contract(data) {
             arialRun(`«${todayStr}»`),
         ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
 
-        ...(isLegal ? [
-            arialPara([
-                arialBold(leg.name),
-                arialRun(`, ОГРН ${leg.ogrn}, ИНН ${leg.inn}`),
-                leg.kpp ? arialRun(`, КПП ${leg.kpp}`) : arialRun(''),
-                arialRun(`, адрес места нахождения: ${leg.legalAddress}, в лице `),
-                arialRun(`${leg.position} `),
-                arialBold(leg.authName),
-                arialRun(`, действующего(-ей) на основании ${leg.basis}, телефон: ${phone}, именуемое в дальнейшем `),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }),
-        ] : [
-            arialPara([
-                arialRun('Мы, Гр. '),
-                arialBold(fullName),
-                arialRun(`, дата рождения: ${birthDate}, паспорт РФ серия `),
-                arialBold(series),
-                arialRun(' номер '),
-                arialBold(number),
-                arialRun(` выдан ${issueDate} года ${issuedBy} зарегистрированный(-ая) по адресу: ${regAddress}`),
-            ], { indent: true, afterPt: 3 }),
-            arialPara([
-                arialRun('именуемый(-ая,-ые) в дальнейшем '),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }),
-        ]),
+        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'rent_landlord' }),
 
         arialPara([
             arialRun('и '),
@@ -1290,61 +1311,10 @@ function buildAgencyRentLandlord1Contract(data) {
         arialPara([arialRun('6.3. Настоящим пунктом Принципал подтверждает, что у него отсутствуют какие-либо обстоятельства и ситуации, которые препятствуют или могут препятствовать заключению им законным образом настоящего Агентского договора и впоследствии – сделки с объектом недвижимости.')], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.4. Принципал дает согласие на получение от Агента рекламной и иной информации, необходимой для осуществления деятельности Агента, путем направления сообщений смс на телефон, электронных писем на электронную почту, указанных Принципалом в настоящем договоре.')], { indent: true, afterPt: 3 }),
         arialPara([arialRun('6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок, необходимый для исполнения Агентского договора.')], { indent: true, afterPt: 3 }),
-        arialPara([arialRun('6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.')], { indent: true, afterPt: 10 }),
+        arialPara([arialRun(getAgencyCopiesClauseText(principals))], { indent: true, afterPt: 10 }),
 
         arialPara([arialBold('7. Подписи сторон')], { afterPt: 6, beforePt: 6 }),
-        ...(isLegal ? [
-            new Paragraph({
-                children: [arialBold('Принципал:')],
-                spacing: { line: 260, before: 60, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(leg.name)],
-                spacing: { line: 260, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(`ОГРН: ${leg.ogrn}, ИНН: ${leg.inn}${leg.kpp ? `, КПП: ${leg.kpp}` : ''}`)],
-                spacing: { line: 260, after: 20 },
-            }),
-            new Paragraph({
-                children: [arialRun(`Юр. адрес: ${leg.legalAddress}`)],
-                spacing: { line: 260, after: 40 },
-            }),
-            new Paragraph({
-                children: [
-                    arialRun(`${leg.position}: ____________________ / `),
-                    arialBold(leg.authShort),
-                    arialRun(' /    М.П.'),
-                ],
-                spacing: { line: 260, after: 120 },
-            }),
-        ] : [
-            new Paragraph({
-                children: [arialRun('Принципал:')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                border: {
-                    bottom: { color: '000000', space: 0, style: BorderStyle.SINGLE, size: 12 },
-                },
-                spacing: { line: 260, after: 0 },
-            }),
-            new Paragraph({
-                children: [arialRun('\u00A0')],
-                spacing: { line: 260, after: 120 },
-            }),
-        ]),
+        ...buildAgencyPrincipalsSignaturesDocx(principals, data),
         new Paragraph({
             children: [arialRun('Агент:')],
             spacing: { line: 260, before: 60, after: 0 },

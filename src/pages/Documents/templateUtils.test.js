@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
+import { applyDraftAndContractToClient, extractClientDraft } from '../../utils/contractTerms';
 
 describe('templateUtils - toShortName', () => {
     it('formats Russian names to initials', () => {
@@ -178,5 +179,42 @@ describe('templateUtils - sanitizeTemplateForSaving', () => {
         expect(slots.service2_cost.replace(/\s/g, ' ')).toBe('15 000');
         expect(slots.service1_words).toContain('пять тысяч');
         expect(slots.service2_words).toContain('пятнадцать тысяч');
+    });
+
+    it('populates indexed slots and principal_count for multi-principal contracts', () => {
+        const data = {
+            principals: [
+                { id: 'p1', full_name: 'Первый Собственник', passport_details: { series: '11 11', number: '111111' } },
+                { id: 'p2', full_name: 'Второй Собственник', passport_details: { series: '22 22', number: '222222' } },
+            ]
+        };
+        const slots = buildSlotValues(data, 'agency_sale_1');
+        expect(slots.principal_count).toBe(2);
+        expect(slots.principals_names).toBe('Первый Собственник, Второй Собственник');
+        expect(slots.principal_name).toBe('Первый Собственник');
+        expect(slots.principal_1_name).toBe('Первый Собственник');
+        expect(slots.principal_2_name).toBe('Второй Собственник');
+        expect(slots.principal_2_series).toBe('22 22');
+        expect(slots.principal_2_number).toBe('222222');
+    });
+
+    it('syncs multi-principal draft and grouped agency contract into each co-owner client record', () => {
+        const client1 = { id: 'c1', full_name: 'Иванов И.И.', phone: '+79990001122', agency_contracts: [] };
+        const draft1 = { ...extractClientDraft(client1), passport_series: '33 10', passport_number: '123456' };
+        const updated1 = applyDraftAndContractToClient(client1, draft1, {
+            groupId: 'grp_1',
+            coClientIds: ['c1', 'c2'],
+            propertyId: 'prop_1',
+            cleanComm: 75000,
+            contractStatus: 'active',
+            contractType: 'АД ЮСС Продажа',
+        });
+
+        expect(updated1.passport_details.series).toBe('33 10');
+        expect(updated1.agency_contracts).toHaveLength(1);
+        expect(updated1.agency_contracts[0].group_id).toBe('grp_1');
+        expect(updated1.agency_contracts[0].co_client_ids).toEqual(['c1', 'c2']);
+        expect(updated1.agency_contracts[0].commission).toBe(75000);
+        expect(updated1.has_agency_contract).toBe(true);
     });
 });

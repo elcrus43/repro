@@ -110,7 +110,7 @@ describe('docxGenerator - getDocumentTemplates', () => {
     });
 });
 
-import { toShortName, formatPropertyKind, getPropertyKindForms, collectDocxBlocksFromDom, buildKeyHandoverAct } from './docxGenerator';
+import { toShortName, formatPropertyKind, getPropertyKindForms, collectDocxBlocksFromDom, buildKeyHandoverAct, buildAgencySale1Contract, buildYussBuy1Contract, buildAgencyRentLandlord1Contract, resolvePrincipals } from './docxGenerator';
 
 describe('docxGenerator - toShortName', () => {
     it('formats full Russian names into initials correctly', () => {
@@ -422,6 +422,93 @@ describe('docxGenerator - buildHandoverAct', () => {
         expect(allText).toContain('Особые условия');
         expect(allText).toContain('Смирнов А.В.');
         expect(allText).toContain('Ковалева Е.С.');
+    });
+});
+
+describe('docxGenerator - multi-principal agency contracts (co-owners)', () => {
+    const coOwner1 = {
+        id: 'c1',
+        full_name: 'Иванов Иван Иванович',
+        phone: '+79991112233',
+        birth_date: '1980-01-15',
+        passport_details: {
+            series: '33 10',
+            number: '111222',
+            issued_by: 'ОВД г. Кирова',
+            issue_date: '2005-03-10',
+            registration_address: 'г. Киров, ул. Ленина, 10, кв. 1'
+        }
+    };
+    const coOwner2 = {
+        id: 'c2',
+        full_name: 'Иванова Мария Сергеевна',
+        phone: '+79994445566',
+        birth_date: '1982-06-20',
+        passport_details: {
+            series: '33 12',
+            number: '333444',
+            issued_by: 'УФМС по Кировской области',
+            issue_date: '2007-08-12',
+            registration_address: 'г. Киров, ул. Ленина, 10, кв. 1'
+        }
+    };
+    const property = {
+        property_kind: '2-комн. квартира',
+        address: 'г. Киров, ул. Ленина, 10, кв. 1',
+        cadastral_number: '43:40:000001:100',
+        price: 4500000
+    };
+
+    it('resolvePrincipals prioritizes data.principals array over single seller/buyer', () => {
+        expect(resolvePrincipals({ principals: [coOwner1, coOwner2], seller: coOwner1 }, true)).toHaveLength(2);
+        expect(resolvePrincipals({ seller: coOwner1, buyer: coOwner2 }, true)).toEqual([coOwner1]);
+        expect(resolvePrincipals({ seller: coOwner1, buyer: coOwner2 }, false)).toEqual([coOwner2]);
+    });
+
+    it('builds agency_sale_1 with multiple co-owners, joint Principal wording, N+1 copies, and individual signature blocks', () => {
+        const res = buildAgencySale1Contract({
+            principals: [coOwner1, coOwner2],
+            property,
+            deal: { commission: 80000, contract_end_date: '2027-02-01' }
+        });
+        const text = JSON.stringify(res.children);
+        expect(text).toContain('Иванов Иван Иванович');
+        expect(text).toContain('Иванова Мария Сергеевна');
+        expect(text).toContain('111222');
+        expect(text).toContain('333444');
+        expect(text).toContain('именуемые в дальнейшем совместно');
+        expect(text).toContain('в 3 экземплярах');
+        expect(text).toContain('Принципал 1 (Иванов Иван Иванович):');
+        expect(text).toContain('Принципал 2 (Иванова Мария Сергеевна):');
+    });
+
+    it('builds yuss_buy_1 with multiple co-buyers', () => {
+        const res = buildYussBuy1Contract({
+            principals: [coOwner1, coOwner2],
+            deal: { commission: 60000 }
+        });
+        const text = JSON.stringify(res.children);
+        expect(text).toContain('Иванов Иван Иванович');
+        expect(text).toContain('Иванова Мария Сергеевна');
+        expect(text).toContain('именуемые в дальнейшем совместно');
+        expect(text).toContain('в 3 экземплярах');
+    });
+
+    it('builds agency_rent_landlord_1 with multiple co-owners', () => {
+        const res = buildAgencyRentLandlord1Contract({
+            principals: [coOwner1, coOwner2],
+            property,
+            deal: { commission: 15000 }
+        });
+        const text = JSON.stringify(res.children);
+        expect(text).toContain('Мы, Гр.');
+        expect(text).toContain('и Гр.');
+        expect(text).toContain('Иванов Иван Иванович');
+        expect(text).toContain('Иванова Мария Сергеевна');
+        expect(text).toContain('именуемые в дальнейшем совместно');
+        expect(text).toContain('в 3 экземплярах');
+        expect(text).toContain('Принципал 1 (Иванов Иван Иванович):');
+        expect(text).toContain('Принципал 2 (Иванова Мария Сергеевна):');
     });
 });
 

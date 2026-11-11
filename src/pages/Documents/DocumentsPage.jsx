@@ -3,11 +3,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { 
-    ChevronLeft, Printer, FileText, Download, User, Building2, Briefcase, 
+    ChevronLeft, Printer, FileText, Download, User, Users, Building2, Briefcase, 
     ChevronDown, ChevronUp, Search, Save, CheckCircle2, AlertCircle, Sparkles, Check, Loader2,
     UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
-import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind, getPropertyKindForms } from '../../utils/docxGenerator';
+import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind, getPropertyKindForms, resolvePrincipals, extractLegalEntityDetails } from '../../utils/docxGenerator';
+import { createEmptyClientDraft, extractClientDraft, countMissingClientDraftFields, mergeClientWithDraft, applyDraftAndContractToClient } from '../../utils/contractTerms';
 import { recordDealDocument } from '../../utils/dealDocuments';
 import { formatPhone, stripPhone, parsePgArray, formatUnitCode, formatPassportInput, parsePassportInput, formatPassportDisplay } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
@@ -427,9 +428,19 @@ export function DocumentsPage() {
     const [sellerId, setSellerId] = useState(prefill.sellerId || '');
     const [buyerId, setBuyerId] = useState(prefill.buyerId || '');
     const [propertyId, setPropertyId] = useState(prefill.propertyId || '');
+    const [coPrincipalIds, setCoPrincipalIds] = useState(() => {
+        if (Array.isArray(prefill.coPrincipalIds) && prefill.coPrincipalIds.length > 0) {
+            return Array.from(new Set(prefill.coPrincipalIds.map(String)));
+        }
+        const initId = prefill.sellerId || prefill.buyerId;
+        return initId ? [String(initId)] : [];
+    });
+    const [focusedPrincipalIdx, setFocusedPrincipalIdx] = useState(0);
+    const [principalDrafts, setPrincipalDrafts] = useState({});
+    const [showAddCoPrincipal, setShowAddCoPrincipal] = useState(false);
 
     // Быстрое модальное окно создания клиента
-    const [quickModalConfig, setQuickModalConfig] = useState({ isOpen: false, role: 'buyer', initialName: '' });
+    const [quickModalConfig, setQuickModalConfig] = useState({ isOpen: false, role: 'buyer', initialName: '', mode: 'replace' });
 
     // Условия договора (вознаграждение, срок, статус)
     const [commission, setCommission] = useState(() => prefill.commission ? String(prefill.commission) : '');
@@ -544,6 +555,8 @@ export function DocumentsPage() {
             setSourceMode('manual');
             setBuyerId(qClient);
             setSellerId(qClient);
+            setCoPrincipalIds([String(qClient)]);
+            setFocusedPrincipalIdx(0);
         }
         if (qProperty) setPropertyId(qProperty);
     }, [location.search]);
@@ -626,7 +639,40 @@ export function DocumentsPage() {
     const isKeyAct = selectedTemplate === 'key_act';
     const isAgencySale = selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord || isKeyAct;
     const isAgencyContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord || isKeyAct;
+    const isMultiPrincipalContract = selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || isAgencyRentLandlord;
     const individualClients = useMemo(() => state.clients.filter(c => !c.is_legal_entity && !c.client_types?.includes('legal_entity') && !c.company_name), [state.clients]);
+
+    const activeProperty = useMemo(() => {
+        return state.properties.find(p => String(p.id) === String(propertyId)) || null;
+    }, [propertyId, state.properties]);
+
+    const propertyOwnerIds = useMemo(() => {
+        if (!activeProperty) return [];
+        const list = parsePgArray(activeProperty.client_ids);
+        if (list.length > 0) return Array.from(new Set(list.map(String)));
+        return activeProperty.client_id ? [String(activeProperty.client_id)] : [];
+    }, [activeProperty]);
+
+    // В режиме «по сделке» подтягиваем участников сделки в coPrincipalIds
+    useEffect(() => {
+        if (sourceMode !== 'deal' || !selectedDealId) return;
+        const d = state.deals.find(deal => String(deal.id) === String(selectedDealId));
+        if (!d) return;
+        const bList = parsePgArray(d.buyer_ids);
+        const buyerIds = bList.length > 0 ? bList : (d.buyer_id ? [String(d.buyer_id)] : []);
+        const sList = parsePgArray(d.seller_ids);
+        let sellerIds = sList.length > 0 ? sList : (d.seller_id ? [String(d.seller_id)] : []);
+        if (sellerIds.length === 0 && d.property_id) {
+            const dp = state.properties.find(p => String(p.id) === String(d.property_id));
+            if (dp) {
+                const dpOwners = parsePgArray(dp.client_ids);
+                sellerIds = dpOwners.length > 0 ? dpOwners : (dp.client_id ? [String(dp.client_id)] : []);
+            }
+        }
+        const partyIds = isAgencySale ? (sellerIds.length > 0 ? sellerIds : buyerIds) : (buyerIds.length > 0 ? buyerIds : sellerIds);
+        setCoPrincipalIds(Array.from(new Set(partyIds.map(String))));
+        setFocusedPrincipalIdx(0);
+    }, [sourceMode, selectedDealId, isAgencySale, state.deals, state.properties]);
 
     const activeClient = useMemo(() => {
         if (sourceMode === 'deal' && selectedDealId) {
@@ -640,7 +686,7 @@ export function DocumentsPage() {
                 return state.clients.find(c => String(c.id) === String(cId)) || null;
             }
         }
-        const targetId = isAgencySale ? (sellerId || buyerId) : (buyerId || sellerId);
+        const targetId = isAgencySale ? (sellerId || buyerId || coPrincipalIds[0]) : (buyerId || sellerId || coPrincipalIds[0]);
         if (targetId) {
             return state.clients.find(c => String(c.id) === String(targetId)) || null;
         }
@@ -651,11 +697,20 @@ export function DocumentsPage() {
             }
         }
         return null;
-    }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, propertyId, state.deals, state.clients, state.properties]);
+    }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, coPrincipalIds, propertyId, state.deals, state.clients, state.properties]);
 
-    const activeProperty = useMemo(() => {
-        return state.properties.find(p => p.id === propertyId) || null;
-    }, [propertyId, state.properties]);
+    const activePrincipals = useMemo(() => {
+        if (isMultiPrincipalContract && coPrincipalIds.length > 0) {
+            const resolved = coPrincipalIds
+                .map(cid => state.clients.find(c => String(c.id) === String(cid)))
+                .filter(Boolean);
+            if (resolved.length > 0) return resolved;
+        }
+        return activeClient ? [activeClient] : [];
+    }, [isMultiPrincipalContract, coPrincipalIds, state.clients, activeClient]);
+
+    const safeFocusedPrincipalIdx = focusedPrincipalIdx < activePrincipals.length ? focusedPrincipalIdx : 0;
+    const focusedPrincipalClient = activePrincipals[safeFocusedPrincipalIdx] || activeClient || null;
 
     // Список договоров выбранного клиента
     const clientContracts = useMemo(() => {
@@ -701,6 +756,10 @@ export function DocumentsPage() {
                 setSelectedCategory(tplObj.category || 'all');
             }
             setHideOtherTemplates(true);
+            if (Array.isArray(c.co_client_ids) && c.co_client_ids.length > 0) {
+                setCoPrincipalIds(Array.from(new Set(c.co_client_ids.map(String))));
+                setFocusedPrincipalIdx(0);
+            }
             if (c.property_id) {
                 setPropertyId(c.property_id);
             }
@@ -752,186 +811,59 @@ export function DocumentsPage() {
         }
     }, [activeProperty?.id]);
 
-    /* ── Черновик реквизитов клиента ──────────────────────────────────────── */
-    const [clientDraft, setClientDraft] = useState({
-        is_legal_entity: false,
-        company_name: '',
-        inn: '',
-        kpp: '',
-        ogrn: '',
-        legal_address: '',
-        authorized_position: 'Генеральный директор',
-        authorized_name: '',
-        authorized_basis: 'Устава',
-        full_name: '',
-        phone: '',
-        birth_date: '',
-        passport_series: '',
-        passport_number: '',
-        passport_issued_by: '',
-        passport_issue_date: '',
-        passport_unit_code: '',
-        registration_address: '',
-        auth_person_birth: '',
-        auth_person_series: '',
-        auth_person_number: '',
-        auth_person_issued_by: '',
-        auth_person_issue_date: '',
-        auth_person_unit_code: '',
-        auth_person_reg_address: '',
-    });
+    /* ── Черновики реквизитов клиентов (поддержка нескольких принципалов) ─── */
+    const [manualDraft, setManualDraft] = useState(() => createEmptyClientDraft());
+
+    const clientDraft = useMemo(() => {
+        if (focusedPrincipalClient) {
+            return principalDrafts[focusedPrincipalClient.id] || extractClientDraft(focusedPrincipalClient, state.clients);
+        }
+        return manualDraft;
+    }, [focusedPrincipalClient, principalDrafts, manualDraft, state.clients]);
 
     useEffect(() => {
-        if (activeClient) {
-            const p = activeClient.passport_details || {};
-            const cd = activeClient.company_details || {};
-            const ap = activeClient.authorized_person || {};
-            const authPersonId = activeClient.authorized_person_id || ap.client_id;
-            const authClient = authPersonId ? state.clients.find(c => String(c.id) === String(authPersonId)) : null;
-            const apPass = authClient?.passport_details || ap.passport_details || {};
-            const isLegal = Boolean(
-                activeClient.is_legal_entity ||
-                activeClient.client_types?.includes('legal_entity') ||
-                activeClient.company_details?.inn ||
-                activeClient.company_details?.ogrn ||
-                activeClient.company_name ||
-                cd.name ||
-                /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(activeClient.full_name || '')
-            );
-            setClientDraft({
-                is_legal_entity: isLegal,
-                company_name: activeClient.company_name || cd.name || cd.short_name || (isLegal ? activeClient.full_name : ''),
-                inn: activeClient.inn || cd.inn || p.inn || '',
-                kpp: activeClient.kpp || cd.kpp || '',
-                ogrn: activeClient.ogrn || cd.ogrn || '',
-                legal_address: activeClient.legal_address || cd.legal_address || activeClient.reg_address || activeClient.address || '',
-                authorized_position: activeClient.authorized_position || ap.position || cd.director_position || 'Генеральный директор',
-                authorized_name: activeClient.authorized_name || ap.name || authClient?.full_name || cd.director_name || (!isLegal ? activeClient.full_name : ''),
-                authorized_basis: activeClient.authorized_basis || ap.basis_document || 'Устава',
-                auth_person_birth: authClient?.birth_date || apPass.birth_date || ap.birth_date || '',
-                auth_person_series: apPass.series || ap.series || '',
-                auth_person_number: apPass.number || ap.number || '',
-                auth_person_issued_by: apPass.issued_by || ap.issued_by || '',
-                auth_person_issue_date: apPass.issue_date || ap.issue_date || '',
-                auth_person_unit_code: apPass.unit_code || ap.unit_code || '',
-                auth_person_reg_address: apPass.registration_address || authClient?.reg_address || authClient?.address || ap.registration_address || '',
-                full_name: activeClient.full_name || '',
-                phone: formatPhone(activeClient.phone || ap.phone || '', true),
-                birth_date: activeClient.birth_date || p.birth_date || '',
-                passport_series: p.series || '',
-                passport_number: p.number || '',
-                passport_issued_by: p.issued_by || '',
-                passport_issue_date: p.issue_date || '',
-                passport_unit_code: p.unit_code || '',
-                registration_address: p.registration_address || activeClient.reg_address || activeClient.address || '',
-            });
-            setIsSavedToCrm(false);
-        }
-    }, [activeClient?.id]);
+        if (!activeClient?.id) return;
+        setPrincipalDrafts(prev => {
+            if (prev[activeClient.id]) return prev;
+            return { ...prev, [activeClient.id]: extractClientDraft(activeClient, state.clients) };
+        });
+        setIsSavedToCrm(false);
+    }, [activeClient?.id, state.clients]);
 
-    const handleDraftChange = (field, val) => {
-        setClientDraft(prev => ({ ...prev, [field]: val }));
+    const handleDraftPatch = (updater) => {
+        if (focusedPrincipalClient) {
+            const cid = focusedPrincipalClient.id;
+            setPrincipalDrafts(prev => {
+                const base = prev[cid] || extractClientDraft(focusedPrincipalClient, state.clients);
+                const patch = typeof updater === 'function' ? updater(base) : updater;
+                return { ...prev, [cid]: { ...base, ...patch } };
+            });
+        } else {
+            setManualDraft(prev => {
+                const patch = typeof updater === 'function' ? updater(prev) : updater;
+                return { ...prev, ...patch };
+            });
+        }
         setIsSavedToCrm(false);
     };
 
-    /* ── Обогащенный клиент для живого предпросмотра ───────────────────────── */
-    const enrichedClient = useMemo(() => {
-        const isLegal = Boolean(clientDraft.is_legal_entity);
-        const cd = {
-            name: clientDraft.company_name || '',
-            short_name: clientDraft.company_name || '',
-            inn: clientDraft.inn || '',
-            kpp: clientDraft.kpp || '',
-            ogrn: clientDraft.ogrn || '',
-            legal_address: clientDraft.legal_address || '',
-            director_name: clientDraft.authorized_name || '',
-            director_position: clientDraft.authorized_position || 'Генеральный директор',
-        };
-        const ap = {
-            name: clientDraft.authorized_name || '',
-            position: clientDraft.authorized_position || 'Генеральный директор',
-            basis_document: clientDraft.authorized_basis || 'Устава',
-            phone: clientDraft.phone || '',
-        };
+    const handleDraftChange = (field, val) => {
+        handleDraftPatch({ [field]: val });
+    };
 
-        if (!activeClient) {
-            const hasDraft = isLegal
-                ? Boolean(clientDraft.company_name?.trim() || clientDraft.inn?.trim() || clientDraft.authorized_name?.trim())
-                : Boolean(
-                    clientDraft.full_name?.trim() || 
-                    clientDraft.phone?.trim() || 
-                    clientDraft.passport_series?.trim() || 
-                    clientDraft.passport_number?.trim() ||
-                    clientDraft.registration_address?.trim()
-                );
-            if (!hasDraft) return null;
-            return {
-                id: 'draft_manual_client',
-                is_legal_entity: isLegal,
-                client_types: isLegal ? ['legal_entity'] : ['buyer'],
-                company_name: clientDraft.company_name || '',
-                inn: clientDraft.inn || '',
-                kpp: clientDraft.kpp || '',
-                ogrn: clientDraft.ogrn || '',
-                legal_address: clientDraft.legal_address || '',
-                authorized_position: clientDraft.authorized_position || 'Генеральный директор',
-                authorized_name: clientDraft.authorized_name || '',
-                authorized_basis: clientDraft.authorized_basis || 'Устава',
-                company_details: cd,
-                authorized_person: ap,
-                full_name: isLegal ? (clientDraft.company_name || 'Юридическое лицо') : (clientDraft.full_name || ''),
-                phone: clientDraft.phone || '',
-                birth_date: clientDraft.birth_date || '',
-                reg_address: isLegal ? (clientDraft.legal_address || '') : (clientDraft.registration_address || ''),
-                passport_details: {
-                    series: clientDraft.passport_series || '',
-                    number: clientDraft.passport_number || '',
-                    issued_by: clientDraft.passport_issued_by || '',
-                    issue_date: clientDraft.passport_issue_date || '',
-                    unit_code: clientDraft.passport_unit_code || '',
-                    registration_address: isLegal ? (clientDraft.legal_address || '') : (clientDraft.registration_address || ''),
-                    birth_date: clientDraft.birth_date || '',
-                }
-            };
+    /* ── Обогащенные клиенты для живого предпросмотра ───────────────────────── */
+    const enrichedPrincipals = useMemo(() => {
+        if (activePrincipals.length === 0) {
+            const single = mergeClientWithDraft(null, manualDraft);
+            return single ? [single] : [];
         }
-        return {
-            ...activeClient,
-            is_legal_entity: isLegal,
-            client_types: isLegal 
-                ? Array.from(new Set([...(activeClient.client_types || []), 'legal_entity']))
-                : (activeClient.client_types || []).filter(t => t !== 'legal_entity'),
-            company_name: clientDraft.company_name || '',
-            inn: clientDraft.inn || activeClient.inn || '',
-            kpp: clientDraft.kpp || '',
-            ogrn: clientDraft.ogrn || '',
-            legal_address: clientDraft.legal_address || '',
-            authorized_position: clientDraft.authorized_position || 'Генеральный директор',
-            authorized_name: clientDraft.authorized_name || '',
-            authorized_basis: clientDraft.authorized_basis || 'Устава',
-            company_details: {
-                ...(activeClient.company_details || {}),
-                ...cd,
-            },
-            authorized_person: {
-                ...(activeClient.authorized_person || {}),
-                ...ap,
-            },
-            full_name: isLegal ? (clientDraft.company_name || activeClient.full_name) : (clientDraft.full_name || activeClient.full_name),
-            phone: clientDraft.phone || activeClient.phone,
-            birth_date: isLegal ? '' : (clientDraft.birth_date || activeClient.birth_date),
-            reg_address: isLegal ? (clientDraft.legal_address || activeClient.reg_address) : (clientDraft.registration_address || activeClient.reg_address),
-            passport_details: {
-                ...(activeClient.passport_details || {}),
-                series: clientDraft.passport_series,
-                number: clientDraft.passport_number,
-                issued_by: clientDraft.passport_issued_by,
-                issue_date: clientDraft.passport_issue_date,
-                unit_code: clientDraft.passport_unit_code,
-                registration_address: isLegal ? (clientDraft.legal_address || '') : clientDraft.registration_address,
-                birth_date: isLegal ? '' : clientDraft.birth_date,
-            }
-        };
-    }, [activeClient, clientDraft]);
+        return activePrincipals.map(c => {
+            const d = principalDrafts[c.id] || extractClientDraft(c, state.clients);
+            return mergeClientWithDraft(c, d);
+        });
+    }, [activePrincipals, principalDrafts, manualDraft, state.clients]);
+
+    const enrichedClient = enrichedPrincipals[0] || null;
 
     /* ── Черновик реквизитов объекта недвижимости ───────────────────────── */
     const [propDraft, setPropDraft] = useState({
@@ -998,29 +930,17 @@ export function DocumentsPage() {
         };
     }, [activeProperty, propDraft]);
 
-    const clientMissingCount = useMemo(() => {
-        const isLegal = Boolean(clientDraft.is_legal_entity);
-        return isLegal ? [
-            !clientDraft.company_name?.trim(),
-            !clientDraft.inn?.trim(),
-            !clientDraft.ogrn?.trim(),
-            !clientDraft.legal_address?.trim(),
-            !clientDraft.phone?.trim(),
-            !clientDraft.authorized_name?.trim(),
-            !clientDraft.authorized_position?.trim(),
-            !clientDraft.authorized_basis?.trim(),
-        ].filter(Boolean).length : [
-            !clientDraft.full_name?.trim(),
-            !clientDraft.phone?.trim(),
-            !clientDraft.birth_date?.trim(),
-            !clientDraft.passport_series?.trim(),
-            !clientDraft.passport_number?.trim(),
-            !clientDraft.passport_issued_by?.trim(),
-            !clientDraft.passport_issue_date?.trim(),
-            !clientDraft.passport_unit_code?.trim(),
-            !clientDraft.registration_address?.trim(),
-        ].filter(Boolean).length;
-    }, [clientDraft]);
+    const principalMissingCounts = useMemo(() => {
+        if (activePrincipals.length === 0) {
+            return [countMissingClientDraftFields(manualDraft)];
+        }
+        return activePrincipals.map(c => {
+            const d = principalDrafts[c.id] || extractClientDraft(c, state.clients);
+            return countMissingClientDraftFields(d);
+        });
+    }, [activePrincipals, principalDrafts, manualDraft, state.clients]);
+
+    const clientMissingCount = principalMissingCounts.reduce((acc, n) => acc + n, 0);
 
     const propMissingCount = useMemo(() => {
         return [
@@ -1036,130 +956,44 @@ export function DocumentsPage() {
             const isLegal = Boolean(clientDraft.is_legal_entity);
             const cleanComm = Number(String(commission).replace(/\D/g, '')) || 0;
             const validUntilIso = contractEndDate ? (contractEndDate.includes('T') ? contractEndDate : `${contractEndDate}T23:59:59.000Z`) : null;
+            const contractType = selectedTemplateMeta?.title || (isAgencySale ? 'АД ЮСС Продажа' : 'АД ЮСС Покупка');
+            const targetPropId = propertyId || activeProperty?.id || null;
 
-            if (activeClient) {
-                const series = clientDraft.passport_series?.trim() || '';
-                const number = clientDraft.passport_number?.trim() || '';
-                const passportStr = (series && number) ? `${series} ${number}` : (series || number || activeClient.passport || '');
-                const birthDateStr = isLegal ? '' : (clientDraft.birth_date?.trim() || activeClient.birth_date || '');
-                const regAddressStr = isLegal ? (clientDraft.legal_address?.trim() || '') : (clientDraft.registration_address?.trim() || activeClient.reg_address || '');
-                const innStr = clientDraft.inn?.trim() || activeClient.inn || activeClient.passport_details?.inn || '';
+            if (isMultiPrincipalContract && activePrincipals.length > 1) {
+                const primaryExisting = Array.isArray(activePrincipals[0]?.agency_contracts)
+                    ? activePrincipals[0].agency_contracts.find(c =>
+                        (selectedContractId && c.id === selectedContractId) ||
+                        (!selectedContractId && targetPropId && String(c.property_id) === String(targetPropId))
+                    )
+                    : null;
+                const groupId = primaryExisting?.group_id || `group_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+                const coClientIdsList = activePrincipals.map(p => p.id);
 
-                const cd = {
-                    ...(activeClient.company_details || {}),
-                    name: clientDraft.company_name?.trim() || activeClient.company_details?.name || '',
-                    short_name: clientDraft.company_name?.trim() || activeClient.company_details?.short_name || '',
-                    inn: innStr,
-                    kpp: clientDraft.kpp?.trim() || '',
-                    ogrn: clientDraft.ogrn?.trim() || '',
-                    legal_address: clientDraft.legal_address?.trim() || '',
-                    director_name: clientDraft.authorized_name?.trim() || '',
-                    director_position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
-                };
-
-                const ap = {
-                    ...(activeClient.authorized_person || {}),
-                    name: clientDraft.authorized_name?.trim() || '',
-                    position: clientDraft.authorized_position?.trim() || 'Генеральный директор',
-                    basis_document: clientDraft.authorized_basis?.trim() || 'Устава',
-                    phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || '',
-                };
-
-                const clientTypes = isLegal
-                    ? Array.from(new Set([...(activeClient.client_types || []), 'legal_entity']))
-                    : (activeClient.client_types || []).filter(t => t !== 'legal_entity');
-
-                // Синхронизация условий агентского договора в agency_contracts клиента
-                const existingContracts = Array.isArray(activeClient.agency_contracts) ? [...activeClient.agency_contracts] : [];
-                let updatedContracts;
-                const matchIdx = existingContracts.findIndex(c => 
-                    (selectedContractId && c.id === selectedContractId) ||
-                    (!selectedContractId && propertyId && String(c.property_id) === String(propertyId))
-                );
-
-                const contractType = selectedTemplateMeta?.title || (isAgencySale ? 'АД ЮСС Продажа' : 'АД ЮСС Покупка');
-
-                if (matchIdx >= 0) {
-                    updatedContracts = existingContracts.map((c, i) => {
-                        if (i === matchIdx) {
-                            return {
-                                ...c,
-                                commission: cleanComm > 0 ? cleanComm : c.commission,
-                                valid_until: validUntilIso || c.valid_until,
-                                status: contractStatus,
-                                property_id: propertyId || activeProperty?.id || c.property_id || null,
-                                updated_at: new Date().toISOString()
-                            };
-                        }
-                        return c;
+                for (let idx = 0; idx < activePrincipals.length; idx++) {
+                    const pClient = activePrincipals[idx];
+                    const pDraft = principalDrafts[pClient.id] || extractClientDraft(pClient, state.clients);
+                    const updatedClient = applyDraftAndContractToClient(pClient, pDraft, {
+                        selectedContractId: idx === 0 ? selectedContractId : '',
+                        groupId,
+                        coClientIds: coClientIdsList,
+                        propertyId: targetPropId,
+                        cleanComm,
+                        validUntilIso,
+                        contractStatus,
+                        contractType,
                     });
-                } else if (existingContracts.length > 0 && !selectedContractId) {
-                    updatedContracts = existingContracts.map((c, i) => {
-                        if (i === 0) {
-                            return {
-                                ...c,
-                                commission: cleanComm > 0 ? cleanComm : c.commission,
-                                valid_until: validUntilIso || c.valid_until,
-                                status: contractStatus,
-                                property_id: propertyId || activeProperty?.id || c.property_id || null,
-                                updated_at: new Date().toISOString()
-                            };
-                        }
-                        return c;
-                    });
-                } else {
-                    const newContract = {
-                        id: `contract_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                        type: contractType,
-                        contract_date: new Date().toISOString().split('T')[0],
-                        valid_until: validUntilIso,
-                        commission: cleanComm > 0 ? cleanComm : null,
-                        status: contractStatus,
-                        property_id: propertyId || activeProperty?.id || null,
-                        created_at: new Date().toISOString()
-                    };
-                    updatedContracts = [newContract, ...existingContracts];
+                    await dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
                 }
-
-                const primaryContract = updatedContracts.find(c => c.status === 'active') || updatedContracts[0];
-
-                const updatedClient = {
-                    ...activeClient,
-                    is_legal_entity: isLegal,
-                    company_name: isLegal ? (clientDraft.company_name?.trim() || activeClient.company_name) : (activeClient.company_name || ''),
-                    inn: innStr,
-                    kpp: clientDraft.kpp?.trim() || '',
-                    ogrn: clientDraft.ogrn?.trim() || '',
-                    legal_address: clientDraft.legal_address?.trim() || '',
-                    authorized_position: clientDraft.authorized_position?.trim() || '',
-                    authorized_name: clientDraft.authorized_name?.trim() || '',
-                    authorized_basis: clientDraft.authorized_basis?.trim() || '',
-                    company_details: cd,
-                    authorized_person: ap,
-                    client_types: clientTypes,
-                    full_name: isLegal 
-                        ? (clientDraft.company_name?.trim() || activeClient.full_name) 
-                        : (clientDraft.full_name?.trim() || activeClient.full_name),
-                    phone: stripPhone(clientDraft.phone) || clientDraft.phone?.trim() || activeClient.phone,
-                    birth_date: birthDateStr,
-                    reg_address: regAddressStr,
-                    passport: isLegal ? '' : passportStr,
-                    agency_contracts: updatedContracts,
-                    has_agency_contract: contractStatus === 'active',
-                    agency_contract_date: primaryContract ? primaryContract.contract_date : activeClient.agency_contract_date,
-                    agency_contract_property_id: primaryContract ? primaryContract.property_id : activeClient.agency_contract_property_id,
-                    passport_details: {
-                        ...(activeClient.passport_details || {}),
-                        series: isLegal ? '' : series,
-                        number: isLegal ? '' : number,
-                        issued_by: isLegal ? '' : (clientDraft.passport_issued_by?.trim() || ''),
-                        issue_date: isLegal ? '' : (clientDraft.passport_issue_date?.trim() || ''),
-                        unit_code: isLegal ? '' : (clientDraft.passport_unit_code?.trim() || ''),
-                        registration_address: regAddressStr,
-                        birth_date: birthDateStr,
-                        inn: innStr,
-                    }
-                };
+            } else if (activeClient) {
+                const pDraft = principalDrafts[activeClient.id] || clientDraft;
+                const updatedClient = applyDraftAndContractToClient(activeClient, pDraft, {
+                    selectedContractId,
+                    propertyId: targetPropId,
+                    cleanComm,
+                    validUntilIso,
+                    contractStatus,
+                    contractType,
+                });
                 await dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
             } else if (clientDraft.full_name?.trim() || clientDraft.company_name?.trim() || clientDraft.phone?.trim()) {
                 const series = clientDraft.passport_series?.trim() || '';
@@ -1176,7 +1010,7 @@ export function DocumentsPage() {
                 if (cleanComm > 0 || contractEndDate || contractStatus) {
                     initialContracts.push({
                         id: `contract_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                        type: selectedTemplateMeta?.title || (isAgencySale ? 'АД ЮСС Продажа' : 'АД ЮСС Покупка'),
+                        type: contractType,
                         contract_date: new Date().toISOString().split('T')[0],
                         valid_until: validUntilIso,
                         commission: cleanComm > 0 ? cleanComm : null,
@@ -1243,6 +1077,8 @@ export function DocumentsPage() {
                 await dispatch({ type: 'ADD_CLIENT', client: newClient });
                 if (isAgencySale) setSellerId(newClient.id);
                 else setBuyerId(newClient.id);
+                setCoPrincipalIds([String(newClient.id)]);
+                setFocusedPrincipalIdx(0);
             }
 
             if (activeProperty) {
@@ -1398,6 +1234,7 @@ export function DocumentsPage() {
 
         return {
             seller, buyer, property,
+            principals: isMultiPrincipalContract ? enrichedPrincipals : (enrichedClient ? [enrichedClient] : []),
             realtor: effectiveRealtor,
             agencyName: agencyCustomName || agencyName || 'ИП Муравьевой Ю.А.',
             city: city || property?.city || 'г. Киров',
@@ -1418,7 +1255,7 @@ export function DocumentsPage() {
             authPersonRegAddress: clientDraft.auth_person_reg_address,
             authPersonClient,
         };
-    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, realtorDraft, agencyName, agencyCustomName, city, enrichedClient, enrichedProperty, commission, contractEndDate, contractStatus, service1Cost, service2Cost, actDate, movableProperty, clientDraft, realtorTaxStatus, activeClient]);
+    }, [sourceMode, selectedDealId, sellerId, buyerId, propertyId, state, realtor, realtorDraft, agencyName, agencyCustomName, city, enrichedClient, enrichedPrincipals, isMultiPrincipalContract, enrichedProperty, commission, contractEndDate, contractStatus, service1Cost, service2Cost, actDate, movableProperty, clientDraft, realtorTaxStatus, activeClient]);
 
     /* ── Предпросмотр подставляемых данных ─────────────────────────────────── */
     const { seller, buyer, property, deal } = generatorData;
@@ -1470,13 +1307,20 @@ export function DocumentsPage() {
         if (isEditMode) return;
         const slotEl = e.target.closest('.doc-slot, [data-input-id]');
         if (slotEl) {
+            const pIdxAttr = slotEl.getAttribute('data-principal-index');
+            if (pIdxAttr !== null && pIdxAttr !== '') {
+                const idxNum = Number(pIdxAttr);
+                if (!Number.isNaN(idxNum)) setFocusedPrincipalIdx(idxNum);
+            }
             const inputId = slotEl.getAttribute('data-input-id');
             if (inputId) {
-                const el = document.getElementById(inputId);
-                if (el) {
-                    el.focus();
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+                setTimeout(() => {
+                    const el = document.getElementById(inputId);
+                    if (el) {
+                        el.focus();
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 20);
             }
         }
     };
@@ -1485,27 +1329,10 @@ export function DocumentsPage() {
     const handleClearClient = () => {
         setSellerId('');
         setBuyerId('');
+        setCoPrincipalIds([]);
+        setFocusedPrincipalIdx(0);
         setSelectedContractId('');
-        setClientDraft({
-            is_legal_entity: false,
-            company_name: '',
-            inn: '',
-            kpp: '',
-            ogrn: '',
-            legal_address: '',
-            authorized_position: 'Генеральный директор',
-            authorized_name: '',
-            authorized_basis: 'Устава',
-            full_name: '',
-            phone: '',
-            birth_date: '',
-            passport_series: '',
-            passport_number: '',
-            passport_issued_by: '',
-            passport_issue_date: '',
-            passport_unit_code: '',
-            registration_address: '',
-        });
+        setManualDraft(createEmptyClientDraft());
         setIsSavedToCrm(false);
     };
 
@@ -2113,7 +1940,7 @@ export function DocumentsPage() {
                                         </label>
                                         <button
                                             type="button"
-                                            onClick={() => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: '' })}
+                                            onClick={() => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: '', mode: 'replace' })}
                                             style={{
                                                 background: 'none', border: 'none', color: 'var(--primary)',
                                                 fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
@@ -2124,17 +1951,28 @@ export function DocumentsPage() {
                                     </div>
                                     <ClientSearch
                                         clients={state.clients}
-                                        value={sellerId || buyerId}
+                                        value={coPrincipalIds[0] || sellerId || buyerId}
                                         onChange={(val) => {
                                             setSellerId(val);
                                             setBuyerId(val);
+                                            setFocusedPrincipalIdx(0);
                                             if (val) {
                                                 const found = state.properties.find(p => p.client_id === val || (Array.isArray(p.client_ids) && p.client_ids.includes(val)));
-                                                if (found) setPropertyId(found.id);
+                                                if (found) {
+                                                    setPropertyId(found.id);
+                                                    const fOwners = parsePgArray(found.client_ids).map(String);
+                                                    const owners = fOwners.length > 0 ? fOwners : (found.client_id ? [String(found.client_id)] : []);
+                                                    const merged = Array.from(new Set([String(val), ...owners]));
+                                                    setCoPrincipalIds(merged);
+                                                } else {
+                                                    setCoPrincipalIds([String(val)]);
+                                                }
+                                            } else {
+                                                setCoPrincipalIds([]);
                                             }
                                         }}
                                         placeholder={selectedTemplate === 'agency_rent_landlord_1' ? 'Выберите клиента-принципала (наймодателя)' : 'Выберите клиента-принципала (продавца)'}
-                                        onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: searchQuery || '' })}
+                                        onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'seller', initialName: searchQuery || '', mode: 'replace' })}
                                         addLabel="Новый принципал"
                                     />
                                 </div>
@@ -2146,7 +1984,7 @@ export function DocumentsPage() {
                                         </label>
                                         <button
                                             type="button"
-                                            onClick={() => setQuickModalConfig({ isOpen: true, role: 'buyer', initialName: '' })}
+                                            onClick={() => setQuickModalConfig({ isOpen: true, role: 'buyer', initialName: '', mode: 'replace' })}
                                             style={{
                                                 background: 'none', border: 'none', color: 'var(--primary)',
                                                 fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4
@@ -2157,17 +1995,21 @@ export function DocumentsPage() {
                                     </div>
                                     <ClientSearch
                                         clients={state.clients}
-                                        value={buyerId || sellerId}
+                                        value={coPrincipalIds[0] || buyerId || sellerId}
                                         onChange={(val) => {
                                             setBuyerId(val);
                                             setSellerId(val);
+                                            setFocusedPrincipalIdx(0);
                                             if (val) {
+                                                setCoPrincipalIds(prev => (prev.length > 1 ? Array.from(new Set([String(val), ...prev.slice(1)])) : [String(val)]));
                                                 const found = state.properties.find(p => p.client_id === val || (Array.isArray(p.client_ids) && p.client_ids.includes(val)));
                                                 if (found) setPropertyId(found.id);
+                                            } else {
+                                                setCoPrincipalIds([]);
                                             }
                                         }}
                                         placeholder="Выберите клиента-принципала"
-                                        onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'buyer', initialName: searchQuery || '' })}
+                                        onAddNew={(searchQuery) => setQuickModalConfig({ isOpen: true, role: 'buyer', initialName: searchQuery || '', mode: 'replace' })}
                                         addLabel="Новый принципал"
                                     />
                                 </div>
@@ -2292,11 +2134,207 @@ export function DocumentsPage() {
                                             if (p?.movable_property && !movableProperty) {
                                                 setMovableProperty(p.movable_property);
                                             }
+                                            if (isMultiPrincipalContract && p) {
+                                                const rawOwners = parsePgArray(p.client_ids).map(String);
+                                                const owners = rawOwners.length > 0 ? rawOwners : (p.client_id ? [String(p.client_id)] : []);
+                                                if (owners.length > 0) {
+                                                    setCoPrincipalIds(owners);
+                                                    setSellerId(owners[0]);
+                                                    setBuyerId(owners[0]);
+                                                    setFocusedPrincipalIdx(0);
+                                                }
+                                            }
                                         }
                                     }}
                                     placeholder="Выберите объект"
                                 />
                             </div>
+                        </div>
+                    )}
+
+                    {/* Блок выбора сособственников / нескольких лиц для АД */}
+                    {isMultiPrincipalContract && (
+                        <div style={{
+                            padding: '10px 12px',
+                            borderRadius: 10,
+                            background: 'var(--bg)',
+                            border: '1px solid var(--border-light)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            marginTop: 2
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <Users size={13} style={{ color: 'var(--primary)' }} />
+                                    Лица на стороне Принципала ({activePrincipals.length})
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAddCoPrincipal(v => !v)}
+                                    style={{
+                                        background: 'rgba(0, 82, 255, 0.08)',
+                                        border: '1px solid rgba(0, 82, 255, 0.22)',
+                                        color: 'var(--primary)',
+                                        borderRadius: 7,
+                                        padding: '3px 8px',
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4
+                                    }}
+                                >
+                                    <Plus size={12} /> {showAddCoPrincipal ? 'Скрыть' : 'Добавить лицо'}
+                                </button>
+                            </div>
+
+                            {activePrincipals.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    {activePrincipals.map((pItem, idx) => {
+                                        const share = activeProperty?.client_shares?.[pItem.id];
+                                        const isFocused = idx === safeFocusedPrincipalIdx;
+                                        return (
+                                            <div
+                                                key={pItem.id}
+                                                onClick={() => setFocusedPrincipalIdx(idx)}
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    gap: 6,
+                                                    padding: '5px 8px',
+                                                    borderRadius: 8,
+                                                    cursor: 'pointer',
+                                                    background: isFocused ? 'rgba(0, 82, 255, 0.08)' : 'var(--surface)',
+                                                    border: isFocused ? '1px solid rgba(0, 82, 255, 0.28)' : '1px solid var(--border-light)',
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
+                                                    <span style={{
+                                                        width: 18, height: 18, borderRadius: 6,
+                                                        background: isFocused ? 'var(--primary)' : 'var(--bg)',
+                                                        color: isFocused ? '#fff' : 'var(--text-secondary)',
+                                                        fontSize: 10.5, fontWeight: 700,
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                                                    }}>
+                                                        {idx + 1}
+                                                    </span>
+                                                    <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {pItem.full_name}
+                                                    </span>
+                                                    {share && (
+                                                        <span style={{
+                                                            fontSize: 10, padding: '1px 6px', borderRadius: 5,
+                                                            background: 'rgba(16, 185, 129, 0.1)', color: '#059669', fontWeight: 600, flexShrink: 0
+                                                        }}>
+                                                            {share}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {activePrincipals.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        title="Убрать из договора"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const nextIds = coPrincipalIds.filter(id => String(id) !== String(pItem.id));
+                                                            setCoPrincipalIds(nextIds);
+                                                            if (nextIds.length > 0) {
+                                                                setSellerId(nextIds[0]);
+                                                                if (selectedTemplate === 'yuss_buy_1') setBuyerId(nextIds[0]);
+                                                            }
+                                                            setFocusedPrincipalIdx(prev => Math.max(0, Math.min(prev, nextIds.length - 1)));
+                                                            setIsSavedToCrm(false);
+                                                        }}
+                                                        style={{
+                                                            background: 'none', border: 'none', padding: 2,
+                                                            color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', flexShrink: 0
+                                                        }}
+                                                    >
+                                                        <X size={13} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Быстрое добавление остальных сособственников выбранного объекта */}
+                            {(() => {
+                                const missingPropOwners = propertyOwnerIds
+                                    .filter(oid => !coPrincipalIds.includes(String(oid)))
+                                    .map(oid => state.clients.find(c => String(c.id) === String(oid)))
+                                    .filter(Boolean);
+                                if (missingPropOwners.length === 0) return null;
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                        <span style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>
+                                            Сособственники объекта (нажмите, чтобы включить):
+                                        </span>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                            {missingPropOwners.map(owner => {
+                                                const share = activeProperty?.client_shares?.[owner.id];
+                                                return (
+                                                    <button
+                                                        key={owner.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const next = Array.from(new Set([...coPrincipalIds, String(owner.id)]));
+                                                            setCoPrincipalIds(next);
+                                                            if (!sellerId) setSellerId(owner.id);
+                                                            setIsSavedToCrm(false);
+                                                        }}
+                                                        style={{
+                                                            padding: '3px 8px', borderRadius: 7,
+                                                            border: '1px dashed var(--primary)',
+                                                            background: 'rgba(0, 82, 255, 0.05)',
+                                                            color: 'var(--primary)', fontSize: 11, fontWeight: 600,
+                                                            cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4
+                                                        }}
+                                                    >
+                                                        <Plus size={11} />
+                                                        {toShortName(owner.full_name)}{share ? ` (${share})` : ''}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {showAddCoPrincipal && (
+                                <div style={{ marginTop: 2 }}>
+                                    <ClientSearch
+                                        clients={state.clients.filter(c => !coPrincipalIds.includes(String(c.id)))}
+                                        value=""
+                                        onChange={(val) => {
+                                            if (val) {
+                                                const next = Array.from(new Set([...coPrincipalIds, String(val)]));
+                                                setCoPrincipalIds(next);
+                                                if (!sellerId && isAgencySale) setSellerId(val);
+                                                if (!buyerId && !isAgencySale) setBuyerId(val);
+                                                setFocusedPrincipalIdx(next.length - 1);
+                                                setShowAddCoPrincipal(false);
+                                                setIsSavedToCrm(false);
+                                            }
+                                        }}
+                                        placeholder="Выбрать сособственника / лицо из CRM..."
+                                        onAddNew={(searchQuery) => {
+                                            setShowAddCoPrincipal(false);
+                                            setQuickModalConfig({
+                                                isOpen: true,
+                                                role: isAgencySale ? 'seller' : 'buyer',
+                                                initialName: searchQuery || '',
+                                                mode: 'add_co_principal'
+                                            });
+                                        }}
+                                        addLabel="Создать и добавить лицо"
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -2313,8 +2351,12 @@ export function DocumentsPage() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
                                 <Sparkles size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                                 <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {isServicesRent3Party ? 'Заказчик' : 'Принципал'}
-                                    {activeClient ? `: ${clientDraft.is_legal_entity ? (clientDraft.company_name || activeClient.full_name) : activeClient.full_name}` : ''}
+                                    {isServicesRent3Party
+                                        ? 'Заказчик'
+                                        : (activePrincipals.length > 1 ? `Принципалы (${activePrincipals.length})` : 'Принципал')}
+                                    {focusedPrincipalClient
+                                        ? `: ${clientDraft.is_legal_entity ? (clientDraft.company_name || focusedPrincipalClient.full_name) : focusedPrincipalClient.full_name}`
+                                        : ''}
                                 </span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
@@ -2339,6 +2381,42 @@ export function DocumentsPage() {
 
                         {!collapsedSections.client && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
+                                {/* Вкладки сособственников при заключении АД от нескольких лиц */}
+                                {isMultiPrincipalContract && activePrincipals.length > 1 && (
+                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingBottom: 4, borderBottom: '1px solid var(--border-light)' }}>
+                                        {activePrincipals.map((pItem, idx) => {
+                                            const isTabActive = idx === safeFocusedPrincipalIdx;
+                                            const missing = principalMissingCounts[idx] || 0;
+                                            const share = activeProperty?.client_shares?.[pItem.id];
+                                            return (
+                                                <button
+                                                    key={pItem.id}
+                                                    type="button"
+                                                    onClick={() => setFocusedPrincipalIdx(idx)}
+                                                    style={{
+                                                        padding: '4px 8px',
+                                                        borderRadius: 7,
+                                                        border: isTabActive ? '1.5px solid var(--primary)' : '1px solid var(--border)',
+                                                        background: isTabActive ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
+                                                        color: isTabActive ? 'var(--primary)' : 'var(--text)',
+                                                        fontSize: 11,
+                                                        fontWeight: isTabActive ? 600 : 500,
+                                                        cursor: 'pointer',
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: 5
+                                                    }}
+                                                >
+                                                    <span>{idx + 1}. {toShortName(pItem.full_name)}</span>
+                                                    {share && <span style={{ fontSize: 9.5, opacity: 0.75 }}>({share})</span>}
+                                                    <span style={{ fontSize: 9.5, fontWeight: 700, color: missing > 0 ? '#d97706' : '#059669' }}>
+                                                        {missing > 0 ? `●${missing}` : '✓'}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                                 {/* Физлицо / Юрлицо + Сменить */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
                                     <div style={{ display: 'inline-flex', gap: 2, background: 'var(--bg)', padding: '2px', borderRadius: 8, border: '1px solid var(--border)' }}>
@@ -2988,8 +3066,7 @@ export function DocumentsPage() {
                                                     const ind = state.clients.find(c => String(c.id) === String(selectedId));
                                                     if (ind) {
                                                         const ip = ind.passport_details || {};
-                                                        setClientDraft(prev => ({
-                                                            ...prev,
+                                                        handleDraftPatch(prev => ({
                                                             authorized_name: ind.full_name || prev.authorized_name,
                                                             auth_person_birth: ind.birth_date || ip.birth_date || '',
                                                             auth_person_series: ip.series || '',
@@ -3217,13 +3294,24 @@ export function DocumentsPage() {
                     initialName={quickModalConfig.initialName}
                     role={quickModalConfig.role}
                     onCreated={(newClient) => {
-                        if (selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1') {
+                        if (quickModalConfig.mode === 'add_co_principal') {
+                            const nextIds = Array.from(new Set([...coPrincipalIds, String(newClient.id)]));
+                            setCoPrincipalIds(nextIds);
+                            if (!sellerId && isAgencySale) setSellerId(newClient.id);
+                            if (!buyerId && !isAgencySale) setBuyerId(newClient.id);
+                            setFocusedPrincipalIdx(nextIds.length - 1);
+                            setIsSavedToCrm(false);
+                        } else if (selectedTemplate === 'yuss_buy_1' || selectedTemplate === 'agency_sale_1' || selectedTemplate === 'agency_rent_landlord_1') {
                             setBuyerId(newClient.id);
                             setSellerId(newClient.id);
+                            setCoPrincipalIds([String(newClient.id)]);
+                            setFocusedPrincipalIdx(0);
                         } else if (quickModalConfig.role === 'seller') {
                             setSellerId(newClient.id);
+                            setCoPrincipalIds([String(newClient.id)]);
                         } else {
                             setBuyerId(newClient.id);
+                            setCoPrincipalIds([String(newClient.id)]);
                         }
                     }}
                 />
@@ -3319,7 +3407,18 @@ export function DocumentsPage() {
                                 ) : isAgencyContract ? (
                                     <>
                                         <DataPreview label="Агент" value="ИП Муравьева Юлия Анатольевна (г. Киров)" />
-                                        {(buyer || seller) && (
+                                        {enrichedPrincipals.length > 1 ? (
+                                            enrichedPrincipals.map((pItem, idx) => (
+                                                <React.Fragment key={pItem.id || idx}>
+                                                    <DataPreview label={`Принципал ${idx + 1}`} value={pItem.full_name} />
+                                                    {pItem.phone && <DataPreview label={`Телефон (${idx + 1})`} value={formatPhone(pItem.phone)} />}
+                                                    <DataPreview
+                                                        label={`Паспорт (${idx + 1})`}
+                                                        value={(pItem.passport_details?.series && pItem.passport_details?.number) ? `Серия ${pItem.passport_details.series} № ${pItem.passport_details.number}` : null}
+                                                    />
+                                                </React.Fragment>
+                                            ))
+                                        ) : (buyer || seller) && (
                                             (buyer || seller).is_legal_entity || (buyer || seller).company_name || clientDraft.is_legal_entity ? (
                                                 <>
                                                     <DataPreview label="Принципал (Юрлицо)" value={(buyer || seller).company_name || clientDraft.company_name || (seller || buyer).full_name} />
@@ -3618,6 +3717,7 @@ export function DocumentsPage() {
                                     data={generatorData}
                                     highlight={highlightSlots && !isEditMode}
                                     isEditing={isEditMode}
+                                    onFocusPrincipal={(idx) => setFocusedPrincipalIdx(idx)}
                                 />
                             )}
                         </div>
@@ -3632,22 +3732,28 @@ export function DocumentsPage() {
 
 /* ─── Интерактивный слот подстановки данных ──────────────────────────────── */
 
-function Slot({ value, label, fallback, inputId, slotId, highlight = true, isEditing = false }) {
+function Slot({ value, label, fallback, inputId, slotId, principalIndex, onFocusPrincipal, highlight = true, isEditing = false }) {
     const hasVal = Boolean(value && String(value).trim());
     const displayVal = hasVal ? String(value) : (fallback || `[● Заполнить: ${label}]`);
 
     const handleClick = (e) => {
         if (isEditing) return;
+        if (principalIndex !== undefined && principalIndex !== null && onFocusPrincipal) {
+            onFocusPrincipal(principalIndex);
+        }
         if (inputId) {
             e?.stopPropagation?.();
-            const el = document.getElementById(inputId) ||
-                ((inputId === 'doc-input-series' || inputId === 'doc-input-number') ? document.getElementById('doc-input-passport') : null) ||
-                ((inputId === 'doc-input-key-principal-series' || inputId === 'doc-input-key-principal-number') ? document.getElementById('doc-input-key-principal-passport') : null) ||
-                ((inputId === 'doc-input-realtor-series' || inputId === 'doc-input-realtor-number') ? document.getElementById('doc-input-realtor-passport') : null);
-            if (el) {
-                el.focus();
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            setTimeout(() => {
+                const el = document.getElementById(inputId) ||
+                    (inputId === 'doc-input-full-name' ? document.getElementById('doc-input-fullname') : null) ||
+                    ((inputId === 'doc-input-series' || inputId === 'doc-input-number') ? document.getElementById('doc-input-passport') : null) ||
+                    ((inputId === 'doc-input-key-principal-series' || inputId === 'doc-input-key-principal-number') ? document.getElementById('doc-input-key-principal-passport') : null) ||
+                    ((inputId === 'doc-input-realtor-series' || inputId === 'doc-input-realtor-number') ? document.getElementById('doc-input-realtor-passport') : null);
+                if (el) {
+                    el.focus();
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 20);
         }
     };
 
@@ -3658,6 +3764,7 @@ function Slot({ value, label, fallback, inputId, slotId, highlight = true, isEdi
             data-label={label || ''}
             data-input-id={inputId || ''}
             data-fallback={fallback || ''}
+            data-principal-index={principalIndex !== undefined && principalIndex !== null ? String(principalIndex) : ''}
             title={hasVal ? `Поле из CRM: ${label}. Нажмите для редактирования.` : `Не заполнено: ${label}. Нажмите, чтобы ввести.`}
             onClick={handleClick}
             style={{
@@ -3695,10 +3802,183 @@ function renderPassportDetails(person, highlight) {
     );
 }
 
+/* ─── Общие блоки предпросмотра для Принципалов (1 или несколько лиц) ──────── */
+
+function formatPreviewDate(d) {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function AgencyPrincipalsPreamblePreview({ principalsList, data, variant = 'standard', highlight = true, onFocusPrincipal }) {
+    const list = principalsList && principalsList.length > 0 ? principalsList : [null];
+    const isMulti = list.length > 1;
+
+    return (
+        <>
+            {list.map((pItem, idx) => {
+                const isFirst = idx === 0;
+                const isLast = idx === list.length - 1;
+                const pd = pItem?.passport_details || {};
+                const leg = extractLegalEntityDetails(pItem, pItem?.full_name || '');
+                const isLegal = Boolean((!isMulti && data?.isLegalEntity) || leg.isLegal);
+                const slotSuffix = isFirst ? '' : `_${idx + 1}`;
+                const pName = pItem?.full_name || '';
+                const pBirth = pItem?.birth_date ? formatPreviewDate(pItem.birth_date) : (pd.birth_date ? formatPreviewDate(pd.birth_date) : '');
+                const pSeries = pd.series || '';
+                const pNumber = pd.number || '';
+                const pIssuedBy = pd.issued_by || '';
+                const pIssueDate = pd.issue_date ? formatPreviewDate(pd.issue_date) : '';
+                const pUnitCode = pd.unit_code || '';
+                const pRegAddress = pd.registration_address || pItem?.reg_address || pItem?.address || '';
+                const pPhone = formatPhone(pItem?.phone) || pItem?.phone || '';
+
+                if (isLegal) {
+                    const cName = pItem?.company_name || pItem?.company_details?.name || pItem?.company_details?.short_name || pName;
+                    const cInn = pItem?.inn || pItem?.company_details?.inn || '';
+                    const cKpp = pItem?.kpp || pItem?.company_details?.kpp || '';
+                    const cOgrn = pItem?.ogrn || pItem?.company_details?.ogrn || '';
+                    const cLegalAddr = pItem?.legal_address || pItem?.company_details?.legal_address || pItem?.reg_address || pItem?.address || '';
+                    const aPos = pItem?.authorized_position || pItem?.authorized_person?.position || pItem?.company_details?.director_position || 'Генерального директора';
+                    const aName = pItem?.authorized_name || pItem?.authorized_person?.name || pItem?.company_details?.director_name || '';
+                    const aBasis = pItem?.authorized_basis || pItem?.authorized_person?.basis_document || 'Устава';
+
+                    return (
+                        <p key={pItem?.id || idx} style={{ textIndent: '2.5em', marginBottom: isLast ? 14 : 8, textAlign: 'justify' }}>
+                            {!isFirst && 'и '}
+                            <strong><Slot slotId={isFirst ? 'company_name' : `company_name_${idx + 1}`} value={cName} label="Наименование организации" inputId="doc-input-company-name" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /></strong>,{' '}
+                            ОГРН <Slot slotId={isFirst ? 'company_ogrn' : `company_ogrn_${idx + 1}`} value={cOgrn} label="ОГРН" inputId="doc-input-ogrn" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                            ИНН <Slot slotId={isFirst ? 'company_inn' : `company_inn_${idx + 1}`} value={cInn} label="ИНН" inputId="doc-input-inn" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />
+                            {cKpp ? <span>, КПП <Slot slotId={isFirst ? 'company_kpp' : `company_kpp_${idx + 1}`} value={cKpp} label="КПП" inputId="doc-input-kpp" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /></span> : ''},{' '}
+                            адрес местонахождения: <Slot slotId={isFirst ? 'company_legal_address' : `company_legal_address_${idx + 1}`} value={cLegalAddr} label="Юридический адрес" inputId="doc-input-legal-address" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                            телефон: <Slot slotId={`principal${slotSuffix}_phone`} value={pPhone} label="Телефон" inputId="doc-input-phone" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                            в лице <Slot slotId={isFirst ? 'auth_position' : `auth_position_${idx + 1}`} value={aPos} label="Должность представителя" inputId="doc-input-auth-position" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />{' '}
+                            <strong><Slot slotId={isFirst ? 'auth_name' : `auth_name_${idx + 1}`} value={aName} label="ФИО представителя" inputId="doc-input-auth-name" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /></strong>,{' '}
+                            действующего(-ей) на основании <Slot slotId={isFirst ? 'auth_basis' : `auth_basis_${idx + 1}`} value={aBasis} label="Основание полномочий" inputId="doc-input-auth-basis" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />
+                            {isLast ? (isMulti ? ', именуемые в дальнейшем совместно «Принципал», с одной стороны,' : ', именуемое в дальнейшем «Принципал», с одной стороны,') : ','}
+                        </p>
+                    );
+                }
+
+                if (variant === 'rent_landlord') {
+                    return (
+                        <p key={pItem?.id || idx} style={{ textIndent: '2.5em', marginBottom: isLast ? 14 : 8, textAlign: 'justify' }}>
+                            {isFirst ? 'Мы, Гр. ' : 'и Гр. '}
+                            <Slot slotId={`principal${slotSuffix}_name`} value={pName} label={`ФИО Принципала${isMulti ? ` ${idx + 1}` : ''}`} inputId="doc-input-full-name" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                            дата рождения: <Slot slotId={`principal${slotSuffix}_birth`} value={pBirth} label="Дата рождения" inputId="doc-input-birth-date" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                            паспорт РФ серия <Slot slotId={`principal${slotSuffix}_series`} value={pSeries} label="Серия паспорта" inputId="doc-input-series" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /> номер <Slot slotId={`principal${slotSuffix}_number`} value={pNumber} label="Номер паспорта" inputId="doc-input-number" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                            выдан <Slot slotId={`principal${slotSuffix}_issue_date`} value={pIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /> года <Slot slotId={`principal${slotSuffix}_issued_by`} value={pIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot slotId={`principal${slotSuffix}_reg_address`} value={pRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />
+                            {isLast ? (isMulti ? ', именуемые в дальнейшем совместно «Принципал», с одной стороны,' : ' именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,') : ','}
+                        </p>
+                    );
+                }
+
+                return (
+                    <p key={pItem?.id || idx} style={{ textIndent: '2.5em', marginBottom: isLast ? 14 : 8, textAlign: 'justify' }}>
+                        {isFirst ? 'Мы, ' : 'и '}
+                        <Slot slotId={`principal${slotSuffix}_name`} value={pName} label={`ФИО Принципала${isMulti ? ` ${idx + 1}` : ''}`} inputId="doc-input-full-name" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        дата рождения: <Slot slotId={`principal${slotSuffix}_birth`} value={pBirth} label="Дата рождения" inputId="doc-input-birth-date" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        паспорт: серия <Slot slotId={`principal${slotSuffix}_series`} value={pSeries} label="Серия паспорта" inputId="doc-input-series" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /> номер <Slot slotId={`principal${slotSuffix}_number`} value={pNumber} label="Номер паспорта" inputId="doc-input-number" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        выдан <Slot slotId={`principal${slotSuffix}_issued_by`} value={pIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        дата выдачи: <Slot slotId={`principal${slotSuffix}_issue_date`} value={pIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        код подразделения: <Slot slotId={`principal${slotSuffix}_unit_code`} value={pUnitCode} label="Код подразделения" inputId="doc-input-unit-code" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        зарегистрированный(-ая) по адресу: <Slot slotId={`principal${slotSuffix}_reg_address`} value={pRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />,{' '}
+                        телефон: <Slot slotId={`principal${slotSuffix}_phone`} value={pPhone} label="Телефон" inputId="doc-input-phone" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />
+                        {isLast ? (isMulti ? ', именуемые в дальнейшем совместно «Принципал», с одной стороны,' : ', именуемый(-ая) в дальнейшем «Принципал», с одной стороны,') : ','}
+                    </p>
+                );
+            })}
+        </>
+    );
+}
+
+function AgencyPrincipalsSignaturesPreview({ principalsList, data, compact = false, highlight = true, onFocusPrincipal }) {
+    const list = principalsList && principalsList.length > 0 ? principalsList : [null];
+    const isMulti = list.length > 1;
+
+    return (
+        <>
+            {list.map((pItem, idx) => {
+                const leg = extractLegalEntityDetails(pItem, pItem?.full_name || '');
+                const isLegal = Boolean((!isMulti && data?.isLegalEntity) || leg.isLegal);
+                const label = isMulti
+                    ? `Принципал ${idx + 1}${pItem?.full_name ? ` (${pItem.full_name})` : ''}:`
+                    : 'Принципал:';
+
+                if (isLegal) {
+                    const cName = pItem?.company_name || pItem?.company_details?.name || pItem?.company_details?.short_name || pItem?.full_name || '';
+                    const cInn = pItem?.inn || pItem?.company_details?.inn || '';
+                    const cKpp = pItem?.kpp || pItem?.company_details?.kpp || '';
+                    const cOgrn = pItem?.ogrn || pItem?.company_details?.ogrn || '';
+                    const cLegalAddr = pItem?.legal_address || pItem?.company_details?.legal_address || pItem?.reg_address || pItem?.address || '';
+                    const aPos = pItem?.authorized_position || pItem?.authorized_person?.position || pItem?.company_details?.director_position || 'Генеральный директор';
+                    const aName = pItem?.authorized_name || pItem?.authorized_person?.name || pItem?.company_details?.director_name || '';
+                    const aShort = toShortName(aName);
+                    const isFirst = idx === 0;
+                    return (
+                        <div key={pItem?.id || idx} style={{ marginBottom: 16 }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
+                                {isMulti ? `Принципал ${idx + 1}: ` : 'Принципал: '}
+                                <Slot slotId={isFirst ? 'company_name' : `company_name_${idx + 1}`} value={cName} label="Организация" inputId="doc-input-company-name" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />
+                            </div>
+                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
+                                ОГРН <Slot slotId={isFirst ? 'company_ogrn' : `company_ogrn_${idx + 1}`} value={cOgrn} label="ОГРН" inputId="doc-input-ogrn" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />, ИНН <Slot slotId={isFirst ? 'company_inn' : `company_inn_${idx + 1}`} value={cInn} label="ИНН" inputId="doc-input-inn" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />{cKpp ? `, КПП ${cKpp}` : ''}
+                            </div>
+                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
+                                Адрес: <Slot slotId={isFirst ? 'company_legal_address' : `company_legal_address_${idx + 1}`} value={cLegalAddr} label="Юридический адрес" inputId="doc-input-legal-address" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: 14 }}>
+                                <Slot slotId={isFirst ? 'auth_position' : `auth_position_${idx + 1}`} value={aPos} label="Должность" inputId="doc-input-auth-position" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} />: _________________ / <Slot slotId={isFirst ? 'auth_name' : `auth_name_${idx + 1}`} value={aShort} label="Подпись представителя" inputId="doc-input-auth-name" principalIndex={idx} onFocusPrincipal={onFocusPrincipal} highlight={highlight} /> / &nbsp; М.П.
+                            </div>
+                        </div>
+                    );
+                }
+
+                if (isMulti) {
+                    return (
+                        <div key={pItem?.id || idx} style={{ marginBottom: 18 }}>
+                            <div style={{ fontWeight: 'bold', marginBottom: 8 }}>{label}</div>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 22, marginBottom: 12 }}></div>
+                            <div style={{ borderBottom: '1.5px solid #000', height: 22 }}></div>
+                        </div>
+                    );
+                }
+
+                if (compact) {
+                    return (
+                        <div key={pItem?.id || idx}>
+                            <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Принципал:</div>
+                            <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                            <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                            <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <React.Fragment key={pItem?.id || idx}>
+                        <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
+                            <strong>Принципал:</strong>
+                        </div>
+                        <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
+                        <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
+                    </React.Fragment>
+                );
+            })}
+        </>
+    );
+}
+
 /* ─── Структурированный предпросмотр документов ───────────────────────────── */
 
-function DocumentPreview({ template, data, highlight = true }) {
+function DocumentPreview({ template, data, highlight = true, onFocusPrincipal }) {
     const { seller, buyer, property, realtor, agencyName, deal } = data;
+    const isAgencySaleTpl = template === 'agency_sale_1' || template === 'agency_rent_landlord_1' || template === 'key_act';
+    const principalsList = resolvePrincipals(data, isAgencySaleTpl);
+    const copiesClause66 = principalsList.length > 1
+        ? `6.6. Договор составлен в ${principalsList.length + 1} экземплярах, имеющих одинаковую юридическую силу, по одному экземпляру для каждого из лиц на стороне Принципала и один для Агента.`
+        : '6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.';
 
     function f(val, fb = '') {
         if (val === null || val === undefined || val === '') return fb;
@@ -3742,14 +4022,7 @@ function DocumentPreview({ template, data, highlight = true }) {
         /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(principal?.full_name || '')
     );
     const companyName = f(principal?.company_name || pCompany.name || pCompany.short_name || (isLegalEntity ? principal?.full_name : ''));
-    const companyInn = f(principal?.inn || pCompany.inn);
-    const companyKpp = f(principal?.kpp || pCompany.kpp);
-    const companyOgrn = f(principal?.ogrn || pCompany.ogrn);
-    const companyLegalAddress = f(principal?.legal_address || pCompany.legal_address || principal?.reg_address || principal?.address);
-    const authPosition = f(principal?.authorized_position || pAuth.position || pCompany.director_position || 'Генерального директора');
-    const authPositionNom = f(principal?.authorized_position || pAuth.position || pCompany.director_position || 'Генеральный директор');
     const authName = f(principal?.authorized_name || pAuth.name || pCompany.director_name || (!isLegalEntity ? principal?.full_name : ''));
-    const authBasis = f(principal?.authorized_basis || pAuth.basis_document || 'Устава');
     const authShort = toShortName(authName);
 
     const principalName = f(principal?.full_name);
@@ -3760,7 +4033,6 @@ function DocumentPreview({ template, data, highlight = true }) {
     const principalIssueDate = pDetails.issue_date ? fDate(pDetails.issue_date) : '';
     const principalUnitCode = f(pDetails.unit_code);
     const principalRegAddress = f(pDetails.registration_address || principal?.reg_address || principal?.address);
-    const principalPhone = f(formatPhone(principal?.phone) || principal?.phone);
     const principalShort = isLegalEntity ? authShort : toShortName(principalName);
 
     // Характеристики объекта для агентского договора на продажу
@@ -4186,31 +4458,13 @@ function DocumentPreview({ template, data, highlight = true }) {
                     <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
-                {isLegalEntity ? (
-                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                        <strong><Slot slotId="company_name" value={companyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
-                        ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
-                        ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
-                        {companyKpp ? <span>, КПП <Slot slotId="company_kpp" value={companyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
-                        адрес местонахождения: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
-                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                        в лице <Slot slotId="auth_position" value={authPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={authName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
-                        действующего(-ей) на основании <Slot slotId="auth_basis" value={authBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
-                        именуемое в дальнейшем «Принципал», с одной стороны,
-                    </p>
-                ) : (
-                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                        Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                        дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                        паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                        выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
-                        дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
-                        код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
-                        зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
-                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                        именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
-                    </p>
-                )}
+                <AgencyPrincipalsPreamblePreview
+                    principalsList={principalsList}
+                    data={data}
+                    variant="standard"
+                    highlight={highlight}
+                    onFocusPrincipal={onFocusPrincipal}
+                />
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
@@ -4354,7 +4608,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                     6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок действия настоящего договора.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.
+                    {copiesClause66}
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 20, textAlign: 'justify' }}>
                     6.7. Настоящим стороны Договора заверяют и гарантируют, что они и близкие родственники не имеют гражданства иностранных(ого) государств(а), совершающих(его) в отношении Российской Федерации, российских юридических и физических лиц недружественные действия, а также местом регистрации, местом преимущественного пребывания, местом преимущественного ведения хозяйственной деятельности или извлечения прибыли от деятельности не являются(ется) указанные(ое) государства(о) и территория(ии), перечень которых установлен Распоряжением Правительства Российской Федерации от 05.03.2022 N 430-р «Об утверждении перечня иностранных государств и территорий, совершающих недружественные действия в отношении Российской Федерации, российских юридических и физических лиц».
@@ -4362,30 +4616,12 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 24, marginBottom: 12 }}>7. Подписи сторон</div>
                 <div style={{ marginTop: 12 }}>
-                    {isLegalEntity ? (
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                                Принципал: <Slot slotId="company_name" value={companyName} label="Организация" inputId="doc-input-company-name" highlight={highlight} />
-                            </div>
-                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
-                                ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{companyKpp ? `, КПП ${companyKpp}` : ''}
-                            </div>
-                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
-                                Адрес: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />
-                            </div>
-                            <div style={{ marginTop: 8, fontSize: 14 }}>
-                                <Slot slotId="auth_position" value={authPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: _________________ / <Slot slotId="auth_name" value={authShort} label="Подпись представителя" inputId="doc-input-auth-name" highlight={highlight} /> / &nbsp; М.П.
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
-                                <strong>Принципал:</strong>
-                            </div>
-                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
-                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
-                        </>
-                    )}
+                    <AgencyPrincipalsSignaturesPreview
+                        principalsList={principalsList}
+                        data={data}
+                        highlight={highlight}
+                        onFocusPrincipal={onFocusPrincipal}
+                    />
 
                     <div style={{ marginTop: 16, marginBottom: 6 }}>
                         <strong>Агент:</strong>
@@ -4418,26 +4654,13 @@ function DocumentPreview({ template, data, highlight = true }) {
                     <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
-                {isLegalEntity ? (
-                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                        <strong><Slot slotId="company_name" value={companyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
-                        ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
-                        ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
-                        {companyKpp ? <span>, КПП <Slot slotId="company_kpp" value={companyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
-                        адрес местонахождения: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
-                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                        в лице <Slot slotId="auth_position" value={authPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={authName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
-                        действующего(-ей) на основании <Slot slotId="auth_basis" value={authBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
-                        именуемое в дальнейшем «Принципал», с одной стороны,
-                    </p>
-                ) : (
-                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                        Мы, Гр. <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                        дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                        паспорт РФ серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                        выдан <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи" inputId="doc-input-issue-date" highlight={highlight} /> года <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} /> зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} /> именуемый(-ая,-ые) в дальнейшем «Принципал», с одной стороны,
-                    </p>
-                )}
+                <AgencyPrincipalsPreamblePreview
+                    principalsList={principalsList}
+                    data={data}
+                    variant="rent_landlord"
+                    highlight={highlight}
+                    onFocusPrincipal={onFocusPrincipal}
+                />
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
@@ -4574,35 +4797,19 @@ function DocumentPreview({ template, data, highlight = true }) {
                     6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок, необходимый для исполнения Агентского договора.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 18, textAlign: 'justify' }}>
-                    6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.
+                    {copiesClause66}
                 </p>
 
                 <div style={{ fontWeight: 'bold', marginTop: 18, marginBottom: 14 }}>7. Подписи сторон</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 20 }}>
                     <div>
-                        {isLegalEntity ? (
-                            <div style={{ marginBottom: 16 }}>
-                                <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                                    Принципал: <Slot slotId="company_name" value={companyName} label="Организация" inputId="doc-input-company-name" highlight={highlight} />
-                                </div>
-                                <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
-                                    ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{companyKpp ? `, КПП ${companyKpp}` : ''}
-                                </div>
-                                <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
-                                    Адрес: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />
-                                </div>
-                                <div style={{ marginTop: 8, fontSize: 14 }}>
-                                    <Slot slotId="auth_position" value={authPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: _________________ / <Slot slotId="auth_name" value={authShort} label="Подпись представителя" inputId="doc-input-auth-name" highlight={highlight} /> / &nbsp; М.П.
-                                </div>
-                            </div>
-                        ) : (
-                            <>
-                                <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Принципал:</div>
-                                <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
-                                <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
-                                <div style={{ borderBottom: '1px solid #000', height: 26, marginBottom: 8 }}></div>
-                            </>
-                        )}
+                        <AgencyPrincipalsSignaturesPreview
+                            principalsList={principalsList}
+                            data={data}
+                            compact={true}
+                            highlight={highlight}
+                            onFocusPrincipal={onFocusPrincipal}
+                        />
                     </div>
                     <div>
                         <div style={{ fontWeight: 'bold', marginBottom: 6 }}>Агент:</div>
@@ -4635,31 +4842,13 @@ function DocumentPreview({ template, data, highlight = true }) {
                     <span>«<Slot slotId="contract_date" value={today} label="Дата договора" highlight={highlight} />»</span>
                 </div>
 
-                {isLegalEntity ? (
-                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                        <strong><Slot slotId="company_name" value={companyName} label="Наименование организации" inputId="doc-input-company-name" highlight={highlight} /></strong>, 
-                        ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, 
-                        ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />
-                        {companyKpp ? <span>, КПП <Slot slotId="company_kpp" value={companyKpp} label="КПП" inputId="doc-input-kpp" highlight={highlight} /></span> : ''}, 
-                        адрес местонахождения: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />, 
-                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                        в лице <Slot slotId="auth_position" value={authPosition} label="Должность представителя" inputId="doc-input-auth-position" highlight={highlight} /> <strong><Slot slotId="auth_name" value={authName} label="ФИО представителя" inputId="doc-input-auth-name" highlight={highlight} /></strong>, 
-                        действующего(-ей) на основании <Slot slotId="auth_basis" value={authBasis} label="Основание полномочий" inputId="doc-input-auth-basis" highlight={highlight} />, 
-                        именуемое в дальнейшем «Принципал», с одной стороны,
-                    </p>
-                ) : (
-                    <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
-                        Мы, <Slot slotId="principal_name" value={principalName} label="ФИО Принципала" inputId="doc-input-full-name" highlight={highlight} />, 
-                        дата рождения: <Slot slotId="principal_birth" value={principalBirth} label="Дата рождения" inputId="doc-input-birth-date" highlight={highlight} />, 
-                        паспорт: серия <Slot slotId="principal_series" value={principalSeries} label="Серия паспорта" inputId="doc-input-series" highlight={highlight} /> номер <Slot slotId="principal_number" value={principalNumber} label="Номер паспорта" inputId="doc-input-number" highlight={highlight} />, 
-                        выдан <Slot slotId="principal_issued_by" value={principalIssuedBy} label="Кем выдан паспорт" inputId="doc-input-issued-by" highlight={highlight} />, 
-                        дата выдачи: <Slot slotId="principal_issue_date" value={principalIssueDate} label="Дата выдачи паспорта" inputId="doc-input-issue-date" highlight={highlight} />, 
-                        код подразделения: <Slot slotId="principal_unit_code" value={principalUnitCode} label="Код подразделения" inputId="doc-input-unit-code" highlight={highlight} />, 
-                        зарегистрированный(-ая) по адресу: <Slot slotId="principal_reg_address" value={principalRegAddress} label="Адрес регистрации" inputId="doc-input-reg-address" highlight={highlight} />, 
-                        телефон: <Slot slotId="principal_phone" value={principalPhone} label="Телефон" inputId="doc-input-phone" highlight={highlight} />, 
-                        именуемый(-ая) в дальнейшем «Принципал», с одной стороны,
-                    </p>
-                )}
+                <AgencyPrincipalsPreamblePreview
+                    principalsList={principalsList}
+                    data={data}
+                    variant="standard"
+                    highlight={highlight}
+                    onFocusPrincipal={onFocusPrincipal}
+                />
 
                 <p style={{ textIndent: '2.5em', marginBottom: 14, textAlign: 'justify' }}>
                     и Индивидуальный предприниматель <strong>Муравьева Юлия Анатольевна</strong>, ИНН 434560366213, ОГРН 323784700414782, 
@@ -4760,7 +4949,7 @@ function DocumentPreview({ template, data, highlight = true }) {
                     6.5. Настоящим пунктом Принципал выражает свое письменное заявление о согласии на обработку и использование Агентом своих персональных данных, содержащихся в настоящем договоре и в представленных (подготовленных) документах на срок, необходимый для исполнения Агентского договора.
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 8, textAlign: 'justify' }}>
-                    6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.
+                    {copiesClause66}
                 </p>
                 <p style={{ textIndent: '2.5em', marginBottom: 20, textAlign: 'justify' }}>
                     6.7. Настоящим стороны Договора заверяют и гарантируют, что они и близкие родственники не имеют гражданства иностранных(ого) государств(а), совершающих(его) в отношении Российской Федерации, российских юридических и физических лиц недружественные действия, а также местом регистрации, местом преимущественного пребывания, местом преимущественного ведения хозяйственной деятельности или извлечения прибыли от деятельности не являются(ется) указанные(ое) государства(о) и территория(ии), перечень которых установлен Распоряжением Правительства Российской Федерации от 05.03.2022 N 430-р «Об утверждении перечня иностранных государств и территорий, совершающих недружественные действия в отношении Российской Федерации, российских юридических и физических лиц».
@@ -4768,30 +4957,12 @@ function DocumentPreview({ template, data, highlight = true }) {
 
                 <div style={{ fontWeight: 'bold', marginTop: 24, marginBottom: 12 }}>7. Подписи сторон</div>
                 <div style={{ marginTop: 12 }}>
-                    {isLegalEntity ? (
-                        <div style={{ marginBottom: 16 }}>
-                            <div style={{ fontWeight: 'bold', marginBottom: 4 }}>
-                                Принципал: <Slot slotId="company_name" value={companyName} label="Организация" inputId="doc-input-company-name" highlight={highlight} />
-                            </div>
-                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>
-                                ОГРН <Slot slotId="company_ogrn" value={companyOgrn} label="ОГРН" inputId="doc-input-ogrn" highlight={highlight} />, ИНН <Slot slotId="company_inn" value={companyInn} label="ИНН" inputId="doc-input-inn" highlight={highlight} />{companyKpp ? `, КПП ${companyKpp}` : ''}
-                            </div>
-                            <div style={{ fontSize: 13, color: '#374151', marginBottom: 10 }}>
-                                Адрес: <Slot slotId="company_legal_address" value={companyLegalAddress} label="Юридический адрес" inputId="doc-input-legal-address" highlight={highlight} />
-                            </div>
-                            <div style={{ marginTop: 8, fontSize: 14 }}>
-                                <Slot slotId="auth_position" value={authPositionNom} label="Должность" inputId="doc-input-auth-position" highlight={highlight} />: _________________ / <Slot slotId="auth_name" value={authShort} label="Подпись представителя" inputId="doc-input-auth-name" highlight={highlight} /> / &nbsp; М.П.
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div style={{ borderBottom: '1.5px solid #000', paddingBottom: 2, marginBottom: 16 }}>
-                                <strong>Принципал:</strong>
-                            </div>
-                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 16 }}></div>
-                            <div style={{ borderBottom: '1.5px solid #000', height: 20, marginBottom: 28 }}></div>
-                        </>
-                    )}
+                    <AgencyPrincipalsSignaturesPreview
+                        principalsList={principalsList}
+                        data={data}
+                        highlight={highlight}
+                        onFocusPrincipal={onFocusPrincipal}
+                    />
 
                     <div style={{ marginTop: 16, marginBottom: 6 }}>
                         <strong>Агент:</strong>

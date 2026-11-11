@@ -15,6 +15,8 @@
  *    - Статус: «Истёк». Автопродление исчерпано, требуется обязательное перезаключение.
  */
 
+import { formatPhone, stripPhone } from './format';
+
 export const DEFAULT_CONTRACT_DURATION_MONTHS = 3;
 
 export const CONTRACT_DURATION_OPTIONS = [
@@ -399,5 +401,370 @@ export function getClientContractAlerts(client, referenceDate = new Date(), cont
         needsAttention: hasExpired || hasExpiring,
         contractsCount: contracts.length,
         alerts
+    };
+}
+
+/**
+ * Создает пустой черновик реквизитов клиента для редактора документов.
+ */
+export function createEmptyClientDraft() {
+    return {
+        is_legal_entity: false,
+        company_name: '',
+        inn: '',
+        kpp: '',
+        ogrn: '',
+        legal_address: '',
+        authorized_position: 'Генеральный директор',
+        authorized_name: '',
+        authorized_basis: 'Устава',
+        full_name: '',
+        phone: '',
+        birth_date: '',
+        passport_series: '',
+        passport_number: '',
+        passport_issued_by: '',
+        passport_issue_date: '',
+        passport_unit_code: '',
+        registration_address: '',
+        auth_person_birth: '',
+        auth_person_series: '',
+        auth_person_number: '',
+        auth_person_issued_by: '',
+        auth_person_issue_date: '',
+        auth_person_unit_code: '',
+        auth_person_reg_address: '',
+    };
+}
+
+/**
+ * Извлекает объект черновика реквизитов из карточки клиента CRM.
+ */
+export function extractClientDraft(client, allClients = []) {
+    if (!client) return createEmptyClientDraft();
+    const p = client.passport_details || {};
+    const cd = client.company_details || {};
+    const ap = client.authorized_person || {};
+    const authPersonId = client.authorized_person_id || ap.client_id;
+    const authClient = authPersonId ? allClients.find(c => String(c.id) === String(authPersonId)) : null;
+    const apPass = authClient?.passport_details || ap.passport_details || {};
+    const isLegal = Boolean(
+        client.is_legal_entity ||
+        client.client_types?.includes('legal_entity') ||
+        cd.inn ||
+        cd.ogrn ||
+        client.company_name ||
+        cd.name ||
+        /^(ООО|ОАО|ЗАО|ПАО|АО|МУП|ГУП|НКО|АНО)\b/i.test(client.full_name || '')
+    );
+    return {
+        is_legal_entity: isLegal,
+        company_name: client.company_name || cd.name || cd.short_name || (isLegal ? client.full_name : ''),
+        inn: client.inn || cd.inn || p.inn || '',
+        kpp: client.kpp || cd.kpp || '',
+        ogrn: client.ogrn || cd.ogrn || '',
+        legal_address: client.legal_address || cd.legal_address || client.reg_address || client.address || '',
+        authorized_position: client.authorized_position || ap.position || cd.director_position || 'Генеральный директор',
+        authorized_name: client.authorized_name || ap.name || authClient?.full_name || cd.director_name || (!isLegal ? client.full_name : ''),
+        authorized_basis: client.authorized_basis || ap.basis_document || 'Устава',
+        auth_person_birth: authClient?.birth_date || apPass.birth_date || ap.birth_date || '',
+        auth_person_series: apPass.series || ap.series || '',
+        auth_person_number: apPass.number || ap.number || '',
+        auth_person_issued_by: apPass.issued_by || ap.issued_by || '',
+        auth_person_issue_date: apPass.issue_date || ap.issue_date || '',
+        auth_person_unit_code: apPass.unit_code || ap.unit_code || '',
+        auth_person_reg_address: apPass.registration_address || authClient?.reg_address || authClient?.address || ap.registration_address || '',
+        full_name: client.full_name || '',
+        phone: formatPhone(client.phone || ap.phone || '', true),
+        birth_date: client.birth_date || p.birth_date || '',
+        passport_series: p.series || '',
+        passport_number: p.number || '',
+        passport_issued_by: p.issued_by || '',
+        passport_issue_date: p.issue_date || '',
+        passport_unit_code: p.unit_code || '',
+        registration_address: p.registration_address || client.reg_address || client.address || '',
+    };
+}
+
+/**
+ * Считает количество незаполненных обязательных реквизитов в черновике клиента.
+ */
+export function countMissingClientDraftFields(draft) {
+    if (!draft) return 9;
+    if (draft.is_legal_entity) {
+        return [
+            !draft.company_name?.trim(),
+            !draft.inn?.trim(),
+            !draft.ogrn?.trim(),
+            !draft.legal_address?.trim(),
+            !draft.phone?.trim(),
+            !draft.authorized_name?.trim(),
+            !draft.authorized_position?.trim(),
+            !draft.authorized_basis?.trim(),
+        ].filter(Boolean).length;
+    }
+    return [
+        !draft.full_name?.trim(),
+        !draft.phone?.trim(),
+        !draft.birth_date?.trim(),
+        !draft.passport_series?.trim(),
+        !draft.passport_number?.trim(),
+        !draft.passport_issued_by?.trim(),
+        !draft.passport_issue_date?.trim(),
+        !draft.passport_unit_code?.trim(),
+        !draft.registration_address?.trim(),
+    ].filter(Boolean).length;
+}
+
+/**
+ * Объединяет объект клиента (или null для ручного черновика) с данными черновика для предпросмотра.
+ */
+export function mergeClientWithDraft(client, draft) {
+    const d = draft || createEmptyClientDraft();
+    const isLegal = Boolean(d.is_legal_entity);
+    const cd = {
+        name: d.company_name || '',
+        short_name: d.company_name || '',
+        inn: d.inn || '',
+        kpp: d.kpp || '',
+        ogrn: d.ogrn || '',
+        legal_address: d.legal_address || '',
+        director_name: d.authorized_name || '',
+        director_position: d.authorized_position || 'Генеральный директор',
+    };
+    const ap = {
+        name: d.authorized_name || '',
+        position: d.authorized_position || 'Генеральный директор',
+        basis_document: d.authorized_basis || 'Устава',
+        phone: d.phone || '',
+    };
+
+    if (!client) {
+        const hasDraft = isLegal
+            ? Boolean(d.company_name?.trim() || d.inn?.trim() || d.authorized_name?.trim())
+            : Boolean(
+                d.full_name?.trim() ||
+                d.phone?.trim() ||
+                d.passport_series?.trim() ||
+                d.passport_number?.trim() ||
+                d.registration_address?.trim()
+            );
+        if (!hasDraft) return null;
+        return {
+            id: 'draft_manual_client',
+            is_legal_entity: isLegal,
+            client_types: isLegal ? ['legal_entity'] : ['buyer'],
+            company_name: d.company_name || '',
+            inn: d.inn || '',
+            kpp: d.kpp || '',
+            ogrn: d.ogrn || '',
+            legal_address: d.legal_address || '',
+            authorized_position: d.authorized_position || 'Генеральный директор',
+            authorized_name: d.authorized_name || '',
+            authorized_basis: d.authorized_basis || 'Устава',
+            company_details: cd,
+            authorized_person: ap,
+            full_name: isLegal ? (d.company_name || 'Юридическое лицо') : (d.full_name || ''),
+            phone: d.phone || '',
+            birth_date: d.birth_date || '',
+            reg_address: isLegal ? (d.legal_address || '') : (d.registration_address || ''),
+            passport_details: {
+                series: d.passport_series || '',
+                number: d.passport_number || '',
+                issued_by: d.passport_issued_by || '',
+                issue_date: d.passport_issue_date || '',
+                unit_code: d.passport_unit_code || '',
+                registration_address: isLegal ? (d.legal_address || '') : (d.registration_address || ''),
+                birth_date: d.birth_date || '',
+            }
+        };
+    }
+
+    return {
+        ...client,
+        is_legal_entity: isLegal,
+        client_types: isLegal
+            ? Array.from(new Set([...(client.client_types || []), 'legal_entity']))
+            : (client.client_types || []).filter(t => t !== 'legal_entity'),
+        company_name: d.company_name || '',
+        inn: d.inn || client.inn || '',
+        kpp: d.kpp || '',
+        ogrn: d.ogrn || '',
+        legal_address: d.legal_address || '',
+        authorized_position: d.authorized_position || 'Генеральный директор',
+        authorized_name: d.authorized_name || '',
+        authorized_basis: d.authorized_basis || 'Устава',
+        company_details: {
+            ...(client.company_details || {}),
+            ...cd,
+        },
+        authorized_person: {
+            ...(client.authorized_person || {}),
+            ...ap,
+        },
+        full_name: isLegal ? (d.company_name || client.full_name) : (d.full_name || client.full_name),
+        phone: d.phone || client.phone,
+        birth_date: isLegal ? '' : (d.birth_date || client.birth_date),
+        reg_address: isLegal ? (d.legal_address || client.reg_address) : (d.registration_address || client.reg_address),
+        passport_details: {
+            ...(client.passport_details || {}),
+            series: d.passport_series,
+            number: d.passport_number,
+            issued_by: d.passport_issued_by,
+            issue_date: d.passport_issue_date,
+            unit_code: d.passport_unit_code,
+            registration_address: isLegal ? (d.legal_address || '') : d.registration_address,
+            birth_date: isLegal ? '' : d.birth_date,
+        }
+    };
+}
+
+/**
+ * Применяет черновик реквизитов и обновляет/добавляет агентский договор в карточке клиента.
+ */
+export function applyDraftAndContractToClient(client, draft, contractParams = {}) {
+    const isLegal = Boolean(draft.is_legal_entity);
+    const series = draft.passport_series?.trim() || '';
+    const number = draft.passport_number?.trim() || '';
+    const passportStr = (series && number) ? `${series} ${number}` : (series || number || client.passport || '');
+    const birthDateStr = isLegal ? '' : (draft.birth_date?.trim() || client.birth_date || '');
+    const regAddressStr = isLegal ? (draft.legal_address?.trim() || '') : (draft.registration_address?.trim() || client.reg_address || '');
+    const innStr = draft.inn?.trim() || client.inn || client.passport_details?.inn || '';
+
+    const cd = {
+        ...(client.company_details || {}),
+        name: draft.company_name?.trim() || client.company_details?.name || '',
+        short_name: draft.company_name?.trim() || client.company_details?.short_name || '',
+        inn: innStr,
+        kpp: draft.kpp?.trim() || '',
+        ogrn: draft.ogrn?.trim() || '',
+        legal_address: draft.legal_address?.trim() || '',
+        director_name: draft.authorized_name?.trim() || '',
+        director_position: draft.authorized_position?.trim() || 'Генеральный директор',
+    };
+
+    const ap = {
+        ...(client.authorized_person || {}),
+        name: draft.authorized_name?.trim() || '',
+        position: draft.authorized_position?.trim() || 'Генеральный директор',
+        basis_document: draft.authorized_basis?.trim() || 'Устава',
+        phone: stripPhone(draft.phone) || draft.phone?.trim() || '',
+    };
+
+    const clientTypes = isLegal
+        ? Array.from(new Set([...(client.client_types || []), 'legal_entity']))
+        : (client.client_types || []).filter(t => t !== 'legal_entity');
+
+    const {
+        selectedContractId = '',
+        groupId = null,
+        coClientIds = null,
+        propertyId = null,
+        cleanComm = 0,
+        validUntilIso = null,
+        contractStatus = 'active',
+        contractType = 'АД ЮСС Продажа',
+    } = contractParams;
+
+    const existingContracts = Array.isArray(client.agency_contracts) ? [...client.agency_contracts] : [];
+    let matchIdx = -1;
+    if (selectedContractId) {
+        matchIdx = existingContracts.findIndex(c => c.id === selectedContractId);
+    }
+    if (matchIdx < 0 && groupId) {
+        matchIdx = existingContracts.findIndex(c => c.group_id === groupId);
+    }
+    if (matchIdx < 0 && propertyId) {
+        matchIdx = existingContracts.findIndex(c => String(c.property_id) === String(propertyId) && !selectedContractId);
+    }
+
+    const normalizedCoIds = Array.isArray(coClientIds) && coClientIds.length > 1 ? coClientIds : undefined;
+    const nowIso = new Date().toISOString();
+    let updatedContracts;
+
+    if (matchIdx >= 0) {
+        updatedContracts = existingContracts.map((c, i) => {
+            if (i !== matchIdx) return c;
+            const next = {
+                ...c,
+                commission: cleanComm > 0 ? cleanComm : c.commission,
+                valid_until: validUntilIso || c.valid_until,
+                status: contractStatus,
+                property_id: propertyId || c.property_id || null,
+                updated_at: nowIso,
+            };
+            if (groupId) next.group_id = groupId;
+            if (normalizedCoIds) next.co_client_ids = normalizedCoIds;
+            else delete next.co_client_ids;
+            return next;
+        });
+    } else if (existingContracts.length > 0 && !selectedContractId && !groupId && !propertyId) {
+        updatedContracts = existingContracts.map((c, i) => {
+            if (i !== 0) return c;
+            return {
+                ...c,
+                commission: cleanComm > 0 ? cleanComm : c.commission,
+                valid_until: validUntilIso || c.valid_until,
+                status: contractStatus,
+                property_id: propertyId || c.property_id || null,
+                updated_at: nowIso,
+            };
+        });
+    } else {
+        const newContract = {
+            id: `contract_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            type: contractType,
+            contract_date: nowIso.split('T')[0],
+            valid_until: validUntilIso,
+            commission: cleanComm > 0 ? cleanComm : null,
+            status: contractStatus,
+            property_id: propertyId || null,
+            created_at: nowIso,
+            ...(groupId ? { group_id: groupId } : {}),
+            ...(normalizedCoIds ? { co_client_ids: normalizedCoIds } : {}),
+        };
+        updatedContracts = [newContract, ...existingContracts];
+    }
+
+    const activeContractsList = updatedContracts.filter(c => c && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(c.status));
+    const primaryContract = activeContractsList[0] || updatedContracts[0];
+
+    return {
+        ...client,
+        is_legal_entity: isLegal,
+        company_name: isLegal ? (draft.company_name?.trim() || client.company_name) : (client.company_name || ''),
+        inn: innStr,
+        kpp: draft.kpp?.trim() || '',
+        ogrn: draft.ogrn?.trim() || '',
+        legal_address: draft.legal_address?.trim() || '',
+        authorized_position: draft.authorized_position?.trim() || '',
+        authorized_name: draft.authorized_name?.trim() || '',
+        authorized_basis: draft.authorized_basis?.trim() || '',
+        company_details: cd,
+        authorized_person: ap,
+        client_types: clientTypes,
+        full_name: isLegal
+            ? (draft.company_name?.trim() || client.full_name)
+            : (draft.full_name?.trim() || client.full_name),
+        phone: stripPhone(draft.phone) || draft.phone?.trim() || client.phone,
+        birth_date: birthDateStr,
+        reg_address: regAddressStr,
+        passport: isLegal ? '' : passportStr,
+        agency_contracts: updatedContracts,
+        has_agency_contract: activeContractsList.length > 0,
+        agency_contract_date: primaryContract ? primaryContract.contract_date : client.agency_contract_date,
+        agency_contract_property_id: primaryContract ? primaryContract.property_id : client.agency_contract_property_id,
+        passport_details: {
+            ...(client.passport_details || {}),
+            series: isLegal ? '' : series,
+            number: isLegal ? '' : number,
+            issued_by: isLegal ? '' : (draft.passport_issued_by?.trim() || ''),
+            issue_date: isLegal ? '' : (draft.passport_issue_date?.trim() || ''),
+            unit_code: isLegal ? '' : (draft.passport_unit_code?.trim() || ''),
+            registration_address: regAddressStr,
+            birth_date: birthDateStr,
+            inn: innStr,
+        },
+        updated_at: nowIso,
     };
 }

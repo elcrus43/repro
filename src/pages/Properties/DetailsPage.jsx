@@ -1019,6 +1019,7 @@ export function DetailsPage() {
                 docPrefill: {
                     propertyId: prop.id,
                     sellerId: sellers[0] || '',
+                    coPrincipalIds: sellers,
                     template: isRent ? 'rent' : 'sale'
                 }
             }

@@ -1,5 +1,5 @@
 import { formatPhone } from '../../utils/format';
-import { formatPropertyKind, getPropertyKindForms, numberToWordsRu } from '../../utils/docxGenerator';
+import { formatPropertyKind, getPropertyKindForms, numberToWordsRu, resolvePrincipals } from '../../utils/docxGenerator';
 
 export function toShortName(fullName) {
     if (!fullName) return '____________________';
@@ -45,7 +45,8 @@ export function buildSlotValues(data, template) {
     const today = fDate(deal?.deal_date || new Date().toISOString());
 
     const isAgencySale = template === 'agency_sale_1' || template === 'agency_rent_landlord_1' || template === 'key_act';
-    const principal = isAgencySale ? (seller || buyer) : (buyer || seller);
+    const principals = resolvePrincipals(data, isAgencySale);
+    const principal = principals[0] || (isAgencySale ? (seller || buyer) : (buyer || seller));
     const pDetails = principal?.passport_details || {};
     const principalName = f(principal?.full_name);
     const principalBirth = principal?.birth_date ? fDate(principal.birth_date) : (pDetails.birth_date ? fDate(pDetails.birth_date) : '');
@@ -222,6 +223,25 @@ export function buildSlotValues(data, template) {
         principal_reg_address: isLegalEntity ? (companyLegalAddress || principalRegAddress) : principalRegAddress,
         principal_phone: principalPhone,
         principal_short: isLegalEntity ? authShort : principalShort,
+        principal_count: principals.length || 1,
+        principals_names: principals.map(p => f(p?.full_name)).filter(Boolean).join(', '),
+        ...Object.fromEntries(
+            principals.flatMap((pItem, idx) => {
+                const prefix = `principal_${idx + 1}`;
+                const pd = pItem?.passport_details || {};
+                return [
+                    [`${prefix}_name`, f(pItem?.full_name)],
+                    [`${prefix}_birth`, pItem?.birth_date ? fDate(pItem.birth_date) : (pd.birth_date ? fDate(pd.birth_date) : '')],
+                    [`${prefix}_series`, f(pd.series)],
+                    [`${prefix}_number`, f(pd.number)],
+                    [`${prefix}_issued_by`, f(pd.issued_by)],
+                    [`${prefix}_issue_date`, pd.issue_date ? fDate(pd.issue_date) : ''],
+                    [`${prefix}_unit_code`, f(pd.unit_code)],
+                    [`${prefix}_reg_address`, f(pd.registration_address || pItem?.reg_address || pItem?.address)],
+                    [`${prefix}_phone`, f(formatPhone(pItem?.phone) || pItem?.phone)],
+                ];
+            })
+        ),
         prop_kind: propKind,
         prop_address: propAddress,
         prop_cadastral: propCadastral,
