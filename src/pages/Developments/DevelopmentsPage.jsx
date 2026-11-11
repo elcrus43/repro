@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Building2, 
   MapPin, 
@@ -33,10 +34,20 @@ import { DevelopmentsYandexMap } from '../../components/Map/DevelopmentsYandexMa
 import { DevelopmentCard } from './DevelopmentCard';
 import { DevelopmentDetailModal } from './DevelopmentDetailModal';
 import { DevelopmentFormModal } from './DevelopmentFormModal';
+import { LiveLotsFinder } from './LiveLotsFinder';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { formatNumber } from '../../utils/format';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
+import {
+  buildMapItemsFromDevelopments,
+  resolveHouseCoords,
+} from '../../lib/houseCoordinates';
+import {
+  isPurchaseRequestForDevelopments,
+  matchDevelopmentsToRequest,
+  buildSelectionItemFromDevelopment,
+} from '../../lib/developmentMatching';
 import {
   KSM_PROJECT_SLUGS,
   KSM_PROJECT_NAMES,
@@ -117,10 +128,13 @@ export default function DevelopmentsPage() {
     kssk: { active: false, current: 0, total: KSSK_PROJECT_SLUGS.length, currentName: '' },
   });
 
-  // View Mode: 'split' | 'grid' | 'map'
-  const [viewMode, setViewMode] = useState('split');
-  // Map Provider: 'yandex' (Яндекс.Карты) | 'google' (Google Карты) | 'osm' (OpenStreetMap)
-  const [mapProvider, setMapProvider] = useState('yandex');
+  // View Mode: 'split' | 'grid' | 'map' | 'lots'
+  const [viewMode, setViewMode] = useState(() => (typeof window !== 'undefined' && window.innerWidth <= 900 ? 'grid' : 'split'));
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  // Map Provider: 'google' (Google Карты) | 'yandex' (Яндекс.Карты) | 'osm' (OpenStreetMap)
+  const [mapProvider, setMapProvider] = useState('google');
+  const [showHousePins, setShowHousePins] = useState(true);
+  const [mapFocusTarget, setMapFocusTarget] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -254,6 +268,35 @@ export default function DevelopmentsPage() {
     }
   };
 
+  const totalLiveLotsCount = liveState.ksm.lots.length + liveState.kssk.lots.length;
+  const isAnyProviderSyncing = liveProgress.ksm.active || liveProgress.kssk.active;
+
+  const handleSyncAllProviders = async () => {
+    if (isAnyProviderSyncing) return;
+    await Promise.all([
+      handleSyncAllForProvider('kssk'),
+      handleSyncAllForProvider('ksm'),
+    ]);
+  };
+
+  const handleFocusHouseOnMap = (lot, dev) => {
+    const targetDev = dev || developments.find((d) => {
+      const slug = lot?.project_slug;
+      return slug && (getKsmSlugForDevelopment(d) === slug || getKsskSlugForDevelopment(d) === slug);
+    }) || null;
+    if (!targetDev) return;
+
+    const coords = resolveHouseCoords(targetDev, lot?.address || targetDev.address);
+    if (coords?.lat && coords?.lng) {
+      setMapFocusTarget({ lat: coords.lat, lng: coords.lng, zoom: 16, key: `${targetDev.id}_${lot?.id || ''}_${Date.now()}` });
+    }
+    setSelectedDevId(targetDev.id);
+    setDetailModalDev(null);
+    if (viewMode === 'grid' || viewMode === 'lots') {
+      setViewMode('split');
+    }
+  };
+
   const handleManualSync = async () => {
     setIsSyncing(true);
     try {
@@ -271,6 +314,8 @@ export default function DevelopmentsPage() {
   };
 
   // Filter States
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedRequestId, setSelectedRequestId] = useState(() => searchParams.get('request') || '');
   const [search, setSearch] = useState('');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
@@ -279,6 +324,53 @@ export default function DevelopmentsPage() {
   const [selectedDeveloper, setSelectedDeveloper] = useState('all');
   const [selectedDistrict, setSelectedDistrict] = useState('all');
   const [selectedFinishing, setSelectedFinishing] = useState([]);
+
+  useEffect(() => {
+    const paramReq = searchParams.get('request') || '';
+    if (paramReq !== selectedRequestId) {
+      setSelectedRequestId(paramReq);
+    }
+  }, [searchParams, selectedRequestId]);
+
+  const activePurchaseRequests = useMemo(
+    () => (state.requests || []).filter(isPurchaseRequestForDevelopments),
+    [state.requests]
+  );
+
+  const selectedRequest = useMemo(
+    () => activePurchaseRequests.find((r) => r.id === selectedRequestId) || null,
+    [activePurchaseRequests, selectedRequestId]
+  );
+
+  const selectedRequestClient = useMemo(() => {
+    if (!selectedRequest) return null;
+    const cId = selectedRequest.client_id || selectedRequest.client_ids?.[0];
+    return (state.clients || []).find((c) => c.id === cId) || null;
+  }, [selectedRequest, state.clients]);
+
+  const requestMatchesMap = useMemo(() => {
+    const map = new Map();
+    if (!selectedRequest) return map;
+    const allLots = [...liveState.ksm.lots, ...liveState.kssk.lots];
+    const matched = matchDevelopmentsToRequest(developments, selectedRequest, { liveLots: allLots });
+    for (const item of matched) {
+      if (item?.dev?.id) {
+        map.set(item.dev.id, item);
+      }
+    }
+    return map;
+  }, [developments, selectedRequest, liveState.ksm.lots, liveState.kssk.lots]);
+
+  const handleSelectRequestFilter = (reqId) => {
+    setSelectedRequestId(reqId);
+    const nextParams = new URLSearchParams(searchParams);
+    if (reqId) {
+      nextParams.set('request', reqId);
+    } else {
+      nextParams.delete('request');
+    }
+    setSearchParams(nextParams, { replace: true });
+  };
 
   // Reload data
   const handleRefresh = () => {
@@ -301,6 +393,7 @@ export default function DevelopmentsPage() {
 
   // Reset Filters
   const resetFilters = () => {
+    handleSelectRequestFilter('');
     setSearch('');
     setPriceMin('');
     setPriceMax('');
@@ -312,6 +405,7 @@ export default function DevelopmentsPage() {
   };
 
   const hasActiveFilters = Boolean(
+    selectedRequestId ||
     search ||
     priceMin ||
     priceMax ||
@@ -324,7 +418,7 @@ export default function DevelopmentsPage() {
 
   // Filter logic
   const filteredDevelopments = useMemo(() => {
-    return developments.filter(dev => {
+    const list = developments.filter(dev => {
       // 1. Search text
       if (search.trim()) {
         const query = search.toLowerCase().trim();
@@ -370,6 +464,17 @@ export default function DevelopmentsPage() {
 
       return true;
     });
+
+    if (!selectedRequest) return list;
+
+    return [...list].sort((a, b) => {
+      const mA = requestMatchesMap.get(a.id);
+      const mB = requestMatchesMap.get(b.id);
+      if (mA && !mB) return -1;
+      if (!mA && mB) return 1;
+      if (mA && mB && mB.score !== mA.score) return mB.score - mA.score;
+      return 0;
+    });
   }, [
     developments,
     search,
@@ -379,31 +484,54 @@ export default function DevelopmentsPage() {
     selectedCompletion,
     selectedDeveloper,
     selectedDistrict,
-    selectedFinishing
+    selectedFinishing,
+    selectedRequest,
+    requestMatchesMap
   ]);
+
+  const mapItems = useMemo(
+    () =>
+      buildMapItemsFromDevelopments(filteredDevelopments, {
+        ksmLots: liveState.ksm.lots,
+        ksskLots: liveState.kssk.lots,
+        ksmSummaryBySlug: liveSummaries.ksm,
+        ksskSummaryBySlug: liveSummaries.kssk,
+        showHousePins,
+      }),
+    [filteredDevelopments, liveState.ksm.lots, liveState.kssk.lots, liveSummaries.ksm, liveSummaries.kssk, showHousePins]
+  );
 
   // Fast Add to Client Selection
   const handleAddToSelection = async (dev) => {
     try {
-      const selectionItem = {
-        id: `sel_dev_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        realtor_id: state.currentUser?.id,
-        address: `${dev.name}, ${dev.address}`,
-        city: 'Киров',
-        price: dev.price_from || 0,
-        rooms: null,
-        property_type: 'apartment',
-        market_type: 'new_building',
-        images: dev.images?.slice(0, 3) || [],
-        notes: `Новостройка от ${dev.developer}. Срок: ${dev.completion_date}. Цена: от ${formatNumber(dev.price_from)} ₽.`,
-        link: dev.avito_url || dev.domrf_url || dev.builder_url,
-        contact_name: `${dev.developer} (Отдел продаж)`,
-        contact_phone: dev.contact_phone || null,
-        created_at: new Date().toISOString()
-      };
+      const matchEntry = requestMatchesMap.get(dev.id);
+      const bestApt = matchEntry?.matchedApartments?.find(a => a.inBudget) || matchEntry?.matchedApartments?.[0] || null;
+      const selectionItem = selectedRequest
+        ? buildSelectionItemFromDevelopment({
+            dev,
+            request: selectedRequest,
+            apartment: bestApt,
+            realtorId: state.currentUser?.id || selectedRequest.realtor_id || null,
+          })
+        : {
+            realtor_id: state.currentUser?.id,
+            address: `${dev.name}, ${dev.address}`,
+            city: 'Киров',
+            price: dev.price_from || 0,
+            property_type: 'apartment',
+            images: dev.images?.slice(0, 3) || [],
+            notes: `Новостройка от ${dev.developer}. Срок: ${dev.completion_date}. Цена: от ${formatNumber(dev.price_from)} ₽.`,
+            link: dev.avito_url || dev.domrf_url || dev.builder_url,
+            contact_name: `${dev.developer} (Отдел продаж)`,
+            contact_phone: dev.contact_phone || null,
+          };
 
       await dispatch({ type: 'ADD_SELECTION_ITEM', item: selectionItem });
-      toast.success(`ЖК «${dev.name}» добавлен в подборки!`);
+      toast.success(
+        selectedRequestClient
+          ? `ЖК "${dev.name}" добавлен в подборку для ${selectedRequestClient.full_name}!`
+          : `ЖК "${dev.name}" добавлен в подборки!`
+      );
     } catch (err) {
       console.error('[Add to selection]', err);
       toast.error('Не удалось добавить в подборку: ' + err.message);
@@ -426,7 +554,7 @@ export default function DevelopmentsPage() {
         </div>
 
         <div className="dev-header-controls">
-          <GlobalSearch style={{ maxWidth: 280 }} />
+          <GlobalSearch className="dev-global-search" style={{ maxWidth: 280 }} />
 
           {/* Prominent View Mode Switcher */}
           <div className="view-mode-toggle">
@@ -457,6 +585,15 @@ export default function DevelopmentsPage() {
               <LayoutGrid size={16} />
               <span className="mode-btn-text">Список</span>
             </button>
+            <button
+              type="button"
+              className={`mode-btn ${viewMode === 'lots' ? 'active' : ''}`}
+              onClick={() => setViewMode('lots')}
+              title="Быстрый подбор свободных квартир и планировок КСМ и КССК для клиентов"
+            >
+              <Layers size={16} />
+              <span className="mode-btn-text">Подбор квартир ({totalLiveLotsCount})</span>
+            </button>
           </div>
 
           {/* Add ЖК Button */}
@@ -472,11 +609,41 @@ export default function DevelopmentsPage() {
       </header>
 
       {/* Filter Section */}
-      <section className="dev-filters-card">
+      {viewMode !== 'lots' && (
+      <section className={`dev-filters-card ${showMobileFilters ? 'mobile-filters-open' : ''}`}>
+        <div className="dev-mobile-filter-bar">
+          <div className="dev-search-input-wrap" style={{ flex: 1, minWidth: 0 }}>
+            <Search size={16} className="dev-search-icon" />
+            <input
+              type="text"
+              placeholder="Поиск ЖК, района..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="dev-search-input"
+            />
+            {search && (
+              <button type="button" className="dev-clear-search-btn" onClick={() => setSearch('')}>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            className={`dev-mobile-filter-toggle ${showMobileFilters ? 'active' : ''}`}
+            onClick={() => setShowMobileFilters(v => !v)}
+          >
+            <SlidersHorizontal size={15} />
+            <span>Фильтры</span>
+            {(priceMin || priceMax || selectedRooms.length > 0 || selectedCompletion !== 'all' || selectedDeveloper !== 'all' || selectedDistrict !== 'all' || selectedFinishing.length > 0 || selectedRequestId) && (
+              <span className="dev-mobile-filter-dot" />
+            )}
+          </button>
+        </div>
+
         {/* Row 1: Search & Price & Dropdowns */}
         <div className="dev-filters-main-row">
-          {/* Search */}
-          <div className="dev-search-input-wrap">
+          {/* Search (desktop) */}
+          <div className="dev-search-input-wrap dev-desktop-search-wrap">
             <Search size={16} className="dev-search-icon" />
             <input
               type="text"
@@ -539,7 +706,84 @@ export default function DevelopmentsPage() {
               ))}
             </select>
           </div>
+
+          {/* Purchase Request Highlight Selector */}
+          <div className="dev-filter-select-wrap">
+            <select
+              value={selectedRequestId}
+              onChange={(e) => handleSelectRequestFilter(e.target.value)}
+              className="dev-filter-select"
+              title="Выделить новостройки под запрос на покупку"
+            >
+              <option value="">Подсветка по запросу: не выбрана</option>
+              {activePurchaseRequests.map((req) => {
+                const cId = req.client_id || req.client_ids?.[0];
+                const client = (state.clients || []).find((c) => c.id === cId);
+                const budgetLabel = req.budget_max ? `до ${formatNumber(req.budget_max)} ₽` : 'без бюджета';
+                const distLabel = req.districts?.length > 0 ? req.districts[0] : 'все районы';
+                return (
+                  <option key={req.id} value={req.id}>
+                    {client?.full_name || 'Клиент'} ({budgetLabel}, {distLabel})
+                  </option>
+                );
+              })}
+            </select>
+          </div>
         </div>
+
+        {selectedRequest && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap',
+              padding: '10px 14px',
+              borderRadius: 12,
+              background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(0, 82, 255, 0.08) 100%)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              fontSize: 12.5,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <Sparkles size={15} color="#047857" />
+              <span>
+                <strong>Выделены новостройки под запрос:</strong>{' '}
+                {selectedRequestClient?.full_name || 'Клиент'}
+                {selectedRequest.budget_max ? ` - до ${formatNumber(selectedRequest.budget_max)} ₽` : ''}
+                {selectedRequest.districts?.length > 0 ? ` - ${selectedRequest.districts.join(', ')}` : ''}
+              </span>
+              <span
+                style={{
+                  fontWeight: 700,
+                  color: '#047857',
+                  background: 'rgba(16, 185, 129, 0.16)',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontSize: 11,
+                }}
+              >
+                Совпадает: {requestMatchesMap.size} ЖК
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectRequestFilter('')}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '4px 10px',
+                fontSize: 11.5,
+                cursor: 'pointer',
+                color: 'var(--text-secondary)',
+              }}
+            >
+              Сбросить запрос
+            </button>
+          </div>
+        )}
 
         {/* Row 2: Room Chips, Completion, Finishing & Reset */}
         <div className="dev-filters-secondary-row">
@@ -665,126 +909,154 @@ export default function DevelopmentsPage() {
           </div>
         </div>
       </section>
+      )}
 
       {/* Main Content Area */}
       <main className={`dev-content-layout ${viewMode}`}>
-        
-        {/* Left Column: List of Developments */}
-        {viewMode !== 'map' && (
-          <div className="dev-list-column">
-            {filteredDevelopments.length > 0 ? (
-              <div className="dev-cards-grid">
-                {filteredDevelopments.map(dev => {
-                  const ksmSlug = getKsmSlugForDevelopment(dev);
-                  const ksskSlug = getKsskSlugForDevelopment(dev);
-                  const liveSummary = ksmSlug
-                    ? liveSummaries.ksm[ksmSlug] || null
-                    : ksskSlug
-                      ? liveSummaries.kssk[ksskSlug] || null
-                      : null;
-                  const liveProviderLabel = ksskSlug ? 'КССК live' : 'КСМ live';
-                  return (
-                    <DevelopmentCard
-                      key={dev.id}
-                      development={dev}
-                      isSelected={dev.id === selectedDevId}
-                      liveSummary={liveSummary}
-                      liveProviderLabel={liveProviderLabel}
-                      onSelect={(id) => {
-                        setSelectedDevId(id);
-                        if (viewMode === 'grid') setViewMode('split');
-                      }}
-                      onOpenDetail={(d) => setDetailModalDev(d)}
-                      onAddToSelection={handleAddToSelection}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="dev-empty-state">
-                <Building2 size={44} className="text-muted" />
-                <h3>Ничего не найдено</h3>
-                <p>Попробуйте смягчить фильтры поиска или сбросить критерии подбора</p>
-                <button type="button" className="btn-reset-empty" onClick={resetFilters}>
-                  Сбросить все фильтры
-                </button>
+        {viewMode === 'lots' ? (
+          <div style={{ width: '100%' }}>
+            <LiveLotsFinder
+              ksmLots={liveState.ksm.lots}
+              ksskLots={liveState.kssk.lots}
+              developments={developments}
+              onOpenDetail={(d) => setDetailModalDev(d)}
+              onFocusHouseOnMap={handleFocusHouseOnMap}
+              onSyncAll={handleSyncAllProviders}
+              isSyncingAny={isAnyProviderSyncing}
+            />
+          </div>
+        ) : (
+          <>
+            {/* Left Column: List of Developments */}
+            {viewMode !== 'map' && (
+              <div className="dev-list-column">
+                {filteredDevelopments.length > 0 ? (
+                  <div className="dev-cards-grid">
+                    {filteredDevelopments.map(dev => {
+                      const ksmSlug = getKsmSlugForDevelopment(dev);
+                      const ksskSlug = getKsskSlugForDevelopment(dev);
+                      const liveSummary = ksmSlug
+                        ? liveSummaries.ksm[ksmSlug] || null
+                        : ksskSlug
+                          ? liveSummaries.kssk[ksskSlug] || null
+                          : null;
+                      const liveProviderLabel = ksskSlug ? 'КССК live' : 'КСМ live';
+                      return (
+                        <DevelopmentCard
+                          key={dev.id}
+                          development={dev}
+                          isSelected={dev.id === selectedDevId}
+                          requestMatch={requestMatchesMap.get(dev.id) || null}
+                          liveSummary={liveSummary}
+                          liveProviderLabel={liveProviderLabel}
+                          onSelect={(id) => {
+                            setSelectedDevId(id);
+                            if (viewMode === 'grid') setViewMode('split');
+                          }}
+                          onOpenDetail={(d) => setDetailModalDev(d)}
+                          onAddToSelection={handleAddToSelection}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="dev-empty-state">
+                    <Building2 size={44} className="text-muted" />
+                    <h3>Ничего не найдено</h3>
+                    <p>Попробуйте смягчить фильтры поиска или сбросить критерии подбора</p>
+                    <button type="button" className="btn-reset-empty" onClick={resetFilters}>
+                      Сбросить все фильтры
+                    </button>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Right Column: Interactive Map (Google Карты / Яндекс.Карты / OSM) */}
-        {viewMode !== 'grid' && (
-          <div className={`dev-map-column ${viewMode === 'map' ? 'fullscreen' : ''}`}>
-            {/* Map Provider Selector */}
-            <div className="dev-map-provider-bar">
-              <div className="provider-info">
-                <span className="provider-label">Движок карты:</span>
+            {/* Right Column: Interactive Map (Google Карты / Яндекс.Карты / OSM) */}
+            {viewMode !== 'grid' && (
+              <div className={`dev-map-column ${viewMode === 'map' ? 'fullscreen' : ''}`}>
+                {/* Map Provider Selector */}
+                <div className="dev-map-provider-bar">
+                  <div className="provider-info" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span className="provider-label">Движок карты:</span>
+                    <button
+                      type="button"
+                      className={`provider-pill ${showHousePins ? 'active' : ''}`}
+                      onClick={() => setShowHousePins((v) => !v)}
+                      title="Показывать отдельные метки по реальным адресам домов и корпусов с живыми ценами"
+                    >
+                      <MapPin size={12} />
+                      <span>{showHousePins ? `Дома (${mapItems.length})` : `ЖК (${mapItems.length})`}</span>
+                    </button>
+                  </div>
+                  <div className="dev-map-provider-pills">
+                    <button
+                      type="button"
+                      className={`provider-pill ${mapProvider === 'google' ? 'active' : ''}`}
+                      onClick={() => setMapProvider('google')}
+                      title="Google Карты (Схема, Гибрид, Спутник)"
+                    >
+                      <span className="pill-dot google" />
+                      <span>Google Карты</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`provider-pill ${mapProvider === 'yandex' ? 'active' : ''}`}
+                      onClick={() => setMapProvider('yandex')}
+                      title="Яндекс.Карты г. Кирова с номерами домов и 3D зданиями"
+                    >
+                      <span className="pill-dot yandex" />
+                      <span>Яндекс.Карты</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`provider-pill ${mapProvider === 'osm' ? 'active' : ''}`}
+                      onClick={() => setMapProvider('osm')}
+                      title="OpenStreetMap"
+                    >
+                      <span className="pill-dot osm" />
+                      <span>OpenStreetMap</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="dev-map-embed-wrapper">
+                  {mapProvider === 'google' && (
+                    <DevelopmentsGoogleMap
+                      developments={mapItems}
+                      selectedId={selectedDevId}
+                      focusTarget={mapFocusTarget}
+                      onSelect={setSelectedDevId}
+                      onOpenDetail={setDetailModalDev}
+                      height="100%"
+                    />
+                  )}
+                  {mapProvider === 'yandex' && (
+                    <DevelopmentsYandexMap
+                      developments={mapItems}
+                      selectedId={selectedDevId}
+                      focusTarget={mapFocusTarget}
+                      onSelect={setSelectedDevId}
+                      onOpenDetail={setDetailModalDev}
+                      height="100%"
+                    />
+                  )}
+                  {mapProvider === 'osm' && (
+                    <DevelopmentsMap
+                      provider="osm"
+                      developments={mapItems}
+                      selectedId={selectedDevId}
+                      focusTarget={mapFocusTarget}
+                      onSelect={setSelectedDevId}
+                      onOpenDetail={setDetailModalDev}
+                      height="100%"
+                    />
+                  )}
+                </div>
               </div>
-              <div className="dev-map-provider-pills">
-                <button
-                  type="button"
-                  className={`provider-pill ${mapProvider === 'yandex' ? 'active' : ''}`}
-                  onClick={() => setMapProvider('yandex')}
-                  title="Яндекс.Карты г. Кирова с номерами домов и 3D зданиями"
-                >
-                  <span className="pill-dot yandex" />
-                  <span>Яндекс.Карты</span>
-                </button>
-                <button
-                  type="button"
-                  className={`provider-pill ${mapProvider === 'google' ? 'active' : ''}`}
-                  onClick={() => setMapProvider('google')}
-                  title="Google Карты (Схема, Гибрид, Спутник)"
-                >
-                  <span className="pill-dot google" />
-                  <span>Google Карты</span>
-                </button>
-                <button
-                  type="button"
-                  className={`provider-pill ${mapProvider === 'osm' ? 'active' : ''}`}
-                  onClick={() => setMapProvider('osm')}
-                  title="OpenStreetMap"
-                >
-                  <span className="pill-dot osm" />
-                  <span>OpenStreetMap</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="dev-map-embed-wrapper">
-              {mapProvider === 'google' && (
-                <DevelopmentsGoogleMap
-                  developments={filteredDevelopments}
-                  selectedId={selectedDevId}
-                  onSelect={setSelectedDevId}
-                  onOpenDetail={setDetailModalDev}
-                  height="100%"
-                />
-              )}
-              {mapProvider === 'yandex' && (
-                <DevelopmentsYandexMap
-                  developments={filteredDevelopments}
-                  selectedId={selectedDevId}
-                  onSelect={setSelectedDevId}
-                  onOpenDetail={setDetailModalDev}
-                  height="100%"
-                />
-              )}
-              {mapProvider === 'osm' && (
-                <DevelopmentsMap
-                  provider="osm"
-                  developments={filteredDevelopments}
-                  selectedId={selectedDevId}
-                  onSelect={setSelectedDevId}
-                  onOpenDetail={setDetailModalDev}
-                  height="100%"
-                />
-              )}
-            </div>
-          </div>
+            )}
+          </>
         )}
-
       </main>
 
       {/* Modals */}
@@ -803,6 +1075,7 @@ export default function DevelopmentsPage() {
         return (
           <DevelopmentDetailModal
             development={detailModalDev}
+            initialClientId={selectedRequest ? (selectedRequest.client_id || selectedRequest.client_ids?.[0] || '') : ''}
             liveLots={detailLots}
             liveMeta={detailMeta}
             liveProvider={providerSpec ? {
@@ -812,6 +1085,7 @@ export default function DevelopmentsPage() {
               subtitle: providerSpec.subtitle,
             } : null}
             onSyncLiveProject={providerId ? (slug) => handleSyncSingleProviderProject(providerId, slug) : null}
+            onFocusHouseOnMap={handleFocusHouseOnMap}
             onClose={() => setDetailModalDev(null)}
             onSelectOnMap={(id) => {
               setSelectedDevId(id);
@@ -835,15 +1109,79 @@ export default function DevelopmentsPage() {
         .developments-page-container {
           display: flex;
           flex-direction: column;
-          min-height: calc(100vh - var(--nav-h, 64px));
+          min-height: calc(100vh - var(--nav-h, 72px));
           padding: 20px 24px 24px 24px;
           gap: 16px;
           box-sizing: border-box;
           width: 100%;
+          max-width: 100%;
+          overflow-x: clip;
         }
         @media (max-width: 900px) {
           .developments-page-container {
-            padding: 16px 16px 80px 16px;
+            padding: 14px 14px calc(var(--nav-h, 72px) + 28px + env(safe-area-inset-bottom, 0px)) 14px;
+            gap: 12px;
+          }
+          .dev-header-title {
+            font-size: 20px !important;
+          }
+          .dev-header-sub {
+            font-size: 12px !important;
+          }
+          .dev-header-controls {
+            width: 100%;
+          }
+          .dev-global-search {
+            max-width: 100% !important;
+            width: 100%;
+          }
+        }
+        .dev-mobile-filter-bar {
+          display: none;
+        }
+        @media (max-width: 640px) {
+          .dev-mobile-filter-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+          }
+          .dev-mobile-filter-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border, #e2e8f0);
+            background: var(--bg, #f8fafc);
+            color: var(--text, #0f172a);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            position: relative;
+            flex-shrink: 0;
+          }
+          .dev-mobile-filter-toggle.active {
+            background: var(--primary-light, #eef4ff);
+            border-color: var(--primary, #0052FF);
+            color: var(--primary, #0052FF);
+          }
+          .dev-mobile-filter-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--primary, #0052FF);
+          }
+          .dev-desktop-search-wrap {
+            display: none !important;
+          }
+          .dev-filters-card:not(.mobile-filters-open) .dev-filters-main-row,
+          .dev-filters-card:not(.mobile-filters-open) .dev-filters-secondary-row {
+            display: none;
+          }
+          .dev-cards-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
           }
         }
         .dev-header {

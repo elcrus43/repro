@@ -90,6 +90,10 @@ export default defineConfig(({ mode }) => {
         '/api/kssk-lots': {
           target: 'http://localhost:3001',
           changeOrigin: true
+        },
+        '/api/cron-lots': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
         }
       }
     },

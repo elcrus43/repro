@@ -5,6 +5,7 @@ import { formatNumber } from '../../utils/format';
 export function DevelopmentCard({
   development,
   isSelected = false,
+  requestMatch = null,
   onSelect = () => {},
   onOpenDetail = () => {},
   onAddToSelection = () => {},
@@ -19,10 +20,11 @@ export function DevelopmentCard({
     : 0;
   const displayPriceFrom = activeLiveSummary?.minPrice || dev.price_from;
   const displayPriceSqm = activeLiveSummary?.minPriceSqm || dev.price_sqm_from;
+  const isRequestMatched = Boolean(requestMatch);
 
   return (
     <div
-      className={`development-card ${isSelected ? 'selected' : ''}`}
+      className={`development-card ${isSelected ? 'selected' : ''} ${isRequestMatched ? 'request-matched' : ''}`}
       onClick={() => onSelect(dev.id)}
     >
       {/* Photo Header */}
@@ -50,7 +52,23 @@ export function DevelopmentCard({
             <span className="dev-card-dev-name">{dev.developer || 'Застройщик'}</span>
             <h3 className="dev-card-title">{dev.name}</h3>
           </div>
+          {isRequestMatched && (
+            <span className={`dev-match-highlight-badge ${requestMatch.priceMatchType === 'near' ? 'near' : 'exact'}`}>
+              {requestMatch.priceMatchType === 'near' ? 'Рядом с бюджетом' : 'Подходит по запросу'}
+            </span>
+          )}
         </div>
+
+        {isRequestMatched && (
+          <div className="dev-match-reasons-row">
+            <span className={`dev-match-reason-pill ${requestMatch.priceMatchType === 'near' ? 'near' : 'price'}`}>
+              {requestMatch.priceReason}
+            </span>
+            <span className="dev-match-reason-pill location">
+              {requestMatch.locationReason}
+            </span>
+          </div>
+        )}
 
         <div className="dev-card-location">
           <MapPin size={14} className="text-muted flex-shrink-0" />
@@ -169,6 +187,56 @@ export function DevelopmentCard({
         .development-card.selected {
           border-color: var(--primary, #0052FF);
           box-shadow: 0 0 0 2px var(--primary, #0052FF), 0 12px 28px rgba(0, 82, 255, 0.15);
+        }
+        .development-card.request-matched {
+          border: 2px solid #10b981;
+          background: linear-gradient(180deg, rgba(16, 185, 129, 0.04) 0%, var(--surface, #ffffff) 48%);
+          box-shadow: 0 10px 26px rgba(16, 185, 129, 0.14);
+        }
+        .development-card.request-matched.selected {
+          border-color: var(--primary, #0052FF);
+          box-shadow: 0 0 0 2px var(--primary, #0052FF), 0 12px 28px rgba(16, 185, 129, 0.22);
+        }
+        .dev-match-highlight-badge {
+          font-size: 10px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 999px;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+        .dev-match-highlight-badge.exact {
+          background: rgba(16, 185, 129, 0.15);
+          color: #047857;
+          border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+        .dev-match-highlight-badge.near {
+          background: rgba(245, 158, 11, 0.15);
+          color: #b45309;
+          border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+        .dev-match-reasons-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .dev-match-reason-pill {
+          font-size: 10.5px;
+          font-weight: 600;
+          padding: 3px 8px;
+          border-radius: 8px;
+        }
+        .dev-match-reason-pill.price {
+          background: rgba(16, 185, 129, 0.12);
+          color: #047857;
+        }
+        .dev-match-reason-pill.near {
+          background: rgba(245, 158, 11, 0.12);
+          color: #b45309;
+        }
+        .dev-match-reason-pill.location {
+          background: rgba(0, 82, 255, 0.1);
+          color: var(--primary, #0052FF);
         }
         .dev-card-image-wrap {
           position: relative;

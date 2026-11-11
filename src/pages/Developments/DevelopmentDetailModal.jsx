@@ -18,13 +18,17 @@ import {
   UserCheck,
   Loader2,
   RefreshCw,
-  Search
+  Search,
+  ChevronDown,
+  ChevronUp,
+  List
 } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { getKsmSlugForDevelopment, filterAndSortKsmLots } from '../../lib/ksmLots';
 import { getKsskSlugForDevelopment } from '../../lib/ksskLots';
+import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
 
 const KSM_ROOM_FILTERS = [
   { id: 'all', label: 'Все' },
@@ -35,19 +39,12 @@ const KSM_ROOM_FILTERS = [
   { id: '4k', label: '4к+' },
 ];
 
-function mapRoomsTypeToCount(roomsType) {
-  if (roomsType === 'studio') return 0;
-  if (roomsType === '1k') return 1;
-  if (roomsType === '2k') return 2;
-  if (roomsType === '3k') return 3;
-  if (roomsType === '4k') return 4;
-  return null;
-}
-
 export function DevelopmentDetailModal({
   development,
+  initialClientId = '',
   onClose = () => {},
   onSelectOnMap = () => {},
+  onFocusHouseOnMap = null,
   ksmLots = [],
   ksmMeta = null,
   onSyncKsmProject = null,
@@ -61,33 +58,38 @@ export function DevelopmentDetailModal({
   const { toast } = useToastContext();
 
   const [activeImgIndex, setActiveImgIndex] = useState(0);
-  const [selectedClientId, setSelectedClientId] = useState('');
+  const [selectedClientId, setSelectedClientId] = useState(initialClientId || '');
   const [addedApts, setAddedApts] = useState({});
   const [ksmRoomFilter, setKsmRoomFilter] = useState('all');
   const [ksmSearch, setKsmSearch] = useState('');
   const [ksmSortBy, setKsmSortBy] = useState('price_asc');
+  const [lotsViewMode, setLotsViewMode] = useState('layouts');
+  const [expandedLayoutGroups, setExpandedLayoutGroups] = useState({});
   const [isKsmSyncing, setIsKsmSyncing] = useState(false);
   const [addedKsmLots, setAddedKsmLots] = useState({});
   const [previewPlanLot, setPreviewPlanLot] = useState(null);
 
   const ksmSlug = getKsmSlugForDevelopment(dev);
   const ksskSlug = getKsskSlugForDevelopment(dev);
-  const resolvedProvider = liveProvider || (
-    ksmSlug
-      ? {
-          id: 'ksm',
-          label: 'КСМ',
-          slug: ksmSlug,
-          subtitle: 'Прямые данные по свободным квартирам из кабинета застройщика КСМ',
-        }
-      : ksskSlug
+  const resolvedProvider = useMemo(
+    () =>
+      liveProvider ||
+      (ksmSlug
         ? {
-            id: 'kssk',
-            label: 'КССК',
-            slug: ksskSlug,
-            subtitle: 'Актуальные свободные квартиры с сайта kvartiry.kssk.ru',
+            id: 'ksm',
+            label: 'КСМ',
+            slug: ksmSlug,
+            subtitle: 'Прямые данные по свободным квартирам из кабинета застройщика КСМ',
           }
-        : null
+        : ksskSlug
+          ? {
+              id: 'kssk',
+              label: 'КССК',
+              slug: ksskSlug,
+              subtitle: 'Актуальные свободные квартиры с сайта kvartiry.kssk.ru',
+            }
+          : null),
+    [liveProvider, ksmSlug, ksskSlug]
   );
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;
@@ -102,6 +104,20 @@ export function DevelopmentDetailModal({
       }),
     [activeLots, ksmRoomFilter, ksmSearch, ksmSortBy]
   );
+
+  const groupedLiveLots = useMemo(() => {
+    const providerId = resolvedProvider?.id || 'ksm';
+    const providerLabel = resolvedProvider?.label || 'КСМ';
+    const enriched = filteredKsmLots.map((lot) => ({
+      ...lot,
+      _dev: dev || null,
+      _devId: dev?.id || null,
+      _devName: dev?.name || '',
+      _provider: providerId,
+      _providerLabel: providerLabel,
+    }));
+    return groupLotsByLayout(enriched);
+  }, [filteredKsmLots, dev, resolvedProvider]);
 
   if (!dev) return null;
 
@@ -166,26 +182,14 @@ export function DevelopmentDetailModal({
       const selectedClient = clients.find(c => c.id === selectedClientId);
       const providerId = resolvedProvider?.id || 'ksm';
       const providerLabel = resolvedProvider?.label || 'КСМ';
-      const selectionItem = {
-        id: `sel_${providerId}_${lot.id}_${Date.now()}`,
-        realtor_id: state.currentUser?.id,
-        client_id: selectedClientId || null,
-        client_ids: selectedClientId ? [selectedClientId] : [],
-        address: `${dev.name}, ${lot.address || dev.address}${lot.flat_number ? `, кв. ${lot.flat_number}` : ''}`,
-        city: 'Киров',
-        price: lot.price || dev.price_from || 0,
-        rooms: mapRoomsTypeToCount(lot.rooms_type),
-        floor: lot.floor || null,
-        area_total: lot.area || null,
-        property_type: 'apartment',
-        market_type: 'new_building',
-        images: lot.plan_image ? [lot.plan_image, ...images.slice(0, 2)] : images.slice(0, 3),
-        notes: `${providerLabel} live: ${lot.title}${lot.finishing ? `, отделка: ${lot.finishing}` : ''}${lot.floor ? `, этаж ${lot.floor}` : ''}${lot.flat_number ? `, кв. ${lot.flat_number}` : ''}.${lot.price_sqm ? ` За м²: ${formatNumber(lot.price_sqm)} ₽.` : ''} Срок: ${dev.completion_date}.`,
-        link: lot.lot_url || dev.builder_url || dev.avito_url,
-        contact_name: `${dev.developer} (Отдел продаж)`,
-        contact_phone: dev.contact_phone || null,
-        created_at: new Date().toISOString(),
-      };
+      const selectionItem = buildSelectionItemFromLot({
+        lot,
+        dev,
+        providerLabel,
+        providerId,
+        clientId: selectedClientId || null,
+        realtorId: state.currentUser?.id || null,
+      });
 
       await dispatch({ type: 'ADD_SELECTION_ITEM', item: selectionItem });
       setAddedKsmLots((prev) => ({ ...prev, [lot.id]: true }));
@@ -198,6 +202,10 @@ export function DevelopmentDetailModal({
       console.error('[Add live lot to selection error]', err);
       toast.error('Ошибка добавления лота в подборку: ' + err.message);
     }
+  };
+
+  const toggleLayoutGroup = (groupKey) => {
+    setExpandedLayoutGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
   };
 
   return (
@@ -486,11 +494,202 @@ export function DevelopmentDetailModal({
                         <option value="area_asc">Меньше площадь</option>
                         <option value="floor_asc">Этаж по возрастанию</option>
                       </select>
+                      <div className="dev-ksm-view-toggle" role="tablist" aria-label="Вид лотов">
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={lotsViewMode === 'layouts'}
+                          className={`ksm-view-btn ${lotsViewMode === 'layouts' ? 'active' : ''}`}
+                          onClick={() => setLotsViewMode('layouts')}
+                        >
+                          <Layers size={13} />
+                          <span>По планировкам ({groupedLiveLots.length})</span>
+                        </button>
+                        <button
+                          type="button"
+                          role="tab"
+                          aria-selected={lotsViewMode === 'list'}
+                          className={`ksm-view-btn ${lotsViewMode === 'list' ? 'active' : ''}`}
+                          onClick={() => setLotsViewMode('list')}
+                        >
+                          <List size={13} />
+                          <span>Списком ({filteredKsmLots.length})</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   <div className="dev-ksm-lots-list">
-                    {filteredKsmLots.length > 0 ? (
+                    {filteredKsmLots.length === 0 ? (
+                      <div className="dev-ksm-empty">
+                        По выбранным фильтрам свободные лоты не найдены
+                      </div>
+                    ) : lotsViewMode === 'layouts' ? (
+                      groupedLiveLots.map((group) => {
+                        const isExpanded = Boolean(expandedLayoutGroups[group.groupKey]);
+                        const repLot = group.representativeLot;
+                        const isSingleAdded = group.count === 1 && Boolean(addedKsmLots[repLot.id]);
+
+                        return (
+                          <div key={group.groupKey} className="dev-ksm-layout-card">
+                            <div className="ksm-layout-card-top">
+                              <div
+                                className={`ksm-lot-plan lg ${group.planImage ? 'clickable' : ''}`}
+                                onClick={() => {
+                                  if (group.planImage) setPreviewPlanLot(repLot);
+                                }}
+                                title={group.planImage ? 'Открыть планировку' : 'Планировка отсутствует'}
+                              >
+                                {group.planImage ? (
+                                  <img src={group.planImage} alt={group.roomsLabel} loading="lazy" />
+                                ) : (
+                                  <Home size={22} className="text-muted" />
+                                )}
+                              </div>
+
+                              <div className="ksm-lot-main">
+                                <div className="ksm-lot-title-line">
+                                  <strong className="ksm-lot-title">
+                                    {group.roomsLabel}
+                                    {group.area ? ` · ${group.area} м²` : ''}
+                                  </strong>
+                                  {group.finishing && (
+                                    <span className="ksm-lot-finishing">{group.finishing}</span>
+                                  )}
+                                  <span className="ksm-layout-count-badge">
+                                    {group.count} кв.
+                                    {group.floorsSummary ? ` · ${group.floorsSummary}` : ''}
+                                  </span>
+                                </div>
+                                <div className="ksm-lot-meta-line">
+                                  <span>{group.address || dev.address}</span>
+                                  {onFocusHouseOnMap && (
+                                    <button
+                                      type="button"
+                                      className="btn-ksm-map"
+                                      onClick={() => {
+                                        onFocusHouseOnMap(repLot, dev);
+                                        onClose();
+                                      }}
+                                    >
+                                      <MapPin size={11} />
+                                      <span>На карте</span>
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="ksm-lot-price-col">
+                                <div className="ksm-lot-price">
+                                  {group.minPrice ? `от ${formatNumber(group.minPrice)} ₽` : 'По запросу'}
+                                </div>
+                                {group.minPriceSqm && (
+                                  <div className="ksm-lot-price-sqm">
+                                    от {formatNumber(group.minPriceSqm)} ₽/м²
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="ksm-lot-actions">
+                                {group.count === 1 ? (
+                                  <>
+                                    {repLot.lot_url && (
+                                      <a
+                                        href={repLot.lot_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="ksm-lot-ext-link"
+                                        title={`Открыть лот на сайте ${resolvedProvider.label}`}
+                                      >
+                                        <ExternalLink size={14} />
+                                      </a>
+                                    )}
+                                    <button
+                                      type="button"
+                                      className={`btn-add-table-sel ${isSingleAdded ? 'added' : ''}`}
+                                      onClick={() => handleAddKsmLotToSelection(repLot)}
+                                    >
+                                      {isSingleAdded ? (
+                                        <>
+                                          <Check size={14} />
+                                          <span>Добавлено</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <PlusCircle size={14} />
+                                          <span>В подборку</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn-ksm-expand-floors"
+                                    onClick={() => toggleLayoutGroup(group.groupKey)}
+                                  >
+                                    <span>{isExpanded ? 'Скрыть' : `Этажи (${group.count})`}</span>
+                                    {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {isExpanded && group.count > 1 && (
+                              <div className="dev-ksm-floors-drawer">
+                                {group.lots.map((lot) => {
+                                  const isAdded = Boolean(addedKsmLots[lot.id]);
+                                  return (
+                                    <div key={lot.id} className="dev-ksm-floor-row">
+                                      <div className="ksm-floor-info">
+                                        <strong>{lot.floor ? `Этаж ${lot.floor}` : 'Этаж -'}</strong>
+                                        <span>{lot.flat_number ? `кв. ${lot.flat_number}` : `ID ${lot.id}`}</span>
+                                      </div>
+                                      <div className="ksm-floor-price">
+                                        <span>{lot.price ? `${formatNumber(lot.price)} ₽` : 'По запросу'}</span>
+                                        {lot.price_sqm && (
+                                          <small>{formatNumber(lot.price_sqm)} ₽/м²</small>
+                                        )}
+                                      </div>
+                                      <div className="ksm-lot-actions">
+                                        {lot.lot_url && (
+                                          <a
+                                            href={lot.lot_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="ksm-lot-ext-link"
+                                            title={`Открыть лот на сайте ${resolvedProvider.label}`}
+                                          >
+                                            <ExternalLink size={13} />
+                                          </a>
+                                        )}
+                                        <button
+                                          type="button"
+                                          className={`btn-add-table-sel ${isAdded ? 'added' : ''}`}
+                                          onClick={() => handleAddKsmLotToSelection(lot)}
+                                        >
+                                          {isAdded ? (
+                                            <>
+                                              <Check size={13} />
+                                              <span>Добавлено</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <PlusCircle size={13} />
+                                              <span>В подборку</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })
+                    ) : (
                       filteredKsmLots.map((lot) => {
                         const isAdded = Boolean(addedKsmLots[lot.id]);
                         return (
@@ -529,6 +728,19 @@ export function DevelopmentDetailModal({
                                     <span>-</span>
                                     <span>{lot.address}</span>
                                   </>
+                                )}
+                                {onFocusHouseOnMap && (
+                                  <button
+                                    type="button"
+                                    className="btn-ksm-map"
+                                    onClick={() => {
+                                      onFocusHouseOnMap(lot, dev);
+                                      onClose();
+                                    }}
+                                  >
+                                    <MapPin size={11} />
+                                    <span>На карте</span>
+                                  </button>
                                 )}
                               </div>
                             </div>
@@ -577,10 +789,6 @@ export function DevelopmentDetailModal({
                           </div>
                         );
                       })
-                    ) : (
-                      <div className="dev-ksm-empty">
-                        По выбранным фильтрам свободные лоты не найдены
-                      </div>
                     )}
                   </div>
                 </>
@@ -1552,6 +1760,166 @@ export function DevelopmentDetailModal({
           object-fit: contain;
           background: #ffffff;
           border-radius: 10px;
+        }
+        .dev-ksm-view-toggle {
+          display: inline-flex;
+          background: var(--bg, #f8fafc);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 8px;
+          padding: 2px;
+          gap: 2px;
+        }
+        .dark .dev-ksm-view-toggle {
+          background: #0f172a;
+          border-color: #334155;
+        }
+        .ksm-view-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          border: none;
+          background: transparent;
+          color: var(--text-secondary, #475569);
+          padding: 4px 9px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .dark .ksm-view-btn {
+          color: #94a3b8;
+        }
+        .ksm-view-btn.active {
+          background: var(--primary, #0052FF);
+          color: #ffffff;
+        }
+        .dev-ksm-layout-card {
+          background: var(--bg, #f8fafc);
+          border: 1px solid var(--border-light, #f1f5f9);
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .dark .dev-ksm-layout-card {
+          background: #0f172a;
+          border-color: #334155;
+        }
+        .ksm-layout-card-top {
+          display: grid;
+          grid-template-columns: 72px 1fr auto auto;
+          align-items: center;
+          gap: 12px;
+        }
+        @media (max-width: 640px) {
+          .ksm-layout-card-top {
+            grid-template-columns: 60px 1fr;
+          }
+          .ksm-layout-card-top .ksm-lot-price-col,
+          .ksm-layout-card-top .ksm-lot-actions {
+            grid-column: 1 / -1;
+            justify-content: flex-start;
+          }
+        }
+        .ksm-lot-plan.lg {
+          width: 72px;
+          height: 72px;
+        }
+        .ksm-layout-count-badge {
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 6px;
+          background: #ecfdf5;
+          color: #047857;
+          border: 1px solid #a7f3d0;
+        }
+        .dark .ksm-layout-count-badge {
+          background: #064e3b;
+          color: #a7f3d0;
+          border-color: #059669;
+        }
+        .btn-ksm-map {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          color: var(--primary, #0052FF);
+          padding: 2px 7px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .dark .btn-ksm-map {
+          background: #1e293b;
+          border-color: #334155;
+          color: #60a5fa;
+        }
+        .btn-ksm-expand-floors {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: var(--primary-light, #eef4ff);
+          color: var(--primary, #0052FF);
+          border: none;
+          padding: 6px 11px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .dark .btn-ksm-expand-floors {
+          background: #1e3a8a;
+          color: #bfdbfe;
+        }
+        .dev-ksm-floors-drawer {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding-top: 8px;
+          border-top: 1px dashed var(--border, #e2e8f0);
+        }
+        .dark .dev-ksm-floors-drawer {
+          border-top-color: #334155;
+        }
+        .dev-ksm-floor-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          padding: 6px 10px;
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 8px;
+          font-size: 12px;
+        }
+        .dark .dev-ksm-floor-row {
+          background: #1e293b;
+          border-color: #334155;
+        }
+        .ksm-floor-info {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .ksm-floor-price {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+          font-weight: 600;
+          color: var(--primary, #0052FF);
+        }
+        .dark .ksm-floor-price {
+          color: #60a5fa;
+        }
+        .ksm-floor-price small {
+          font-size: 11px;
+          font-weight: 400;
+          color: var(--text-muted, #94a3b8);
         }
       `}</style>
     </div>

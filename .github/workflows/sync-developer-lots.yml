@@ -1,0 +1,58 @@
+name: Sync Developer Lots
+
+on:
+  schedule:
+    # Каждые 3 часа
+    - cron: '0 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: 'Developer provider to sync'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - kssk
+          - ksm
+
+jobs:
+  sync-lots:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check NEON_DATABASE_URL secret availability
+        id: check_secrets
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          if [ -n "$NEON_DATABASE_URL" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "NEON_DATABASE_URL secret is not configured; skipping developer lots sync."
+          fi
+
+      - name: Checkout repository
+        if: steps.check_secrets.outputs.configured == 'true'
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        if: steps.check_secrets.outputs.configured == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        if: steps.check_secrets.outputs.configured == 'true'
+        run: npm ci
+
+      - name: Run developer lots sync
+        if: steps.check_secrets.outputs.configured == 'true'
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          KSM_PHONE: ${{ secrets.KSM_PHONE }}
+          KSM_PASSWORD: ${{ secrets.KSM_PASSWORD }}
+          SYNC_PROVIDER: ${{ inputs.provider || 'all' }}
+        run: node scripts/sync-developer-lots.js --provider="$SYNC_PROVIDER"

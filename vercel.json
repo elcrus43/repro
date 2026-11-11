@@ -8,5 +8,11 @@
             "source": "/(.*)",
             "destination": "/index.html"
         }
+    ],
+    "crons": [
+        {
+            "path": "/api/cron-lots?provider=kssk",
+            "schedule": "0 5 * * *"
+        }
     ]
-}
+}

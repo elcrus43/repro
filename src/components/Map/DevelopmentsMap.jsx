@@ -3,6 +3,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { AlertCircle, X } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
+import {
+  escapeMapHtml,
+  formatRoomBreakdownText,
+  isSelectedMapItem,
+} from '../../lib/houseCoordinates';
 
 const GOOGLE_LAYER_OPTIONS = [
   { id: 'm', label: 'Схема' },
@@ -36,6 +41,85 @@ function getTileConfig(provider, googleLayer, isDark) {
   };
 }
 
+function buildLeafletMarkerIcon(item, isSelected) {
+  const shortLabel = item.markerTitle || String(item.name || '').replace(/^ЖК\s+/i, '');
+  const priceText = item.price_from
+    ? `от ${(item.price_from / 1000000).toFixed(1).replace('.', ',')} млн ₽`
+    : 'Цена по запросу';
+  const liveCount = Number(item.liveCount) || 0;
+  const livePillHtml = liveCount > 0
+    ? `<span class="dev-marker-live-pill">${liveCount} кв.</span>`
+    : '';
+
+  return L.divIcon({
+    className: 'custom-dev-marker-wrapper',
+    html: `
+      <div class="dev-marker-bubble ${isSelected ? 'selected' : ''} ${liveCount > 0 ? 'has-live' : ''}">
+        <div class="dev-marker-dot"></div>
+        <div class="dev-marker-text">
+          <span class="dev-marker-name">${escapeMapHtml(shortLabel)}</span>
+          <span class="dev-marker-price">${escapeMapHtml(priceText)}</span>
+        </div>
+        ${livePillHtml}
+        <div class="dev-marker-pin"></div>
+      </div>
+    `,
+    iconSize: [140, 44],
+    iconAnchor: [70, 44],
+    popupAnchor: [0, -44]
+  });
+}
+
+function buildLeafletPopupHtml(item) {
+  const heroImg = (item.images && item.images[0]) || item.samplePlanImage || '';
+  const badgeText = item.liveProviderLabel || item.housing_class || 'Комфорт';
+  const liveCount = Number(item.liveCount) || 0;
+  const breakdownText = formatRoomBreakdownText(item.byRoomType);
+  const addressLabel = item.isHousePin
+    ? item.address
+    : (item.microdistrict || item.district || 'Киров');
+  const showSamplePlanThumb = Boolean(
+    item.samplePlanImage && item.images && item.images[0] && item.samplePlanImage !== item.images[0]
+  );
+
+  return `
+    <div class="dev-map-popup">
+      ${heroImg ? `
+        <div class="dev-popup-img-wrap">
+          <img src="${escapeMapHtml(heroImg)}" alt="${escapeMapHtml(item.name)}" class="dev-popup-img" />
+          <span class="dev-popup-class-badge">${escapeMapHtml(badgeText)}</span>
+        </div>
+      ` : ''}
+      <div class="dev-popup-body">
+        <h4 class="dev-popup-title">${escapeMapHtml(item.name)}</h4>
+        <div class="dev-popup-meta">
+          <span>🏗️ ${escapeMapHtml(item.developer || 'Застройщик')}</span>
+          <span>📍 ${escapeMapHtml(addressLabel)}</span>
+          <span>⏱️ ${escapeMapHtml(item.completion_date || 'Срок уточняется')}</span>
+        </div>
+        ${liveCount > 0 ? `
+          <div class="dev-popup-live-row">
+            <div class="dev-popup-live-info">
+              <span class="dev-popup-live-badge">${liveCount} своб. кв.</span>
+              ${breakdownText ? `<span class="dev-popup-live-rooms">${escapeMapHtml(breakdownText)}</span>` : ''}
+            </div>
+            ${showSamplePlanThumb ? `
+              <img src="${escapeMapHtml(item.samplePlanImage)}" alt="Планировка" class="dev-popup-plan-thumb" />
+            ` : ''}
+          </div>
+        ` : ''}
+        <div class="dev-popup-price-row">
+          <span class="dev-popup-price-label">Цена:</span>
+          <span class="dev-popup-price-val">${item.price_from ? `от ${formatNumber(item.price_from)} ₽` : 'по запросу'}</span>
+        </div>
+        <button type="button" data-leaflet-detail-btn="true" class="dev-popup-action-btn">
+          Смотреть планировки ->
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 /**
  * DevelopmentsMap
  * Интерактивная карта новостроек г. Кирова на Leaflet (Google Карты / OpenStreetMap)
@@ -43,7 +127,9 @@ function getTileConfig(provider, googleLayer, isDark) {
 export function DevelopmentsMap({
   developments = [],
   selectedId = null,
+  focusTarget = null,
   onSelect = () => {},
+  onSelectHouse = null,
   onOpenDetail = () => {},
   className = '',
   height = '100%',
@@ -52,8 +138,12 @@ export function DevelopmentsMap({
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef(new Map());
+  const markerEntriesRef = useRef([]);
   const tileErrorCountRef = useRef(0);
+  const selectedIdRef = useRef(selectedId);
+  const focusTargetRef = useRef(focusTarget);
   const onSelectRef = useRef(onSelect);
+  const onSelectHouseRef = useRef(onSelectHouse);
   const onOpenDetailRef = useRef(onOpenDetail);
 
   const [googleLayer, setGoogleLayer] = useState('m');
@@ -66,9 +156,12 @@ export function DevelopmentsMap({
   const hasTileError = tileErrorKey === currentLayerKey;
 
   useEffect(() => {
+    selectedIdRef.current = selectedId;
+    focusTargetRef.current = focusTarget;
     onSelectRef.current = onSelect;
+    onSelectHouseRef.current = onSelectHouse;
     onOpenDetailRef.current = onOpenDetail;
-  }, [onSelect, onOpenDetail]);
+  }, [selectedId, focusTarget, onSelect, onSelectHouse, onOpenDetail]);
 
   // Отслеживание смены светлой/темной темы на html
   useEffect(() => {
@@ -196,123 +289,133 @@ export function DevelopmentsMap({
     };
   }, [provider, googleLayer, isDark, currentLayerKey]);
 
-  // Отрисовка маркеров новостроек
+  // Отрисовка маркеров новостроек и домов
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const { map } = mapInstanceRef.current;
 
-    // Удаляем старые маркеры
     markersRef.current.forEach(marker => {
       try { marker.remove(); } catch { /* ignore */ }
     });
     markersRef.current.clear();
+    markerEntriesRef.current = [];
 
     if (!developments || developments.length === 0) return;
 
     const bounds = [];
+    const activeSelectedId = selectedIdRef.current;
 
-    developments.forEach(dev => {
-      if (!dev.lat || !dev.lng) return;
+    developments.forEach(item => {
+      if (!item || !item.lat || !item.lng) return;
 
-      const isSelected = dev.id === selectedId;
-      const priceText = dev.price_from 
-        ? `от ${(dev.price_from / 1000000).toFixed(1).replace('.', ',')} млн ₽`
-        : 'Цена по запросу';
-
-      // Кастомный HTML-маркер (плашка с ценой)
-      const customIcon = L.divIcon({
-        className: 'custom-dev-marker-wrapper',
-        html: `
-          <div class="dev-marker-bubble ${isSelected ? 'selected' : ''}">
-            <div class="dev-marker-dot"></div>
-            <div class="dev-marker-text">
-              <span class="dev-marker-name">${dev.name.replace('ЖК ', '')}</span>
-              <span class="dev-marker-price">${priceText}</span>
-            </div>
-            <div class="dev-marker-pin"></div>
-          </div>
-        `,
-        iconSize: [120, 44],
-        iconAnchor: [60, 44],
-        popupAnchor: [0, -44]
+      const isSelected = isSelectedMapItem(item, activeSelectedId);
+      const marker = L.marker([item.lat, item.lng], {
+        icon: buildLeafletMarkerIcon(item, isSelected)
       });
 
-      const marker = L.marker([dev.lat, dev.lng], { icon: customIcon });
-
-      // Попап с краткой инфой о ЖК
-      const popupHtml = `
-        <div class="dev-map-popup">
-          ${dev.images && dev.images[0] ? `
-            <div class="dev-popup-img-wrap">
-              <img src="${dev.images[0]}" alt="${dev.name}" class="dev-popup-img" />
-              <span class="dev-popup-class-badge">${dev.housing_class || 'Комфорт'}</span>
-            </div>
-          ` : ''}
-          <div class="dev-popup-body">
-            <h4 class="dev-popup-title">${dev.name}</h4>
-            <div class="dev-popup-meta">
-              <span>🏗️ ${dev.developer || 'Застройщик'}</span>
-              <span>📍 ${dev.microdistrict || dev.district || 'Киров'}</span>
-              <span>⏱️ ${dev.completion_date || 'Срок уточняется'}</span>
-            </div>
-            <div class="dev-popup-price-row">
-              <span class="dev-popup-price-label">Цена:</span>
-              <span class="dev-popup-price-val">${dev.price_from ? `от ${formatNumber(dev.price_from)} ₽` : 'по запросу'}</span>
-            </div>
-            <button id="btn-popup-open-${dev.id}" class="dev-popup-action-btn">
-              Смотреть ЖК и планировки →
-            </button>
-          </div>
-        </div>
-      `;
-
-      marker.bindPopup(popupHtml, {
+      marker.bindPopup(buildLeafletPopupHtml(item), {
         maxWidth: 280,
         className: 'custom-dev-popup'
       });
 
       marker.on('popupopen', () => {
-        onSelectRef.current?.(dev.id);
-        const btn = document.getElementById(`btn-popup-open-${dev.id}`);
+        onSelectRef.current?.(item.devId || item.id);
+        onSelectHouseRef.current?.(item);
+        const popupEl = marker.getPopup()?.getElement();
+        const btn = popupEl?.querySelector('[data-leaflet-detail-btn]');
         if (btn) {
-          btn.onclick = () => onOpenDetailRef.current?.(dev);
+          btn.onclick = () => {
+            onOpenDetailRef.current?.(item.sourceDev || item, item.isHousePin ? item.address : null);
+          };
         }
       });
 
       marker.on('click', () => {
-        onSelectRef.current?.(dev.id);
+        onSelectRef.current?.(item.devId || item.id);
+        onSelectHouseRef.current?.(item);
       });
 
       marker.addTo(map);
-      markersRef.current.set(dev.id, marker);
-      bounds.push([dev.lat, dev.lng]);
+      markersRef.current.set(String(item.id), marker);
+      markerEntriesRef.current.push({ item, marker, isSelected });
+      bounds.push([item.lat, item.lng]);
     });
 
-    // Центрирование при первом заполнении или выборе
-    if (selectedId && markersRef.current.has(selectedId)) {
-      const selectedMarker = markersRef.current.get(selectedId);
-      const latlng = selectedMarker.getLatLng();
-      try { map.flyTo(latlng, Math.max(map.getZoom(), 14), { duration: 0.8 }); } catch { /* ignore */ }
-    } else if (bounds.length > 0 && !selectedId) {
+    const activeFocus = focusTargetRef.current;
+    const hasFocusCoords = Boolean(
+      activeFocus && Number.isFinite(Number(activeFocus.lat)) && Number.isFinite(Number(activeFocus.lng))
+    );
+
+    if (!hasFocusCoords && !activeSelectedId && bounds.length > 0) {
       try { map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 }); } catch { /* ignore */ }
     }
-  }, [developments, selectedId]);
+  }, [developments]);
 
-  // Фокусировка на выбранном ЖК
+  // Подсветка и фокусировка при изменении selectedId
   useEffect(() => {
-    if (!selectedId || !mapInstanceRef.current) return;
+    if (!mapInstanceRef.current) return;
     const { map } = mapInstanceRef.current;
-    const marker = markersRef.current.get(selectedId);
-    if (marker) {
-      const latlng = marker.getLatLng();
+    const entries = markerEntriesRef.current;
+
+    entries.forEach((entry) => {
+      const nextSelected = isSelectedMapItem(entry.item, selectedId);
+      if (entry.isSelected !== nextSelected) {
+        entry.isSelected = nextSelected;
+        try {
+          entry.marker.setIcon(buildLeafletMarkerIcon(entry.item, nextSelected));
+        } catch { /* ignore */ }
+      }
+    });
+
+    if (!selectedId) return;
+
+    const exactMarker = markersRef.current.get(String(selectedId));
+    if (exactMarker) {
+      const latlng = exactMarker.getLatLng();
       try {
         map.flyTo(latlng, Math.max(map.getZoom(), 14), { duration: 0.6 });
-        if (!marker.isPopupOpen()) {
-          marker.openPopup();
+        if (!exactMarker.isPopupOpen()) {
+          exactMarker.openPopup();
         }
       } catch { /* ignore */ }
+      return;
     }
-  }, [selectedId]);
+
+    const matchingByDev = entries.filter(
+      (entry) => entry.item.devId && String(entry.item.devId) === String(selectedId)
+    );
+    if (matchingByDev.length === 1) {
+      const singleMarker = matchingByDev[0].marker;
+      try {
+        map.flyTo(singleMarker.getLatLng(), Math.max(map.getZoom(), 14), { duration: 0.6 });
+        if (!singleMarker.isPopupOpen()) {
+          singleMarker.openPopup();
+        }
+      } catch { /* ignore */ }
+    } else if (matchingByDev.length > 1) {
+      const hasOpenPopup = matchingByDev.some((entry) => entry.marker.isPopupOpen());
+      if (!hasOpenPopup) {
+        try {
+          const groupBounds = matchingByDev.map((entry) => entry.marker.getLatLng());
+          map.fitBounds(groupBounds, { padding: [50, 50], maxZoom: 15 });
+        } catch { /* ignore */ }
+      }
+    }
+  }, [selectedId, developments]);
+
+  // Плавный переход к конкретному дому (например, из списка лотов)
+  useEffect(() => {
+    if (!mapInstanceRef.current || !focusTarget) return;
+    const lat = Number(focusTarget.lat);
+    const lng = Number(focusTarget.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    const { map } = mapInstanceRef.current;
+    const targetZoom = Number(focusTarget.zoom) || 16;
+    try {
+      map.flyTo([lat, lng], targetZoom, { duration: 0.65 });
+    } catch { /* ignore */ }
+  }, [focusTarget]);
 
   return (
     <div
@@ -530,7 +633,7 @@ export function DevelopmentsMap({
           font-size: 11px;
           font-weight: 700;
           color: var(--text, #0f172a);
-          max-width: 90px;
+          max-width: 115px;
           overflow: hidden;
           text-overflow: ellipsis;
         }
@@ -544,6 +647,20 @@ export function DevelopmentsMap({
         }
         .dark .dev-marker-price {
           color: #60a5fa;
+        }
+        .dev-marker-live-pill {
+          background: #10b981;
+          color: #ffffff;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 6px;
+          border-radius: 999px;
+          line-height: 1.2;
+          flex-shrink: 0;
+        }
+        .dev-marker-bubble.selected .dev-marker-live-pill {
+          background: rgba(255, 255, 255, 0.22);
+          color: #ffffff;
         }
         .dev-marker-pin {
           position: absolute;
@@ -616,6 +733,50 @@ export function DevelopmentsMap({
         }
         .dark .dev-popup-meta {
           color: #94a3b8;
+        }
+        .dev-popup-live-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          background: rgba(16, 185, 129, 0.1);
+          border: 1px solid rgba(16, 185, 129, 0.25);
+          border-radius: 8px;
+          padding: 6px 8px;
+          margin-bottom: 8px;
+        }
+        .dev-popup-live-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+        .dev-popup-live-badge {
+          font-size: 11px;
+          font-weight: 700;
+          color: #059669;
+        }
+        .dark .dev-popup-live-badge {
+          color: #34d399;
+        }
+        .dev-popup-live-rooms {
+          font-size: 10px;
+          color: var(--text-secondary, #475569);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .dark .dev-popup-live-rooms {
+          color: #cbd5e1;
+        }
+        .dev-popup-plan-thumb {
+          width: 36px;
+          height: 36px;
+          border-radius: 6px;
+          object-fit: contain;
+          background: #ffffff;
+          border: 1px solid rgba(148, 163, 184, 0.35);
+          flex-shrink: 0;
         }
         .dev-popup-price-row {
           display: flex;
