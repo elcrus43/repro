@@ -9,6 +9,139 @@
 
 import { hasPassedDealStage } from '../utils/matching';
 
+function collectDealPartyIds(deal = {}, properties = [], propId = null, extraIds = []) {
+  const idSet = new Set();
+  const addList = (arr) => {
+    if (Array.isArray(arr)) arr.forEach(id => { if (id) idSet.add(id); });
+  };
+  addList(deal.seller_ids);
+  if (deal.seller_id) idSet.add(deal.seller_id);
+  addList(deal.buyer_ids);
+  if (deal.buyer_id) idSet.add(deal.buyer_id);
+
+  const targetPropId = propId || deal.property_id;
+  if (targetPropId) {
+    const prop = (properties || []).find(p => p.id === targetPropId);
+    if (prop) {
+      addList(prop.client_ids);
+      if (prop.client_id) idSet.add(prop.client_id);
+      if (prop.owner_id) idSet.add(prop.owner_id);
+    }
+  }
+  addList(extraIds);
+  return Array.from(idSet);
+}
+
+/**
+ * При закрытии сделки помечает связанные агентские договоры как исполненные
+ * и переводит ВСЕ стороны по сделке (продавцов, сособственников, покупателей, сопокупателей)
+ * по воронке в 'deal_closed' (Сделка закрыта), если у них нет других открытых сделок и активных договоров.
+ */
+export function syncClientsOnClosedDeal(clients, allDeals, properties, deal, propId, extraIds = []) {
+  const participantIds = collectDealPartyIds(deal, properties, propId, extraIds);
+  if (participantIds.length === 0 && !propId) return clients;
+
+  const nowTs = new Date().toISOString();
+  let anyClientChanged = false;
+  const nextClients = clients.map(c => {
+    const isParticipant = participantIds.includes(c.id);
+    const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
+    let contractsChanged = false;
+
+    const updatedContracts = rawContracts.map(ct => {
+      if (!ct) return ct;
+      const isPropMatch = ct.property_id && propId && ct.property_id === propId;
+      const isMatch = isPropMatch || (isParticipant && !ct.property_id);
+      if (isMatch && ct.status !== 'fulfilled') {
+        contractsChanged = true;
+        return {
+          ...ct,
+          status: 'fulfilled',
+          fulfilled_deal_id: deal.id || null,
+          fulfilled_at: deal.deal_date || nowTs
+        };
+      }
+      return ct;
+    });
+
+    if (!isParticipant && !contractsChanged) return c;
+
+    const hasRemainingActiveContract = updatedContracts.some(
+      ct => ct && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(ct.status)
+    );
+    const hasOtherOpenDeal = allDeals.some(d => {
+      if (deal.id && d.id === deal.id) return false;
+      if (['closed', 'completed', 'deal_closed', 'cancelled', 'refused', 'failed'].includes(d.status)) return false;
+      const sIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
+      const bIds = d.buyer_ids || (d.buyer_id ? [d.buyer_id] : []);
+      return sIds.includes(c.id) || bIds.includes(c.id);
+    });
+
+    let nextStatus = c.status;
+    let nextPipelineStage = c.pipeline_stage;
+    if (isParticipant && !hasRemainingActiveContract && !hasOtherOpenDeal && c.status !== 'refused') {
+      nextStatus = 'deal_closed';
+      nextPipelineStage = 'completed';
+    }
+
+    const nextHasContract = rawContracts.length > 0 ? hasRemainingActiveContract : (isParticipant && !hasOtherOpenDeal ? false : c.has_agency_contract);
+
+    if (!contractsChanged && nextStatus === c.status && nextPipelineStage === c.pipeline_stage && nextHasContract === c.has_agency_contract) {
+      return c;
+    }
+    anyClientChanged = true;
+    return {
+      ...c,
+      ...(contractsChanged ? { agency_contracts: updatedContracts } : {}),
+      status: nextStatus,
+      ...(nextPipelineStage ? { pipeline_stage: nextPipelineStage } : {}),
+      has_agency_contract: nextHasContract,
+      updated_at: nowTs
+    };
+  });
+
+  return anyClientChanged ? nextClients : clients;
+}
+
+/**
+ * При возврате закрытой сделки обратно в работу восстанавливает статус договоров и сторон.
+ */
+export function syncClientsOnReopenedDeal(clients, properties, deal, propId) {
+  const participantIds = collectDealPartyIds(deal, properties, propId);
+  const nowTs = new Date().toISOString();
+  let anyChanged = false;
+
+  const nextClients = clients.map(c => {
+    const isParticipant = participantIds.includes(c.id);
+    const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
+    let contractsChanged = false;
+    const updatedContracts = rawContracts.map(ct => {
+      if (ct && ct.fulfilled_deal_id && deal.id && ct.fulfilled_deal_id === deal.id) {
+        contractsChanged = true;
+        return { ...ct, status: 'active', fulfilled_deal_id: null, fulfilled_at: null };
+      }
+      return ct;
+    });
+
+    if (!isParticipant && !contractsChanged) return c;
+    const hasActiveContract = updatedContracts.some(
+      ct => ct && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(ct.status)
+    );
+    const shouldReopenStatus = isParticipant && ['deal_closed', 'completed'].includes(c.status);
+    if (!contractsChanged && !shouldReopenStatus) return c;
+
+    anyChanged = true;
+    return {
+      ...c,
+      ...(contractsChanged ? { agency_contracts: updatedContracts, has_agency_contract: hasActiveContract } : {}),
+      ...(shouldReopenStatus ? { status: 'active', pipeline_stage: 'active' } : {}),
+      updated_at: nowTs
+    };
+  });
+
+  return anyChanged ? nextClients : clients;
+}
+
 export const EMPTY_STATE = {
   currentUser:  null,
   clients:      [],
@@ -190,11 +323,16 @@ export function reducer(state, action) {
 
       const prop = properties.find(p => p.id === propertyId);
       const req  = requests.find(r => r.id === requestId);
-      const clients = state.clients.map(c => {
-        if (prop && (prop.client_ids || [prop.client_id]).includes(c.id)) return { ...c, status: 'deal_closed' };
-        if (req  && (req.client_ids || [req.client_id]).includes(c.id))  return { ...c, status: 'deal_closed' };
-        return c;
-      });
+      const reqClientIds = req ? (req.client_ids || (req.client_id ? [req.client_id] : [])) : [];
+      const propClientIds = prop ? (prop.client_ids || (prop.client_id ? [prop.client_id] : [])) : [];
+      const clients = syncClientsOnClosedDeal(
+        state.clients,
+        state.deals,
+        properties,
+        { id: action.dealId || null, property_id: propertyId, deal_date: now },
+        propertyId,
+        [...propClientIds, ...reqClientIds]
+      );
 
       return { ...state, matches, properties, requests, clients };
     }
@@ -257,39 +395,14 @@ export function reducer(state, action) {
         ? state.matches.filter(m => m.property_id !== propId)
         : state.matches;
 
-      // Если сделка завершена — связанные агентские договоры считаются исполненными
-      let clients = state.clients;
-      if (newDeal.status === 'closed') {
-        const participantIds = [
-          ...(newDeal.seller_ids || (newDeal.seller_id ? [newDeal.seller_id] : [])),
-          ...(newDeal.buyer_ids || (newDeal.buyer_id ? [newDeal.buyer_id] : []))
-        ];
-        clients = state.clients.map(c => {
-          const isParticipant = participantIds.includes(c.id);
-          const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
-          if (rawContracts.length === 0) return c;
-          let changed = false;
-          const updatedContracts = rawContracts.map(ct => {
-            const isPropMatch = ct.property_id && ct.property_id === propId;
-            const isMatch = isPropMatch || (isParticipant && !ct.property_id);
-            if (isMatch && ct.status !== 'fulfilled') {
-              changed = true;
-              return {
-                ...ct,
-                status: 'fulfilled',
-                fulfilled_deal_id: newDeal.id,
-                fulfilled_at: newDeal.deal_date || new Date().toISOString()
-              };
-            }
-            return ct;
-          });
-          return changed ? { ...c, agency_contracts: updatedContracts } : c;
-        });
-      }
+      const nextDeals = [...state.deals, newDeal];
+      const clients = newDeal.status === 'closed'
+        ? syncClientsOnClosedDeal(state.clients, nextDeals, properties, newDeal, propId)
+        : state.clients;
 
       return {
         ...state,
-        deals: [...state.deals, newDeal],
+        deals: nextDeals,
         properties,
         matches,
         ...(clients === state.clients ? {} : { clients })
@@ -329,39 +442,18 @@ export function reducer(state, action) {
         ? state.matches.filter(m => !affectedPassedPropIds.includes(m.property_id))
         : state.matches;
 
-      // Если статус сделки стал 'closed' — связанные договоры считаются исполненными
+      const nextDeals = state.deals.map(d => d.id === incoming.id ? { ...d, ...incoming } : d);
+      const mergedDeal = { ...(prev || {}), ...incoming, property_id: propertyIdNow };
       let clients = state.clients;
       if (effectiveDealStatus === 'closed') {
-        const participantIds = [
-          ...(incoming.seller_ids || (incoming.seller_id ? [incoming.seller_id] : [])),
-          ...(incoming.buyer_ids || (incoming.buyer_id ? [incoming.buyer_id] : []))
-        ];
-        clients = state.clients.map(c => {
-          const isParticipant = participantIds.includes(c.id);
-          const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
-          if (rawContracts.length === 0) return c;
-          let changed = false;
-          const updatedContracts = rawContracts.map(ct => {
-            const isPropMatch = ct.property_id && ct.property_id === propertyIdNow;
-            const isMatch = isPropMatch || (isParticipant && !ct.property_id);
-            if (isMatch && ct.status !== 'fulfilled') {
-              changed = true;
-              return {
-                ...ct,
-                status: 'fulfilled',
-                fulfilled_deal_id: incoming.id,
-                fulfilled_at: incoming.deal_date || new Date().toISOString()
-              };
-            }
-            return ct;
-          });
-          return changed ? { ...c, agency_contracts: updatedContracts } : c;
-        });
+        clients = syncClientsOnClosedDeal(state.clients, nextDeals, properties, mergedDeal, propertyIdNow);
+      } else if (prev?.status === 'closed' && effectiveDealStatus !== 'closed') {
+        clients = syncClientsOnReopenedDeal(state.clients, properties, mergedDeal, propertyIdNow);
       }
 
       return {
         ...state,
-        deals: state.deals.map(d => d.id === incoming.id ? incoming : d),
+        deals: nextDeals,
         ...(properties === state.properties ? {} : { properties }),
         ...(matches === state.matches ? {} : { matches }),
         ...(clients === state.clients ? {} : { clients })

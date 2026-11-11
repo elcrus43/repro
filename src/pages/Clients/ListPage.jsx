@@ -33,6 +33,7 @@ export function ListPage() {
         control: true,
         selection: true,
         new: true,
+        completed: true,
         refused: true
     });
 
@@ -44,6 +45,9 @@ export function ListPage() {
                 return 'control';
             case 'refused':
                 return 'refused';
+            case 'completed':
+            case 'deal_closed':
+                return 'completed';
             case 'search':
             case 'request':
             case 'selection':
@@ -53,8 +57,6 @@ export function ListPage() {
             case 'deal':
             case 'agreement':
             case 'paused':
-            case 'completed':
-            case 'deal_closed':
             default:
                 return 'active';
         }
@@ -65,6 +67,7 @@ export function ListPage() {
         control: 'warning',
         selection: 'blue',
         new: 'muted',
+        completed: 'success',
         refused: 'danger'
     };
 
@@ -73,6 +76,7 @@ export function ListPage() {
         control: 'На контроле',
         selection: 'Подбор',
         new: 'Не отработан',
+        completed: 'Сделка закрыта',
         refused: 'Отказ'
     };
 
@@ -81,6 +85,7 @@ export function ListPage() {
         control: '#f59e0b',
         selection: '#3b82f6',
         new: '#6b7280',
+        completed: '#0f766e',
         refused: '#ef4444'
     };
 
@@ -130,7 +135,7 @@ export function ListPage() {
                 if (filter === 'agent') {
                     return new Date(b.created_at || 0) - new Date(a.created_at || 0);
                 }
-                const order = { active: 1, control: 2, selection: 3, new: 4, refused: 5 };
+                const order = { active: 1, control: 2, selection: 3, new: 4, completed: 5, refused: 6 };
                 const orderA = order[mapStatus(a.status)] || 99;
                 const orderB = order[mapStatus(b.status)] || 99;
                 if (orderA !== orderB) return orderA - orderB;
@@ -144,6 +149,7 @@ export function ListPage() {
             control: [],
             selection: [],
             new: [],
+            completed: [],
             refused: []
         };
         filteredClients.forEach(c => {
@@ -158,7 +164,7 @@ export function ListPage() {
 
     const statusOrder = useMemo(() => {
         if (filter === 'active') return ['active', 'control', 'selection', 'new'];
-        return ['active', 'control', 'selection', 'new', 'refused'];
+        return ['active', 'control', 'selection', 'new', 'completed', 'refused'];
     }, [filter]);
 
     const toggleStatus = (status) => {
@@ -399,8 +405,41 @@ export function ListPage() {
                                     {/* Right: Role Badges */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '42%' }}>
                                         {(() => {
-                                            const hasAnyContract = Boolean(client.has_agency_contract || client.agency_contract_date || (Array.isArray(client.agency_contracts) && client.agency_contracts.length > 0));
-                                            if (!hasAnyContract) return null;
+                                            const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
+                                            const hasAnyContract = Boolean(client.has_agency_contract || client.agency_contract_date || rawContracts.length > 0);
+                                            const clientDeals = (state.deals || []).filter(d => {
+                                                const sIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
+                                                const bIds = d.buyer_ids || (d.buyer_id ? [d.buyer_id] : []);
+                                                return sIds.includes(client.id) || bIds.includes(client.id);
+                                            });
+                                            const hasClosedDeal = clientDeals.some(d => ['closed', 'completed', 'deal_closed'].includes(d.status));
+                                            const hasOpenDeal = clientDeals.some(d => !['closed', 'completed', 'deal_closed', 'cancelled', 'refused', 'failed'].includes(d.status));
+
+                                            if (!hasAnyContract) {
+                                                if ((hasClosedDeal || ['deal_closed', 'completed'].includes(client.status)) && !hasOpenDeal) {
+                                                    return (
+                                                        <span
+                                                            title="Сделка по клиенту закрыта"
+                                                            style={{
+                                                                fontSize: 11,
+                                                                color: '#0f766e',
+                                                                fontWeight: 600,
+                                                                background: 'rgba(15, 118, 110, 0.10)',
+                                                                border: '1px solid rgba(15, 118, 110, 0.30)',
+                                                                padding: '3px 7px',
+                                                                borderRadius: 6,
+                                                                whiteSpace: 'nowrap',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 3
+                                                            }}
+                                                        >
+                                                            <span>Сделка закрыта</span>
+                                                        </span>
+                                                    );
+                                                }
+                                                return null;
+                                            }
                                             const cAlerts = getClientContractAlerts(client, new Date(), { deals: state.deals });
                                             if (cAlerts.hasExpired) {
                                                 return (
@@ -471,7 +510,6 @@ export function ListPage() {
                                                     </span>
                                                 );
                                             }
-                                            const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
                                             const allFulfilled = rawContracts.length > 0 && rawContracts.every(ct => ct.status === 'fulfilled');
                                             if (allFulfilled || client.status === 'deal_closed') {
                                                 return (

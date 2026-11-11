@@ -356,6 +356,9 @@ CREATE TABLE IF NOT EXISTS deals (
   -- Расходы (мигр. 040)
   expenses        JSONB DEFAULT '[]',
 
+  -- Документы по сделке (чек-лист + статусы)
+  documents       JSONB DEFAULT '[]',
+
   -- Агентский договор (мигр. 054)
   has_agency_contract BOOLEAN DEFAULT false,
   agency_contract_date TIMESTAMPTZ,
@@ -506,3 +509,33 @@ INSERT INTO pricelist (name, price, show_in_sale, show_in_purchase) VALUES
   ('Страхование', 10000, TRUE, TRUE),
   ('Сделка', 10000, TRUE, TRUE)
 ON CONFLICT DO NOTHING;
+
+-- ═══════════════════════════════════════════════════════════════
+-- МИГРАЦИИ (идемпотентные): документы сделки и шаблоны сообщений
+-- Можно выполнять на существующей базе повторно.
+-- ═══════════════════════════════════════════════════════════════
+
+-- Чек-лист документов по сделке: массив записей {key,label,status,fileName,...}
+ALTER TABLE deals
+  ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '[]';
+
+-- Шаблоны сообщений (замена несуществующего внешнего API /api/v1/messaging)
+CREATE TABLE IF NOT EXISTS message_templates (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  realtor_id  UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  category    TEXT DEFAULT 'Common',
+  body        TEXT NOT NULL,
+  channels    TEXT[] DEFAULT '{whatsapp}',
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_message_templates_realtor
+  ON message_templates (realtor_id, created_at DESC);
+
+DROP TRIGGER IF EXISTS update_message_templates_updated_at ON message_templates;
+CREATE TRIGGER update_message_templates_updated_at
+  BEFORE UPDATE ON message_templates
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

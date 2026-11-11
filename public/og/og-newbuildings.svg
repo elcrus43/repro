@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#f1f5f9" />
+    </linearGradient>
+    <filter id="shadow" x="-20" y="-20" width="1240" height="670" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#0f172a" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect x="70" y="60" width="1060" height="510" rx="32" fill="#ffffff" filter="url(#shadow)" stroke="rgba(0,0,0,0.06)" stroke-width="1.5" />
+
+  <g transform="translate(130, 125)">
+    <!-- Badge -->
+    <rect x="0" y="0" width="280" height="38" rx="19" fill="rgba(0, 82, 255, 0.08)" />
+    <text x="24" y="24" fill="#0052ff" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-size="13" font-weight="700" letter-spacing="1">КАТАЛОГ СТРОЙЩИХСЯ ДОМОВ</text>
+
+    <!-- Main Title -->
+    <text x="0" y="105" fill="#0f172a" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-size="50" font-weight="800" letter-spacing="-1">Все новостройки Кирова 2026</text>
+    <text x="0" y="155" fill="#475569" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-size="22" font-weight="500">Реестр ЕИСЖС (наш.дом.рф), цены застройщиков, подбор без комиссии</text>
+
+    <!-- Key Metrics Badges -->
+    <g transform="translate(0, 210)" font-family="'Segoe UI', -apple-system, Roboto, sans-serif">
+      <!-- Metric 1 -->
+      <g transform="translate(0, 0)">
+        <rect width="240" height="60" rx="16" fill="#f8fafc" stroke="#e2e8f0" />
+        <text x="20" y="32" fill="#0052ff" font-size="22" font-weight="800">77 домов</text>
+        <text x="20" y="48" fill="#64748b" font-size="11">в активной стройке</text>
+      </g>
+      <!-- Metric 2 -->
+      <g transform="translate(260, 0)">
+        <rect width="250" height="60" rx="16" fill="#f8fafc" stroke="#e2e8f0" />
+        <text x="20" y="32" fill="#10b981" font-size="22" font-weight="800">0 ₽ комиссия</text>
+        <text x="20" y="48" fill="#64748b" font-size="11">оплачивает застройщик</text>
+      </g>
+      <!-- Metric 3 -->
+      <g transform="translate(530, 0)">
+        <rect width="250" height="60" rx="16" fill="#f8fafc" stroke="#e2e8f0" />
+        <text x="20" y="32" fill="#f59e0b" font-size="22" font-weight="800">Ипотека от 6%</text>
+        <text x="20" y="48" fill="#64748b" font-size="11">семейные программы</text>
+      </g>
+    </g>
+
+    <!-- Footer Bar -->
+    <g transform="translate(0, 335)">
+      <line x1="0" y1="0" x2="850" y2="0" stroke="#f1f5f9" stroke-width="2" />
+      <text x="0" y="36" fill="#0052ff" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-size="18" font-weight="700">yelchugin.ru/novostrojki/kirov</text>
+      <text x="320" y="36" fill="#94a3b8">·</text>
+      <text x="340" y="36" fill="#334155" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-size="16" font-weight="500">Александр Ельчугин · Подбор новостроек</text>
+      <text x="850" y="36" fill="#0f172a" text-anchor="end" font-family="'Segoe UI', -apple-system, Roboto, sans-serif" font-size="18" font-weight="700">+7 (909) 133-17-71</text>
+    </g>
+  </g>
+</svg>

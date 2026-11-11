@@ -2,9 +2,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useToastContext } from '../../components/Toast';
 import { ChevronLeft, MessageSquare, Plus, Trash, Loader2, WifiOff, Layout, Tag, FileText } from 'lucide-react';
-import { API_BASE as API_ROOT } from '../../config';
+import { listMessageTemplates, createMessageTemplate, deleteMessageTemplate } from '../../lib/messaging';
 
-const API_BASE = `${API_ROOT}/api/v1/messaging`;
 const LS_KEY = 'rem_message_templates';
 
 /* ─── localStorage fallback helpers ─────────────────────────────────────────── */
@@ -26,19 +25,13 @@ export function TemplatesPage() {
 
     const fetchTemplates = useCallback(async () => {
         setLoading(true);
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 4000);
         try {
-            const res = await fetch(`${API_BASE}/templates`, { signal: controller.signal });
-            clearTimeout(timer);
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            const data = await res.json();
+            const data = await listMessageTemplates();
             // Merge: server templates + any local-only ones
             const local = lsLoad().filter(t => t._local);
             setTemplates([...data, ...local]);
             setOffline(false);
         } catch (_e) {
-            clearTimeout(timer);
             // Backend недоступен — используем localStorage
             setTemplates(lsLoad());
             setOffline(true);
@@ -56,22 +49,14 @@ export function TemplatesPage() {
         }
 
         if (!offline) {
-            const ctrl = new AbortController();
-            const t2 = setTimeout(() => ctrl.abort(), 4000);
             try {
-                const res = await fetch(`${API_BASE}/templates`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newTpl),
-                    signal: ctrl.signal,
-                });
-                clearTimeout(t2);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                await createMessageTemplate(newTpl);
                 setShowNew(false);
                 setNewTpl({ name: '', category: 'Common', body: '', channels: ['whatsapp'] });
                 fetchTemplates();
                 return;
-            } catch (_e) {
+            } catch (e) {
+                console.warn('[templates] server create failed, saving locally:', e.message);
                 setOffline(true);
             }
         }
@@ -96,7 +81,7 @@ export function TemplatesPage() {
         }
 
         try {
-            await fetch(`${API_BASE}/templates/${tpl.id}`, { method: 'DELETE' });
+            await deleteMessageTemplate(tpl.id);
             fetchTemplates();
         } catch (_e) {
             toast.error('Ошибка при удалении');

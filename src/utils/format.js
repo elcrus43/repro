@@ -142,6 +142,28 @@ export function formatNumber(num) {
 }
 
 /**
+ * Форматирует числовой ввод стоимости с пробелами-разделителями тысяч (например 40000 -> "40 000")
+ * @param {string|number} val
+ * @returns {string}
+ */
+export function formatPriceInput(val) {
+    if (val === null || val === undefined || val === '') return '';
+    const digits = String(val).replace(/\D/g, '');
+    if (!digits) return '';
+    return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+}
+
+/**
+ * Извлекает только цифры из форматированной строки стоимости
+ * @param {string|number} val
+ * @returns {string}
+ */
+export function parsePriceInput(val) {
+    if (val === null || val === undefined || val === '') return '';
+    return String(val).replace(/\D/g, '');
+}
+
+/**
  * Returns localized event status label based on event type and status
  * @param {string} eventType
  * @param {string} status

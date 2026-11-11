@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { formatNumber } from '../utils/format';
 import { estimateOffline } from '../utils/estimation';
-import { API_BASE } from '../config';
 import { nanoid } from '../utils/nanoid';
 import { RENOVATION_LABELS, BUILDING_TYPES } from '../data/constants';
 import { validateUploadFile } from '../utils/fileSecurity';

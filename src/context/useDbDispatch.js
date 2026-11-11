@@ -19,6 +19,7 @@ import { nanoid } from '../utils/nanoid';
 import { runMatchingForProperty, runMatchingForRequest, hasPassedDealStage } from '../utils/matching';
 import { syncAction, loadUserData } from './dbSync';
 import { syncAction as syncLocalStorageAction } from './localStorageSync';
+import { syncClientsOnClosedDeal, syncClientsOnReopenedDeal } from './reducer';
 import { syncWithCalendar, deleteCalendarEvent } from './calendarSync';
 import { isCalendarConnected, isCalendarConfigured } from '../lib/googleCalendar';
 
@@ -322,13 +323,14 @@ export function useDbDispatch(state, dispatch, onError) {
       stateRef.current = { ...stateRef.current, tasks: nextTasks };
     }
     if (enhancedAction.type === 'UPDATE_DEAL' || enhancedAction.type === 'ADD_DEAL') {
+      const prevDeal = (stateRef.current.deals || []).find(d => d.id === enhancedAction.deal.id);
       const nextDeals = (stateRef.current.deals || []).map(d =>
-        d.id === enhancedAction.deal.id ? enhancedAction.deal : d
+        d.id === enhancedAction.deal.id ? { ...d, ...enhancedAction.deal } : d
       );
       if (!nextDeals.find(d => d.id === enhancedAction.deal.id)) {
         nextDeals.push(enhancedAction.deal);
       }
-      const linkedPropId = enhancedAction.deal.property_id;
+      const linkedPropId = enhancedAction.deal.property_id || prevDeal?.property_id;
       let nextProps = stateRef.current.properties || [];
       if (linkedPropId) {
         const targetPropStatus = enhancedAction.deal.status === 'closed' ? 'sold' : 'deal';
@@ -336,7 +338,38 @@ export function useDbDispatch(state, dispatch, onError) {
           p.id === linkedPropId ? { ...p, status: targetPropStatus, updated_at: now } : p
         );
       }
-      stateRef.current = { ...stateRef.current, deals: nextDeals, properties: nextProps };
+      let nextClients = stateRef.current.clients || [];
+      const mergedDeal = { ...(prevDeal || {}), ...enhancedAction.deal, property_id: linkedPropId };
+      if (mergedDeal.status === 'closed') {
+        nextClients = syncClientsOnClosedDeal(nextClients, nextDeals, nextProps, mergedDeal, linkedPropId);
+      } else if (prevDeal?.status === 'closed' && mergedDeal.status && mergedDeal.status !== 'closed') {
+        nextClients = syncClientsOnReopenedDeal(nextClients, nextProps, mergedDeal, linkedPropId);
+      }
+      stateRef.current = { ...stateRef.current, deals: nextDeals, properties: nextProps, clients: nextClients };
+    }
+    if (enhancedAction.type === 'CLOSE_DEAL') {
+      const { propertyId, requestId, now: closeNow } = enhancedAction;
+      const nextProps = (stateRef.current.properties || []).map(p =>
+        p.id === propertyId ? { ...p, status: 'sold', updated_at: closeNow || now } : p
+      );
+      const nextReqs = (stateRef.current.requests || []).map(r =>
+        r.id === requestId ? { ...r, status: 'found', updated_at: closeNow || now } : r
+      );
+      const prop = nextProps.find(p => p.id === propertyId);
+      const req = nextReqs.find(r => r.id === requestId);
+      const extraIds = [
+        ...(prop ? (prop.client_ids || (prop.client_id ? [prop.client_id] : [])) : []),
+        ...(req ? (req.client_ids || (req.client_id ? [req.client_id] : [])) : [])
+      ];
+      const nextClients = syncClientsOnClosedDeal(
+        stateRef.current.clients || [],
+        stateRef.current.deals || [],
+        nextProps,
+        { id: enhancedAction.dealId || null, property_id: propertyId, deal_date: closeNow || now },
+        propertyId,
+        extraIds
+      );
+      stateRef.current = { ...stateRef.current, properties: nextProps, requests: nextReqs, clients: nextClients };
     }
     if (enhancedAction.type === 'DELETE_DEAL') {
       const nextDeals = (stateRef.current.deals || []).filter(d => d.id !== enhancedAction.id);
@@ -406,13 +439,13 @@ export function useDbDispatch(state, dispatch, onError) {
                   p.id === enhancedAction.patch.id ? { ...p, ...enhancedAction.patch } : p
                 );
               }
-              // Deals & Linked Property in Cache
+              // Deals, Linked Property & Client funnel stages in Cache
               if (enhancedAction.type === 'DELETE_DEAL') {
                 if (parsed.data.deals) parsed.data.deals = parsed.data.deals.filter(d => d.id !== enhancedAction.id);
               } else if (enhancedAction.type === 'UPDATE_DEAL' || enhancedAction.type === 'ADD_DEAL') {
                 parsed.data.deals = parsed.data.deals || [];
                 const idx = parsed.data.deals.findIndex(d => d.id === enhancedAction.deal.id);
-                if (idx >= 0) parsed.data.deals[idx] = enhancedAction.deal;
+                if (idx >= 0) parsed.data.deals[idx] = { ...parsed.data.deals[idx], ...enhancedAction.deal };
                 else parsed.data.deals.push(enhancedAction.deal);
 
                 if (enhancedAction.deal.property_id && parsed.data.properties) {
@@ -421,6 +454,13 @@ export function useDbDispatch(state, dispatch, onError) {
                     p.id === enhancedAction.deal.property_id ? { ...p, status: targetStatus, updated_at: now } : p
                   );
                 }
+                if (stateRef.current.clients) {
+                  parsed.data.clients = stateRef.current.clients;
+                }
+              } else if (enhancedAction.type === 'CLOSE_DEAL') {
+                if (stateRef.current.properties) parsed.data.properties = stateRef.current.properties;
+                if (stateRef.current.requests) parsed.data.requests = stateRef.current.requests;
+                if (stateRef.current.clients) parsed.data.clients = stateRef.current.clients;
               }
               parsed.ts = Date.now();
               localStorage.setItem(cacheKey, JSON.stringify(parsed));

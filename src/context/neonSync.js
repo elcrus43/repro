@@ -197,6 +197,7 @@ export async function loadUserData(userId, role) {
   const res = await neonDb.query(sqlQuery, isAdmin ? [] : [userId]);
   console.warn(`[neonSync] Loaded all tables in ${Date.now() - start}ms`);
 
+  const hasData = Boolean(res.data?.[0]?.data);
   const fetchedData = res.data?.[0]?.data || {};
   const error = res.error ? (typeof res.error === 'object' ? res.error.message : res.error) : null;
 
@@ -319,7 +320,7 @@ export async function loadUserData(userId, role) {
         : (item.client_id || null),
     })),
     error: error,
-    allFailed: false,
+    allFailed: Boolean(error && !hasData),
   };
 }
 
@@ -363,6 +364,148 @@ export const VALID_PROPERTY_COLUMNS = new Set([
  * @param {function} onRollback — (action: object) => void
  * @param {object} currentUser  — текущий пользователь
  */
+const INACTIVE_CONTRACT_STATUSES = ['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'];
+
+async function syncClosedDealClientsInNeon(dealObj = {}, propId = null, extraClientIds = []) {
+  try {
+    const idSet = new Set([
+      ...(dealObj.seller_ids || (dealObj.seller_id ? [dealObj.seller_id] : [])),
+      ...(dealObj.buyer_ids || (dealObj.buyer_id ? [dealObj.buyer_id] : [])),
+      ...(Array.isArray(extraClientIds) ? extraClientIds : [])
+    ].filter(Boolean));
+
+    const targetPropId = propId || dealObj.property_id;
+    if (targetPropId) {
+      const propRes = await neonDb.query(`SELECT client_id, client_ids FROM properties WHERE id = $1`, [targetPropId]);
+      const pRow = propRes?.data?.[0];
+      if (pRow) {
+        if (pRow.client_id) idSet.add(pRow.client_id);
+        if (Array.isArray(pRow.client_ids)) pRow.client_ids.forEach(cid => { if (cid) idSet.add(cid); });
+      }
+    }
+
+    const participantIds = Array.from(idSet);
+    if (participantIds.length === 0) return;
+
+    const dealIdForExclude = dealObj.id || '00000000-0000-0000-0000-000000000000';
+    const [clientsRes, dealsRes] = await Promise.all([
+      neonDb.query(`SELECT id, status, agency_contracts, has_agency_contract FROM clients WHERE id = ANY($1::text[])`, [participantIds]),
+      neonDb.query(`SELECT id, status, seller_id, buyer_id, seller_ids, buyer_ids FROM deals WHERE id::text != $1 AND status NOT IN ('closed', 'completed', 'deal_closed', 'cancelled', 'refused', 'failed')`, [String(dealIdForExclude)])
+    ]);
+    const clientRows = clientsRes?.data || [];
+    const openDeals = dealsRes?.data || [];
+
+    for (const c of clientRows) {
+      let contracts = c.agency_contracts;
+      if (typeof contracts === 'string') {
+        try { contracts = JSON.parse(contracts); } catch { contracts = []; }
+      }
+      if (!Array.isArray(contracts)) contracts = [];
+
+      let contractsChanged = false;
+      const updatedContracts = contracts.map(ct => {
+        if (!ct) return ct;
+        const isPropMatch = ct.property_id && targetPropId && ct.property_id === targetPropId;
+        const isMatch = isPropMatch || !ct.property_id;
+        if (isMatch && ct.status !== 'fulfilled') {
+          contractsChanged = true;
+          return {
+            ...ct,
+            status: 'fulfilled',
+            fulfilled_deal_id: dealObj.id || null,
+            fulfilled_at: dealObj.deal_date || new Date().toISOString()
+          };
+        }
+        return ct;
+      });
+
+      const hasRemainingActiveContract = updatedContracts.some(
+        ct => ct && !INACTIVE_CONTRACT_STATUSES.includes(ct.status)
+      );
+      const hasOtherOpenDeal = openDeals.some(d => {
+        const sIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
+        const bIds = d.buyer_ids || (d.buyer_id ? [d.buyer_id] : []);
+        return sIds.includes(c.id) || bIds.includes(c.id);
+      });
+
+      const clientUpdates = {};
+      if (contractsChanged) {
+        clientUpdates.agency_contracts = JSON.stringify(updatedContracts);
+        clientUpdates.has_agency_contract = hasRemainingActiveContract;
+      } else if (!hasRemainingActiveContract && c.has_agency_contract) {
+        clientUpdates.has_agency_contract = false;
+      }
+      if (!hasRemainingActiveContract && !hasOtherOpenDeal && c.status !== 'refused' && c.status !== 'deal_closed') {
+        clientUpdates.status = 'deal_closed';
+      }
+
+      if (Object.keys(clientUpdates).length > 0) {
+        clientUpdates.updated_at = new Date().toISOString();
+        await neonDb.update('clients', c.id, clientUpdates);
+      }
+    }
+  } catch (err) {
+    console.warn('[neonSync] Failed to sync closed deal clients:', err);
+  }
+}
+
+async function syncReopenedDealClientsInNeon(dealObj = {}, propId = null) {
+  try {
+    const idSet = new Set([
+      ...(dealObj.seller_ids || (dealObj.seller_id ? [dealObj.seller_id] : [])),
+      ...(dealObj.buyer_ids || (dealObj.buyer_id ? [dealObj.buyer_id] : []))
+    ].filter(Boolean));
+    const targetPropId = propId || dealObj.property_id;
+    if (targetPropId) {
+      const propRes = await neonDb.query(`SELECT client_id, client_ids FROM properties WHERE id = $1`, [targetPropId]);
+      const pRow = propRes?.data?.[0];
+      if (pRow) {
+        if (pRow.client_id) idSet.add(pRow.client_id);
+        if (Array.isArray(pRow.client_ids)) pRow.client_ids.forEach(cid => { if (cid) idSet.add(cid); });
+      }
+    }
+    const participantIds = Array.from(idSet);
+    if (participantIds.length === 0) return;
+
+    const clientsRes = await neonDb.query(`SELECT id, status, agency_contracts, has_agency_contract FROM clients WHERE id = ANY($1::text[])`, [participantIds]);
+    const clientRows = clientsRes?.data || [];
+
+    for (const c of clientRows) {
+      let contracts = c.agency_contracts;
+      if (typeof contracts === 'string') {
+        try { contracts = JSON.parse(contracts); } catch { contracts = []; }
+      }
+      if (!Array.isArray(contracts)) contracts = [];
+
+      let contractsChanged = false;
+      const updatedContracts = contracts.map(ct => {
+        if (ct && dealObj.id && ct.fulfilled_deal_id === dealObj.id) {
+          contractsChanged = true;
+          return { ...ct, status: 'active', fulfilled_deal_id: null, fulfilled_at: null };
+        }
+        return ct;
+      });
+      const hasActiveContract = updatedContracts.some(
+        ct => ct && !INACTIVE_CONTRACT_STATUSES.includes(ct.status)
+      );
+      const updates = {};
+      if (contractsChanged) {
+        updates.agency_contracts = JSON.stringify(updatedContracts);
+        updates.has_agency_contract = hasActiveContract;
+      }
+      if (['deal_closed', 'completed'].includes(c.status)) {
+        updates.status = 'active';
+      }
+      if (Object.keys(updates).length > 0) {
+        updates.updated_at = new Date().toISOString();
+        await neonDb.update('clients', c.id, updates);
+      }
+    }
+  } catch (err) {
+    console.warn('[neonSync] Failed to sync reopened deal clients:', err);
+  }
+}
+
 export async function syncAction(rawAction, { onError, onRollback, currentUser } = {}) {
   const handleError = (msg) => {
     if (onError) onError(msg);
@@ -401,11 +544,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         const contracts = Array.isArray(action.client.agency_contracts) 
           ? action.client.agency_contracts 
           : (typeof action.client.agency_contracts === 'string' ? JSON.parse(action.client.agency_contracts || '[]') : []);
-        const activeContracts = contracts.filter(ct => ct && ct.status !== 'terminated');
+        const activeContracts = contracts.filter(ct => ct && !INACTIVE_CONTRACT_STATUSES.includes(ct.status));
         const primaryContract = activeContracts[0] || contracts[0] || null;
         const primaryDate = primaryContract?.contract_date || action.client.agency_contract_date || null;
         const primaryPropId = primaryContract?.property_id || action.client.agency_contract_property_id || null;
-        const hasContract = Boolean(contracts.length > 0 || action.client.has_agency_contract || action.client.agency_contract_date);
+        const hasContract = Boolean(activeContracts.length > 0 || (contracts.length === 0 && (action.client.has_agency_contract || action.client.agency_contract_date)));
 
         const clientData = {
           realtor_id: action.client.realtor_id || currentUser?.id,
@@ -442,11 +585,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         const contracts = Array.isArray(action.client.agency_contracts) 
           ? action.client.agency_contracts 
           : (typeof action.client.agency_contracts === 'string' ? JSON.parse(action.client.agency_contracts || '[]') : []);
-        const activeContracts = contracts.filter(ct => ct && ct.status !== 'terminated');
+        const activeContracts = contracts.filter(ct => ct && !INACTIVE_CONTRACT_STATUSES.includes(ct.status));
         const primaryContract = activeContracts[0] || contracts[0] || null;
         const primaryDate = primaryContract?.contract_date || action.client.agency_contract_date || null;
         const primaryPropId = primaryContract?.property_id || action.client.agency_contract_property_id || null;
-        const hasContract = Boolean(contracts.length > 0 || action.client.has_agency_contract || action.client.agency_contract_date);
+        const hasContract = Boolean(activeContracts.length > 0 || (contracts.length === 0 && (action.client.has_agency_contract || action.client.agency_contract_date)));
 
         const normalizedData = {
           realtor_id: action.client.realtor_id || currentUser?.id,
@@ -542,8 +685,14 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             propertyData[k] = rawData[k];
           }
         });
+        if (!propertyData.realtor_id && currentUser?.id) {
+          propertyData.realtor_id = currentUser.id;
+        }
 
         result = await neonDb.insert('properties', propertyData);
+        if (result?.error && (result.error?.code === '23505' || String(result.error?.message).includes('duplicate key') || String(result.error?.message).includes('unique constraint'))) {
+          result = await neonDb.upsert('properties', propertyData);
+        }
 
         if (!result?.error && action.matches?.length > 0) {
           const VALID_MATCH_COLUMNS = [
@@ -954,7 +1103,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deal_location', 'registration_date',
           'deposit_date', 'deposit_amount', 'deposit_paid', 'mortgage', 'mortgage_bank',
-          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
+          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'documents', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
           'handover_date', 'handover_amount', 'has_agency_contract', 'agency_contract_date'
         ];
@@ -987,6 +1136,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
         // expenses must be JSON string for Neon jsonb column (raw array breaks)
         if (Array.isArray(dealData.expenses)) dealData.expenses = JSON.stringify(dealData.expenses);
+        if (Array.isArray(dealData.documents)) dealData.documents = JSON.stringify(dealData.documents);
         Object.keys(dealData).forEach(key => { if (dealData[key] === undefined) delete dealData[key]; });
 
         const isActive = (dealData.status || 'active') !== 'closed';
@@ -1007,6 +1157,9 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         } else {
           result = dealResult;
         }
+        if (!isActive && !dealResult?.error) {
+          await syncClosedDealClientsInNeon(dealData, propertyIdForStatus);
+        }
         break;
       }
 
@@ -1017,7 +1170,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           'seller_ids', 'buyer_ids', 'price', 'commission', 'deal_date',
           'deal_location', 'registration_date',
           'deposit_date', 'deposit_amount', 'deposit_paid', 'mortgage', 'mortgage_bank',
-          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'notes',
+          'mortgage_amount', 'mortgage_expiry', 'lawyer', 'lawyer_id', 'expenses', 'documents', 'notes',
           'status', 'created_at', 'updated_at', 'google_event_id', 'seller_agent_id', 'buyer_agent_id',
           'handover_date', 'handover_amount', 'has_agency_contract', 'agency_contract_date'
         ];
@@ -1052,6 +1205,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
         // expenses must be JSON string for Neon jsonb column (raw array breaks)
         if (Array.isArray(updateData.expenses)) updateData.expenses = JSON.stringify(updateData.expenses);
+        if (Array.isArray(updateData.documents)) updateData.documents = JSON.stringify(updateData.documents);
         Object.keys(updateData).forEach(key => { if (updateData[key] === undefined) delete updateData[key]; });
         result = await neonDb.update('deals', dId, updateData);
 
@@ -1068,6 +1222,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
             `UPDATE matches SET status = 'rejected', updated_at = NOW() WHERE property_id = $1 AND status != 'rejected'`,
             [targetPropId]
           );
+        }
+        if (targetDealStatus === 'closed' && !result?.error) {
+          await syncClosedDealClientsInNeon({ ...action.deal, id: dId }, targetPropId);
+        } else if (targetDealStatus && targetDealStatus !== 'closed' && !result?.error) {
+          await syncReopenedDealClientsInNeon({ ...action.deal, id: dId }, targetPropId);
         }
         break;
       }
@@ -1090,7 +1249,20 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           )
         ]);
         const firstError = results.find(r => r?.error);
-        if (firstError) result = firstError;
+        if (firstError) {
+          result = firstError;
+        } else {
+          const extraIds = [];
+          if (requestId) {
+            const reqRes = await neonDb.query(`SELECT client_id, client_ids FROM requests WHERE id = $1`, [requestId]);
+            const rRow = reqRes?.data?.[0];
+            if (rRow) {
+              if (rRow.client_id) extraIds.push(rRow.client_id);
+              if (Array.isArray(rRow.client_ids)) rRow.client_ids.forEach(cid => { if (cid) extraIds.push(cid); });
+            }
+          }
+          await syncClosedDealClientsInNeon({ id: action.dealId || null, property_id: propertyId, deal_date: now }, propertyId, extraIds);
+        }
         break;
       }
 

@@ -1,18 +1,14 @@
-const getApiBase = () => {
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (typeof window !== 'undefined' && window.location) {
-    const hostname = window.location.hostname;
-    if (
-      hostname && 
-      hostname !== 'localhost' && 
-      hostname !== '127.0.0.1' && 
-      !hostname.endsWith('.vercel.app') &&
-      !hostname.endsWith('reacrm.ru')
-    ) {
-      return `http://${hostname}:8080`;
-    }
-  }
-  return 'http://localhost:8080';
-};
+/**
+ * src/config.js — базовая точка API для фронтенда.
+ *
+ * Логика вынесена в src/lib/apiConfig.js:
+ *  - в браузере используется same-origin (''), т.е. относительные пути /api/...;
+ *  - в Capacitor/APK — https://reacrm.ru (с fallback в apiFetch);
+ *  - VITE_API_URL переопределяет origin, если задан.
+ *
+ * Старый вариант возвращал http://localhost:8080 на проде и ломал
+ * оценку, CMA и шаблоны сообщений (в т.ч. mixed content на HTTPS).
+ */
+import { getApiBaseUrl } from './lib/apiConfig';
 
-export const API_BASE = getApiBase();
+export const API_BASE = getApiBaseUrl();

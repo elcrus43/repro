@@ -2,7 +2,9 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, formatNumber, stripPhone } from '../../utils/format';
-import { Phone, User, Home, Tag, Calendar, FileText } from 'lucide-react';
+import { getContractTypeConfig } from '../../utils/contractTerms';
+import { CLIENT_PIPELINE_STAGES, getClientPipelineMeta, getClientPipelineStage } from '../../utils/clientPipeline';
+import { Phone, User, Home, Tag, Calendar, FileText, CheckCircle2 } from 'lucide-react';
 
 const EXCLUDED_TYPES = ['developer', 'agent', 'lawyer'];
 const DEAL_TYPES = ['buyer', 'seller', 'legal_entity', 'landlord', 'tenant', 'lessor', 'lessee'];
@@ -39,64 +41,13 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
 
   const [activeSegment, setActiveSegment] = useState(defaultSegment);
 
-  // Dynamic client classification for pipeline:
-  // 1. «В работе» (если есть действующий АД и сделка не проведена)
-  // 2. «На контроле» (по которым есть встречи, но нет АД)
-  // 3. «Остальные» (новые контакты и в подборе)
-  // 4. «Отказ / Архив»
   const getClientStage = useCallback((client) => {
-    // Refused/archived check
-    if (client.status === 'refused' || client.pipeline_stage === 'refused') {
-      return 'refused';
-    }
-
-    // Active agency contract check
-    const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
-    const activeContracts = rawContracts.filter(ct => ct && ct.status !== 'terminated');
-    const hasAD = activeContracts.length > 0 || Boolean(client.has_agency_contract || client.agency_contract_date);
-
-    // Check if client has a conducted / closed deal
-    const clientDeals = (state.deals || []).filter(d => {
-      const sIds = d.seller_ids || (d.seller_id ? [d.seller_id] : []);
-      const bIds = d.buyer_ids || (d.buyer_id ? [d.buyer_id] : []);
-      return sIds.includes(client.id) || bIds.includes(client.id);
+    return getClientPipelineStage(client, {
+      deals: state.deals,
+      properties: state.properties,
+      showings: state.showings
     });
-    const isDealConducted = clientDeals.some(d => ['closed', 'completed', 'deal_closed'].includes(d.status));
-
-    // «В работе (если есть действующий АД и сделка не проведена)»
-    if (hasAD && !isDealConducted) {
-      if (client.pipeline_stage && client.pipeline_stage !== 'active' && client.status !== 'active') {
-        return client.pipeline_stage;
-      }
-      return 'active';
-    }
-
-    // Check meetings/showings with client
-    const clientShowings = (state.showings || []).filter(s => {
-      const cIds = s.client_ids || (s.client_id ? [s.client_id] : []);
-      return cIds.includes(client.id);
-    });
-    const hasMeetings = clientShowings.some(s => ['meeting', 'showing', 'viewing'].includes(s.event_type));
-
-    // «На контроле (по которым есть встречи, но нет АД)»
-    if (hasMeetings && !hasAD) {
-      if (client.pipeline_stage && client.pipeline_stage !== 'control' && client.status !== 'control') {
-        return client.pipeline_stage;
-      }
-      return 'control';
-    }
-
-    // Manual status overrides from drag-and-drop
-    if (client.pipeline_stage === 'control' || client.status === 'control') {
-      return 'control';
-    }
-    if (client.pipeline_stage === 'active' || client.status === 'active') {
-      return 'active';
-    }
-
-    // «Остальные»
-    return 'other';
-  }, [state.deals, state.showings]);
+  }, [state.deals, state.properties, state.showings]);
 
   // Base client pool: ONLY clients of deal types, STRICTLY excluding developers, agents, lawyers
   const dealClients = useMemo(() => {
@@ -121,11 +72,12 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
 
   // Counts per segment
   const segmentCounts = useMemo(() => {
-    const counts = { all: dealClients.length, buyer: 0, seller: 0, rent: 0 };
+    const counts = { all: dealClients.length, buyer: 0, seller: 0, legal_entity: 0, rent: 0 };
     dealClients.forEach(c => {
       const types = Array.isArray(c.client_types) ? c.client_types : (c.client_type ? [c.client_type] : []);
       if (types.includes('buyer')) counts.buyer++;
       if (types.includes('seller')) counts.seller++;
+      if (types.includes('legal_entity')) counts.legal_entity++;
       if (types.some(t => ['landlord', 'tenant', 'lessor', 'lessee'].includes(t))) counts.rent++;
     });
     return counts;
@@ -161,38 +113,8 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     return dealClients;
   }, [dealClients, activeSegment]);
 
-  // Pipeline columns tailored to user requirements:
-  // «В работе (если есть действующий АД и сделка не проведена)», «На контроле (по которым есть встречи, но нет АД) и остальные»
-  const pipelineColumns = useMemo(() => [
-    {
-      id: 'active',
-      label: 'В работе',
-      subLabel: 'Действующий АД, сделка не закрыта',
-      color: '#10b981',
-      badgeBg: 'rgba(16, 185, 129, 0.12)'
-    },
-    {
-      id: 'control',
-      label: 'На контроле',
-      subLabel: 'Есть встречи, но нет АД',
-      color: '#f59e0b',
-      badgeBg: 'rgba(245, 158, 11, 0.12)'
-    },
-    {
-      id: 'other',
-      label: 'Остальные',
-      subLabel: 'Новые контакты и в подборе',
-      color: '#3b82f6',
-      badgeBg: 'rgba(59, 130, 246, 0.12)'
-    },
-    {
-      id: 'refused',
-      label: 'Отказ / Архив',
-      subLabel: 'Отказы и завершенные',
-      color: '#ef4444',
-      badgeBg: 'rgba(239, 68, 68, 0.12)'
-    },
-  ], []);
+  // Pipeline columns
+  const pipelineColumns = CLIENT_PIPELINE_STAGES;
 
   const columnMap = useMemo(() => {
     const map = {};
@@ -211,18 +133,16 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     const currentStage = getClientStage(client);
     if (currentStage === columnId) return;
 
-    let newStatus = client.status;
-    if (columnId === 'refused') newStatus = 'refused';
-    else if (columnId === 'control') newStatus = 'control';
-    else if (columnId === 'active') newStatus = 'active';
-    else if (columnId === 'other') newStatus = 'new';
+    const targetStage = CLIENT_PIPELINE_STAGES.find(s => s.id === columnId);
+    const newStatus = targetStage ? targetStage.statusValue : client.status;
 
     dispatch({
       type: 'UPDATE_CLIENT',
       client: {
         ...client,
         status: newStatus,
-        pipeline_stage: columnId
+        pipeline_stage: columnId,
+        updated_at: new Date().toISOString()
       }
     });
   };
@@ -392,11 +312,11 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                 const meta = getClientMeta(client);
                 const assignedRealtor = (state.users || []).find(u => u.id === client.realtor_id);
 
-                // Check active AD
-                const rawContracts = Array.isArray(client.agency_contracts) ? client.agency_contracts : [];
-                const activeContract = rawContracts.find(ct => ct && ct.status !== 'terminated');
-                const hasAD = Boolean(activeContract || client.has_agency_contract || client.agency_contract_date);
+                // Check active/fulfilled AD & deals
+                const { hasClosedDeal, activeContracts, fulfilledContracts, hasActiveAD, hasFulfilledAD } = getClientPipelineMeta(client, { deals: state.deals, properties: state.properties });
+                const activeContract = activeContracts[0] || null;
                 const contractType = activeContract?.type || 'АД';
+                const contractTypeCfg = activeContract ? getContractTypeConfig(contractType) : { color: '#059669', bg: '#ecfdf5', border: '#10b981' };
 
                 // Check meetings
                 const clientShowings = (state.showings || []).filter(s => {
@@ -450,15 +370,15 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
 
                       {/* Type Badges */}
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {hasAD && (
+                        {hasActiveAD && (
                           <span
-                            title={`Агентский договор заключен: ${contractType}${activeContract?.contract_date || client.agency_contract_date ? ` от ${new Date(activeContract?.contract_date || client.agency_contract_date).toLocaleDateString('ru-RU')}` : ''}`}
+                            title={`Действующий агентский договор: ${contractType}${activeContract?.contract_date || client.agency_contract_date ? ` от ${new Date(activeContract?.contract_date || client.agency_contract_date).toLocaleDateString('ru-RU')}` : ''}`}
                             style={{
                               fontSize: 10,
                               fontWeight: 600,
-                              color: '#059669',
-                              background: '#ecfdf5',
-                              border: '1px solid #10b981',
+                              color: contractTypeCfg.color,
+                              background: contractTypeCfg.bg,
+                              border: `1px solid ${contractTypeCfg.border}`,
                               borderRadius: 6,
                               padding: '1px 6px',
                               display: 'inline-flex',
@@ -470,7 +390,27 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                             <span>{contractType}</span>
                           </span>
                         )}
-                        {meetingEvents.length > 0 && !hasAD && (
+                        {!hasActiveAD && (hasClosedDeal || ['completed', 'deal_closed'].includes(client.status)) && (
+                          <span
+                            title={hasFulfilledAD ? `Сделка закрыта, АД исполнен (${fulfilledContracts[0]?.type || 'АД'})` : 'Сделка закрыта'}
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 600,
+                              color: '#0f766e',
+                              background: 'rgba(15, 118, 110, 0.10)',
+                              border: '1px solid rgba(15, 118, 110, 0.30)',
+                              borderRadius: 6,
+                              padding: '1px 6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 3
+                            }}
+                          >
+                            <CheckCircle2 size={10} />
+                            <span>{hasFulfilledAD ? 'АД исполнен' : 'Сделка закрыта'}</span>
+                          </span>
+                        )}
+                        {meetingEvents.length > 0 && !hasActiveAD && !hasClosedDeal && (
                           <span
                             title={`Встреч/показов: ${meetingEvents.length}${latestMeeting ? `, последняя: ${new Date(latestMeeting.showing_date).toLocaleDateString('ru-RU')}` : ''}`}
                             style={{

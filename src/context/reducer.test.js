@@ -382,6 +382,57 @@ describe('reducer — ADD_DEAL & UPDATE_DEAL property synchronization', () => {
     })
     expect(next.properties.find(p => p.id === 'p10').status).toBe('sold')
   })
+
+  it('UPDATE_DEAL with closed status moves ALL deal sides (seller, co-owner, buyer, co-buyer) to "deal_closed"', () => {
+    const initial = makeState({
+      properties: [{ id: 'p10', status: 'deal', client_ids: ['s1', 's2'] }],
+      clients: [
+        { id: 's1', status: 'active', agency_contracts: [{ id: 'ct1', property_id: 'p10', status: 'active' }] },
+        { id: 's2', status: 'active', agency_contracts: [] },
+        { id: 'b1', status: 'active', agency_contracts: [{ id: 'ct2', property_id: null, status: 'active' }] },
+        { id: 'b2', status: 'control', agency_contracts: [] },
+        { id: 'b3', status: 'active', agency_contracts: [{ id: 'ct3', property_id: 'p99', status: 'active' }] }
+      ],
+      deals: [{
+        id: 'd1',
+        property_id: 'p10',
+        seller_ids: ['s1'],
+        buyer_ids: ['b1', 'b2', 'b3'],
+        status: 'active'
+      }]
+    })
+    const next = reducer(initial, {
+      type: 'UPDATE_DEAL',
+      deal: { id: 'd1', status: 'closed' }
+    })
+    expect(next.clients.find(c => c.id === 's1').status).toBe('deal_closed')
+    expect(next.clients.find(c => c.id === 's1').agency_contracts[0].status).toBe('fulfilled')
+    // Co-owner on property (even if not in seller_ids)
+    expect(next.clients.find(c => c.id === 's2').status).toBe('deal_closed')
+    // Buyer and co-buyer
+    expect(next.clients.find(c => c.id === 'b1').status).toBe('deal_closed')
+    expect(next.clients.find(c => c.id === 'b2').status).toBe('deal_closed')
+    // Co-buyer who ALSO has an active contract on another property p99 stays 'active'
+    expect(next.clients.find(c => c.id === 'b3').status).toBe('active')
+  })
+
+  it('UPDATE_DEAL reopening a closed deal restores contracts and moves participants back to "active"', () => {
+    const initial = makeState({
+      properties: [{ id: 'p10', status: 'sold', client_ids: ['s1'] }],
+      clients: [
+        { id: 's1', status: 'deal_closed', agency_contracts: [{ id: 'ct1', property_id: 'p10', status: 'fulfilled', fulfilled_deal_id: 'd1' }] },
+        { id: 'b1', status: 'deal_closed', agency_contracts: [] }
+      ],
+      deals: [{ id: 'd1', property_id: 'p10', seller_ids: ['s1'], buyer_ids: ['b1'], status: 'closed' }]
+    })
+    const next = reducer(initial, {
+      type: 'UPDATE_DEAL',
+      deal: { id: 'd1', status: 'active' }
+    })
+    expect(next.clients.find(c => c.id === 's1').status).toBe('active')
+    expect(next.clients.find(c => c.id === 's1').agency_contracts[0].status).toBe('active')
+    expect(next.clients.find(c => c.id === 'b1').status).toBe('active')
+  })
 })
 
 // ─── Showings ───────────────────────────────────────────────────────────────

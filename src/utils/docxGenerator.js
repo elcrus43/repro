@@ -2417,13 +2417,16 @@ export async function generateAndDownloadDocx(templateKey, data, editedDomElemen
 
     const blob = await Packer.toBlob(doc);
     const url = URL.createObjectURL(blob);
+    const fileName = `${template.title}.docx`;
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${template.title}.docx`;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    return { fileName, templateKey };
 }
 
 /**

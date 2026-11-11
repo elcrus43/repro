@@ -75,6 +75,10 @@ export default defineConfig(({ mode }) => {
         '/api/ai-proxy': {
           target: 'http://localhost:3001',
           changeOrigin: true
+        },
+        '/api/messaging': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
         }
       }
     },

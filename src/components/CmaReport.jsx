@@ -1,6 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { X, Loader, ExternalLink, ShieldCheck, HelpCircle, ArrowRight, TrendingUp, AlertTriangle } from 'lucide-react';
-import { API_BASE } from '../config';
 import { useToastContext } from './Toast';
 import { getToken } from '../lib/neon';
 

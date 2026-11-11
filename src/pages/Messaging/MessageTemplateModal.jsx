@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { useToastContext } from '../../components/Toast';
-import { X, Send, MessageSquare, Loader2, ExternalLink } from 'lucide-react';
-import { API_BASE as API_ROOT } from '../../config';
+import { X, Send, MessageSquare, Loader2, WifiOff } from 'lucide-react';
+import {
+    listMessageTemplates,
+    renderMessageTemplate,
+    renderMessageLocally,
+    buildMessageLinks,
+} from '../../lib/messaging';
 
-const API_BASE = `${API_ROOT}/api/v1/messaging`;
+const LS_KEY = 'rem_message_templates';
+
+function lsLoad() {
+    try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); } catch { return []; }
+}
 
 export function MessageTemplateModal({ isOpen, onClose, context }) {
     const { toast } = useToastContext();
     const [templates, setTemplates] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [offline, setOffline] = useState(false);
     const [selectedId, setSelectedId] = useState('');
     const [rendered, setRendered] = useState(null);
     const [rendering, setRendering] = useState(false);
@@ -20,40 +30,55 @@ export function MessageTemplateModal({ isOpen, onClose, context }) {
     }, [isOpen]);
 
     async function fetchTemplates() {
+        setLoading(true);
+        setRendered(null);
         try {
-            const res = await fetch(`${API_BASE}/templates`);
-            const data = await res.json();
-            setTemplates(data);
-            if (data.length > 0) setSelectedId(data[0].id);
+            const data = await listMessageTemplates();
+            const local = lsLoad().filter(t => t._local);
+            const list = [...data, ...local];
+            setTemplates(list);
+            setSelectedId(list[0]?.id || '');
+            setOffline(false);
         } catch (e) {
-            console.error('Ошибка загрузки шаблонов', e);
+            console.warn('[message-template] server unavailable, using local templates:', e.message);
+            const local = lsLoad();
+            setTemplates(local);
+            setSelectedId(local[0]?.id || '');
+            setOffline(true);
         } finally {
             setLoading(false);
         }
     }
 
     async function handleRender() {
-        if (!selectedId) return;
+        const template = templates.find(t => t.id === selectedId);
+        if (!template) return;
         setRendering(true);
         try {
-            const res = await fetch(`${API_BASE}/render`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    template_id: selectedId,
-                    context: context
-                })
-            });
-            const data = await res.json();
-            setRendered(data);
-        } catch (_e) {
-            toast.error('Ошибка при генерации сообщения');
+            if (template._local || offline) {
+                const text = renderMessageLocally(template.body, context);
+                setRendered(buildMessageLinks(text, context));
+            } else {
+                const data = await renderMessageTemplate(selectedId, context);
+                setRendered(data);
+            }
+        } catch (e) {
+            console.error('[message-template] render failed:', e);
+            // Если сервер отвалился — пробуем локально по тексту шаблона
+            if (template.body) {
+                const text = renderMessageLocally(template.body, context);
+                setRendered(buildMessageLinks(text, context));
+            } else {
+                toast.error('Ошибка при генерации сообщения');
+            }
         } finally {
             setRendering(false);
         }
     }
 
     if (!isOpen) return null;
+
+    const noTemplates = !loading && templates.length === 0;
 
     return (
         <div className="modal-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', zIndex: 1000, padding: 16 }}>
@@ -65,8 +90,23 @@ export function MessageTemplateModal({ isOpen, onClose, context }) {
 
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: 40 }}><Loader2 className="spin" /></div>
+                ) : noTemplates ? (
+                    <div style={{ textAlign: 'center', padding: '24px 8px', color: 'var(--text-secondary)', fontSize: 13, lineHeight: 1.5 }}>
+                        <MessageSquare size={32} style={{ opacity: 0.25, marginBottom: 8 }} />
+                        <div>Шаблоны сообщений не найдены.</div>
+                        <div style={{ fontSize: 12, opacity: 0.75, marginTop: 4 }}>
+                            Создайте шаблон в разделе «Шаблоны сообщений».
+                        </div>
+                    </div>
                 ) : (
                     <>
+                        {offline && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 10, background: 'var(--danger-light)', color: 'var(--danger)', fontSize: 11, fontWeight: 600, marginBottom: 14 }}>
+                                <WifiOff size={14} />
+                                Сервер недоступен — используется локальный шаблон
+                            </div>
+                        )}
+
                         <div className="form-group" style={{ marginBottom: 16 }}>
                             <label>Выберите шаблон</label>
                             <select value={selectedId} onChange={e => { setSelectedId(e.target.value); setRendered(null); }} className="form-input">

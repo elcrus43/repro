@@ -145,18 +145,6 @@ function LoadingScreen() {
           filter: 'blur(60px)', pointerEvents: 'none'
       }} />
 
-      <div className="font-oswald" style={{ 
-        fontSize: 48, fontWeight: 600, letterSpacing: '-0.04em', color: 'var(--primary)',
-        textTransform: 'uppercase', marginBottom: 24, position: 'relative',
-        animation: 'pulse 2s infinite ease-in-out'
-      }}>
-        <Building2 size={48} />
-        <div style={{ 
-            position: 'absolute', bottom: -4, left: 0, width: '100%', height: 6, 
-            background: 'var(--primary)', opacity: 0.1, borderRadius: 3
-        }} />
-      </div>
-
       <div style={{ width: 140, height: 4, background: 'var(--border)', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
         <div className="loading-progress" style={{ 
             position: 'absolute', height: '100%', width: '40%', 

@@ -26,6 +26,35 @@ export const CONTRACT_DURATION_OPTIONS = [
 ];
 
 /**
+ * Цветовая палитра и стили для типов агентских договоров
+ */
+export function getContractTypeConfig(type = '') {
+    const t = String(type || '').toLowerCase();
+    if (t.includes('юсс') && (t.includes('покуп') || t.includes('buyer'))) {
+        return { color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: 'rgba(79, 70, 229, 0.3)' };
+    }
+    if (t.includes('юсс') && (t.includes('продаж') || t.includes('seller'))) {
+        return { color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: 'rgba(124, 58, 237, 0.3)' };
+    }
+    if (t.includes('покуп') || t.includes('buyer')) {
+        return { color: '#0052ff', bg: 'rgba(0, 82, 255, 0.08)', border: 'rgba(0, 82, 255, 0.3)' };
+    }
+    if (t.includes('продаж') || t.includes('seller')) {
+        return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)' };
+    }
+    if (t.includes('наймодател') || t.includes('арендодател') || t.includes('landlord') || t.includes('lessor')) {
+        return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: 'rgba(217, 119, 6, 0.3)' };
+    }
+    if (t.includes('нанимател') || t.includes('арендатор') || t.includes('tenant') || t.includes('lessee')) {
+        return { color: '#0891b2', bg: 'rgba(8, 145, 178, 0.08)', border: 'rgba(8, 145, 178, 0.3)' };
+    }
+    if (t.includes('доу') || t.includes('3-сторон')) {
+        return { color: '#e11d48', bg: 'rgba(225, 29, 72, 0.08)', border: 'rgba(225, 29, 72, 0.3)' };
+    }
+    return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)' };
+}
+
+/**
  * Вычисляет дату окончания договора.
  * @param {string|Date} startDate - дата заключения
  * @param {number} months - срок в месяцах
@@ -183,9 +212,20 @@ export function getContractStatusInfo(contract, referenceDate = new Date(), cont
 
     // Расчет дат:
     // 1) Основной срок (например 3 мес.)
-    const initialEndDate = calculateContractEndDate(startDate, durationMonths, false);
+    let initialEndDate = calculateContractEndDate(startDate, durationMonths, false);
     // 2) Срок с учетом автоматического продления 1 раз на тот же срок (например 3 + 3 = 6 мес.)
-    const maxEndDate = calculateContractEndDate(startDate, durationMonths * 2, false);
+    let maxEndDate = calculateContractEndDate(startDate, durationMonths * 2, false);
+
+    // Если дата окончания задана вручную (valid_until), учитываем её как точный срок действия
+    if (contract.valid_until) {
+        const manualEnd = new Date(contract.valid_until);
+        if (!isNaN(manualEnd.getTime())) {
+            maxEndDate = manualEnd;
+            if (manualEnd < initialEndDate) {
+                initialEndDate = manualEnd;
+            }
+        }
+    }
 
     const refDay = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
     const initialEndDay = new Date(initialEndDate.getFullYear(), initialEndDate.getMonth(), initialEndDate.getDate());

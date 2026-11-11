@@ -6,6 +6,7 @@ import { useToastContext } from '../../components/Toast';
 import { SearchableSelect } from '../../components/SearchableSelect';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
 import { DealChat } from '../../components/DealChat';
+import { DealDocumentsModal } from '../../components/DealDocumentsModal';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
 import { BankBadge, BankIcon, RUSSIAN_BANKS } from '../../components/BankLogo';
 import { DealLocationSelect, saveDealLocation } from '../../components/DealLocationSelect';
@@ -1429,6 +1430,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
     // Chat state — null | 'seller' | 'buyer'
     const [openChat, setOpenChat] = useState(null);
     const [showStatusMenu, setShowStatusMenu] = useState(false);
+    const [showDocsModal, setShowDocsModal] = useState(false);
 
     // Quick Expense states
     const [showQuickExpense, setShowQuickExpense] = useState(false);
@@ -1939,15 +1941,8 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                             cursor: 'pointer',
                             transition: 'all 0.2s'
                         }}
-                        onClick={() => navigate('/documents', {
-                            state: {
-                                docPrefill: {
-                                    dealId: deal.id,
-                                    template: 'sale',
-                                }
-                            }
-                        })}
-                        title="Создать документ по сделке"
+                        onClick={() => setShowDocsModal(true)}
+                        title="Документы по сделке"
                     >
                         <FileText size={16} />
                     </button>
@@ -2712,6 +2707,13 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
                     accentColor="#0052ff"
                 />
             )}
+
+            <DealDocumentsModal
+                isOpen={showDocsModal}
+                deal={deal}
+                property={property}
+                onClose={() => setShowDocsModal(false)}
+            />
         </div>
     );
 }

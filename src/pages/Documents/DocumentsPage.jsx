@@ -8,6 +8,7 @@ import {
     UserPlus, X, Calendar, Plus, Key, Edit3, RotateCcw, Undo2, Redo2
 } from 'lucide-react';
 import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, numberToWordsRu, formatPropertyKind, getPropertyKindForms } from '../../utils/docxGenerator';
+import { recordDealDocument } from '../../utils/dealDocuments';
 import { formatPhone, stripPhone, parsePgArray, formatUnitCode, formatPassportInput, parsePassportInput, formatPassportDisplay } from '../../utils/format';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
@@ -587,6 +588,10 @@ export function DocumentsPage() {
         key_act: 'Акт приема-передачи ключей',
     };
 
+    const linkedDeal = prefill.dealId
+        ? state.deals.find(d => String(d.id) === String(prefill.dealId))
+        : null;
+
     const displayedTemplates = useMemo(() => {
         let list = templates;
         if (selectedCategory && selectedCategory !== 'all') {
@@ -647,6 +652,10 @@ export function DocumentsPage() {
         }
         return null;
     }, [sourceMode, selectedDealId, isAgencySale, buyerId, sellerId, propertyId, state.deals, state.clients, state.properties]);
+
+    const activeProperty = useMemo(() => {
+        return state.properties.find(p => p.id === propertyId) || null;
+    }, [propertyId, state.properties]);
 
     // Список договоров выбранного клиента
     const clientContracts = useMemo(() => {
@@ -925,10 +934,6 @@ export function DocumentsPage() {
     }, [activeClient, clientDraft]);
 
     /* ── Черновик реквизитов объекта недвижимости ───────────────────────── */
-    const activeProperty = useMemo(() => {
-        return state.properties.find(p => p.id === propertyId) || null;
-    }, [propertyId, state.properties]);
-
     const [propDraft, setPropDraft] = useState({
         property_kind: '',
         address: '',
@@ -1594,8 +1599,25 @@ export function DocumentsPage() {
         setIsGenerating(true);
         try {
             const printEl = (hasManualEdits || savedTemplateHtml) ? previewRef.current : null;
-            await generateAndDownloadDocx(selectedTemplate, generatorData, printEl);
-            toast?.success?.('Документ сохранён');
+            const generated = await generateAndDownloadDocx(selectedTemplate, generatorData, printEl);
+
+            const targetDealId = prefill.dealId || (sourceMode === 'deal' ? selectedDealId : '');
+            const targetDeal = targetDealId
+                ? state.deals.find(d => String(d.id) === String(targetDealId))
+                : null;
+
+            if (targetDeal && prefill.dealDocumentKey) {
+                const nextDocuments = recordDealDocument(targetDeal.documents, {
+                    key: prefill.dealDocumentKey,
+                    fileName: generated?.fileName || null,
+                    templateKey: selectedTemplate,
+                    status: 'ready',
+                });
+                await dispatch({ type: 'UPDATE_DEAL', deal: { ...targetDeal, documents: nextDocuments } });
+                toast?.success?.('Документ сохранён и привязан к сделке');
+            } else {
+                toast?.success?.('Документ сохранён');
+            }
         } catch (e) {
             console.error(e);
             toast?.error?.('Ошибка генерации документа');
@@ -1830,6 +1852,22 @@ export function DocumentsPage() {
             </div>
 
             <div className="page-content" style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+                {linkedDeal && prefill.dealDocumentKey && (
+                    <div className="no-print" style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '10px 14px', borderRadius: 14,
+                        background: 'rgba(0,82,255,0.06)',
+                        border: '1px solid rgba(0,82,255,0.15)',
+                        fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
+                    }}>
+                        <FileText size={16} color="var(--primary)" style={{ flexShrink: 0 }} />
+                        <span>
+                            Документ будет привязан к сделке <b style={{ color: 'var(--text)' }}>{linkedDeal.title}</b>
+                            {prefill.template ? ` — ${TEMPLATE_LABELS[prefill.template] || 'документ'}` : ''}
+                        </span>
+                    </div>
+                )}
 
                 {/* Категории и выбор шаблона (Компактный заголовочный блок) */}
                 <div className="no-print" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

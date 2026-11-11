@@ -6,7 +6,6 @@ import { formatPrice, getLevelLabel, hasPassedDealStage, isDealTypeCompatible } 
 import { formatNumber, parseLocalDateTime, stripPhone } from '../../utils/format';
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp, Briefcase } from 'lucide-react';
-import { API_BASE } from '../../config';
 import { PROPERTY_TYPES } from '../../data/constants';
 
 export function MatchesPage() {

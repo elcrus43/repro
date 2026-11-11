@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
-import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
+import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOString, parseLocalDateTime, formatDate, formatPriceInput, parsePriceInput } from '../../utils/format';
 import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES, CLIENT_TYPES, CLIENT_TYPE_LABELS } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
@@ -40,8 +40,13 @@ import {
     calculateContractEndDate,
     formatContractDate,
     getContractStatusInfo,
-    getClientContractAlerts
+    getClientContractAlerts,
+    getContractTypeConfig
 } from '../../utils/contractTerms';
+import {
+    CLIENT_PIPELINE_STAGES,
+    getClientPipelineStage
+} from '../../utils/clientPipeline';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed', 'deal'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
@@ -66,11 +71,15 @@ export function DetailsPage() {
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingContractId, setEditingContractId] = useState(null);
     const [contractForm, setContractForm] = useState({
+        contract_number: '',
         type: 'АД Продажа',
         date: '',
+        valid_until: '',
         duration_months: DEFAULT_CONTRACT_DURATION_MONTHS,
         is_extended: false,
         property_id: '',
+        price: '',
+        commission: '',
         status: 'active',
         comment: ''
     });
@@ -239,6 +248,9 @@ export function DetailsPage() {
                 return 'control';
             case 'refused':
                 return 'refused';
+            case 'completed':
+            case 'deal_closed':
+                return 'completed';
             case 'search':
             case 'request':
             case 'selection':
@@ -248,8 +260,6 @@ export function DetailsPage() {
             case 'deal':
             case 'agreement':
             case 'paused':
-            case 'completed':
-            case 'deal_closed':
             default:
                 return 'active';
         }
@@ -260,6 +270,8 @@ export function DetailsPage() {
         control: 'На контроле',
         selection: 'Подбор',
         active: 'В работе',
+        completed: 'Сделка закрыта',
+        deal_closed: 'Сделка закрыта',
         refused: 'Отказ'
     };
     const typeLabels   = CLIENT_TYPE_LABELS;
@@ -333,9 +345,29 @@ export function DetailsPage() {
     }
     function handleStatusChange(newStatus) {
         if (newStatus === client.status) return;
-        const updatedClient = { ...client, status: newStatus };
+        const updatedClient = { ...client, status: newStatus, updated_at: new Date().toISOString() };
         dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
         toast.success(`Статус изменен на "${statusLabels[newStatus] || newStatus}"`);
+    }
+
+    function handlePipelineStageChange(stageId) {
+        const targetStage = CLIENT_PIPELINE_STAGES.find(s => s.id === stageId);
+        if (!targetStage) return;
+        const currentStageId = getClientPipelineStage(client, {
+            deals: state.deals,
+            properties: state.properties,
+            showings: state.showings
+        });
+        if (currentStageId === stageId && client.status === targetStage.statusValue) return;
+
+        const updatedClient = {
+            ...client,
+            status: targetStage.statusValue,
+            pipeline_stage: targetStage.id,
+            updated_at: new Date().toISOString()
+        };
+        dispatch({ type: 'UPDATE_CLIENT', client: updatedClient });
+        toast.success(`Воронка: этап изменён на «${targetStage.label}»`);
     }
 
     function handleToggleType(typeId) {
@@ -440,31 +472,6 @@ export function DetailsPage() {
     const hasAgencyContract = activeContracts.length > 0;
     const agencyContractProperty = state.properties.find(p => p.id === (activeContracts[0]?.property_id || client.agency_contract_property_id));
 
-    function getContractTypeConfig(type) {
-        switch (type) {
-            case 'АД Покупка':
-                return { color: '#0052ff', bg: 'rgba(0, 82, 255, 0.08)', border: 'rgba(0, 82, 255, 0.25)' };
-            case 'АД Продажа':
-                return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)' };
-            case 'АД ЮСС Покупка':
-                return { color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: 'rgba(79, 70, 229, 0.25)' };
-            case 'АД ЮСС Продажа':
-                return { color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: 'rgba(124, 58, 237, 0.25)' };
-            case 'АД Найм с наймодателем':
-            case 'АД Аренда с наймодателем':
-                return { color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: 'rgba(217, 119, 6, 0.25)' };
-            case 'АД Найм с нанимателем':
-            case 'АД Аренда с нанимателем':
-                return { color: '#ea580c', bg: 'rgba(234, 88, 12, 0.08)', border: 'rgba(234, 88, 12, 0.25)' };
-            case 'АД Аренда с арендодателем':
-                return { color: '#0284c7', bg: 'rgba(2, 132, 199, 0.08)', border: 'rgba(2, 132, 199, 0.25)' };
-            case 'АД Аренда с арендатором':
-                return { color: '#0891b2', bg: 'rgba(8, 145, 178, 0.08)', border: 'rgba(8, 145, 178, 0.25)' };
-            default:
-                return { color: '#059669', bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.25)' };
-        }
-    }
-
     function openAddContractModal() {
         setEditingContractId(null);
         let defaultType = 'АД Продажа';
@@ -476,12 +483,22 @@ export function DetailsPage() {
         } else if (types.includes('buyer')) {
             defaultType = 'АД Покупка';
         }
+        const todayStr = new Date().toISOString().split('T')[0];
+        const initialEnd = calculateContractEndDate(todayStr, DEFAULT_CONTRACT_DURATION_MONTHS, false);
+        const endStr = initialEnd ? initialEnd.toISOString().split('T')[0] : '';
+        const firstProp = myProperties[0] || null;
+
         setContractForm({
+            id: null,
+            contract_number: '',
             type: defaultType,
-            date: new Date().toISOString().split('T')[0],
+            date: todayStr,
+            valid_until: endStr,
             duration_months: DEFAULT_CONTRACT_DURATION_MONTHS,
             is_extended: false,
-            property_id: myProperties[0]?.id || '',
+            property_id: firstProp?.id || '',
+            price: firstProp?.price ? formatPriceInput(firstProp.price) : '',
+            commission: '',
             status: 'active',
             comment: ''
         });
@@ -490,12 +507,45 @@ export function DetailsPage() {
 
     function openEditContractModal(c) {
         setEditingContractId(c.id);
+        let startDateStr = '';
+        if (c.contract_date) {
+            try {
+                startDateStr = c.contract_date.split('T')[0];
+            } catch {
+                startDateStr = '';
+            }
+        }
+        let endDateStr = '';
+        if (c.valid_until) {
+            try {
+                endDateStr = c.valid_until.split('T')[0];
+            } catch {
+                endDateStr = '';
+            }
+        } else if (startDateStr) {
+            const dMonths = Number(c.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
+            const isExt = Boolean(c.is_extended || c.extension_count > 0);
+            const autoEnd = calculateContractEndDate(startDateStr, dMonths, isExt);
+            if (autoEnd) endDateStr = autoEnd.toISOString().split('T')[0];
+        }
+
+        let commStr = c.commission || '';
+        if (commStr && !commStr.includes('%') && !commStr.includes('₽')) {
+            const d = parsePriceInput(commStr);
+            if (d) commStr = `${formatPriceInput(d)} ₽`;
+        }
+
         setContractForm({
+            id: c.id,
+            contract_number: c.contract_number || '',
             type: c.type || 'АД Продажа',
-            date: c.contract_date ? c.contract_date.split('T')[0] : new Date().toISOString().split('T')[0],
+            date: startDateStr || new Date().toISOString().split('T')[0],
+            valid_until: endDateStr,
             duration_months: Number(c.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS,
             is_extended: Boolean(c.is_extended || c.extension_count > 0),
             property_id: c.property_id || '',
+            price: c.price ? formatPriceInput(c.price) : '',
+            commission: commStr,
             status: c.status || 'active',
             comment: c.comment || ''
         });
@@ -548,12 +598,20 @@ export function DetailsPage() {
     function handleRenewContract(contract) {
         setEditingContractId(null);
         const duration = Number(contract?.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
+        const todayStr = new Date().toISOString().split('T')[0];
+        const initialEnd = calculateContractEndDate(todayStr, duration, false);
+        const endStr = initialEnd ? initialEnd.toISOString().split('T')[0] : '';
         setContractForm({
+            id: null,
+            contract_number: '',
             type: contract?.type || 'АД Продажа',
-            date: new Date().toISOString().split('T')[0],
+            date: todayStr,
+            valid_until: endStr,
             duration_months: duration,
             is_extended: false,
             property_id: contract?.property_id || '',
+            price: contract?.price ? formatPriceInput(contract.price) : '',
+            commission: contract?.commission || '',
             status: 'active',
             comment: contract?.comment ? `Перезаключение (ранее: ${contract.comment})` : 'Перезаключение договора'
         });
@@ -570,8 +628,14 @@ export function DetailsPage() {
         const dateIso = contractForm.date.includes('T') ? contractForm.date : `${contractForm.date}T00:00:00.000Z`;
         const durationMonths = Number(contractForm.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
         const isExtended = Boolean(contractForm.is_extended);
-        const calculatedEnd = calculateContractEndDate(dateIso, durationMonths, isExtended);
-        const validUntilIso = calculatedEnd ? calculatedEnd.toISOString() : null;
+        
+        let validUntilIso = null;
+        if (contractForm.valid_until) {
+            validUntilIso = contractForm.valid_until.includes('T') ? contractForm.valid_until : `${contractForm.valid_until}T00:00:00.000Z`;
+        } else {
+            const calculatedEnd = calculateContractEndDate(dateIso, durationMonths, isExtended);
+            validUntilIso = calculatedEnd ? calculatedEnd.toISOString() : null;
+        }
 
         let updatedContracts;
         if (editingContractId) {
@@ -580,14 +644,17 @@ export function DetailsPage() {
                 if (c.id === editingContractId) {
                     return {
                         ...c,
+                        contract_number: contractForm.contract_number ? contractForm.contract_number.trim() : '',
                         type: contractForm.type,
                         contract_date: dateIso,
+                        valid_until: validUntilIso,
                         duration_months: durationMonths,
                         is_extended: isExtended,
                         extension_count: isExtended ? 1 : 0,
                         extended_at: isExtended ? (existing?.extended_at || new Date().toISOString()) : null,
-                        valid_until: validUntilIso,
                         property_id: contractForm.property_id || null,
+                        price: contractForm.price ? (Number(parsePriceInput(String(contractForm.price))) || null) : null,
+                        commission: contractForm.commission ? contractForm.commission.trim() : '',
                         status: contractForm.status || 'active',
                         comment: contractForm.comment ? contractForm.comment.trim() : '',
                         updated_at: new Date().toISOString()
@@ -598,14 +665,17 @@ export function DetailsPage() {
         } else {
             const newContract = {
                 id: nanoid(),
+                contract_number: contractForm.contract_number ? contractForm.contract_number.trim() : '',
                 type: contractForm.type,
                 contract_date: dateIso,
+                valid_until: validUntilIso,
                 duration_months: durationMonths,
                 is_extended: isExtended,
                 extension_count: isExtended ? 1 : 0,
                 extended_at: isExtended ? new Date().toISOString() : null,
-                valid_until: validUntilIso,
                 property_id: contractForm.property_id || null,
+                price: contractForm.price ? (Number(parsePriceInput(String(contractForm.price))) || null) : null,
+                commission: contractForm.commission ? contractForm.commission.trim() : '',
                 status: contractForm.status || 'active',
                 comment: contractForm.comment ? contractForm.comment.trim() : '',
                 created_at: new Date().toISOString()
@@ -616,8 +686,17 @@ export function DetailsPage() {
         const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
         const primary = activeList[0] || updatedContracts[0] || null;
 
+        let nextStatus = client.status;
+        let nextStage = client.pipeline_stage;
+        if (activeList.length > 0 && client.status !== 'refused') {
+            nextStatus = 'active';
+            nextStage = 'active';
+        }
+
         const updatedClient = {
             ...client,
+            status: nextStatus,
+            ...(nextStage ? { pipeline_stage: nextStage } : {}),
             agency_contracts: updatedContracts,
             agency_contract_date: primary ? primary.contract_date : null,
             agency_contract_property_id: primary ? primary.property_id : null,
@@ -906,6 +985,79 @@ export function DetailsPage() {
                     <div style={{ fontSize: 21, fontWeight: 600, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.01em' }}>
                         {client.full_name}
                     </div>
+                    {(() => {
+                        const isCounterparty = (client?.client_types || []).some(t => ['developer', 'agent', 'lawyer'].includes(t));
+                        if (isCounterparty) return null;
+
+                        const currentStageId = getClientPipelineStage(client, {
+                            deals: state.deals,
+                            properties: state.properties,
+                            showings: state.showings
+                        });
+
+                        return (
+                            <div style={{
+                                marginBottom: 12,
+                                width: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 6
+                            }}>
+                                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                                    Воронка клиента
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    gap: 6,
+                                    justifyContent: 'center',
+                                    flexWrap: 'wrap',
+                                    background: 'var(--bg-light)',
+                                    padding: '6px 8px',
+                                    borderRadius: 14,
+                                    border: '1px solid var(--border-light)'
+                                }}>
+                                    {CLIENT_PIPELINE_STAGES.map(stage => {
+                                        const isActiveStage = stage.id === currentStageId;
+                                        return (
+                                            <button
+                                                key={stage.id}
+                                                type="button"
+                                                className="card-clickable"
+                                                onClick={() => handlePipelineStageChange(stage.id)}
+                                                title={stage.subLabel}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 5,
+                                                    padding: '5px 10px',
+                                                    borderRadius: 10,
+                                                    fontSize: 11.5,
+                                                    fontWeight: isActiveStage ? 700 : 500,
+                                                    background: isActiveStage ? stage.badgeBg : 'var(--surface)',
+                                                    color: isActiveStage ? stage.textColor : 'var(--text-secondary)',
+                                                    border: isActiveStage ? `1.5px solid ${stage.color}` : '1px solid var(--border-light)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s ease',
+                                                    boxShadow: isActiveStage ? `0 2px 6px ${stage.badgeBg}` : 'none'
+                                                }}
+                                            >
+                                                <span style={{
+                                                    width: 7,
+                                                    height: 7,
+                                                    borderRadius: '50%',
+                                                    background: isActiveStage ? stage.color : 'var(--text-muted)',
+                                                    opacity: isActiveStage ? 1 : 0.45,
+                                                    flexShrink: 0
+                                                }} />
+                                                <span>{stage.label}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })()}
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
                         {!isEditingTypes ? (
                             <>
@@ -1887,26 +2039,44 @@ export function DetailsPage() {
                                             opacity: isTerminated ? 0.75 : 1
                                         }}
                                     >
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                                            {/* Левая сторона: Бейдж типа с соответствующим цветом + номер + статус */}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                                                 <span style={{
                                                     fontSize: 12,
-                                                    fontWeight: 600,
+                                                    fontWeight: 700,
                                                     padding: '3px 10px',
                                                     borderRadius: 8,
                                                     background: typeCfg.bg,
                                                     color: typeCfg.color,
-                                                    border: `1px solid ${typeCfg.border}`
+                                                    border: `1.5px solid ${typeCfg.border}`,
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 5
                                                 }}>
+                                                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: typeCfg.color, flexShrink: 0 }} />
                                                     {c.type || 'АД Продажа'}
                                                 </span>
+                                                {c.contract_number && (
+                                                    <span style={{
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        padding: '3px 8px',
+                                                        borderRadius: 7,
+                                                        background: 'var(--surface)',
+                                                        color: 'var(--text)',
+                                                        border: '1px solid var(--border-light)'
+                                                    }}>
+                                                        № {c.contract_number}
+                                                    </span>
+                                                )}
                                                 {/* Expiry / Fulfilled Badge */}
                                                 {info?.badge && (
                                                     <span style={{
                                                         fontSize: 11,
                                                         fontWeight: 600,
-                                                        padding: '2px 8px',
-                                                        borderRadius: 6,
+                                                        padding: '3px 8px',
+                                                        borderRadius: 7,
                                                         background: info.badge.bg,
                                                         color: info.badge.color,
                                                         border: `1px solid ${info.badge.border}`,
@@ -1919,59 +2089,40 @@ export function DetailsPage() {
                                                         {info.badge.label}
                                                     </span>
                                                 )}
-                                                {/* Prolongation Badge (only if NOT fulfilled and NOT terminated) */}
-                                                {!isTerminated && !info?.isFulfilled && (
-                                                    <span style={{
-                                                        fontSize: 10,
-                                                        fontWeight: 600,
-                                                        padding: '2px 7px',
-                                                        borderRadius: 6,
-                                                        background: info?.isExtended ? 'rgba(124, 58, 237, 0.1)' : 'var(--surface)',
-                                                        color: info?.isExtended ? '#7c3aed' : 'var(--text-muted)',
-                                                        border: info?.isExtended ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid var(--border-light)'
-                                                    }}>
-                                                        {info?.isExtended ? 'Продлен 1 раз (макс.)' : 'Доступно 1 продление'}
-                                                    </span>
-                                                )}
                                             </div>
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                                {/* Button: Продлить (+X мес) if not extended yet & NOT fulfilled */}
-                                                {info?.canExtend && !info?.isFulfilled && (
+                                            {/* Правый верхний угол: Кнопки "Редактировать" и "Удалить", а под ними — кнопка "Документ" */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <button
                                                         type="button"
                                                         className="card-clickable"
-                                                        onClick={() => handleExtendContract(c.id)}
+                                                        onClick={() => openEditContractModal(c)}
                                                         style={{
-                                                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                            padding: '6px 11px', borderRadius: 10,
-                                                            border: '1px solid #10b981', background: '#ecfdf5',
-                                                            color: '#059669', fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                                            width: 30, height: 30, borderRadius: 8,
+                                                            border: '1px solid var(--border-light)', background: 'var(--surface)',
+                                                            color: 'var(--text)', cursor: 'pointer',
+                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
                                                         }}
-                                                        title={`Продлить договор на тот же срок (+${info.durationMonths} мес.). Допускается строго 1 раз.`}
+                                                        title="Редактировать условия договора"
                                                     >
-                                                        <RotateCw size={12} /> Продлить (+{info.durationMonths} мес.)
+                                                        <Pencil size={13} />
                                                     </button>
-                                                )}
-
-                                                {/* Button: Перезаключить / Переподписать if expired or 7-day reminder */}
-                                                {!info?.isFulfilled && (info?.needsRenewal || info?.isOverdue || info?.isUrgentReSign || (info?.isExpiring && info?.isExtended)) && (
                                                     <button
                                                         type="button"
                                                         className="card-clickable"
-                                                        onClick={() => handleRenewContract(c)}
+                                                        onClick={() => handleDeleteContract(c.id)}
                                                         style={{
-                                                            display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                            padding: '6px 12px', borderRadius: 10, border: 'none',
-                                                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                                                            color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                                            boxShadow: '0 2px 6px rgba(245,158,11,0.25)'
+                                                            width: 30, height: 30, borderRadius: 8,
+                                                            border: '1px solid rgba(239, 68, 68, 0.25)', background: 'rgba(239, 68, 68, 0.06)',
+                                                            color: '#ef4444', cursor: 'pointer',
+                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
                                                         }}
-                                                        title="Переподписать новый агентский договор с клиентом"
+                                                        title="Удалить договор"
                                                     >
-                                                        <Plus size={13} /> {info?.isUrgentReSign ? 'Переподписать АД' : 'Перезаключить'}
+                                                        <Trash2 size={13} />
                                                     </button>
-                                                )}
+                                                </div>
 
                                                 <button
                                                     type="button"
@@ -1979,43 +2130,33 @@ export function DetailsPage() {
                                                     onClick={() => handleCreateDocumentForContract(c)}
                                                     style={{
                                                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                                                        padding: '6px 11px', borderRadius: 10, border: 'none',
+                                                        padding: '5px 11px', borderRadius: 8, border: 'none',
                                                         background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                                                         color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                                                        boxShadow: '0 2px 6px rgba(16,185,129,0.2)'
+                                                        boxShadow: '0 2px 5px rgba(16,185,129,0.2)'
                                                     }}
                                                     title="Сформировать печатный документ"
                                                 >
-                                                    <FileText size={13} /> Документ
+                                                    <FileText size={12} /> Документ
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    className="card-clickable"
-                                                    onClick={() => openEditContractModal(c)}
-                                                    style={{
-                                                        padding: '6px 10px', borderRadius: 10,
-                                                        border: '1px solid var(--border-light)', background: 'var(--surface)',
-                                                        color: 'var(--text)', fontSize: 11, fontWeight: 500, cursor: 'pointer',
-                                                        display: 'inline-flex', alignItems: 'center', gap: 4
-                                                    }}
-                                                    title="Редактировать договор"
-                                                >
-                                                    <Pencil size={13} />
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="card-clickable"
-                                                    onClick={() => handleDeleteContract(c.id)}
-                                                    style={{
-                                                        padding: '6px 8px', borderRadius: 10,
-                                                        border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.06)',
-                                                        color: '#ef4444', cursor: 'pointer',
-                                                        display: 'inline-flex', alignItems: 'center'
-                                                    }}
-                                                    title="Удалить договор"
-                                                >
-                                                    <Trash2 size={13} />
-                                                </button>
+
+                                                {!info?.isFulfilled && (info?.needsRenewal || info?.isOverdue || info?.isUrgentReSign) && (
+                                                    <button
+                                                        type="button"
+                                                        className="card-clickable"
+                                                        onClick={() => handleRenewContract(c)}
+                                                        style={{
+                                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                            padding: '4px 9px', borderRadius: 8, border: 'none',
+                                                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                                            color: '#fff', fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                                                            boxShadow: '0 2px 5px rgba(245,158,11,0.25)'
+                                                        }}
+                                                        title="Переподписать новый агентский договор с клиентом"
+                                                    >
+                                                        <Plus size={11} /> {info?.isUrgentReSign ? 'Переподписать АД' : 'Перезаключить'}
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
 
@@ -2031,15 +2172,27 @@ export function DetailsPage() {
                                                     <span>Исполнен по закрытой сделке (пролонгация не требуется)</span>
                                                 </div>
                                             ) : (
-                                                <>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                                                        <Clock size={13} style={{ color: 'var(--text-muted)' }} />
-                                                        <span>Действует до: <strong style={{ color: info?.isOverdue ? '#dc2626' : (info?.isExpiring ? '#d97706' : 'var(--text)') }}>{formatContractDate(info?.endDate)}</strong></span>
-                                                    </div>
-                                                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                        (срок: {info?.durationMonths} мес.{info?.isExtended ? ` + ${info.durationMonths} мес. продл.` : ''})
-                                                    </span>
-                                                </>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                                    <Clock size={13} style={{ color: 'var(--text-muted)' }} />
+                                                    <span>Действует до: <strong style={{ color: info?.isOverdue ? '#dc2626' : (info?.isExpiring ? '#d97706' : 'var(--text)') }}>{formatContractDate(info?.endDate)}</strong></span>
+                                                    {info?.durationMonths && (
+                                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                            ({info.durationMonths} мес.)
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {c.price > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <span style={{ color: 'var(--text-muted)' }}>Сумма:</span>
+                                                    <strong style={{ color: 'var(--text)' }}>{formatNumber(c.price)} ₽</strong>
+                                                </div>
+                                            )}
+                                            {c.commission && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                    <span style={{ color: 'var(--text-muted)' }}>Комиссия:</span>
+                                                    <strong style={{ color: '#059669' }}>{c.commission}</strong>
+                                                </div>
                                             )}
                                         </div>
 
@@ -2445,21 +2598,38 @@ export function DetailsPage() {
                                 } else if (d.seller_agent_id === id || d.buyer_agent_id === id) {
                                     roleLabel = 'Агент';
                                 } else if (sellerIds.includes(id)) {
-                                    roleLabel = 'Продавец';
+                                    roleLabel = sellerIds.length > 1 ? 'Сособственник (Продавец)' : 'Продавец';
                                 } else if (buyerIds.includes(id)) {
-                                    roleLabel = 'Покупатель';
+                                    roleLabel = buyerIds.length > 1 ? 'Сопокупатель' : 'Покупатель';
                                 } else if (client?.client_types?.includes('lawyer')) {
                                     roleLabel = 'Юрист';
                                 } else if (client?.client_types?.includes('agent')) {
                                     roleLabel = 'Агент';
                                 }
 
+                                const matchingContract = clientContracts.find(ct => {
+                                    if (!ct || ct.status === 'terminated' || ct.status === 'cancelled') return false;
+                                    if (ct.fulfilled_deal_id && ct.fulfilled_deal_id === d.id) return true;
+                                    if (ct.property_id && d.property_id && ct.property_id === d.property_id) return true;
+                                    if (!ct.property_id) {
+                                        const isSeller = sellerIds.includes(id);
+                                        const isBuyer = buyerIds.includes(id);
+                                        const ctType = ct.type || '';
+                                        if (isSeller && (ctType.includes('Продажа') || ctType.toLowerCase().includes('наймодател') || ctType.toLowerCase().includes('арендодател'))) return true;
+                                        if (isBuyer && (ctType.includes('Покупка') || ctType.toLowerCase().includes('нанимател') || ctType.toLowerCase().includes('арендатор'))) return true;
+                                        return true;
+                                    }
+                                    return false;
+                                });
+
                                 const dealHasContract = Boolean(
+                                    matchingContract || 
                                     d.has_agency_contract || 
                                     d.agency_contract_date || 
                                     (hasAgencyContract && (client.agency_contract_property_id === d.property_id || !client.agency_contract_property_id))
                                 );
-                                const dealContractDate = d.agency_contract_date || (dealHasContract ? client.agency_contract_date : null);
+                                const dealContractDate = matchingContract?.contract_date || d.agency_contract_date || (dealHasContract ? client.agency_contract_date : null);
+                                const isContractFulfilled = matchingContract?.status === 'fulfilled' || d.status === 'closed';
 
                                 return (
                                     <div key={d.id} className="card-clickable" onClick={() => navigate('/tasks')}
@@ -2474,8 +2644,17 @@ export function DetailsPage() {
                                                         {dealStatusLabel[d.status] || 'Сделка'} · {roleLabel}
                                                     </div>
                                                     {dealHasContract ? (
-                                                        <span style={{ fontSize: 10, fontWeight: 600, color: '#10b981', background: '#ecfdf5', padding: '1px 6px', borderRadius: 6, border: '1px solid rgba(16,185,129,0.25)' }}>
-                                                            АД {dealContractDate ? `от ${formatDate(dealContractDate)}` : 'заключен'}
+                                                        <span style={{ 
+                                                            fontSize: 10, fontWeight: 600, color: '#059669', background: '#ecfdf5', 
+                                                            padding: '1px 6px', borderRadius: 6, border: '1px solid rgba(16,185,129,0.3)',
+                                                            display: 'inline-flex', alignItems: 'center', gap: 3
+                                                        }}>
+                                                            <CheckCircle2 size={11} />
+                                                            {isContractFulfilled ? (
+                                                                <span>АД исполнен{dealContractDate ? ` (${formatDate(dealContractDate)})` : ''}</span>
+                                                            ) : (
+                                                                <span>АД {dealContractDate ? `от ${formatDate(dealContractDate)}` : 'заключен'}</span>
+                                                            )}
                                                         </span>
                                                     ) : (
                                                         <span style={{ fontSize: 10, fontWeight: 500, color: '#ef4444', background: 'rgba(239,68,68,0.06)', padding: '1px 6px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)' }}>
@@ -2730,187 +2909,366 @@ export function DetailsPage() {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveContract} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                    Тип договора *
-                                </label>
-                                <select
-                                    className="form-select"
-                                    required
-                                    value={contractForm.type}
-                                    onChange={e => setContractForm({ ...contractForm, type: e.target.value })}
-                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)', fontWeight: 500 }}
-                                >
-                                    {AGENCY_CONTRACT_TYPES.map(t => (
-                                        <option key={t} value={t}>{t}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                        Дата заключения *
-                                    </label>
-                                    <input
-                                        type="date"
-                                        className="form-input"
-                                        required
-                                        value={contractForm.date}
-                                        onChange={e => setContractForm({ ...contractForm, date: e.target.value })}
-                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                        Срок действия *
-                                    </label>
-                                    <select
-                                        className="form-select"
-                                        value={contractForm.duration_months}
-                                        onChange={e => setContractForm({ ...contractForm, duration_months: Number(e.target.value) })}
-                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                    >
-                                        {CONTRACT_DURATION_OPTIONS.map(opt => (
-                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Блок продления договора (правило: 1 раз на тот же срок) */}
-                            <div style={{
-                                padding: '12px 14px',
-                                borderRadius: 14,
-                                background: contractForm.is_extended ? 'rgba(124, 58, 237, 0.06)' : 'var(--bg-light)',
-                                border: contractForm.is_extended ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid var(--border-light)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 6
-                            }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={contractForm.is_extended}
-                                        onChange={e => setContractForm({ ...contractForm, is_extended: e.target.checked })}
-                                        style={{ width: 18, height: 18, accentColor: '#7c3aed', cursor: 'pointer' }}
-                                    />
-                                    <span>Продлен на тот же срок (+{contractForm.duration_months} мес.)</span>
-                                </label>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 28, lineHeight: 1.4 }}>
-                                    Регламент: продление возможно <strong>строго 1 раз</strong> на тот же срок. Если продление уже использовано, требуется перезаключение.
-                                </div>
-                                {contractForm.date && (
-                                    <div style={{ fontSize: 11, fontWeight: 600, color: contractForm.is_extended ? '#7c3aed' : '#059669', paddingLeft: 28, marginTop: 2 }}>
-                                        Окончание договора: {formatContractDate(calculateContractEndDate(contractForm.date, contractForm.duration_months, contractForm.is_extended))}
-                                        {contractForm.is_extended ? ' (с учётом продления)' : ''}
+                        {(() => {
+                            const modalTypeCfg = getContractTypeConfig(contractForm.type);
+                            return (
+                                <form onSubmit={handleSaveContract} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                    {/* Тип договора с цветным бейджем */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                                Тип договора *
+                                            </label>
+                                            <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 700,
+                                                padding: '2px 8px',
+                                                borderRadius: 6,
+                                                background: modalTypeCfg.bg,
+                                                color: modalTypeCfg.color,
+                                                border: `1.5px solid ${modalTypeCfg.border}`,
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4
+                                            }}>
+                                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: modalTypeCfg.color }} />
+                                                {contractForm.type}
+                                            </span>
+                                        </div>
+                                        <select
+                                            className="form-select"
+                                            required
+                                            value={contractForm.type}
+                                            onChange={e => setContractForm({ ...contractForm, type: e.target.value })}
+                                            style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)', fontWeight: 600 }}
+                                        >
+                                            {AGENCY_CONTRACT_TYPES.map(t => (
+                                                <option key={t} value={t}>{t}</option>
+                                            ))}
+                                        </select>
                                     </div>
-                                )}
-                            </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12 }}>
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                        Статус договора
-                                    </label>
-                                    <select
-                                        className="form-select"
-                                        value={contractForm.status}
-                                        onChange={e => setContractForm({ ...contractForm, status: e.target.value })}
-                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                    >
-                                        <option value="active">Действующий</option>
-                                        <option value="fulfilled">Исполнен</option>
-                                        <option value="closed">Закрыт</option>
-                                        {contractForm.status === 'terminated' && <option value="terminated">Закрыт (архив)</option>}
-                                    </select>
-                                </div>
-                            </div>
+                                    {/* Номер договора и Статус договора */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Номер договора
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="например: № 14/26"
+                                                value={contractForm.contract_number || ''}
+                                                onChange={e => setContractForm({ ...contractForm, contract_number: e.target.value })}
+                                                style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                            />
+                                        </div>
 
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                    По какому объекту
-                                </label>
-                                <select
-                                    className="form-select"
-                                    value={contractForm.property_id}
-                                    onChange={e => setContractForm({ ...contractForm, property_id: e.target.value })}
-                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                >
-                                    <option value="">-- Без привязки к конкретному объекту --</option>
-                                    {myProperties.length > 0 && (
-                                        <optgroup label="Объекты клиента">
-                                            {myProperties.map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.address || p.city} {p.price ? `(${formatNumber(p.price)} ₽)` : ''}
-                                                </option>
-                                            ))}
-                                        </optgroup>
-                                    )}
-                                    <optgroup label="Все объекты в базе">
-                                        {state.properties
-                                            .filter(p => !myProperties.some(mp => mp.id === p.id))
-                                            .map(p => (
-                                                <option key={p.id} value={p.id}>
-                                                    {p.address || p.city} {p.price ? `(${formatNumber(p.price)} ₽)` : ''}
-                                                </option>
-                                            ))}
-                                    </optgroup>
-                                </select>
-                            </div>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Статус договора *
+                                            </label>
+                                            <select
+                                                className="form-select"
+                                                value={contractForm.status}
+                                                onChange={e => setContractForm({ ...contractForm, status: e.target.value })}
+                                                style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                            >
+                                                <option value="active">Действующий</option>
+                                                <option value="fulfilled">Исполнен (сделка закрыта)</option>
+                                                <option value="closed">Закрыт</option>
+                                                <option value="terminated">Расторгнут (архив)</option>
+                                            </select>
+                                        </div>
+                                    </div>
 
-                            <div>
-                                <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                    Примечание / Номер договора
-                                </label>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Например: №14/24 или особые условия комиссии"
-                                    value={contractForm.comment}
-                                    onChange={e => setContractForm({ ...contractForm, comment: e.target.value })}
-                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                />
-                            </div>
+                                    {/* Даты: Заключение и Окончание (вручную) */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Дата заключения *
+                                            </label>
+                                            <input
+                                                type="date"
+                                                className="form-input"
+                                                required
+                                                value={contractForm.date}
+                                                onChange={e => {
+                                                    const newDate = e.target.value;
+                                                    let newEnd = contractForm.valid_until;
+                                                    if (newDate) {
+                                                        const auto = calculateContractEndDate(newDate, contractForm.duration_months || DEFAULT_CONTRACT_DURATION_MONTHS, contractForm.is_extended);
+                                                        if (auto) newEnd = auto.toISOString().split('T')[0];
+                                                    }
+                                                    setContractForm({ ...contractForm, date: newDate, valid_until: newEnd });
+                                                }}
+                                                style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                            />
+                                        </div>
 
-                            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-                                {editingContractId && (
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteContract(editingContractId)}
-                                        style={{
-                                            height: 46, padding: '0 14px', borderRadius: 14,
-                                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                                            background: 'rgba(239, 68, 68, 0.08)',
-                                            color: '#ef4444', fontWeight: 500, cursor: 'pointer'
-                                        }}
-                                        title="Удалить этот договор"
-                                    >
-                                        Удалить
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={() => setIsContractModalOpen(false)}
-                                    style={{ flex: 1, height: 46, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
-                                >
-                                    Отмена
-                                </button>
-                                <button
-                                    type="submit"
-                                    style={{
-                                        flex: 1.5, height: 46, borderRadius: 14, border: 'none',
-                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                        color: '#fff', fontWeight: 600, cursor: 'pointer',
-                                        boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
-                                    }}
-                                >
-                                    Сохранить
-                                </button>
-                            </div>
-                        </form>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Действует до (вручную) *
+                                            </label>
+                                            <input
+                                                type="date"
+                                                className="form-input"
+                                                value={contractForm.valid_until || ''}
+                                                onChange={e => setContractForm({ ...contractForm, valid_until: e.target.value })}
+                                                style={{ width: '100%', height: 46, borderRadius: 14, border: '1.5px solid #10b981', padding: '0 14px', background: '#ecfdf5', color: '#059669', fontWeight: 600 }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Быстрый выбор срока действия */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                                Срок договора (месяцев: {contractForm.duration_months})
+                                            </label>
+                                            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>быстрый расчет окончания:</span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                            {[1, 2, 3, 6, 12].map(m => {
+                                                const isSel = Number(contractForm.duration_months) === m;
+                                                return (
+                                                    <button
+                                                        key={m}
+                                                        type="button"
+                                                        className="card-clickable"
+                                                        onClick={() => {
+                                                            const baseDate = contractForm.date || new Date().toISOString().split('T')[0];
+                                                            const auto = calculateContractEndDate(baseDate, m, contractForm.is_extended);
+                                                            setContractForm({
+                                                                ...contractForm,
+                                                                duration_months: m,
+                                                                valid_until: auto ? auto.toISOString().split('T')[0] : contractForm.valid_until
+                                                            });
+                                                        }}
+                                                        style={{
+                                                            padding: '5px 12px',
+                                                            borderRadius: 8,
+                                                            border: isSel ? '1.5px solid var(--primary)' : '1px solid var(--border-light)',
+                                                            background: isSel ? 'rgba(0, 82, 255, 0.08)' : 'var(--surface)',
+                                                            color: isSel ? 'var(--primary)' : 'var(--text)',
+                                                            fontSize: 11.5,
+                                                            fontWeight: isSel ? 700 : 500,
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    >
+                                                        {m} {m === 1 ? 'месяц' : (m < 5 ? 'месяца' : (m === 12 ? '1 год' : 'месяцев'))}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+
+                                    {/* Привязка к объекту */}
+                                    <div>
+                                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                            По какому объекту
+                                        </label>
+                                        <select
+                                            className="form-select"
+                                            value={contractForm.property_id || ''}
+                                            onChange={e => {
+                                                const pId = e.target.value;
+                                                const selProp = state.properties.find(p => p.id === pId);
+                                                setContractForm({
+                                                    ...contractForm,
+                                                    property_id: pId,
+                                                    price: (!contractForm.price && selProp?.price) ? formatPriceInput(selProp.price) : contractForm.price
+                                                });
+                                            }}
+                                            style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                        >
+                                            <option value="">-- Без привязки к конкретному объекту --</option>
+                                            {myProperties.length > 0 && (
+                                                <optgroup label="Объекты клиента">
+                                                    {myProperties.map(p => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.address || p.city} {p.price ? `(${formatNumber(p.price)} ₽)` : ''}
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            )}
+                                            <optgroup label="Все объекты в базе">
+                                                {state.properties
+                                                    .filter(p => !myProperties.some(mp => mp.id === p.id))
+                                                    .map(p => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.address || p.city} {p.price ? `(${formatNumber(p.price)} ₽)` : ''}
+                                                        </option>
+                                                    ))}
+                                            </optgroup>
+                                        </select>
+                                    </div>
+
+                                    {/* Финансовые условия: Сумма и Комиссия */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Сумма объекта (₽)
+                                            </label>
+                                            <div style={{ position: 'relative' }}>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    className="form-input"
+                                                    placeholder="например: 4 800 000"
+                                                    value={contractForm.price || ''}
+                                                    onChange={e => {
+                                                        const digits = parsePriceInput(e.target.value);
+                                                        setContractForm({ ...contractForm, price: formatPriceInput(digits) });
+                                                    }}
+                                                    style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 32px 0 14px', background: 'var(--bg-light)', color: 'var(--text)', fontWeight: 600 }}
+                                                />
+                                                <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 13, fontWeight: 600, pointerEvents: 'none' }}>
+                                                    ₽
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                                Комиссия / вознаграждение
+                                            </label>
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                placeholder="например: 100 000 ₽ или 3%"
+                                                value={contractForm.commission || ''}
+                                                onChange={e => {
+                                                    const rawVal = e.target.value;
+                                                    if (!rawVal) {
+                                                        setContractForm({ ...contractForm, commission: '' });
+                                                        return;
+                                                    }
+                                                    if (rawVal.includes('%')) {
+                                                        const clean = rawVal.replace(/[^\d.,%]/g, '');
+                                                        setContractForm({ ...contractForm, commission: clean });
+                                                    } else {
+                                                        const digits = parsePriceInput(rawVal);
+                                                        setContractForm({ ...contractForm, commission: digits ? `${formatPriceInput(digits)} ₽` : '' });
+                                                    }
+                                                }}
+                                                style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)', fontWeight: 600 }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Быстрый выбор комиссии */}
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: -4 }}>
+                                        <span style={{ fontSize: 10.5, color: 'var(--text-muted)', alignSelf: 'center', marginRight: 2 }}>
+                                            быстрый выбор:
+                                        </span>
+                                        {['2%', '3%', '4%', '50 000 ₽', '100 000 ₽', '150 000 ₽'].map(opt => (
+                                            <button
+                                                key={opt}
+                                                type="button"
+                                                className="card-clickable"
+                                                onClick={() => setContractForm({ ...contractForm, commission: opt })}
+                                                style={{
+                                                    padding: '3px 8px',
+                                                    borderRadius: 6,
+                                                    border: contractForm.commission === opt ? '1px solid #10b981' : '1px solid var(--border-light)',
+                                                    background: contractForm.commission === opt ? '#ecfdf5' : 'var(--surface)',
+                                                    color: contractForm.commission === opt ? '#059669' : 'var(--text)',
+                                                    fontSize: 10.5,
+                                                    fontWeight: contractForm.commission === opt ? 700 : 500,
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Блок продления договора */}
+                                    <div style={{
+                                        padding: '10px 14px',
+                                        borderRadius: 14,
+                                        background: contractForm.is_extended ? 'rgba(124, 58, 237, 0.06)' : 'var(--bg-light)',
+                                        border: contractForm.is_extended ? '1px solid rgba(124, 58, 237, 0.25)' : '1px solid var(--border-light)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: 4
+                                    }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={contractForm.is_extended}
+                                                onChange={e => {
+                                                    const isExt = e.target.checked;
+                                                    let newEnd = contractForm.valid_until;
+                                                    if (contractForm.date) {
+                                                        const auto = calculateContractEndDate(contractForm.date, contractForm.duration_months || DEFAULT_CONTRACT_DURATION_MONTHS, isExt);
+                                                        if (auto) newEnd = auto.toISOString().split('T')[0];
+                                                    }
+                                                    setContractForm({ ...contractForm, is_extended: isExt, valid_until: newEnd });
+                                                }}
+                                                style={{ width: 18, height: 18, accentColor: '#7c3aed', cursor: 'pointer' }}
+                                            />
+                                            <span>Продлен 1 раз на тот же срок (+{contractForm.duration_months} мес.)</span>
+                                        </label>
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 28, lineHeight: 1.4 }}>
+                                            Регламент: продление возможно <strong>строго 1 раз</strong> на тот же срок.
+                                        </div>
+                                    </div>
+
+                                    {/* Особые условия / Примечание */}
+                                    <div>
+                                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                            Особые условия / примечание
+                                        </label>
+                                        <textarea
+                                            rows={2}
+                                            className="form-textarea"
+                                            placeholder="Особые условия комиссии, порядок расчетов, комментарии..."
+                                            value={contractForm.comment || ''}
+                                            onChange={e => setContractForm({ ...contractForm, comment: e.target.value })}
+                                            style={{ width: '100%', borderRadius: 14, border: '1px solid var(--border-light)', padding: '10px 14px', background: 'var(--bg-light)', color: 'var(--text)', resize: 'vertical' }}
+                                        />
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                                        {editingContractId && (
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteContract(editingContractId)}
+                                                style={{
+                                                    height: 46, padding: '0 14px', borderRadius: 14,
+                                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                                    background: 'rgba(239, 68, 68, 0.08)',
+                                                    color: '#ef4444', fontWeight: 500, cursor: 'pointer'
+                                                }}
+                                                title="Удалить этот договор"
+                                            >
+                                                Удалить
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsContractModalOpen(false)}
+                                            style={{ flex: 1, height: 46, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
+                                        >
+                                            Отмена
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            style={{
+                                                flex: 1.5, height: 46, borderRadius: 14, border: 'none',
+                                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                color: '#fff', fontWeight: 600, cursor: 'pointer',
+                                                boxShadow: '0 4px 12px rgba(16,185,129,0.2)'
+                                            }}
+                                        >
+                                            Сохранить
+                                        </button>
+                                    </div>
+                                </form>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

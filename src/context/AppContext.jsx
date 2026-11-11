@@ -11,7 +11,7 @@
 
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useRef, useMemo } from 'react';
 import { reducer, EMPTY_STATE } from './reducer';
-import { loadUserData } from './dbSync';
+import { loadUserData, syncAction } from './dbSync';
 import { authService } from '../lib/auth';
 import { useDbDispatch } from './useDbDispatch';
 import { useToastContext } from '../components/Toast';
@@ -113,6 +113,9 @@ export function AppProvider({ children }) {
 
     if (allFailed) {
       console.warn('[Data Load] All queries failed, serving from cache or seed data.', data.error);
+      if (!silent && data.error) {
+        toast.error('Ошибка загрузки данных: ' + data.error);
+      }
       if (!cached) {
         dispatch({ type: 'SET_ALL', data });
       }
@@ -122,6 +125,59 @@ export function AppProvider({ children }) {
     if (data.error && !silent) {
       console.warn('[Data Load] Partial error:', data.error);
       toast.error('Частичная ошибка загрузки: ' + data.error);
+    }
+
+    // ── Reconcile: If local browser has unpushed entities, upload them to Neon ──
+    try {
+      const localPropsMap = new Map();
+
+      // Check repro_properties
+      try {
+        const raw = localStorage.getItem('repro_properties');
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            list.forEach(p => { if (p?.id) localPropsMap.set(p.id, p); });
+          }
+        }
+      } catch {}
+
+      // Check all cached data
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith('rm_cache_') || k.startsWith('reacrm_'))) {
+            try {
+              const val = JSON.parse(localStorage.getItem(k) || '{}');
+              const props = val?.data?.properties || val?.properties;
+              if (Array.isArray(props)) {
+                props.forEach(p => { if (p?.id) localPropsMap.set(p.id, p); });
+              }
+            } catch {}
+          }
+        }
+      } catch {}
+
+      const neonPropIds = new Set((data.properties || []).map(p => p.id));
+      const unpushedProps = Array.from(localPropsMap.values()).filter(p => p && p.id && !neonPropIds.has(p.id));
+
+      if (unpushedProps.length > 0) {
+        console.log(`[Reconcile] Found ${unpushedProps.length} unpushed properties in localStorage. Pushing to Neon DB...`, unpushedProps);
+        for (const unpushed of unpushedProps) {
+          try {
+            const syncProp = { ...unpushed, realtor_id: unpushed.realtor_id || sessionUser.id };
+            await syncAction({ type: 'ADD_PROPERTY', property: syncProp }, { currentUser: sessionUser });
+            data.properties.push(syncProp);
+            neonPropIds.add(syncProp.id);
+            console.log(`[Reconcile] Successfully synced local property to Neon: ${syncProp.address || syncProp.id}`);
+          } catch (syncErr) {
+            console.error('[Reconcile Sync Error]', syncErr);
+          }
+        }
+        toast.success(`✓ Синхронизировано из памяти устройства: ${unpushedProps.length} объект(ов)`);
+      }
+    } catch (e) {
+      console.warn('[Reconcile Properties] Error:', e);
     }
 
     // 3. Обновляем UI свежими данными и сохраняем в кеш
