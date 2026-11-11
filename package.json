@@ -13,7 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "sync:pull": "git pull --rebase --autostash origin master",
-    "sync:push": "git add . && git commit -m \"wip: sync update\" && git push origin master"
+    "sync:push": "git add . && git commit -m \"wip: sync update\" && git push origin master",
+    "update:developments": "node scripts/update-developments.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",

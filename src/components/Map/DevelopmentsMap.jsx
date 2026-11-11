@@ -1,11 +1,44 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { AlertCircle, X } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
+
+const GOOGLE_LAYER_OPTIONS = [
+  { id: 'm', label: 'Схема' },
+  { id: 'y', label: 'Гибрид' },
+  { id: 's', label: 'Спутник' }
+];
+
+const GOOGLE_TILE_URLS = {
+  m: 'https://mt{s}.google.com/vt/lyrs=m&hl=ru&x={x}&y={y}&z={z}',
+  y: 'https://mt{s}.google.com/vt/lyrs=y&hl=ru&x={x}&y={y}&z={z}',
+  s: 'https://mt{s}.google.com/vt/lyrs=s&hl=ru&x={x}&y={y}&z={z}'
+};
+
+function getTileConfig(provider, googleLayer, isDark) {
+  if (provider === 'google') {
+    return {
+      url: GOOGLE_TILE_URLS[googleLayer] || GOOGLE_TILE_URLS.m,
+      subdomains: '0123',
+      maxZoom: 20,
+      attribution: '&copy; Google Карты'
+    };
+  }
+
+  return {
+    url: isDark
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: isDark ? 'abcd' : 'abc',
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>'
+  };
+}
 
 /**
  * DevelopmentsMap
- * Интерактивная карта новостроек г. Кирова на Leaflet + OpenStreetMap
+ * Интерактивная карта новостроек г. Кирова на Leaflet (Google Карты / OpenStreetMap)
  */
 export function DevelopmentsMap({
   developments = [],
@@ -13,14 +46,40 @@ export function DevelopmentsMap({
   onSelect = () => {},
   onOpenDetail = () => {},
   className = '',
-  height = '100%'
+  height = '100%',
+  provider = 'osm'
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef(new Map());
+  const tileErrorCountRef = useRef(0);
+  const onSelectRef = useRef(onSelect);
+  const onOpenDetailRef = useRef(onOpenDetail);
 
-  // Проверка темы для подбора подложки карты
-  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+  const [googleLayer, setGoogleLayer] = useState('m');
+  const [tileErrorKey, setTileErrorKey] = useState(null);
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+  );
+
+  const currentLayerKey = `${provider}:${googleLayer}:${isDark}`;
+  const hasTileError = tileErrorKey === currentLayerKey;
+
+  useEffect(() => {
+    onSelectRef.current = onSelect;
+    onOpenDetailRef.current = onOpenDetail;
+  }, [onSelect, onOpenDetail]);
+
+  // Отслеживание смены светлой/темной темы на html
+  useEffect(() => {
+    if (typeof document === 'undefined' || typeof MutationObserver === 'undefined') return;
+    const root = document.documentElement;
+    const observer = new MutationObserver(() => {
+      setIsDark(root.classList.contains('dark'));
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   // Инициализация карты
   useEffect(() => {
@@ -45,29 +104,17 @@ export function DevelopmentsMap({
       // Зум-контрол в правом верхнем углу
       L.control.zoom({ position: 'topright' }).addTo(map);
 
-      // Копирайт OSM
-      L.control.attribution({ position: 'bottomright', prefix: false })
-        .addAttribution('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">OpenStreetMap</a>')
-        .addTo(map);
+      // Копирайт провайдера (обновляется автоматически из attribution активного tileLayer)
+      L.control.attribution({ position: 'bottomright', prefix: false }).addTo(map);
 
-      // Слой карты: в темной теме CartoDB Dark, в светлой надежный OSM / CartoDB
-      const tileUrl = isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}{r}.png'
-        : 'https://tile.openstreetmap.org/{z}/{x}.png';
-
-      const tileLayer = L.tileLayer(tileUrl, {
-        maxZoom: 19,
-        subdomains: isDark ? 'abcd' : 'abc'
-      }).addTo(map);
-
-      mapInstanceRef.current = { map, tileLayer };
+      mapInstanceRef.current = { map, tileLayer: null };
 
       // Принудительный расчет размеров после монтирования в DOM
       setTimeout(() => {
-        try { map.invalidateSize(); } catch (e) {}
+        try { map.invalidateSize(); } catch { /* ignore */ }
       }, 100);
       setTimeout(() => {
-        try { map.invalidateSize(); } catch (e) {}
+        try { map.invalidateSize(); } catch { /* ignore */ }
       }, 400);
     }
 
@@ -75,7 +122,7 @@ export function DevelopmentsMap({
 
     // Ресайз карты при изменении контейнера
     const resizeObserver = new ResizeObserver(() => {
-      try { map.invalidateSize(); } catch (e) {}
+      try { map.invalidateSize(); } catch { /* ignore */ }
     });
     resizeObserver.observe(container);
 
@@ -92,27 +139,62 @@ export function DevelopmentsMap({
     };
   }, []);
 
-  // Переключение слоя при смене темы
+  // Обновление слоя тайлов при смене провайдера, подложки Google или темы
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const { map, tileLayer } = mapInstanceRef.current;
-    
+
+    if (tileLayer) {
+      try {
+        map.removeLayer(tileLayer);
+      } catch { /* ignore */ }
+      mapInstanceRef.current.tileLayer = null;
+    }
+
+    const config = getTileConfig(provider, googleLayer, isDark);
+    const newLayer = L.tileLayer(config.url, {
+      maxZoom: config.maxZoom,
+      subdomains: config.subdomains,
+      attribution: config.attribution
+    });
+
+    tileErrorCountRef.current = 0;
+
+    const handleTileError = () => {
+      tileErrorCountRef.current += 1;
+      if (tileErrorCountRef.current >= 3) {
+        setTileErrorKey(currentLayerKey);
+      }
+    };
+
+    const handleTileLoad = () => {
+      tileErrorCountRef.current = 0;
+      setTileErrorKey(prev => (prev === currentLayerKey ? null : prev));
+    };
+
+    newLayer.on('tileerror', handleTileError);
+    newLayer.on('tileload', handleTileLoad);
+
     try {
-      map.removeLayer(tileLayer);
-      const tileUrl = isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}{r}.png'
-        : 'https://tile.openstreetmap.org/{z}/{x}.png';
-
-      const newLayer = L.tileLayer(tileUrl, {
-        maxZoom: 19,
-        subdomains: isDark ? 'abcd' : 'abc'
-      }).addTo(map);
-
+      newLayer.addTo(map);
       mapInstanceRef.current.tileLayer = newLayer;
     } catch (e) {
       console.warn('[Map layer switch error]', e);
     }
-  }, [isDark]);
+
+    return () => {
+      newLayer.off('tileerror', handleTileError);
+      newLayer.off('tileload', handleTileLoad);
+      if (mapInstanceRef.current) {
+        try {
+          map.removeLayer(newLayer);
+        } catch { /* ignore */ }
+        if (mapInstanceRef.current.tileLayer === newLayer) {
+          mapInstanceRef.current.tileLayer = null;
+        }
+      }
+    };
+  }, [provider, googleLayer, isDark, currentLayerKey]);
 
   // Отрисовка маркеров новостроек
   useEffect(() => {
@@ -121,7 +203,7 @@ export function DevelopmentsMap({
 
     // Удаляем старые маркеры
     markersRef.current.forEach(marker => {
-      try { marker.remove(); } catch (e) {}
+      try { marker.remove(); } catch { /* ignore */ }
     });
     markersRef.current.clear();
 
@@ -190,15 +272,15 @@ export function DevelopmentsMap({
       });
 
       marker.on('popupopen', () => {
-        onSelect(dev.id);
+        onSelectRef.current?.(dev.id);
         const btn = document.getElementById(`btn-popup-open-${dev.id}`);
         if (btn) {
-          btn.onclick = () => onOpenDetail(dev);
+          btn.onclick = () => onOpenDetailRef.current?.(dev);
         }
       });
 
       marker.on('click', () => {
-        onSelect(dev.id);
+        onSelectRef.current?.(dev.id);
       });
 
       marker.addTo(map);
@@ -210,9 +292,9 @@ export function DevelopmentsMap({
     if (selectedId && markersRef.current.has(selectedId)) {
       const selectedMarker = markersRef.current.get(selectedId);
       const latlng = selectedMarker.getLatLng();
-      try { map.flyTo(latlng, Math.max(map.getZoom(), 14), { duration: 0.8 }); } catch (e) {}
+      try { map.flyTo(latlng, Math.max(map.getZoom(), 14), { duration: 0.8 }); } catch { /* ignore */ }
     } else if (bounds.length > 0 && !selectedId) {
-      try { map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 }); } catch (e) {}
+      try { map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 }); } catch { /* ignore */ }
     }
   }, [developments, selectedId]);
 
@@ -228,33 +310,63 @@ export function DevelopmentsMap({
         if (!marker.isPopupOpen()) {
           marker.openPopup();
         }
-      } catch (e) {}
+      } catch { /* ignore */ }
     }
   }, [selectedId]);
 
   return (
-    <div 
-      className={`developments-map-wrapper ${className}`} 
-      style={{ 
-        width: '100%', 
-        height: height || '100%', 
-        minHeight: '480px',
-        position: 'relative' 
+    <div
+      className={`developments-map-wrapper ${className}`}
+      style={{
+        width: '100%',
+        height: height || '100%',
+        minHeight: '380px',
+        position: 'relative'
       }}
     >
-      <div 
-        ref={mapContainerRef} 
-        style={{ 
-          width: '100%', 
-          height: '100%', 
-          minHeight: '480px',
-          borderRadius: 'inherit' 
-        }} 
+      {provider === 'google' && (
+        <div className="dev-map-layer-switcher" role="group" aria-label="Слой Google Карт">
+          {GOOGLE_LAYER_OPTIONS.map(layer => (
+            <button
+              key={layer.id}
+              type="button"
+              className={`dev-layer-btn ${googleLayer === layer.id ? 'active' : ''}`}
+              onClick={() => setGoogleLayer(layer.id)}
+            >
+              {layer.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {hasTileError && (
+        <div className="dev-map-tile-warning" role="status">
+          <AlertCircle size={15} className="dev-map-tile-warning-icon" />
+          <span>Не удалось загрузить тайлы карты. Проверьте сеть или выберите другой движок.</span>
+          <button
+            type="button"
+            className="dev-map-tile-warning-close"
+            onClick={() => setTileErrorKey(null)}
+            aria-label="Скрыть предупреждение"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      <div
+        ref={mapContainerRef}
+        style={{
+          width: '100%',
+          height: '100%',
+          minHeight: '380px',
+          borderRadius: 'inherit'
+        }}
       />
 
       <style>{`
         .developments-map-wrapper {
-          min-height: 480px;
+          min-height: 380px;
           height: 100%;
           width: 100%;
           position: relative;
@@ -262,10 +374,103 @@ export function DevelopmentsMap({
         .developments-map-wrapper .leaflet-container {
           width: 100% !important;
           height: 100% !important;
-          min-height: 480px !important;
+          min-height: 380px !important;
           border-radius: inherit;
           font-family: inherit;
-          z-index: 1;
+          z-index: auto;
+        }
+        .dev-map-layer-switcher {
+          position: absolute;
+          top: 12px;
+          left: 12px;
+          z-index: 650;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.92);
+          backdrop-filter: blur(8px);
+          border: 1px solid rgba(226, 232, 240, 0.95);
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+        }
+        .dark .dev-map-layer-switcher {
+          background: rgba(15, 23, 42, 0.9);
+          border-color: rgba(51, 65, 85, 0.9);
+          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+        }
+        .dev-layer-btn {
+          border: none;
+          background: transparent;
+          color: #475569;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 5px 10px;
+          border-radius: 7px;
+          cursor: pointer;
+          transition: all 0.18s ease;
+          white-space: nowrap;
+        }
+        .dark .dev-layer-btn {
+          color: #cbd5e1;
+        }
+        .dev-layer-btn:hover {
+          background: rgba(0, 82, 255, 0.08);
+          color: var(--primary, #0052FF);
+        }
+        .dark .dev-layer-btn:hover {
+          background: rgba(59, 130, 246, 0.16);
+          color: #93c5fd;
+        }
+        .dev-layer-btn.active {
+          background: var(--primary, #0052FF);
+          color: #ffffff;
+          box-shadow: 0 2px 6px rgba(0, 82, 255, 0.28);
+        }
+        .dark .dev-layer-btn.active {
+          background: #2563eb;
+          color: #ffffff;
+        }
+        .dev-map-tile-warning {
+          position: absolute;
+          bottom: 14px;
+          left: 12px;
+          z-index: 800;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          max-width: min(360px, calc(100% - 24px));
+          padding: 8px 10px;
+          border-radius: 10px;
+          background: rgba(254, 242, 242, 0.96);
+          border: 1px solid #fca5a5;
+          color: #991b1b;
+          font-size: 12px;
+          font-weight: 500;
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.14);
+        }
+        .dark .dev-map-tile-warning {
+          background: rgba(69, 10, 10, 0.92);
+          border-color: #b91c1c;
+          color: #fecaca;
+        }
+        .dev-map-tile-warning-icon {
+          flex-shrink: 0;
+        }
+        .dev-map-tile-warning-close {
+          margin-left: auto;
+          background: transparent;
+          border: none;
+          color: inherit;
+          cursor: pointer;
+          padding: 2px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0.75;
+        }
+        .dev-map-tile-warning-close:hover {
+          opacity: 1;
         }
         .custom-dev-marker-wrapper {
           background: transparent;

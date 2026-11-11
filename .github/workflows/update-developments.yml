@@ -1,0 +1,41 @@
+name: Daily Kirov Developments Update
+
+on:
+  schedule:
+    # Ежедневно в 04:00 UTC (07:00 MSK)
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-developments:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Run daily developments updater
+        run: node scripts/update-developments.mjs
+
+      - name: Verify developments tests
+        run: npx vitest run src/data/developmentsData.test.js
+
+      - name: Commit and push updated catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/developments.json src/data/developmentsData.js
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "chore(data): daily update Kirov developments catalog"
+            git push
+          fi

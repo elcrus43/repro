@@ -13,10 +13,13 @@ export default defineConfig(({ mode }) => {
       react(),
       {
         name: 'start-api-server',
-        configureServer(_server) {
+        configureServer(devServer) {
           import('./scripts/api-dev-server.mjs')
-            .then(({ startApiServer }) => {
+            .then(({ startApiServer, stopApiServer }) => {
               startApiServer();
+              devServer.httpServer?.once('close', () => {
+                stopApiServer?.();
+              });
             })
             .catch(err => {
               console.error('Failed to start API dev server:', err);
@@ -77,6 +80,14 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true
         },
         '/api/messaging': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
+        '/api/ksm-lots': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
+        '/api/kssk-lots': {
           target: 'http://localhost:3001',
           changeOrigin: true
         }

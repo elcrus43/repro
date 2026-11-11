@@ -20,12 +20,36 @@ export function DevelopmentsYandexMap({
   const mapRef = useRef(null);
   const placemarksMapRef = useRef(new Map());
   const clustererRef = useRef(null);
+  const developmentsRef = useRef(developments);
+  const selectedIdRef = useRef(selectedId);
+  const onOpenDetailRef = useRef(onOpenDetail);
+  const onSelectRef = useRef(onSelect);
   const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    developmentsRef.current = developments;
+    selectedIdRef.current = selectedId;
+    onOpenDetailRef.current = onOpenDetail;
+    onSelectRef.current = onSelect;
+  }, [developments, selectedId, onOpenDetail, onSelect]);
 
   // 1. Загрузка скрипта Яндекс.Карт API
   useEffect(() => {
     let isCancelled = false;
+
+    // Клик по кнопке "Подробнее" внутри открытого балуна (использует актуальные refs)
+    const handleGlobalBalloonClick = (e) => {
+      const btn = e.target.closest('[data-ymap-detail-id]');
+      if (btn) {
+        const devId = btn.getAttribute('data-ymap-detail-id');
+        const targetDev = (developmentsRef.current || []).find(d => String(d.id) === String(devId));
+        if (targetDev) {
+          onOpenDetailRef.current?.(targetDev);
+        }
+      }
+    };
 
     function initYandexMaps() {
       if (window.ymaps && window.ymaps.Map) {
@@ -99,16 +123,17 @@ export function DevelopmentsYandexMap({
         mapRef.current = map;
         clustererRef.current = clusterer;
         setLoading(false);
+        setMapReady(true);
 
         // Слушаем клик внутри балуна для кнопки "Подробнее"
         document.addEventListener('click', handleGlobalBalloonClick);
 
         // Принудительный расчет контейнера
         setTimeout(() => {
-          try { map.container.fitToViewport(); } catch (e) {}
+          try { map.container.fitToViewport(); } catch { /* ignore */ }
         }, 150);
         setTimeout(() => {
-          try { map.container.fitToViewport(); } catch (e) {}
+          try { map.container.fitToViewport(); } catch { /* ignore */ }
         }, 500);
 
       } catch (err) {
@@ -130,27 +155,16 @@ export function DevelopmentsYandexMap({
         }
         mapRef.current = null;
         clustererRef.current = null;
+        setMapReady(false);
       }
     };
   }, []);
 
-  // Клик по кнопке "Подробнее" внутри открытого балуна
-  const handleGlobalBalloonClick = (e) => {
-    const btn = e.target.closest('[data-ymap-detail-id]');
-    if (btn) {
-      const devId = btn.getAttribute('data-ymap-detail-id');
-      const targetDev = developments.find(d => String(d.id) === String(devId));
-      if (targetDev) {
-        onOpenDetail(targetDev);
-      }
-    }
-  };
-
-  // 2. Отрисовка меток ЖК при обновлении списка
+  // 2. Отрисовка меток ЖК при обновлении списка или готовности карты
   useEffect(() => {
     const map = mapRef.current;
     const clusterer = clustererRef.current;
-    if (!map || !clusterer || !window.ymaps) return;
+    if (!mapReady || !map || !clusterer || !window.ymaps) return;
 
     clusterer.removeAll();
     placemarksMapRef.current.clear();
@@ -162,7 +176,7 @@ export function DevelopmentsYandexMap({
     developments.forEach(dev => {
       if (!dev.lat || !dev.lng) return;
 
-      const isSelected = String(dev.id) === String(selectedId);
+      const isSelected = String(dev.id) === String(selectedIdRef.current);
       const priceText = dev.price_from 
         ? `от ${(dev.price_from / 1000000).toFixed(1).replace('.', ',')} млн`
         : 'цена по запросу';
@@ -202,7 +216,7 @@ export function DevelopmentsYandexMap({
             data-ymap-detail-id="${dev.id}" 
             style="width: 100%; background: #0052FF; color: #ffffff; border: none; border-radius: 8px; padding: 8px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s;"
           >
-            Смотреть ЖК и планировки →
+            Смотреть ЖК и планировки ->
           </button>
         </div>
       `;
@@ -224,7 +238,7 @@ export function DevelopmentsYandexMap({
       );
 
       placemark.events.add('click', () => {
-        onSelect(dev.id);
+        onSelectRef.current?.(dev.id);
       });
 
       placemarks.push(placemark);
@@ -234,28 +248,50 @@ export function DevelopmentsYandexMap({
     clusterer.add(placemarks);
 
     // Центрирование при смене фильтров
-    if (selectedId && placemarksMapRef.current.has(String(selectedId))) {
-      const pm = placemarksMapRef.current.get(String(selectedId));
+    const activeSelectedId = selectedIdRef.current;
+    if (activeSelectedId && placemarksMapRef.current.has(String(activeSelectedId))) {
+      const pm = placemarksMapRef.current.get(String(activeSelectedId));
       const coords = pm.geometry.getCoordinates();
       map.panTo(coords, { flying: true, duration: 600 });
-    } else if (placemarks.length > 0 && !selectedId) {
-      map.setBounds(clusterer.getBounds(), { checkZoomRange: true, zoomMargin: 40 });
+    } else if (placemarks.length > 0 && !activeSelectedId) {
+      try {
+        const bounds = clusterer.getBounds();
+        if (bounds) {
+          map.setBounds(bounds, { checkZoomRange: true, zoomMargin: 40 });
+        }
+      } catch { /* ignore */ }
     }
-  }, [developments]);
+  }, [developments, mapReady]);
 
-  // 3. Выбор конкретного ЖК из списка
+  // 3. Выбор конкретного ЖК из списка и подсветка метки
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !selectedId) return;
+    if (!mapReady || !map) return;
 
+    placemarksMapRef.current.forEach((pm, id) => {
+      const isSelected = selectedId && String(id) === String(selectedId);
+      try {
+        pm.options.set({
+          preset: isSelected ? 'islands#redDotIconWithCaption' : 'islands#blueDotIconWithCaption',
+          iconColor: isSelected ? '#EF4444' : '#0052FF'
+        });
+      } catch { /* ignore */ }
+    });
+
+    if (!selectedId) return;
     const pm = placemarksMapRef.current.get(String(selectedId));
     if (pm) {
       const coords = pm.geometry.getCoordinates();
-      map.panTo(coords, { flying: true, duration: 600 }).then(() => {
-        pm.balloon.open();
+      const targetZoom = Math.max(map.getZoom(), 15);
+      map.setCenter(coords, targetZoom, { duration: 450 }).then(() => {
+        try {
+          if (!pm.balloon.isOpen()) {
+            pm.balloon.open();
+          }
+        } catch { /* ignore */ }
       });
     }
-  }, [selectedId]);
+  }, [selectedId, mapReady]);
 
   return (
     <div 
@@ -264,7 +300,7 @@ export function DevelopmentsYandexMap({
         position: 'relative', 
         width: '100%', 
         height: height || '100%', 
-        minHeight: '480px',
+        minHeight: '440px',
         borderRadius: 'inherit',
         overflow: 'hidden',
         background: '#f1f5f9'
@@ -276,7 +312,7 @@ export function DevelopmentsYandexMap({
         style={{ 
           width: '100%', 
           height: '100%', 
-          minHeight: '480px',
+          minHeight: '440px',
           borderRadius: 'inherit'
         }} 
       />

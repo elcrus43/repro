@@ -7,9 +7,18 @@ export function DevelopmentCard({
   isSelected = false,
   onSelect = () => {},
   onOpenDetail = () => {},
-  onAddToSelection = () => {}
+  onAddToSelection = () => {},
+  ksmSummary = null,
+  liveSummary = null,
+  liveProviderLabel = 'КСМ live',
 }) {
   const dev = development;
+  const activeLiveSummary = liveSummary || ksmSummary;
+  const liveCount = activeLiveSummary
+    ? (activeLiveSummary.syncedCount || activeLiveSummary.totalCount || 0)
+    : 0;
+  const displayPriceFrom = activeLiveSummary?.minPrice || dev.price_from;
+  const displayPriceSqm = activeLiveSummary?.minPriceSqm || dev.price_sqm_from;
 
   return (
     <div
@@ -55,14 +64,21 @@ export function DevelopmentCard({
           <div className="dev-card-price-main">
             <span className="dev-price-label">Квартиры</span>
             <span className="dev-price-value">
-              {dev.price_from ? `от ${formatNumber(dev.price_from)} ₽` : 'По запросу'}
+              {displayPriceFrom ? `от ${formatNumber(displayPriceFrom)} ₽` : 'По запросу'}
             </span>
           </div>
-          {dev.price_sqm_from && (
-            <div className="dev-card-price-sqm">
-              от {formatNumber(dev.price_sqm_from)} ₽/м²
-            </div>
-          )}
+          <div className="dev-card-price-right">
+            {liveCount > 0 && (
+              <span className="dev-ksm-live-badge" title={`Актуальные свободные лоты (${liveProviderLabel})`}>
+                {liveProviderLabel}: {liveCount} кв.
+              </span>
+            )}
+            {displayPriceSqm && (
+              <div className="dev-card-price-sqm">
+                от {formatNumber(displayPriceSqm)} ₽/м²
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Room Types Chips */}
@@ -275,6 +291,29 @@ export function DevelopmentCard({
         }
         .dark .dev-price-value {
           color: #60a5fa;
+        }
+        .dev-card-price-right {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 3px;
+        }
+        .dev-ksm-live-badge {
+          display: inline-flex;
+          align-items: center;
+          background: #ecfdf5;
+          color: #047857;
+          border: 1px solid #a7f3d0;
+          font-size: 10px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 999px;
+          white-space: nowrap;
+        }
+        .dark .dev-ksm-live-badge {
+          background: #064e3b;
+          color: #a7f3d0;
+          border-color: #059669;
         }
         .dev-card-price-sqm {
           font-size: 11px;

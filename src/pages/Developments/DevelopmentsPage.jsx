@@ -10,6 +10,7 @@ import {
   LayoutGrid, 
   Map as MapIcon, 
   RotateCcw,
+  RefreshCw,
   ShieldCheck,
   ChevronDown,
   Sparkles,
@@ -18,6 +19,8 @@ import {
 } from 'lucide-react';
 import { 
   getStoredDevelopments, 
+  fetchLatestDevelopments,
+  getDevelopmentsSyncMeta,
   KIROV_DEVELOPERS, 
   HOUSING_CLASSES, 
   ROOM_TYPES, 
@@ -25,6 +28,7 @@ import {
 } from '../../data/developmentsData';
 import { KIROV_DISTRICTS } from '../../data/location';
 import { DevelopmentsMap } from '../../components/Map/DevelopmentsMap';
+import { DevelopmentsGoogleMap } from '../../components/Map/DevelopmentsGoogleMap';
 import { DevelopmentsYandexMap } from '../../components/Map/DevelopmentsYandexMap';
 import { DevelopmentCard } from './DevelopmentCard';
 import { DevelopmentDetailModal } from './DevelopmentDetailModal';
@@ -33,6 +37,63 @@ import { GlobalSearch } from '../../components/GlobalSearch';
 import { formatNumber } from '../../utils/format';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
+import {
+  KSM_PROJECT_SLUGS,
+  KSM_PROJECT_NAMES,
+  getKsmSlugForDevelopment,
+  fetchKsmLots,
+  syncKsmProject,
+  buildKsmSummaryByProject,
+} from '../../lib/ksmLots';
+import {
+  KSSK_PROJECT_SLUGS,
+  KSSK_PROJECT_NAMES,
+  getKsskSlugForDevelopment,
+  fetchKsskLots,
+  syncKsskProject,
+  buildKsskSummaryByProject,
+} from '../../lib/ksskLots';
+
+const LIVE_PROVIDERS = {
+  ksm: {
+    id: 'ksm',
+    label: 'КСМ',
+    slugs: KSM_PROJECT_SLUGS,
+    names: KSM_PROJECT_NAMES,
+    fetchLots: fetchKsmLots,
+    syncProject: syncKsmProject,
+    buildSummary: buildKsmSummaryByProject,
+    getSlug: getKsmSlugForDevelopment,
+    subtitle: 'Прямые данные по свободным квартирам из кабинета застройщика КСМ',
+    pillTitle: 'Синхронизация КСМ: живые остатки квартир с сайта застройщика',
+    syncAllTitle: 'Обновить свободные квартиры по всем 6 ЖК КСМ',
+  },
+  kssk: {
+    id: 'kssk',
+    label: 'КССК',
+    slugs: KSSK_PROJECT_SLUGS,
+    names: KSSK_PROJECT_NAMES,
+    fetchLots: fetchKsskLots,
+    syncProject: syncKsskProject,
+    buildSummary: buildKsskSummaryByProject,
+    getSlug: getKsskSlugForDevelopment,
+    subtitle: 'Актуальные свободные квартиры с сайта kvartiry.kssk.ru',
+    pillTitle: 'Синхронизация КССК: живые остатки квартир с kvartiry.kssk.ru',
+    syncAllTitle: 'Обновить свободные квартиры по всем 6 ЖК КССК',
+  },
+};
+
+function getLatestSyncedIso(projectsMeta = []) {
+  let latest = null;
+  for (const meta of projectsMeta) {
+    if (!meta?.lastSyncedAt) continue;
+    const t = new Date(meta.lastSyncedAt).getTime();
+    if (!Number.isNaN(t) && (!latest || t > latest)) {
+      latest = t;
+    }
+  }
+  return latest ? new Date(latest).toISOString() : null;
+}
 
 export default function DevelopmentsPage() {
   const { state, dispatch } = useApp();
@@ -40,14 +101,174 @@ export default function DevelopmentsPage() {
 
   // Data state
   const [developments, setDevelopments] = useState(() => getStoredDevelopments());
+  const [syncMeta, setSyncMeta] = useState(() => getDevelopmentsSyncMeta());
+  const [isSyncing, setIsSyncing] = useState(false);
   const [selectedDevId, setSelectedDevId] = useState(null);
   const [detailModalDev, setDetailModalDev] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  // Live Lots state (KSM & KSSK)
+  const [liveState, setLiveState] = useState({
+    ksm: { lots: [], projects: [] },
+    kssk: { lots: [], projects: [] },
+  });
+  const [liveProgress, setLiveProgress] = useState({
+    ksm: { active: false, current: 0, total: KSM_PROJECT_SLUGS.length, currentName: '' },
+    kssk: { active: false, current: 0, total: KSSK_PROJECT_SLUGS.length, currentName: '' },
+  });
+
   // View Mode: 'split' | 'grid' | 'map'
   const [viewMode, setViewMode] = useState('split');
-  // Map Provider: 'yandex' (Яндекс.Карты) | 'osm' (OpenStreetMap)
+  // Map Provider: 'yandex' (Яндекс.Карты) | 'google' (Google Карты) | 'osm' (OpenStreetMap)
   const [mapProvider, setMapProvider] = useState('yandex');
+
+  useEffect(() => {
+    let active = true;
+    fetchLatestDevelopments().then((res) => {
+      if (!active) return;
+      if (Array.isArray(res?.developments) && res.developments.length > 0) {
+        setDevelopments(res.developments);
+        setSyncMeta(getDevelopmentsSyncMeta());
+      }
+    });
+
+    Object.entries(LIVE_PROVIDERS).forEach(([providerId, provider]) => {
+      provider
+        .fetchLots()
+        .then((res) => {
+          if (!active) return;
+          setLiveState((prev) => ({
+            ...prev,
+            [providerId]: { lots: res.lots, projects: res.projects },
+          }));
+        })
+        .catch(() => {
+          // Non-blocking fallback when unauthenticated or in localStorage mode
+        });
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const liveSummaries = useMemo(
+    () => ({
+      ksm: buildKsmSummaryByProject(liveState.ksm.lots, liveState.ksm.projects),
+      kssk: buildKsskSummaryByProject(liveState.kssk.lots, liveState.kssk.projects),
+    }),
+    [liveState]
+  );
+
+  const liveLastSyncedAt = useMemo(
+    () => ({
+      ksm: getLatestSyncedIso(liveState.ksm.projects),
+      kssk: getLatestSyncedIso(liveState.kssk.projects),
+    }),
+    [liveState]
+  );
+
+  const applyProviderSyncResult = (providerId, slug, result) => {
+    const provider = LIVE_PROVIDERS[providerId];
+    const nextLots = Array.isArray(result?.lots) ? result.lots : [];
+    setLiveState((prev) => {
+      const prevProviderState = prev[providerId];
+      const nextMeta = {
+        projectSlug: slug,
+        projectName: result?.projectName || provider.names[slug] || slug,
+        totalCount: result?.totalCount ?? nextLots.length,
+        syncedCount: result?.syncedCount ?? nextLots.length,
+        lastSyncedAt: result?.syncedAt || new Date().toISOString(),
+        status: 'ok',
+        errorMessage: null,
+      };
+      const exists = prevProviderState.projects.some((m) => m.projectSlug === slug);
+      return {
+        ...prev,
+        [providerId]: {
+          lots: [
+            ...prevProviderState.lots.filter((lot) => lot.project_slug !== slug),
+            ...nextLots,
+          ],
+          projects: exists
+            ? prevProviderState.projects.map((m) => (m.projectSlug === slug ? nextMeta : m))
+            : [...prevProviderState.projects, nextMeta],
+        },
+      };
+    });
+  };
+
+  const handleSyncSingleProviderProject = async (providerId, slug) => {
+    const provider = LIVE_PROVIDERS[providerId];
+    if (!provider || !slug) return null;
+    try {
+      const result = await provider.syncProject(slug);
+      applyProviderSyncResult(providerId, slug, result);
+      const count = result?.syncedCount ?? result?.lots?.length ?? 0;
+      toast.success(`${provider.label} «${result?.projectName || provider.names[slug] || slug}»: загружено ${count} лотов`);
+      return result;
+    } catch (err) {
+      toast.error(err?.message || `Не удалось обновить лоты ${provider.label}`);
+      throw err;
+    }
+  };
+
+  const handleSyncAllForProvider = async (providerId) => {
+    const provider = LIVE_PROVIDERS[providerId];
+    if (!provider || liveProgress[providerId]?.active) return;
+
+    const total = provider.slugs.length;
+    let syncedLotsTotal = 0;
+    let failedCount = 0;
+
+    try {
+      for (let i = 0; i < total; i += 1) {
+        const slug = provider.slugs[i];
+        const name = provider.names[slug] || slug;
+        setLiveProgress((prev) => ({
+          ...prev,
+          [providerId]: { active: true, current: i + 1, total, currentName: name },
+        }));
+        try {
+          const result = await provider.syncProject(slug);
+          applyProviderSyncResult(providerId, slug, result);
+          syncedLotsTotal += result?.syncedCount ?? result?.lots?.length ?? 0;
+        } catch (err) {
+          failedCount += 1;
+          console.warn(`[${provider.label} sync] Failed for ${slug}:`, err?.message);
+        }
+      }
+
+      if (failedCount === 0) {
+        toast.success(`${provider.label} синхронизирован: ${syncedLotsTotal} свободных лотов по ${total} ЖК`);
+      } else if (failedCount < total) {
+        toast.warning(`${provider.label} обновлен частично (${total - failedCount}/${total} ЖК, ${syncedLotsTotal} лотов)`);
+      } else {
+        toast.error(`Не удалось синхронизировать лоты ${provider.label}. Проверьте авторизацию.`);
+      }
+    } finally {
+      setLiveProgress((prev) => ({
+        ...prev,
+        [providerId]: { active: false, current: 0, total, currentName: '' },
+      }));
+    }
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetchLatestDevelopments({ forceRefresh: true });
+      if (Array.isArray(res?.developments) && res.developments.length > 0) {
+        setDevelopments(res.developments);
+        setSyncMeta(getDevelopmentsSyncMeta());
+        toast.success(`База новостроек обновлена (${res.developments.length} ЖК)`);
+      }
+    } catch {
+      toast.error('Не удалось обновить базу новостроек');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -281,7 +502,7 @@ export default function DevelopmentsPage() {
               onChange={(e) => setPriceMin(e.target.value)}
               className="price-input"
             />
-            <span className="price-separator">—</span>
+            <span className="price-separator">-</span>
             <input
               type="number"
               placeholder="до 15 000 000"
@@ -391,7 +612,47 @@ export default function DevelopmentsPage() {
           )}
 
           <div className="dev-count-indicator">
-            Найдено: <strong>{filteredDevelopments.length}</strong> ЖК
+            {Object.entries(LIVE_PROVIDERS).map(([providerId, provider]) => {
+              const pLots = liveState[providerId].lots;
+              const pProgress = liveProgress[providerId];
+              const pLastSynced = liveLastSyncedAt[providerId];
+              return (
+                <div key={providerId} className="ksm-sync-control" title={provider.pillTitle}>
+                  <span className="ksm-live-pill">
+                    {provider.label} live: <strong>{pLots.length}</strong> кв.
+                    {pLastSynced ? ` (${new Date(pLastSynced).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})` : ''}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-ksm-sync"
+                    onClick={() => handleSyncAllForProvider(providerId)}
+                    disabled={pProgress.active}
+                    title={provider.syncAllTitle}
+                  >
+                    <RefreshCw size={12} className={pProgress.active ? 'animate-spin' : ''} style={{ display: 'inline', marginRight: 4 }} />
+                    {pProgress.active
+                      ? `${provider.label} ${pProgress.current}/${pProgress.total}: ${pProgress.currentName}`
+                      : `Обновить ${provider.label}`}
+                  </button>
+                </div>
+              );
+            })}
+            {syncMeta?.updatedAt && (
+              <span className="dev-sync-date" title="Дата последнего ежедневного обновления базы">
+                Обновлено: {new Date(syncMeta.updatedAt).toLocaleDateString('ru-RU')}
+              </span>
+            )}
+            <button
+              type="button"
+              className="btn-link-map"
+              onClick={handleManualSync}
+              disabled={isSyncing}
+              title="Обновить список новостроек из актуального каталога"
+            >
+              <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} style={{ display: 'inline', marginRight: 4 }} />
+              {isSyncing ? 'Обновление...' : 'Обновить'}
+            </button>
+            <span>Найдено: <strong>{filteredDevelopments.length}</strong> ЖК</span>
             {viewMode === 'grid' && (
               <button 
                 type="button" 
@@ -413,19 +674,31 @@ export default function DevelopmentsPage() {
           <div className="dev-list-column">
             {filteredDevelopments.length > 0 ? (
               <div className="dev-cards-grid">
-                {filteredDevelopments.map(dev => (
-                  <DevelopmentCard
-                    key={dev.id}
-                    development={dev}
-                    isSelected={dev.id === selectedDevId}
-                    onSelect={(id) => {
-                      setSelectedDevId(id);
-                      if (viewMode === 'grid') setViewMode('split');
-                    }}
-                    onOpenDetail={(d) => setDetailModalDev(d)}
-                    onAddToSelection={handleAddToSelection}
-                  />
-                ))}
+                {filteredDevelopments.map(dev => {
+                  const ksmSlug = getKsmSlugForDevelopment(dev);
+                  const ksskSlug = getKsskSlugForDevelopment(dev);
+                  const liveSummary = ksmSlug
+                    ? liveSummaries.ksm[ksmSlug] || null
+                    : ksskSlug
+                      ? liveSummaries.kssk[ksskSlug] || null
+                      : null;
+                  const liveProviderLabel = ksskSlug ? 'КССК live' : 'КСМ live';
+                  return (
+                    <DevelopmentCard
+                      key={dev.id}
+                      development={dev}
+                      isSelected={dev.id === selectedDevId}
+                      liveSummary={liveSummary}
+                      liveProviderLabel={liveProviderLabel}
+                      onSelect={(id) => {
+                        setSelectedDevId(id);
+                        if (viewMode === 'grid') setViewMode('split');
+                      }}
+                      onOpenDetail={(d) => setDetailModalDev(d)}
+                      onAddToSelection={handleAddToSelection}
+                    />
+                  );
+                })}
               </div>
             ) : (
               <div className="dev-empty-state">
@@ -440,7 +713,7 @@ export default function DevelopmentsPage() {
           </div>
         )}
 
-        {/* Right Column: Interactive Map (Яндекс.Карты / OSM) */}
+        {/* Right Column: Interactive Map (Google Карты / Яндекс.Карты / OSM) */}
         {viewMode !== 'grid' && (
           <div className={`dev-map-column ${viewMode === 'map' ? 'fullscreen' : ''}`}>
             {/* Map Provider Selector */}
@@ -460,6 +733,15 @@ export default function DevelopmentsPage() {
                 </button>
                 <button
                   type="button"
+                  className={`provider-pill ${mapProvider === 'google' ? 'active' : ''}`}
+                  onClick={() => setMapProvider('google')}
+                  title="Google Карты (Схема, Гибрид, Спутник)"
+                >
+                  <span className="pill-dot google" />
+                  <span>Google Карты</span>
+                </button>
+                <button
+                  type="button"
                   className={`provider-pill ${mapProvider === 'osm' ? 'active' : ''}`}
                   onClick={() => setMapProvider('osm')}
                   title="OpenStreetMap"
@@ -471,20 +753,31 @@ export default function DevelopmentsPage() {
             </div>
 
             <div className="dev-map-embed-wrapper">
-              {mapProvider === 'yandex' ? (
+              {mapProvider === 'google' && (
+                <DevelopmentsGoogleMap
+                  developments={filteredDevelopments}
+                  selectedId={selectedDevId}
+                  onSelect={setSelectedDevId}
+                  onOpenDetail={setDetailModalDev}
+                  height="100%"
+                />
+              )}
+              {mapProvider === 'yandex' && (
                 <DevelopmentsYandexMap
                   developments={filteredDevelopments}
                   selectedId={selectedDevId}
-                  onSelect={(id) => setSelectedDevId(id)}
-                  onOpenDetail={(dev) => setDetailModalDev(dev)}
+                  onSelect={setSelectedDevId}
+                  onOpenDetail={setDetailModalDev}
                   height="100%"
                 />
-              ) : (
+              )}
+              {mapProvider === 'osm' && (
                 <DevelopmentsMap
+                  provider="osm"
                   developments={filteredDevelopments}
                   selectedId={selectedDevId}
-                  onSelect={(id) => setSelectedDevId(id)}
-                  onOpenDetail={(dev) => setDetailModalDev(dev)}
+                  onSelect={setSelectedDevId}
+                  onOpenDetail={setDetailModalDev}
                   height="100%"
                 />
               )}
@@ -495,16 +788,38 @@ export default function DevelopmentsPage() {
       </main>
 
       {/* Modals */}
-      {detailModalDev && (
-        <DevelopmentDetailModal
-          development={detailModalDev}
-          onClose={() => setDetailModalDev(null)}
-          onSelectOnMap={(id) => {
-            setSelectedDevId(id);
-            setViewMode('split');
-          }}
-        />
-      )}
+      {detailModalDev && (() => {
+        const ksmSlug = getKsmSlugForDevelopment(detailModalDev);
+        const ksskSlug = getKsskSlugForDevelopment(detailModalDev);
+        const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : null;
+        const activeSlug = ksmSlug || ksskSlug;
+        const providerSpec = providerId ? LIVE_PROVIDERS[providerId] : null;
+        const detailLots = providerId && activeSlug
+          ? liveState[providerId].lots.filter((lot) => lot.project_slug === activeSlug)
+          : [];
+        const detailMeta = providerId && activeSlug
+          ? liveSummaries[providerId][activeSlug] || null
+          : null;
+        return (
+          <DevelopmentDetailModal
+            development={detailModalDev}
+            liveLots={detailLots}
+            liveMeta={detailMeta}
+            liveProvider={providerSpec ? {
+              id: providerSpec.id,
+              label: providerSpec.label,
+              slug: activeSlug,
+              subtitle: providerSpec.subtitle,
+            } : null}
+            onSyncLiveProject={providerId ? (slug) => handleSyncSingleProviderProject(providerId, slug) : null}
+            onClose={() => setDetailModalDev(null)}
+            onSelectOnMap={(id) => {
+              setSelectedDevId(id);
+              setViewMode('split');
+            }}
+          />
+        );
+      })()}
 
       {isAddModalOpen && (
         <DevelopmentFormModal
@@ -802,7 +1117,48 @@ export default function DevelopmentsPage() {
           color: var(--text-secondary, #475569);
           display: flex;
           align-items: center;
+          flex-wrap: wrap;
           gap: 10px;
+        }
+        .ksm-sync-control {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          padding: 3px 6px 3px 10px;
+          border-radius: 10px;
+        }
+        .dark .ksm-sync-control {
+          background: #064e3b;
+          border-color: #059669;
+        }
+        .ksm-live-pill {
+          font-size: 11px;
+          color: #047857;
+          white-space: nowrap;
+        }
+        .dark .ksm-live-pill {
+          color: #a7f3d0;
+        }
+        .btn-ksm-sync {
+          background: #059669;
+          color: #ffffff;
+          border: none;
+          border-radius: 7px;
+          padding: 4px 9px;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background 0.2s;
+        }
+        .btn-ksm-sync:hover:not(:disabled) {
+          background: #047857;
+        }
+        .btn-ksm-sync:disabled {
+          opacity: 0.75;
+          cursor: wait;
         }
         .btn-link-map {
           background: var(--primary-light, #eef4ff);
@@ -816,36 +1172,27 @@ export default function DevelopmentsPage() {
         }
         .dev-content-layout {
           display: flex;
-          flex: 1;
           gap: 20px;
-          min-height: 540px;
-          height: calc(100vh - 250px);
           width: 100%;
         }
-        @media (max-width: 960px) {
-          .dev-content-layout.split {
-            flex-direction: column-reverse;
-            height: auto;
-          }
-          .dev-content-layout.split .dev-list-column,
-          .dev-content-layout.split .dev-map-column {
-            width: 100% !important;
-          }
-          .dev-content-layout.split .dev-map-column {
-            height: 420px !important;
-            min-height: 420px !important;
-          }
+        .dev-content-layout.split {
+          flex: 0 0 auto;
+          height: calc(100vh - 250px);
+          min-height: 520px;
+          max-height: 760px;
+          overflow: hidden;
         }
         .dev-content-layout.split .dev-list-column {
           width: 50%;
           overflow-y: auto;
           padding-right: 6px;
           height: 100%;
+          min-height: 0;
         }
         .dev-content-layout.split .dev-map-column {
           width: 50%;
           height: 100% !important;
-          min-height: 480px !important;
+          min-height: 0 !important;
           border-radius: var(--radius-lg, 16px);
           overflow: hidden;
           border: 1px solid var(--border, #e2e8f0);
@@ -858,6 +1205,8 @@ export default function DevelopmentsPage() {
           display: flex;
           align-items: center;
           justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
           padding: 8px 14px;
           background: var(--surface, #ffffff);
           border-bottom: 1px solid var(--border, #e2e8f0);
@@ -872,6 +1221,7 @@ export default function DevelopmentsPage() {
         }
         .dev-map-provider-pills {
           display: flex;
+          flex-wrap: wrap;
           gap: 6px;
         }
         .provider-pill {
@@ -904,6 +1254,9 @@ export default function DevelopmentsPage() {
           height: 8px;
           border-radius: 50%;
         }
+        .pill-dot.google {
+          background: #10b981;
+        }
         .pill-dot.yandex {
           background: #ef4444;
         }
@@ -914,25 +1267,62 @@ export default function DevelopmentsPage() {
           flex: 1;
           position: relative;
           width: 100%;
-          min-height: 440px;
+          min-height: 0;
+          height: 100%;
         }
         .dev-content-layout.grid .dev-list-column {
           width: 100%;
           overflow-y: auto;
         }
         .dev-content-layout.map {
-          height: calc(100vh - 240px);
-          min-height: 560px;
+          flex: 0 0 auto;
+          height: calc(100vh - 230px);
+          min-height: 540px;
         }
         .dev-content-layout.map .dev-map-column.fullscreen {
           width: 100% !important;
           height: 100% !important;
-          min-height: 560px !important;
+          min-height: 540px !important;
           border-radius: var(--radius-lg, 16px);
           overflow: hidden;
           border: 1px solid var(--border, #e2e8f0);
           display: flex;
           flex-direction: column;
+        }
+        @media (max-width: 960px) {
+          .view-mode-toggle {
+            flex-wrap: wrap;
+            max-width: 100%;
+          }
+          .mode-btn {
+            padding: 6px 10px;
+            font-size: 12px;
+          }
+          .dev-content-layout.split {
+            flex-direction: column-reverse;
+            height: auto;
+            max-height: none;
+            overflow: visible;
+          }
+          .dev-content-layout.split .dev-list-column,
+          .dev-content-layout.split .dev-map-column {
+            width: 100% !important;
+          }
+          .dev-content-layout.split .dev-list-column {
+            height: auto;
+            overflow-y: visible;
+            padding-right: 0;
+          }
+          .dev-content-layout.split .dev-map-column {
+            height: auto !important;
+            min-height: 440px !important;
+            position: relative;
+          }
+          .dev-content-layout.split .dev-map-embed-wrapper {
+            height: 420px;
+            min-height: 420px;
+            flex: none;
+          }
         }
         .dev-cards-grid {
           display: grid;
