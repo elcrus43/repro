@@ -9,7 +9,8 @@
    - Настоящая причина: Gemini отдаёт `400 User location is not supported` на российский IP локальной машины, а `formatAiError` замаскировал это под нехватку баланса (сработал маркер `402` у OpenModel/Zhipu). Клиент, видя ошибку, уходил в шаблонный fallback.
    - Добавил в `src/lib/apiConfig.js` `getAiProxyUrl()` и `aiFetch()`: в dev-режиме и в Capacitor AI-запросы идут на боевой домен (`Vercel`, US-выход), в проде остаются относительными.
    - Перевёл на `aiFetch()` все места с копипастной проверкой `isCapacitor`: `adGenerator.js`, `houseParser.js`, `CmaReport.jsx`, `EgrnScanModal.jsx`, `PassportScanModal.jsx`, `Properties/DetailsPage.jsx` (Авито-аналоги).
-   - Переписал `formatAiError` в `api/ai-proxy.js` на классификацию по каждому провайдеру: геоблокировка, исчерпанный баланс, отсутствующий ключ, прочее. Заголовок и подсказка теперь соответствуют реальной причине.
+   - Переписал `formatAiError` в `api/ai-proxy.js` на классификацию по каждому провайдеру: геоблокировка, исчерпанный баланс, лимит количества запросов, отсутствующий ключ, прочее.
+   - Второй баг, найденный уже на проде: текст `429 You exceeded your current quota` содержит слова "billing details", и первая версия классификатора принимала её за нехватку денег. Из-за этого цепочка Gemini обрывалась на первой же модели вместо перехода к следующей. Добавил отдельные предикаты `isFatalBillingError` (только `402`/prepayment/spending cap/insufficient balance) и `isQuotaError` (`429`/`RESOURCE_EXHAUSTED`), обрыв цепочки теперь только по реальным проблемам с балансом.
    - Добавил тесты: `src/lib/apiConfig.test.js` (3 теста) и `tests/api/ai-proxy.test.js` (4 теста).
    - Заметил, что `vitest.config.js` искал тесты только в `src/**`, из-за чего перенесённые ранее серверные тесты в `tests/api/` вообще не запускались. Расширил include до `tests/**/*.test.{js,ts}`.
 

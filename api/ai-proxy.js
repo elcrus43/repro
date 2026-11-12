@@ -167,32 +167,70 @@ export default async function handler(req, res) {
 }
 
 const GEO_BLOCK_MARK = 'User location is not supported';
+const BILLING_FATAL_MARKS = ['spending cap', 'prepayment', 'insufficient balance', '余额不足', '1113'];
+
+/**
+ * Ошибка уровня аккаунта (баланс или лимит расходов): следующие модели того же
+ * провайдера тоже упадут, поэтому цепочку можно обрывать.
+ */
+function isFatalBillingError(status, text) {
+  return status === 402 || BILLING_FATAL_MARKS.some(mark => text.includes(mark));
+}
+
+/**
+ * Лимит количества запросов (в отличие от баланса у провайдера своя квота на
+ * каждую модель), поэтому следующая модель может спокойно сработать.
+ */
+function isQuotaError(status, text) {
+  return status === 429 || text.includes('RESOURCE_EXHAUSTED') || text.includes('exceeded your current quota');
+}
 
 /**
  * Классифицирует ошибку провайдера: геоблокировка, закончившийся баланс,
- * отсутствующий ключ или прочее.
+ * лимит запросов, отсутствующий ключ или прочее.
  */
 function classifyProviderError(providerErrors) {
   if (providerErrors.length === 0) return 'missing';
   const text = providerErrors.join(' ');
   if (text.includes('is not configured')) return 'no_key';
   if (text.includes(GEO_BLOCK_MARK)) return 'geo';
-  if (text.includes('spending cap') || text.includes('prepayment') || text.includes('billing')
-    || text.includes('insufficient balance') || text.includes('余额不足') || text.includes('1113')
-    || text.includes('402') || text.includes('RESOURCE_EXHAUSTED')) return 'balance';
+  if (isFatalBillingError(0, text)) return 'balance';
+  if (isQuotaError(0, text)) return 'quota';
   return 'other';
 }
 
-const PROVIDER_GEO_HINT = '• {name}: API блокирует запросы из региона сервера. Нужен выход в поддерживаемую страну.';
-const PROVIDER_BALANCE_HINT = '• {name}: исчерпан баланс или лимит расходов - требуется пополнение аккаунта.';
-const PROVIDER_NO_KEY_HINT = '• {name}: ключ не настроен в переменных окружения.';
-const PROVIDER_OTHER_HINT = '• {name}: {detail}';
+const PROVIDER_HINTS = {
+  geo: '• {name}: API блокирует запросы из региона сервера. Нужен выход в поддерживаемую страну.',
+  balance: '• {name}: исчерпан баланс или лимит расходов - требуется пополнение аккаунта.',
+  quota: '• {name}: превышен лимит количества запросов (квота на модель).',
+  no_key: '• {name}: ключ не настроен в переменных окружения.',
+  other: '• {name}: {detail}',
+};
 
 const PROVIDER_LABELS = [
   ['gemini', 'Google Gemini (AI Studio)'],
   ['openmodel', 'OpenModel (DeepSeek)'],
   ['zhipu', 'Zhipu AI (GLM)'],
 ];
+
+const ERROR_RESULT_TEXT = {
+  balance: {
+    header: 'У ИИ-провайдеров закончились деньги на балансе:',
+    footer: 'Для возобновления работы пополните баланс одного из сервисов или увеличьте лимит расходов в Google AI Studio.',
+  },
+  quota: {
+    header: 'ИИ-провайдеры превысили лимит запросов:',
+    footer: 'Лимит бесплатного тарифа Google - 20 генераций в сутки на модель, он сбрасывается автоматически. Для мгновенного увеличения лимита подключите платный тариф в AI Studio.',
+  },
+  geo: {
+    header: 'ИИ-провайдеры недоступны из-за геоблокировки:',
+    footer: 'Запросы к ИИ должны идти через серверный прокси (Vercel, US). Локальный запуск с российского IP блокируется Google - используйте домен reacrm.ru или VPN.',
+  },
+  other: {
+    header: 'Все подключенные ИИ-провайдеры вернули ошибки:',
+    footer: 'Проверьте настройки AI-провайдеров в переменных окружения и параметры запроса.',
+  },
+};
 
 export function formatAiError(errors) {
   if (!errors || errors.length === 0) return 'Все модели ИИ недоступны или не сконфигурированы.';
@@ -205,10 +243,7 @@ export function formatAiError(errors) {
     if (own.length === 0) continue;
     const kind = classifyProviderError(own);
     kinds.push(kind);
-    const template = kind === 'geo' ? PROVIDER_GEO_HINT
-      : kind === 'balance' ? PROVIDER_BALANCE_HINT
-      : kind === 'no_key' || kind === 'missing' ? PROVIDER_NO_KEY_HINT
-      : PROVIDER_OTHER_HINT;
+    const template = PROVIDER_HINTS[kind] || PROVIDER_HINTS.other;
     list.push(template
       .replace('{name}', name)
       .replace('{detail}', own[0].slice(0, 200))
@@ -217,18 +252,10 @@ export function formatAiError(errors) {
 
   if (list.length === 0) return errors.join(' | ');
 
-  const hasGeo = kinds.includes('geo');
-  const hasBalance = kinds.includes('balance');
-
-  let header = 'Все подключенные ИИ-провайдеры вернули ошибки:';
-  let footer = 'Проверьте настройки AI-провайдеров в переменных окружения и параметры запроса.';
-
-  if (hasBalance) {
-    footer = 'Для возобновления работы пополните баланс одного из сервисов или увеличьте лимит расходов в Google AI Studio.';
-  } else if (hasGeo) {
-    header = 'ИИ-провайдеры недоступны из-за геоблокировки:';
-    footer = 'Запросы к ИИ должны идти через серверный прокси (Vercel, US). Локальный запуск с российского IP блокируется Google - используйте домен reacrm.ru или VPN.';
-  }
+  // Приоритет причины: деньги -> лимит запросов -> геоблокировка -> прочее.
+  const kindOrder = ['balance', 'quota', 'geo', 'no_key', 'missing', 'other'];
+  const mainKind = kindOrder.find(kind => kinds.includes(kind)) || 'other';
+  const { header, footer } = ERROR_RESULT_TEXT[mainKind];
 
   return `${header}\n\n${list.join('\n')}\n\n${footer}`;
 }
@@ -266,9 +293,9 @@ async function handleGenerateAd(prompt) {
           const errText = await response.text();
           console.warn(`[ai-proxy] Gemini (${modelName}) returned status ${response.status}:`, errText);
           providerErrors.push(`Gemini ${modelName} (${response.status}): ${errText}`);
-          // Обрыв только при проблемах с биллингом всего проекта;
-          // обычный 429 по лимиту модели не мешает попробовать следующую.
-          if (errText.includes('spending cap') || errText.includes('prepayment') || errText.includes('billing')) {
+          // Баланс/лимит расходов - это уровень всего проекта, дальше нет смысла.
+          // 429 - квота конкретной модели, у следующей она своя.
+          if (isFatalBillingError(response.status, errText)) {
             break;
           }
         }
