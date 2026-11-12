@@ -5,9 +5,9 @@ import {
   isAuthorizedCronRequest,
   resolveProviders,
   runScheduledLotsSync,
-} from './cron-lots.js';
-import { KSM_PROJECTS } from './ksm-lots.js';
-import { KSSK_PROJECTS } from './kssk-lots.js';
+} from '../../api/cron-lots.js';
+import { KSM_PROJECTS } from '../../api/ksm-lots.js';
+import { KSSK_PROJECTS } from '../../api/kssk-lots.js';
 
 describe('cron-lots config and helpers', () => {
   it('exports maxDuration 60', () => {

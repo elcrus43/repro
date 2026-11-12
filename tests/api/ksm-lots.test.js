@@ -4,7 +4,7 @@ import {
   normalizeRoomsType,
   parseTotalCount,
   parseApartmentsPageHtml,
-} from './ksm-lots.js';
+} from '../../api/ksm-lots.js';
 
 describe('KSM_PROJECTS whitelist', () => {
   it('contains all 6 KSM project slugs', () => {

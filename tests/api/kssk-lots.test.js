@@ -3,7 +3,7 @@ import {
   KSSK_PROJECTS,
   parseKsskSections,
   parseKsskHouseHtml,
-} from './kssk-lots.js';
+} from '../../api/kssk-lots.js';
 
 describe('KSSK_PROJECTS catalog mapping', () => {
   it('maps all 6 KSSK residential complexes to house paths', () => {
