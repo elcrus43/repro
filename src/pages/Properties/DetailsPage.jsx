@@ -5,6 +5,7 @@ import { useToastContext } from '../../components/Toast';
 import { formatNumber, formatPhone, stripPhone, toLocalISOString, parseLocalDateTime, formatDate } from '../../utils/format';
 import { isDealTypeCompatible } from '../../utils/matching';
 import { getToken } from '../../lib/neon';
+import { aiFetch } from '../../lib/apiConfig';
 import { nanoid } from '../../utils/nanoid';
 import { 
     Pencil, Trash, Sparkles, Building2, MapPin,
@@ -131,14 +132,11 @@ function NewBuildsSelection({ currentProp, allProperties, onNavigate }) {
             if (!currentProp) return;
             setLoadingAvito(true);
             try {
-                const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
-                const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
-                
                 const token = getToken();
                 const headers = { 'Content-Type': 'application/json' };
                 if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                const res = await fetch(proxyUrl, {
+                const res = await aiFetch({
                     method: 'POST',
                     headers,
                     body: JSON.stringify({

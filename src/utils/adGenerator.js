@@ -1,6 +1,7 @@
 import { BUILDING_TYPES, PROPERTY_TYPES, BALCONY_LABELS, RENOVATION_LABELS, MARKET_LABELS } from '../data/constants.js';
 import { parseHouseFromAddress } from './houseParser.js';
 import { getToken } from '../lib/neon.js';
+import { aiFetch } from '../lib/apiConfig.js';
 
 const TYPE_WORDS = {
     apartment: 'квартира',
@@ -258,15 +259,12 @@ ${contactsPrompt}
 - НЕ используй звездочки '*' (не пиши списки со звездочками, не пиши жирным шрифтом **текст** или курсивом *текст*). Название заголовка блока пиши просто текстом (например, О доме:, Документы:).
 - Текст должен быть готов к публикации, без каких-либо вводных фраз от тебя (например, без "Вот ваше объявление:").`;
 
-    const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
-    const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
-
     try {
         const token = getToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(proxyUrl, {
+        const response = await aiFetch({
             method: 'POST',
             headers,
             body: JSON.stringify({

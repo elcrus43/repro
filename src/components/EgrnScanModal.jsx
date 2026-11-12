@@ -2,6 +2,7 @@
 import { X, Loader2, CheckCircle, AlertTriangle, Upload, FileText, RefreshCw, User, Home, ChevronRight } from 'lucide-react';
 import { useToastContext } from './Toast';
 import { getToken } from '../lib/neon';
+import { aiFetch } from '../lib/apiConfig';
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -146,16 +147,12 @@ export function EgrnScanModal({ isOpen, onClose, onApplyProperty, onApplyOwner }
       }
 
       setProgressStatus('Распознавание выписки ЕГРН через ИИ...');
-      const isCapacitor = typeof window !== 'undefined' && (
-        window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === ''
-      );
-      const proxyUrl = isCapacitor ? 'https://reacrm.ru/api/ai-proxy' : '/api/ai-proxy';
-      
+
       const token = getToken();
       const headers = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
 
-      const response = await fetch(proxyUrl, {
+      const response = await aiFetch({
         method: 'POST',
         headers,
         body: JSON.stringify({

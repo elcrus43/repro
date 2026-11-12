@@ -5,6 +5,7 @@
  */
 
 import { getToken } from '../lib/neon.js';
+import { aiFetch } from '../lib/apiConfig.js';
 
 // ─── Маппинг городов на slug для dom.mingkh.ru ───────────────────────────────
 const CITY_SLUGS = {
@@ -251,15 +252,12 @@ ${urlHints ? `\nПрямые ссылки для поиска:\n${urlHints}\n\n�
 
 Верни ТОЛЬКО JSON, без markdown, без пояснений.`;
 
-    const isCapacitor = typeof window !== 'undefined' && (window.Capacitor || window.location.href.startsWith('file:') || window.location.hostname === '');
-    const proxyUrl = isCapacitor ? `https://reacrm.ru/api/ai-proxy` : `/api/ai-proxy`;
-
     try {
         const token = getToken();
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const response = await fetch(proxyUrl, {
+        const response = await aiFetch({
             method: 'POST',
             headers,
             body: JSON.stringify({

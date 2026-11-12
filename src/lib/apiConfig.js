@@ -53,6 +53,27 @@ export function buildApiUrl(endpoint, originOverride = null) {
 }
 
 /**
+ * URL AI-прокси.
+ *
+ * Gemini блокирует запросы с российских IP ("User location is not supported"),
+ * поэтому обращения к ИИ всегда должны уходить на серверный прокси (Vercel/US):
+ *  - в мобильном приложении и в dev-режиме - на основной домен (или VITE_API_URL);
+ *  - в продакшен-сборке - относительный путь на текущем origin.
+ */
+export function getAiProxyUrl() {
+  const endpoint = '/api/ai-proxy';
+  const isDev = typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.DEV;
+
+  if (isCapacitorApp()) {
+    return buildApiUrl(endpoint);
+  }
+  if (isDev) {
+    return buildApiUrl(endpoint, getApiBaseUrl() || PRIMARY_API_ORIGIN);
+  }
+  return buildApiUrl(endpoint);
+}
+
+/**
  * Обёртка над fetch с автоматическим переключением на резервный домен
  * (актуально для мобильного приложения, если основной домен временно недоступен у сотового оператора)
  */
@@ -69,6 +90,28 @@ export async function apiFetch(endpoint, options = {}) {
       const fallbackUrl = buildApiUrl(endpoint, FALLBACK_API_ORIGIN);
       if (fallbackUrl !== url) {
         console.warn(`[apiConfig] Request to ${url} failed (${err.message}). Retrying with fallback: ${fallbackUrl}`);
+        return fetch(fallbackUrl, options);
+      }
+    }
+    throw err;
+  }
+}
+
+/**
+ * Запрос к AI-прокси с резервным доменом.
+ * Использует getAiProxyUrl(), чтобы ИИ-вызовы всегда выполнялись с сервера (US),
+ * а не с локального IP разработчика.
+ */
+export async function aiFetch(options = {}) {
+  const url = getAiProxyUrl();
+  try {
+    return await fetch(url, options);
+  } catch (err) {
+    const isNetworkErr = err.name !== 'AbortError';
+    if (isNetworkErr && /^https?:\/\//.test(url)) {
+      const fallbackUrl = buildApiUrl('/api/ai-proxy', FALLBACK_API_ORIGIN);
+      if (fallbackUrl !== url) {
+        console.warn(`[apiConfig] AI request to ${url} failed (${err.message}). Retrying with fallback: ${fallbackUrl}`);
         return fetch(fallbackUrl, options);
       }
     }

@@ -1,13 +1,15 @@
+/* global process */
 /**
  * api/ai-proxy.js — Vercel Serverless Function
  *
- * Прокси для работы с AI-провайдерами из России.
- * Запросы от клиента перенаправляются сюда, а Vercel уже обращается к API.
+ * Прокси для работы с AI-провайдерами. Браузер и мобильное приложение всегда
+ * ходят сюда, а Gemini/OpenModel/Zhipu уже вызывает сервер Vercel (US-выход),
+ * поэтому запросы не упираются в региональные блокировки на стороне клиента.
  *
- * Цепочка fallback (оптимизировано для работы из РФ):
- *   1. DeepSeek V4 Flash via OpenModel (быстро, доступно из РФ)
- *   2. Zhipu AI GLM (китайский провайдер, доступен из РФ)
- *   3. Gemini (резерв, может быть недоступен из РФ)
+ * Цепочка fallback:
+ *   1. Google Gemini (free tier для Flash-моделей)
+ *   2. DeepSeek/Qwen через OpenModel
+ *   3. Zhipu AI GLM
  */
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
@@ -164,27 +166,71 @@ export default async function handler(req, res) {
   }
 }
 
+const GEO_BLOCK_MARK = 'User location is not supported';
+
+/**
+ * Классифицирует ошибку провайдера: геоблокировка, закончившийся баланс,
+ * отсутствующий ключ или прочее.
+ */
+function classifyProviderError(providerErrors) {
+  if (providerErrors.length === 0) return 'missing';
+  const text = providerErrors.join(' ');
+  if (text.includes('is not configured')) return 'no_key';
+  if (text.includes(GEO_BLOCK_MARK)) return 'geo';
+  if (text.includes('spending cap') || text.includes('prepayment') || text.includes('billing')
+    || text.includes('insufficient balance') || text.includes('余额不足') || text.includes('1113')
+    || text.includes('402') || text.includes('RESOURCE_EXHAUSTED')) return 'balance';
+  return 'other';
+}
+
+const PROVIDER_GEO_HINT = '• {name}: API блокирует запросы из региона сервера. Нужен выход в поддерживаемую страну.';
+const PROVIDER_BALANCE_HINT = '• {name}: исчерпан баланс или лимит расходов - требуется пополнение аккаунта.';
+const PROVIDER_NO_KEY_HINT = '• {name}: ключ не настроен в переменных окружения.';
+const PROVIDER_OTHER_HINT = '• {name}: {detail}';
+
+const PROVIDER_LABELS = [
+  ['gemini', 'Google Gemini (AI Studio)'],
+  ['openmodel', 'OpenModel (DeepSeek)'],
+  ['zhipu', 'Zhipu AI (GLM)'],
+];
+
 export function formatAiError(errors) {
   if (!errors || errors.length === 0) return 'Все модели ИИ недоступны или не сконфигурированы.';
 
-  const allText = errors.join(' ');
-  const isSpendingCap = allText.includes('spending cap') || allText.includes('prepayment') || allText.includes('billing');
-  const isInsufficientBalance = allText.includes('insufficient balance') || allText.includes('余额不足') || allText.includes('1113') || allText.includes('402');
+  const list = [];
+  const kinds = [];
 
-  if (isSpendingCap || isInsufficientBalance) {
-    const list = [];
-    if (errors.some(e => e.includes('Gemini'))) {
-      list.push('• Google Gemini: исчерпан месячный лимит расходов (Spend Cap) в Google AI Studio. Увеличьте лимит на https://ai.studio/spend');
-    }
-    if (errors.some(e => e.includes('OpenModel'))) {
-      list.push('• OpenModel (DeepSeek): нулевой баланс на аккаунте openmodel.ai (требуется пополнение).');
-    }
-    if (errors.some(e => e.includes('Zhipu'))) {
-      list.push('• Zhipu AI (GLM): исчерпан баланс токенов на open.bigmodel.cn (требуется пополнение).');
-    }
-    return `Лимиты всех подключенных ИИ-провайдеров исчерпаны:\n\n${list.join('\n')}\n\nДля возобновления работы пополните баланс одного из сервисов или увеличьте лимит расходов в Google AI Studio.`;
+  for (const [marker, name] of PROVIDER_LABELS) {
+    const own = errors.filter(e => e.toLowerCase().includes(marker));
+    if (own.length === 0) continue;
+    const kind = classifyProviderError(own);
+    kinds.push(kind);
+    const template = kind === 'geo' ? PROVIDER_GEO_HINT
+      : kind === 'balance' ? PROVIDER_BALANCE_HINT
+      : kind === 'no_key' || kind === 'missing' ? PROVIDER_NO_KEY_HINT
+      : PROVIDER_OTHER_HINT;
+    list.push(template
+      .replace('{name}', name)
+      .replace('{detail}', own[0].slice(0, 200))
+    );
   }
-  return errors.join(' | ');
+
+  if (list.length === 0) return errors.join(' | ');
+
+  const hasGeo = kinds.includes('geo');
+  const hasBalance = kinds.includes('balance');
+
+  let header = 'Все подключенные ИИ-провайдеры вернули ошибки:';
+  let footer = 'Проверьте настройки AI-провайдеров в переменных окружения и параметры запроса.';
+
+  if (hasBalance) {
+    footer = 'Для возобновления работы пополните баланс одного из сервисов или увеличьте лимит расходов в Google AI Studio.';
+  } else if (hasGeo) {
+    header = 'ИИ-провайдеры недоступны из-за геоблокировки:';
+    footer = 'Запросы к ИИ должны идти через серверный прокси (Vercel, US). Локальный запуск с российского IP блокируется Google - используйте домен reacrm.ru или VPN.';
+  }
+
+  return `${header}\n\n${list.join('\n')}\n\n${footer}`;
 }
 
 async function handleGenerateAd(prompt) {
@@ -890,7 +936,7 @@ async function findNewBuildAnalogs(sql, property) {
   return results.slice(0, 8).map(row => {
     let raw = row.raw_data || {};
     if (typeof raw === 'string') {
-      try { raw = JSON.parse(raw); } catch (e) { raw = {}; }
+      try { raw = JSON.parse(raw); } catch (_e) { raw = {}; }
     }
     const totalArea = row.total_area ? parseFloat(row.total_area) : null;
     const price = Number(row.price);
