@@ -191,6 +191,11 @@ export function CmaReport({ property, onClose, onApplyPrice }) {
                                     );
                                 })}
                             </div>
+                            <div style={styles.freshness}>
+                                {data.sample_size != null ? `В выборке: ${data.sample_size} объявл.` : ''}
+                                {data.data_as_of ? ` · обновлено ${new Date(data.data_as_of).toLocaleDateString('ru-RU')}` : ''}
+                                {data.data_stale ? ' · данные устарели' : ''}
+                            </div>
                         </div>
 
                         <div style={{ ...styles.statsCard, minWidth: 160 }}>
@@ -440,6 +445,12 @@ const styles = {
         borderRadius: 8,
         fontSize: 12,
         fontWeight: 600
+    },
+    freshness: {
+        marginTop: 10,
+        fontSize: 12,
+        color: 'var(--text-secondary)',
+        opacity: 0.75
     },
     confidenceBadge: {
         display: 'inline-flex',

@@ -19,6 +19,9 @@ const OPENMODEL_API_KEY = process.env.OPENMODEL_API_KEY || process.env.VITE_OPEN
 const NEON_DATABASE_URL = process.env.NEON_DATABASE_URL;
 const NEON_JWT_SECRET = process.env.NEON_JWT_SECRET;
 
+// CMA uses only listings seen by the crawler within this window.
+const CMA_FRESH_DAYS = Math.max(1, parseInt(process.env.CMA_FRESH_DAYS || '30', 10) || 30);
+
 export const config = {
   api: {
     bodyParser: {
@@ -517,7 +520,13 @@ async function handleRunCma(property) {
   console.log('[handleRunCma] Inputs:', JSON.stringify(property));
 
   const sql = neon(NEON_DATABASE_URL);
-  const analogs = await findLocalAnalogs(sql, property);
+  let analogs = await findLocalAnalogs(sql, property);
+  let usedStale = false;
+  if (analogs.length === 0) {
+    analogs = await findLocalAnalogs(sql, property, { allowStale: true });
+    usedStale = analogs.length > 0;
+    if (usedStale) console.warn('[CMA] No fresh listings found, falling back to stale cache');
+  }
 
   if (analogs.length === 0) {
     throw new Error('Не найдено похожих предложений (аналогов) в базе данных. Пожалуйста, сначала добавьте объявления.');
@@ -539,6 +548,12 @@ async function handleRunCma(property) {
   if (filteredAnalogs.length === 0) {
     filteredAnalogs = analogs;
   }
+
+  const newestSeenTs = filteredAnalogs.reduce((acc, a) => {
+    const ts = a.last_seen_at ? new Date(a.last_seen_at).getTime() : 0;
+    return Number.isFinite(ts) && ts > acc ? ts : acc;
+  }, 0);
+  const dataAsOf = newestSeenTs ? new Date(newestSeenTs).toISOString() : null;
 
   const finalPricesPerSqm = filteredAnalogs.map(a => Number(a.price) / parseFloat(a.total_area));
   const totalArea = parseFloat(property.total_area || property.area_total || 40);
@@ -604,6 +619,7 @@ async function handleRunCma(property) {
 - Средняя цена за кв.м: ${pricePerSqmAvg} руб.
 - Медианная цена за кв.м: ${pricePerSqmMedian} руб.
 - Отклонение заявленной цены от рынка: ${positionPct}%
+- Данные обновлены: ${dataAsOf || 'нет данных'}
 
 Конкурирующие предложения на рынке:
 ${analogsText}
@@ -654,11 +670,15 @@ ${analogsText}
     days_forecast_current: daysForecastCurrent,
     days_forecast_optimal: daysForecastOptimal,
     sources_count: sourcesCount,
-    confidence: confidence
+    confidence: confidence,
+    data_as_of: dataAsOf,
+    sample_size: filteredAnalogs.length,
+    freshness_days: CMA_FRESH_DAYS,
+    data_stale: usedStale
   };
 }
 
-async function findLocalAnalogs(sql, property) {
+async function findLocalAnalogs(sql, property, { allowStale = false } = {}) {
   const city = property.city || 'Москва';
   const dealType = (property.deal_type || 'SALE').toUpperCase();
   const rooms = property.rooms !== undefined && property.rooms !== null ? parseInt(property.rooms) : 1;
@@ -666,6 +686,8 @@ async function findLocalAnalogs(sql, property) {
   const district = property.district || '';
   const lat = property.latitude ? parseFloat(property.latitude) : null;
   const lon = property.longitude ? parseFloat(property.longitude) : null;
+  // Live listings only: the crawler refreshes last_seen_at on every full cycle.
+  const freshCutoff = allowStale ? null : new Date(Date.now() - CMA_FRESH_DAYS * 24 * 60 * 60 * 1000);
 
   // We define search steps.
   // 1. Geo-location (within 1.5 km)
@@ -674,14 +696,14 @@ async function findLocalAnalogs(sql, property) {
     const lon_delta = 1.5 / (111.0 * 0.57);
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE source = 'AVITO'
-        AND city = ${city}
+      WHERE city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
         AND total_area BETWEEN ${area - 5} AND ${area + 5}
         AND latitude BETWEEN ${lat - lat_delta} AND ${lat + lat_delta}
         AND longitude BETWEEN ${lon - lon_delta} AND ${lon + lon_delta}
+        AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
       ORDER BY last_seen_at DESC
       LIMIT 50
     `;
@@ -695,13 +717,13 @@ async function findLocalAnalogs(sql, property) {
   if (district) {
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE source = 'AVITO'
-        AND city = ${city}
+      WHERE city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
         AND total_area BETWEEN ${area - 5} AND ${area + 5}
         AND district ILIKE ${'%' + district + '%'}
+        AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
       ORDER BY last_seen_at DESC
       LIMIT 50
     `;
@@ -715,12 +737,12 @@ async function findLocalAnalogs(sql, property) {
   {
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE source = 'AVITO'
-        AND city = ${city}
+      WHERE city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
         AND total_area BETWEEN ${area - 5} AND ${area + 5}
+        AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
       ORDER BY last_seen_at DESC
       LIMIT 50
     `;
@@ -734,12 +756,12 @@ async function findLocalAnalogs(sql, property) {
   {
     const rows = await sql`
       SELECT * FROM analog_listings
-      WHERE source = 'AVITO'
-        AND city = ${city}
+      WHERE city = ${city}
         AND deal_type = ${dealType}
         AND is_active = true
         AND rooms = ${rooms}
         AND total_area BETWEEN ${area - 10} AND ${area + 10}
+        AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
       ORDER BY last_seen_at DESC
       LIMIT 50
     `;
@@ -752,11 +774,11 @@ async function findLocalAnalogs(sql, property) {
   // 5. Desperate fallback
   const rows = await sql`
     SELECT * FROM analog_listings
-    WHERE source = 'AVITO'
-      AND city = ${city}
+    WHERE city = ${city}
       AND deal_type = ${dealType}
       AND is_active = true
       AND rooms = ${rooms}
+      AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
     ORDER BY last_seen_at DESC
     LIMIT 50
   `;

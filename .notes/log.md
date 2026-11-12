@@ -38,3 +38,11 @@ _РўРёРїС‹: INIT, BUILD, COMMIT, DISCOVER, FIX, DECISION, ISSUE, INGEST, TEST, VE
 - [TEST] Р”РѕР±Р°РІР»РµРЅС‹ С‚РµСЃС‚С‹ `src/utils/importDecoder.test.js`. Р’СЃРµ 159 С‚РµСЃС‚РѕРІ СѓСЃРїРµС€РЅРѕ РїСЂРѕР№РґРµРЅС‹.
 - [FIX] Р’ `Selection/FormPage.jsx` РґРѕР±Р°РІР»РµРЅР° РіРµРЅРµСЂР°С†РёСЏ ID, realtor_id Рё РјРµС‚РѕРє РІСЂРµРјРµРЅРё РЅР° СЃС‚РѕСЂРѕРЅРµ РєР»РёРµРЅС‚Р° РґР»СЏ РЅР°РґС‘Р¶РЅРѕРіРѕ СЃРѕС…СЂР°РЅРµРЅРёСЏ РїРѕРґР±РѕСЂРѕРІ.
 - [FIX] РџСЂРёРјРµРЅРµРЅС‹ РјР°СЃРєРё С„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёСЏ РґР»СЏ РїРѕР»РµР№ С‚РµР»РµС„РѕРЅР° (СЃ РїРѕРјРѕС‰СЊСЋ `formatPhone`) Рё С†РµРЅС‹ РІ С„РѕСЂРјРµ РїРѕРґР±РѕСЂР°.
+
+## 2026-11-12
+- [DISCOVER] СМА читает analog_listings из Neon; свежих данных нет (последний last_seen_at - 2026-06-24).
+- [DECISION] Живые объявления Авито парсит отдельный сервис avito-parser (realtor_sync.py) в ту же Neon analog_listings.
+- [BUILD] realtor_sync.py: 5 категорий, пагинация, постоянный профиль Playwright, upsert по (source, source_id), analog_price_history.
+- [FIX] api/ai-proxy.js: СМА фильтрует last_seen_at за CMA_FRESH_DAYS=30, добавлены sample_size, data_as_of, data_stale.
+- [FIX] CmaReport.jsx: показывает размер выборки и дату обновления.
+- [VERIFY] Живой прогон по Кирову: 283 объявления, медиана 2-комн. 45 кв.м ~5.7 млн.
