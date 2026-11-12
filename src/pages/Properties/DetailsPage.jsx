@@ -3285,7 +3285,8 @@ export function DetailsPage() {
                         property={prop}
                         currentUser={state.currentUser}
                         agent={agent}
-                        onClose={() => setShowBannerGen(false)} 
+                        onClose={() => setShowBannerGen(false)}
+                        onOpenProfile={() => navigate('/profile')}
                     />
                 )}
                 {showAdGen && (

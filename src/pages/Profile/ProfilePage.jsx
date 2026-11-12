@@ -14,6 +14,7 @@ import {
     addEventToCalendar,
 } from '../../lib/googleCalendar';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
+import { SocialAccountsCard } from '../../components/SocialAccountsCard';
 import { useExport } from '../../hooks/useExport';
 import { buildApiUrl } from '../../lib/apiConfig';
 
@@ -730,6 +731,9 @@ export function ProfilePage() {
                         </div>
                     )}
                 </div>
+
+                {/* Social Networks Integration Card */}
+                <SocialAccountsCard user={user} dispatch={dispatch} toast={toast} />
 
                 {/* Admin Actions */}
                 {isAdmin && (

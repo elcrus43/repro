@@ -42,4 +42,20 @@
     <!-- Чтение истории звонков для автоматической фиксации звонков в CRM -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
+    <!-- Видимость приложений соцсетей на Android 11+ для отправки баннеров в Сторис -->
+    <queries>
+        <package android:name="com.vkontakte.android" />
+        <package android:name="com.vk.im" />
+        <package android:name="ru.ok.android" />
+        <package android:name="org.telegram.messenger" />
+        <package android:name="org.telegram.messenger.web" />
+        <package android:name="com.instagram.android" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <intent>
+            <action android:name="com.instagram.share.ADD_TO_STORY" />
+            <data android:mimeType="image/*" />
+        </intent>
+    </queries>
+
 </manifest>

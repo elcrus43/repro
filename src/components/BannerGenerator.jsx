@@ -1,7 +1,13 @@
 ﻿import React from 'react';
-import { X, Loader } from 'lucide-react';
+import { X, Loader, Share2, Settings } from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
 import { useApp } from '../context/AppContext';
+import {
+    getConnectedSocialNetworks,
+    buildBannerCaption,
+    getSocialTokenStatus,
+    shareBannerToSocial,
+} from '../lib/socialShare';
 
 
 
@@ -38,7 +44,7 @@ function getWrappedLines(ctx, text, maxWidth) {
     return lines;
 }
 
-export function BannerGenerator({ property, currentUser, agent: propAgent, onClose }) {
+export function BannerGenerator({ property, currentUser, agent: propAgent, onClose, onOpenProfile }) {
     let appContext = null;
     try {
         appContext = useApp();
@@ -46,6 +52,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         // Safe fallback if rendered without AppProvider
     }
     const state = appContext?.state;
+    const effectiveUser = currentUser || state?.currentUser;
     const assignedAgent = propAgent || (property?.agent_id && state?.clients ? state.clients.find(c => c.id === property.agent_id) : null);
 
     const defaultPhone = React.useMemo(() => {
@@ -503,6 +510,90 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         a.click();
     };
 
+    const [showSocialPanel, setShowSocialPanel] = React.useState(false);
+    const [sharingNetworkId, setSharingNetworkId] = React.useState(null);
+    const [shareFeedback, setShareFeedback] = React.useState(null);
+    const [tokenStatus, setTokenStatus] = React.useState(null);
+
+    const connectedSocials = React.useMemo(
+        () => getConnectedSocialNetworks(effectiveUser),
+        [effectiveUser]
+    );
+
+    React.useEffect(() => {
+        if (!showSocialPanel || tokenStatus !== null) return;
+        const needsApiStatus = connectedSocials.some(
+            n => n.supportsApi && n.account?.publishMode === 'api'
+        );
+        if (!needsApiStatus) return;
+
+        let active = true;
+        getSocialTokenStatus()
+            .then(status => {
+                if (active && status) setTokenStatus(status);
+            })
+            .catch(() => {
+                if (active) setTokenStatus({ vk: { hasToken: false }, tg: { hasToken: false } });
+            });
+        return () => { active = false; };
+    }, [showSocialPanel, tokenStatus, connectedSocials]);
+
+    const handleOpenProfile = () => {
+        if (onClose) onClose();
+        if (typeof onOpenProfile === 'function') {
+            onOpenProfile();
+        } else if (typeof window !== 'undefined') {
+            window.location.hash = '#/profile';
+        }
+    };
+
+    const handleShareSocial = async (net) => {
+        if (!canvasRef.current || sharingNetworkId) return;
+        setSharingNetworkId(net.id);
+        setShareFeedback(null);
+        try {
+            const dataUrl = canvasRef.current.toDataURL('image/png');
+            const caption = buildBannerCaption(property, phone, locationText);
+            const linkUrl =
+                typeof window !== 'undefined' && property?.id
+                    ? `${window.location.origin}/#/p/${property.id}`
+                    : '';
+
+            let currentTokenStatus = tokenStatus;
+            if (net.supportsApi && net.account?.publishMode === 'api' && currentTokenStatus === null) {
+                try {
+                    currentTokenStatus = await getSocialTokenStatus();
+                    setTokenStatus(currentTokenStatus);
+                } catch {
+                    currentTokenStatus = { vk: { hasToken: false }, tg: { hasToken: false } };
+                }
+            }
+
+            const result = await shareBannerToSocial({
+                networkId: net.id,
+                dataUrl,
+                fileName: `banner-${property.id || 'object'}-${format}.png`,
+                caption,
+                linkUrl,
+                account: net.account,
+                tokenStatus: currentTokenStatus,
+            });
+
+            if (result?.ok) {
+                setShareFeedback({ type: 'success', text: result.message });
+            } else if (result?.cancelled) {
+                setShareFeedback({ type: 'info', text: result.message });
+            }
+        } catch (err) {
+            setShareFeedback({
+                type: 'error',
+                text: err?.message || `Не удалось отправить баннер в ${net.storyLabel}`,
+            });
+        } finally {
+            setSharingNetworkId(null);
+        }
+    };
+
     const activeColor = 'var(--primary)';
     const AVAILABLE_STICKERS = ['Свободная продажа', 'Ищем встречный вариант', 'Срочно', 'Свой текст'];
 
@@ -929,6 +1020,181 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                             style={{ padding: '8px 12px', borderRadius: 10, border: 'none', background: activeColor, color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'Medeo Sans', fontWeight: 700, letterSpacing: '0.06em', transition: 'all 0.15s' }}>
                             ↓ СКАЧАТЬ
                         </button>
+                    </div>
+
+                    {/* Share to My Socials */}
+                    <div style={{ marginTop: 10 }}>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowSocialPanel(prev => !prev);
+                                setShareFeedback(null);
+                            }}
+                            style={{
+                                width: '100%',
+                                padding: '9px 12px',
+                                borderRadius: 10,
+                                border: `1px solid ${showSocialPanel ? activeColor : 'var(--border)'}`,
+                                background: showSocialPanel ? 'var(--primary-light, rgba(0, 82, 255, 0.08))' : 'var(--bg)',
+                                color: showSocialPanel ? activeColor : 'var(--text)',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                fontFamily: 'Medeo Sans',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                transition: 'all 0.15s',
+                            }}
+                        >
+                            <Share2 size={14} />
+                            <span>
+                                В мои соцсети{connectedSocials.length > 0 ? ` (${connectedSocials.length})` : ''}
+                            </span>
+                        </button>
+
+                        {showSocialPanel && (
+                            <div
+                                style={{
+                                    marginTop: 8,
+                                    padding: 10,
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg)',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 8,
+                                }}
+                            >
+                                {connectedSocials.length > 0 ? (
+                                    <>
+                                        <div style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                            Отправить фото баннера
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                            {connectedSocials.map(net => {
+                                                const isBusy = sharingNetworkId === net.id;
+                                                const isApiMode = net.supportsApi && net.account?.publishMode === 'api';
+                                                return (
+                                                    <button
+                                                        key={net.id}
+                                                        type="button"
+                                                        disabled={Boolean(sharingNetworkId)}
+                                                        onClick={() => handleShareSocial(net)}
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between',
+                                                            gap: 8,
+                                                            width: '100%',
+                                                            padding: '8px 10px',
+                                                            borderRadius: 9,
+                                                            border: `1px solid ${net.color}33`,
+                                                            background: 'var(--surface)',
+                                                            color: 'var(--text)',
+                                                            cursor: sharingNetworkId ? 'wait' : 'pointer',
+                                                            fontSize: 12,
+                                                            fontFamily: 'Medeo Sans',
+                                                            fontWeight: 600,
+                                                            textAlign: 'left',
+                                                            opacity: sharingNetworkId && !isBusy ? 0.6 : 1,
+                                                        }}
+                                                    >
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <span
+                                                                style={{
+                                                                    width: 10,
+                                                                    height: 10,
+                                                                    borderRadius: '50%',
+                                                                    background: net.color,
+                                                                    flexShrink: 0,
+                                                                }}
+                                                            />
+                                                            <span>{net.storyLabel}</span>
+                                                        </span>
+                                                        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
+                                                            {isBusy ? 'Отправка...' : isApiMode ? 'API' : 'Share'}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenProfile}
+                                            style={{
+                                                marginTop: 2,
+                                                border: 'none',
+                                                background: 'transparent',
+                                                color: 'var(--text-muted)',
+                                                fontSize: 11,
+                                                cursor: 'pointer',
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                padding: '2px 0',
+                                                alignSelf: 'flex-start',
+                                            }}
+                                        >
+                                            <Settings size={11} /> Настроить соцсети в профиле
+                                        </button>
+                                    </>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center', padding: '4px 2px' }}>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                                            Подключите соцсети (VK, OK, ТГ, Instagram, WhatsApp) в профиле для отправки в сторис.
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenProfile}
+                                            style={{
+                                                padding: '8px 10px',
+                                                borderRadius: 8,
+                                                border: 'none',
+                                                background: activeColor,
+                                                color: '#ffffff',
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 6,
+                                            }}
+                                        >
+                                            <Settings size={13} /> Подключить в профиле
+                                        </button>
+                                    </div>
+                                )}
+
+                                {shareFeedback && (
+                                    <div
+                                        role="status"
+                                        style={{
+                                            padding: '7px 9px',
+                                            borderRadius: 8,
+                                            fontSize: 11,
+                                            lineHeight: 1.35,
+                                            background:
+                                                shareFeedback.type === 'error'
+                                                    ? 'var(--danger-light, #fef2f2)'
+                                                    : shareFeedback.type === 'success'
+                                                    ? 'var(--success-light, #ecfdf5)'
+                                                    : 'var(--bg-light)',
+                                            color:
+                                                shareFeedback.type === 'error'
+                                                    ? 'var(--danger, #dc2626)'
+                                                    : shareFeedback.type === 'success'
+                                                    ? 'var(--success-hover, #059669)'
+                                                    : 'var(--text-secondary)',
+                                        }}
+                                    >
+                                        {shareFeedback.text}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
 
