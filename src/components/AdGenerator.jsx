@@ -11,6 +11,7 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [source, setSource] = useState('ai');
     
     const isMobile = window.innerWidth < 768;
     const contactPerson = agent || currentUser;
@@ -18,12 +19,14 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
     const handleGenerate = useCallback(async () => {
         setLoading(true);
         setError(null);
+        setSource('ai');
         setStatus('loading');
         try {
             const result = await generateAdFromAI(property, 'professional', includeContacts, contactPerson, (s) => {
                 setStatus(s);
             });
-            setText(result);
+            setText(result.text);
+            setSource(result.source);
         } catch (err) {
             console.error('[AdGenerator] Generation failed:', err);
             setError(err.message || 'Произошла непредвиденная ошибка при генерации.');
@@ -225,6 +228,20 @@ export function AdGenerator({ property, currentUser, agent, onClose }) {
                             </span>
                         )}
                     </div>
+
+                    {source === 'template' && text && !loading && !error && (
+                        <div style={{
+                            padding: '10px 14px',
+                            borderRadius: 12,
+                            background: 'rgba(245, 158, 11, 0.08)',
+                            border: '1px solid rgba(245, 158, 11, 0.25)',
+                            color: 'var(--text-secondary)',
+                            fontSize: 12.5,
+                            lineHeight: 1.45
+                        }}>
+                            ИИ-провайдеры временно недоступны, текст собран по шаблону из данных объекта. Проверьте и отредактируйте его перед публикацией.
+                        </div>
+                    )}
 
                     <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
                         {loading ? (
