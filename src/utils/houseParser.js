@@ -6,10 +6,6 @@
 
 import { getToken } from '../lib/neon.js';
 
-const ZHIPU_API_KEY = (typeof import.meta !== 'undefined' && import.meta.env)
-    ? (import.meta.env.VITE_ZHIPU_API_KEY || import.meta.env.VITE_GEMINI_API_KEY)
-    : (process.env.VITE_ZHIPU_API_KEY || process.env.VITE_GEMINI_API_KEY);
-
 // ─── Маппинг городов на slug для dom.mingkh.ru ───────────────────────────────
 const CITY_SLUGS = {
     'Киров':          { region: 'kirovskaya-oblast', city: 'kirov' },
@@ -283,7 +279,9 @@ ${urlHints ? `\nПрямые ссылки для поиска:\n${urlHints}\n\n�
                 try {
                     const errText = await response.text();
                     if (errText) errorMsg += `: ${errText}`;
-                } catch {}
+                } catch (readErr) {
+                    console.warn('[houseParser] Failed to read error response body:', readErr?.message);
+                }
             }
             throw new Error(errorMsg);
         }

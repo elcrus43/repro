@@ -165,7 +165,7 @@ export function formatAiError(errors) {
   if (!errors || errors.length === 0) return 'Все модели ИИ недоступны или не сконфигурированы.';
 
   const allText = errors.join(' ');
-  const isSpendingCap = allText.includes('spending cap') || allText.includes('RESOURCE_EXHAUSTED');
+  const isSpendingCap = allText.includes('spending cap') || allText.includes('prepayment') || allText.includes('billing');
   const isInsufficientBalance = allText.includes('insufficient balance') || allText.includes('余额不足') || allText.includes('1113') || allText.includes('402');
 
   if (isSpendingCap || isInsufficientBalance) {
@@ -189,7 +189,8 @@ async function handleGenerateAd(prompt) {
 
   // 1. Сначала пробуем Gemini (быстро, надежно и прямое подключение из Vercel US)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b', 'gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
+    // Free tier доступен для Flash/Lite моделей; 4-е поколение только на paid.
+    const geminiModels = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini (${modelName})...`);
@@ -216,7 +217,9 @@ async function handleGenerateAd(prompt) {
           const errText = await response.text();
           console.warn(`[ai-proxy] Gemini (${modelName}) returned status ${response.status}:`, errText);
           providerErrors.push(`Gemini ${modelName} (${response.status}): ${errText}`);
-          if (response.status === 429 && (errText.includes('spending cap') || errText.includes('RESOURCE_EXHAUSTED'))) {
+          // Обрыв только при проблемах с биллингом всего проекта;
+          // обычный 429 по лимиту модели не мешает попробовать следующую.
+          if (errText.includes('spending cap') || errText.includes('prepayment') || errText.includes('billing')) {
             break;
           }
         }
@@ -364,7 +367,7 @@ async function handleParseHouse(prompt) {
     }
 
     // 1б. Прямой парсинг через Gemini со структурированным JSON
-    const fallbackGemini = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+    const fallbackGemini = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
     for (const modelName of fallbackGemini) {
       try {
         console.log(`[ai-proxy] Trying Gemini Direct Parse (${modelName})...`);
@@ -928,7 +931,7 @@ async function handleScanPassport(imageBase64, mimeType) {
 
   // 1. Gemini Vision (быстро, нативная поддержка OCR)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
+    const geminiModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for passport scan...`);
@@ -1079,7 +1082,7 @@ async function handleScanEgrn(fileBase64, mimeType, pagesBase64 = []) {
 
   // 1. Gemini Vision (нативная поддержка PDF и многостраничных документов)
   if (GEMINI_API_KEY) {
-    const geminiModels = ['gemini-2.5-flash', 'gemini-3.8-flash', 'gemini-flash-latest'];
+    const geminiModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-flash-latest'];
     for (const modelName of geminiModels) {
       try {
         console.log(`[ai-proxy] Trying Gemini Vision (${modelName}) for EGRN scan...`);
