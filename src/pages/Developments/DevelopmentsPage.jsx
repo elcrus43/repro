@@ -1120,6 +1120,7 @@ export default function DevelopmentsPage() {
                       const avitekSlug = getAvitekSlugForDevelopment(dev);
                       const altaiSlug = getAltaiSlugForDevelopment(dev);
                       const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
+                      const profstroySlug = getProfstroySlugForDevelopment(dev);
                       const liveSummary = ksmSlug
                         ? liveSummaries.ksm[ksmSlug] || null
                         : ksskSlug
@@ -1132,7 +1133,9 @@ export default function DevelopmentsPage() {
                                 ? liveSummaries.altai[altaiSlug] || null
                                 : stroysoyuzSlug
                                   ? liveSummaries.stroysoyuz[stroysoyuzSlug] || null
-                                  : null;
+                                  : profstroySlug
+                                    ? liveSummaries.profstroy[profstroySlug] || null
+                                    : null;
                       const liveProviderLabel = kinoSlug
                         ? 'КИНО live'
                         : ksskSlug
@@ -1143,7 +1146,9 @@ export default function DevelopmentsPage() {
                               ? 'АЛТАЙ live'
                               : stroysoyuzSlug
                                 ? 'СТРОЙСОЮЗ live'
-                                : 'КСМ live';
+                                : profstroySlug
+                                  ? 'ПРОФСТРОЙ live'
+                                  : 'КСМ live';
                       return (
                         <DevelopmentCard
                           key={dev.id}
@@ -1219,6 +1224,7 @@ export default function DevelopmentsPage() {
         const avitekSlug = getAvitekSlugForDevelopment(detailModalDev);
         const altaiSlug = getAltaiSlugForDevelopment(detailModalDev);
         const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(detailModalDev);
+        const profstroySlug = getProfstroySlugForDevelopment(detailModalDev);
         const providerId = ksmSlug
           ? 'ksm'
           : ksskSlug
@@ -1231,8 +1237,17 @@ export default function DevelopmentsPage() {
                   ? 'altai'
                   : stroysoyuzSlug
                     ? 'stroysoyuz'
-                    : null;
-        const activeSlug = ksmSlug || ksskSlug || kinoSlug || avitekSlug || altaiSlug || stroysoyuzSlug;
+                    : profstroySlug
+                      ? 'profstroy'
+                      : null;
+        const activeSlug =
+          ksmSlug ||
+          ksskSlug ||
+          kinoSlug ||
+          avitekSlug ||
+          altaiSlug ||
+          stroysoyuzSlug ||
+          profstroySlug;
         const providerSpec = providerId ? LIVE_PROVIDERS[providerId] : null;
         const detailLots = providerId && activeSlug
           ? liveState[providerId].lots.filter((lot) => lot.project_slug === activeSlug)
