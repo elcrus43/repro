@@ -5,7 +5,7 @@ import {
   normalizeKinoLot,
   fetchKinoProjectFlats,
   syncKinoProject,
-} from '../../api/kino-lots.js';
+} from '../../api/_kino-lots.js';
 
 describe('kino-lots config and projects catalog', () => {
   it('exports maxDuration 60', () => {

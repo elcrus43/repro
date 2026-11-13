@@ -13,13 +13,13 @@
 
 import crypto from 'crypto';
 import { neon } from '@neondatabase/serverless';
-import { KSM_PROJECTS, syncKsmProject } from './ksm-lots.js';
-import { KSSK_PROJECTS, syncKsskProject } from './kssk-lots.js';
-import { KINO_PROJECTS, syncKinoProject } from './kino-lots.js';
-import { AVITEK_PROJECTS, syncAvitekProject } from './avitek-lots.js';
-import { ALTAI_PROJECTS, syncAltaiProject } from './altai-lots.js';
-import { STROYSOYUZ_PROJECTS, syncStroysoyuzProject } from './stroysoyuz-lots.js';
-import { PROFSTROY_PROJECTS, syncProfstroyProject } from './profstroy-lots.js';
+import { KSM_PROJECTS, syncKsmProject } from './_ksm-lots.js';
+import { KSSK_PROJECTS, syncKsskProject } from './_kssk-lots.js';
+import { KINO_PROJECTS, syncKinoProject } from './_kino-lots.js';
+import { AVITEK_PROJECTS, syncAvitekProject } from './_avitek-lots.js';
+import { ALTAI_PROJECTS, syncAltaiProject } from './_altai-lots.js';
+import { STROYSOYUZ_PROJECTS, syncStroysoyuzProject } from './_stroysoyuz-lots.js';
+import { PROFSTROY_PROJECTS, syncProfstroyProject } from './_profstroy-lots.js';
 import { authenticateLotsRequest } from './_lots-shared.js';
 
 export const config = {

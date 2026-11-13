@@ -6,7 +6,7 @@ import {
   resolveAltaiProjectSlug,
   normalizeAltaiLot,
   syncAltaiProject,
-} from '../../api/altai-lots.js';
+} from '../../api/_altai-lots.js';
 
 describe('altai-lots config and projects catalog', () => {
   it('exports maxDuration 60', () => {

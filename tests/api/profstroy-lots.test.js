@@ -8,7 +8,7 @@ import {
   fetchProfstroyApartments,
   fetchProfstroyProjectLots,
   syncProfstroyProject,
-} from '../../api/profstroy-lots.js';
+} from '../../api/_profstroy-lots.js';
 
 describe('profstroy-lots config and projects catalog', () => {
   it('exports maxDuration 60', () => {

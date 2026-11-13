@@ -1,6 +1,34 @@
 {
     "rewrites": [
         {
+            "source": "/api/ksm-lots",
+            "destination": "/api/developer-lots?provider=ksm"
+        },
+        {
+            "source": "/api/kssk-lots",
+            "destination": "/api/developer-lots?provider=kssk"
+        },
+        {
+            "source": "/api/kino-lots",
+            "destination": "/api/developer-lots?provider=kino"
+        },
+        {
+            "source": "/api/avitek-lots",
+            "destination": "/api/developer-lots?provider=avitek"
+        },
+        {
+            "source": "/api/altai-lots",
+            "destination": "/api/developer-lots?provider=altai"
+        },
+        {
+            "source": "/api/stroysoyuz-lots",
+            "destination": "/api/developer-lots?provider=stroysoyuz"
+        },
+        {
+            "source": "/api/profstroy-lots",
+            "destination": "/api/developer-lots?provider=profstroy"
+        },
+        {
             "source": "/api/(.*)",
             "destination": "/api/$1"
         },

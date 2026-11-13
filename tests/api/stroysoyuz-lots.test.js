@@ -6,7 +6,7 @@ import {
   resolveStroysoyuzProjectSlug,
   normalizeStroysoyuzLot,
   syncStroysoyuzProject,
-} from '../../api/stroysoyuz-lots.js';
+} from '../../api/_stroysoyuz-lots.js';
 
 describe('stroysoyuz-lots config and projects catalog', () => {
   it('exports maxDuration 60', () => {

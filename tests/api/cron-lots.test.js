@@ -6,10 +6,10 @@ import {
   resolveProviders,
   runScheduledLotsSync,
 } from '../../api/cron-lots.js';
-import { KSM_PROJECTS } from '../../api/ksm-lots.js';
-import { KSSK_PROJECTS } from '../../api/kssk-lots.js';
-import { KINO_PROJECTS } from '../../api/kino-lots.js';
-import { PROFSTROY_PROJECTS } from '../../api/profstroy-lots.js';
+import { KSM_PROJECTS } from '../../api/_ksm-lots.js';
+import { KSSK_PROJECTS } from '../../api/_kssk-lots.js';
+import { KINO_PROJECTS } from '../../api/_kino-lots.js';
+import { PROFSTROY_PROJECTS } from '../../api/_profstroy-lots.js';
 
 describe('cron-lots config and helpers', () => {
   it('exports maxDuration 60', () => {

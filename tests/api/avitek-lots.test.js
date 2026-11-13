@@ -6,7 +6,7 @@ import {
   normalizeAvitekLot,
   fetchAvitekProjectLots,
   syncAvitekProject,
-} from '../../api/avitek-lots.js';
+} from '../../api/_avitek-lots.js';
 
 describe('avitek-lots config and projects catalog', () => {
   it('exports maxDuration 60', () => {
