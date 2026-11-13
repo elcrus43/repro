@@ -44,8 +44,8 @@ describe('houseCoordinates', () => {
   });
 
   describe('HOUSE_COORDINATES and resolveHouseCoords', () => {
-    it('contains all 39 verified KSM, KSSK, KINO, AVITEK, ALTAI, and STROYSOYUZ houses', () => {
-      expect(Object.keys(HOUSE_COORDINATES)).toHaveLength(39);
+    it('contains all 46 verified KSM, KSSK, KINO, AVITEK, ALTAI, STROYSOYUZ, and PROFSTROY houses', () => {
+      expect(Object.keys(HOUSE_COORDINATES)).toHaveLength(46);
 
       const checks = [
         ['Дорофеева, 20', 58.5851814, 49.5625922],
@@ -87,6 +87,13 @@ describe('houseCoordinates', () => {
         ['ул. Сандаловская, 4 к1', 58.5392, 49.6135],
         ['ул. Володарского, 229', 58.5830, 49.6735],
         ['ул. Свободы, 115Г', 58.5912, 49.6780],
+        ['ул. Владимирская, 99 / ул. Орловская, 62Б', 58.59485, 49.666452],
+        ['ул. Орловская, 62Б', 58.59485, 49.666452],
+        ['ул. Владимирская, 99', 58.59485, 49.666452],
+        ['ул. Энтузиастов, 17 корп. 1', 58.583128, 49.572581],
+        ['Мурашинский проезд, 7', 58.616364, 49.608994],
+        ['ул. Ленина, 106', 58.591145, 49.682926],
+        ['ул. Воровского, 173 корп. 1', 58.597355, 49.582656],
       ];
 
       for (const [addr, lat, lng] of checks) {
@@ -347,6 +354,44 @@ describe('houseCoordinates', () => {
         lat: 58.46621,
         lng: 49.71345,
         liveProviderLabel: 'КИНО live',
+        liveCount: 1,
+      });
+    });
+
+    it('creates house pins and parent markers for PROFSTROY developments', () => {
+      const devKapital = {
+        id: 'zhk-kapital',
+        name: 'Клубный дом «Капитал»',
+        developer: 'Профстрой Недвижимость',
+        address: 'г. Киров, ул. Орловская, 62Б',
+        lat: 58.59485,
+        lng: 49.666452,
+        price_from: 12800000,
+      };
+
+      const profstroyLots = [
+        {
+          id: 'p1',
+          project_slug: 'kapital',
+          address: 'ул. Орловская, 62Б',
+          rooms_type: '2k',
+          price: 12800000,
+          is_available: true,
+        },
+      ];
+
+      const items = buildMapItemsFromDevelopments([devKapital], {
+        profstroyLots,
+        showHousePins: true,
+      });
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        devId: 'zhk-kapital',
+        isHousePin: true,
+        lat: 58.59485,
+        lng: 49.666452,
+        liveProviderLabel: 'ПРОФСТРОЙ live',
         liveCount: 1,
       });
     });

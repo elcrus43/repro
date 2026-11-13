@@ -19,13 +19,14 @@ import { KINO_PROJECTS, syncKinoProject } from './kino-lots.js';
 import { AVITEK_PROJECTS, syncAvitekProject } from './avitek-lots.js';
 import { ALTAI_PROJECTS, syncAltaiProject } from './altai-lots.js';
 import { STROYSOYUZ_PROJECTS, syncStroysoyuzProject } from './stroysoyuz-lots.js';
+import { PROFSTROY_PROJECTS, syncProfstroyProject } from './profstroy-lots.js';
 import { authenticateLotsRequest } from './_lots-shared.js';
 
 export const config = {
   maxDuration: 60,
 };
 
-const VALID_PROVIDERS = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz'];
+const VALID_PROVIDERS = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy'];
 
 function normalizeSingleValue(value) {
   if (Array.isArray(value)) return value[0];
@@ -195,7 +196,7 @@ async function syncProviderProjects({ sql, projectsMap, targetSlugs, syncFn }) {
 export async function runScheduledLotsSync(
   sql,
   {
-    providers = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz'],
+    providers = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy'],
     slugs,
     syncKssk = syncKsskProject,
     syncKsm = syncKsmProject,
@@ -203,6 +204,7 @@ export async function runScheduledLotsSync(
     syncAvitek = syncAvitekProject,
     syncAltai = syncAltaiProject,
     syncStroysoyuz = syncStroysoyuzProject,
+    syncProfstroy = syncProfstroyProject,
   } = {}
 ) {
   const startedAt = Date.now();
@@ -289,6 +291,19 @@ export async function runScheduledLotsSync(
     stroysoyuz = buildSkippedSummary('Provider not requested');
   }
 
+  let profstroy;
+  if (providerSet.has('profstroy')) {
+    const profstroySlugs = selectProviderSlugs(PROFSTROY_PROJECTS, slugs, 'profstroy');
+    profstroy = await syncProviderProjects({
+      sql,
+      projectsMap: PROFSTROY_PROJECTS,
+      targetSlugs: profstroySlugs,
+      syncFn: syncProfstroy,
+    });
+  } else {
+    profstroy = buildSkippedSummary('Provider not requested');
+  }
+
   return {
     syncedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
@@ -298,6 +313,7 @@ export async function runScheduledLotsSync(
     avitek,
     altai,
     stroysoyuz,
+    profstroy,
   };
 }
 

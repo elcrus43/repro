@@ -9,6 +9,7 @@ import {
 import { KSM_PROJECTS } from '../../api/ksm-lots.js';
 import { KSSK_PROJECTS } from '../../api/kssk-lots.js';
 import { KINO_PROJECTS } from '../../api/kino-lots.js';
+import { PROFSTROY_PROJECTS } from '../../api/profstroy-lots.js';
 
 describe('cron-lots config and helpers', () => {
   it('exports maxDuration 60', () => {
@@ -16,14 +17,15 @@ describe('cron-lots config and helpers', () => {
   });
 
   it('resolves valid provider arguments', () => {
-    expect(resolveProviders()).toEqual(['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz']);
-    expect(resolveProviders('all')).toEqual(['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz']);
+    expect(resolveProviders()).toEqual(['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy']);
+    expect(resolveProviders('all')).toEqual(['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy']);
     expect(resolveProviders('kssk')).toEqual(['kssk']);
     expect(resolveProviders('KSM')).toEqual(['ksm']);
     expect(resolveProviders('kino')).toEqual(['kino']);
     expect(resolveProviders('avitek')).toEqual(['avitek']);
     expect(resolveProviders('altai')).toEqual(['altai']);
     expect(resolveProviders('stroysoyuz')).toEqual(['stroysoyuz']);
+    expect(resolveProviders('profstroy')).toEqual(['profstroy']);
     expect(resolveProviders('unknown')).toBeNull();
   });
 });
@@ -252,6 +254,38 @@ describe('runScheduledLotsSync', () => {
       projectSlug: 'iuterra',
       status: 'error',
       error: 'API down',
+    });
+  });
+
+  it('syncs PROFSTROY projects with isolated error handling', async () => {
+    const fakeSql = { query: vi.fn() };
+    const syncProfstroy = vi.fn(async (slug) => {
+      if (slug === 'garmoniya') {
+        throw new Error('Profstroy API timeout');
+      }
+      return {
+        projectSlug: slug,
+        projectName: PROFSTROY_PROJECTS[slug].projectName,
+        totalCount: 40,
+        syncedCount: 40,
+        syncedAt: '2026-11-13T12:00:00.000Z',
+        lots: [],
+      };
+    });
+
+    const summary = await runScheduledLotsSync(fakeSql, {
+      providers: ['profstroy'],
+      syncProfstroy,
+    });
+
+    expect(syncProfstroy).toHaveBeenCalledTimes(Object.keys(PROFSTROY_PROJECTS).length);
+    expect(summary.profstroy.syncedProjects).toBe(Object.keys(PROFSTROY_PROJECTS).length - 1);
+    expect(summary.profstroy.failedProjects).toBe(1);
+    expect(summary.profstroy.skipped).toBe(false);
+    expect(summary.profstroy.results.find((r) => r.projectSlug === 'garmoniya')).toMatchObject({
+      projectSlug: 'garmoniya',
+      status: 'error',
+      error: 'Profstroy API timeout',
     });
   });
 });

@@ -96,6 +96,19 @@ const MOCK_DEVELOPMENTS = [
     builder_url: 'https://altai-stroi.org',
     contact_phone: '+7 (8332) 77-88-99',
   },
+  {
+    id: 'zhk-kapital',
+    name: 'Клубный дом «Капитал»',
+    developer: 'Профстрой Недвижимость',
+    district: 'Первомайский район',
+    address: 'г. Киров, ул. Орловская, 62Б',
+    floors: '8-10 этажей',
+    completion_date: '2027',
+    price_from: 12800000,
+    images: ['https://example.com/kapital.jpg'],
+    builder_url: 'https://profstroy-kirov.ru',
+    contact_phone: '+7 (922) 990-57-17',
+  },
 ];
 
 const MOCK_KSM_LOTS = [
@@ -272,16 +285,38 @@ const MOCK_ALTAI_LOTS = [
   },
 ];
 
+const MOCK_PROFSTROY_LOTS = [
+  {
+    id: 'profstroy-1',
+    project_slug: 'kapital',
+    title: '2-комнатная, 66 м²',
+    rooms_type: '2k',
+    rooms_label: '2-комнатная',
+    area: 66,
+    floor: 4,
+    flat_number: '12',
+    address: 'ул. Орловская, 62Б',
+    finishing: 'White box',
+    price: 12800000,
+    price_sqm: 193939,
+    plan_image: 'https://profstroy-kirov.ru/plans/2k-66.png',
+    lot_url: 'https://profstroy-kirov.ru/lot/profstroy-1',
+    is_available: true,
+  },
+];
+
 describe('liveLotsFinder', () => {
   describe('PROVIDER_META', () => {
-    it('contains all 6 developers with labels, badges, and colors', () => {
-      expect(Object.keys(PROVIDER_META)).toEqual(['ksm', 'kssk', 'kino', 'avitek', 'altai', 'stroysoyuz']);
+    it('contains all 7 developers with labels, badges, and colors', () => {
+      expect(Object.keys(PROVIDER_META)).toEqual(['ksm', 'kssk', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy']);
       expect(PROVIDER_META.avitek.label).toBe('АВИТЕК');
       expect(PROVIDER_META.avitek.badgeClass).toBe('avitek');
       expect(PROVIDER_META.altai.label).toBe('АЛТАЙ-СТРОЙ');
       expect(PROVIDER_META.altai.badgeClass).toBe('altai');
       expect(PROVIDER_META.stroysoyuz.label).toBe('СТРОЙСОЮЗ');
       expect(PROVIDER_META.stroysoyuz.badgeClass).toBe('stroysoyuz');
+      expect(PROVIDER_META.profstroy.label).toBe('ПРОФСТРОЙ');
+      expect(PROVIDER_META.profstroy.badgeClass).toBe('profstroy');
     });
   });
 
@@ -297,17 +332,27 @@ describe('liveLotsFinder', () => {
   });
 
   describe('mergeAllDeveloperLots', () => {
-    it('merges KSM, KSSK, KINO, AVITEK, and ALTAI lots, skips unavailable lots, and enriches development metadata', () => {
+    it('merges KSM, KSSK, KINO, AVITEK, ALTAI, and PROFSTROY lots, skips unavailable lots, and enriches development metadata', () => {
       const merged = mergeAllDeveloperLots({
         ksmLots: MOCK_KSM_LOTS,
         ksskLots: MOCK_KSSK_LOTS,
         kinoLots: MOCK_KINO_LOTS,
         avitekLots: MOCK_AVITEK_LOTS,
         altaiLots: MOCK_ALTAI_LOTS,
+        profstroyLots: MOCK_PROFSTROY_LOTS,
         developments: MOCK_DEVELOPMENTS,
       });
 
-      expect(merged).toHaveLength(9);
+      expect(merged).toHaveLength(10);
+
+      const firstProfstroy = merged.find((l) => l._uid === 'profstroy:profstroy-1');
+      expect(firstProfstroy).toMatchObject({
+        _uid: 'profstroy:profstroy-1',
+        _provider: 'profstroy',
+        _providerLabel: 'ПРОФСТРОЙ',
+        _devId: 'zhk-kapital',
+        _devName: 'Клубный дом «Капитал»',
+      });
 
       const firstAvitek = merged.find((l) => l._uid === 'avitek:avitek-1');
       expect(firstAvitek).toMatchObject({
@@ -616,6 +661,36 @@ describe('liveLotsFinder', () => {
       expect(item.contact_name).toBe('Стройсоюз (Отдел продаж)');
       expect(item.notes).toContain('СТРОЙСОЮЗ live');
       expect(item.id).toMatch(/^sel_stroysoyuz_stroysoyuz-zhk-kholms-1_/);
+    });
+
+    it('builds selection item from PROFSTROY live lot correctly', () => {
+      const lot = {
+        id: 'profstroy-kapital-1',
+        title: '2-комнатная, 66 м², 4 эт.',
+        rooms_type: '2k',
+        area: 66,
+        floor: 4,
+        flat_number: '12',
+        price: 12800000,
+        lot_url: 'https://profstroy-kirov.ru',
+      };
+      const dev = {
+        id: 'zhk-kapital',
+        name: 'Клубный дом «Капитал»',
+        developer: 'Профстрой Недвижимость',
+        address: 'г. Киров, ул. Орловская, 62Б',
+        contact_phone: '+7 (922) 990-57-17',
+      };
+
+      const item = buildSelectionItemFromLot({
+        lot,
+        dev,
+        providerId: 'profstroy',
+      });
+
+      expect(item.contact_name).toBe('Профстрой Недвижимость (Отдел продаж)');
+      expect(item.notes).toContain('ПРОФСТРОЙ live');
+      expect(item.id).toMatch(/^sel_profstroy_profstroy-kapital-1_/);
     });
   });
 

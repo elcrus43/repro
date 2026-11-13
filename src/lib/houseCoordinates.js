@@ -9,6 +9,7 @@ import { getKinoSlugForDevelopment } from './kinoLots';
 import { getAvitekSlugForDevelopment } from './avitekLots';
 import { getAltaiSlugForDevelopment } from './altaiLots';
 import { getStroysoyuzSlugForDevelopment } from './stroysoyuzLots';
+import { getProfstroySlugForDevelopment } from './profstroyLots';
 import { ROOM_TYPE_KEYS } from './liveLotsShared';
 
 /**
@@ -140,6 +141,14 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 4 к1', lat: 58.5392, lng: 49.6135 },
   { devId: 'zhk-repinskie-prudy', address: 'ул. Володарского, 229', lat: 58.5830, lng: 49.6735 },
   { devId: 'zhk-premier', address: 'ул. Свободы, 115Г', lat: 58.5912, lng: 49.6780 },
+  // Профстрой
+  { devId: 'zhk-kapital', address: 'ул. Владимирская, 99 / ул. Орловская, 62Б', lat: 58.59485, lng: 49.666452 },
+  { devId: 'zhk-kapital', address: 'ул. Орловская, 62Б', lat: 58.59485, lng: 49.666452 },
+  { devId: 'zhk-kapital', address: 'ул. Владимирская, 99', lat: 58.59485, lng: 49.666452 },
+  { devId: 'zhk-vdohnovenie', address: 'ул. Энтузиастов, 17 корп. 1', lat: 58.583128, lng: 49.572581 },
+  { devId: 'zhk-murashinskiy-7', address: 'Мурашинский проезд, 7', lat: 58.616364, lng: 49.608994 },
+  { devId: 'zhk-garmoniya', address: 'ул. Ленина, 106', lat: 58.591145, lng: 49.682926 },
+  { devId: 'zhk-metropolis', address: 'ул. Воровского, 173 корп. 1', lat: 58.597355, lng: 49.582656 },
 ];
 
 /**
@@ -309,12 +318,14 @@ export function buildMapItemsFromDevelopments(
     avitekLots = [],
     altaiLots = [],
     stroysoyuzLots = [],
+    profstroyLots = [],
     ksmSummaryBySlug = {},
     ksskSummaryBySlug = {},
     kinoSummaryBySlug = {},
     avitekSummaryBySlug = {},
     altaiSummaryBySlug = {},
     stroysoyuzSummaryBySlug = {},
+    profstroySummaryBySlug = {},
     showHousePins = true,
   } = {}
 ) {
@@ -332,6 +343,7 @@ export function buildMapItemsFromDevelopments(
     const avitekSlug = getAvitekSlugForDevelopment(dev);
     const altaiSlug = getAltaiSlugForDevelopment(dev);
     const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
+    const profstroySlug = getProfstroySlugForDevelopment(dev);
     const providerId = ksmSlug
       ? 'ksm'
       : ksskSlug
@@ -344,8 +356,17 @@ export function buildMapItemsFromDevelopments(
               ? 'altai'
               : stroysoyuzSlug
                 ? 'stroysoyuz'
-                : null;
-    const activeSlug = ksmSlug || ksskSlug || kinoSlug || avitekSlug || altaiSlug || stroysoyuzSlug;
+                : profstroySlug
+                  ? 'profstroy'
+                  : null;
+    const activeSlug =
+      ksmSlug ||
+      ksskSlug ||
+      kinoSlug ||
+      avitekSlug ||
+      altaiSlug ||
+      stroysoyuzSlug ||
+      profstroySlug;
 
     if (!providerId || !activeSlug) {
       items.push(createParentMarker(dev));
@@ -363,7 +384,9 @@ export function buildMapItemsFromDevelopments(
               ? avitekLots
               : providerId === 'altai'
                 ? altaiLots
-                : stroysoyuzLots;
+                : providerId === 'stroysoyuz'
+                  ? stroysoyuzLots
+                  : profstroyLots;
     const summaryMap =
       providerId === 'ksm'
         ? ksmSummaryBySlug
@@ -375,7 +398,9 @@ export function buildMapItemsFromDevelopments(
               ? avitekSummaryBySlug
               : providerId === 'altai'
                 ? altaiSummaryBySlug
-                : stroysoyuzSummaryBySlug;
+                : providerId === 'stroysoyuz'
+                  ? stroysoyuzSummaryBySlug
+                  : profstroySummaryBySlug;
     const liveProviderLabel =
       providerId === 'ksm'
         ? 'КСМ live'
@@ -387,7 +412,9 @@ export function buildMapItemsFromDevelopments(
               ? 'АВИТЕК live'
               : providerId === 'altai'
                 ? 'АЛТАЙ live'
-                : 'СТРОЙСОЮЗ live';
+                : providerId === 'stroysoyuz'
+                  ? 'СТРОЙСОЮЗ live'
+                  : 'ПРОФСТРОЙ live';
     const summary = summaryMap?.[activeSlug] || null;
 
     let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter(

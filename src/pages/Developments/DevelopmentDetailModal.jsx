@@ -32,6 +32,7 @@ import { getKinoSlugForDevelopment } from '../../lib/kinoLots';
 import { getAvitekSlugForDevelopment } from '../../lib/avitekLots';
 import { getAltaiSlugForDevelopment } from '../../lib/altaiLots';
 import { getStroysoyuzSlugForDevelopment } from '../../lib/stroysoyuzLots';
+import { getProfstroySlugForDevelopment } from '../../lib/profstroyLots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
 
 const KSM_ROOM_FILTERS = [
@@ -79,6 +80,7 @@ export function DevelopmentDetailModal({
   const avitekSlug = getAvitekSlugForDevelopment(dev);
   const altaiSlug = getAltaiSlugForDevelopment(dev);
   const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
+  const profstroySlug = getProfstroySlugForDevelopment(dev);
   const resolvedProvider = useMemo(
     () =>
       liveProvider ||
@@ -124,8 +126,15 @@ export function DevelopmentDetailModal({
                       slug: stroysoyuzSlug,
                       subtitle: 'Прямые данные по свободным квартирам Стройсоюз',
                     }
-                  : null),
-    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug]
+                  : profstroySlug
+                    ? {
+                        id: 'profstroy',
+                        label: 'ПРОФСТРОЙ',
+                        slug: profstroySlug,
+                        subtitle: 'Прямые данные по свободным квартирам Профстрой Недвижимость',
+                      }
+                    : null),
+    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug, profstroySlug]
   );
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;

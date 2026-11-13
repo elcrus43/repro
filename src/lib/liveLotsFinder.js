@@ -9,6 +9,7 @@ import { getKinoSlugForDevelopment, KINO_PROJECT_NAMES } from './kinoLots';
 import { getAvitekSlugForDevelopment, AVITEK_PROJECT_NAMES } from './avitekLots';
 import { getAltaiSlugForDevelopment, ALTAI_PROJECT_NAMES } from './altaiLots';
 import { getStroysoyuzSlugForDevelopment, STROYSOYUZ_PROJECT_NAMES } from './stroysoyuzLots';
+import { getProfstroySlugForDevelopment, PROFSTROY_PROJECT_NAMES } from './profstroyLots';
 import { formatNumber } from '../utils/format';
 
 export const ROOM_FILTER_OPTIONS = [
@@ -75,6 +76,14 @@ export const PROVIDER_META = {
     color: '#0d9488',
     projectNames: STROYSOYUZ_PROJECT_NAMES,
     getSlug: getStroysoyuzSlugForDevelopment,
+  },
+  profstroy: {
+    id: 'profstroy',
+    label: 'ПРОФСТРОЙ',
+    badgeClass: 'profstroy',
+    color: '#4f46e5',
+    projectNames: PROFSTROY_PROJECT_NAMES,
+    getSlug: getProfstroySlugForDevelopment,
   },
 };
 
@@ -184,6 +193,7 @@ export function mergeAllDeveloperLots({
   avitekLots = [],
   altaiLots = [],
   stroysoyuzLots = [],
+  profstroyLots = [],
   developments = [],
 } = {}) {
   const ksmLookup = buildDevSlugLookup(developments, PROVIDER_META.ksm.getSlug);
@@ -192,6 +202,7 @@ export function mergeAllDeveloperLots({
   const avitekLookup = buildDevSlugLookup(developments, PROVIDER_META.avitek.getSlug);
   const altaiLookup = buildDevSlugLookup(developments, PROVIDER_META.altai.getSlug);
   const stroysoyuzLookup = buildDevSlugLookup(developments, PROVIDER_META.stroysoyuz.getSlug);
+  const profstroyLookup = buildDevSlugLookup(developments, PROVIDER_META.profstroy.getSlug);
 
   const sources = [
     { provider: PROVIDER_META.ksm, lots: ksmLots, lookup: ksmLookup },
@@ -200,6 +211,7 @@ export function mergeAllDeveloperLots({
     { provider: PROVIDER_META.avitek, lots: avitekLots, lookup: avitekLookup },
     { provider: PROVIDER_META.altai, lots: altaiLots, lookup: altaiLookup },
     { provider: PROVIDER_META.stroysoyuz, lots: stroysoyuzLots, lookup: stroysoyuzLookup },
+    { provider: PROVIDER_META.profstroy, lots: profstroyLots, lookup: profstroyLookup },
   ];
 
   const seenUids = new Set();
@@ -539,7 +551,9 @@ export function buildSelectionItemFromLot({
             ? 'АЛТАЙ-СТРОЙ'
             : resolvedProviderId === 'stroysoyuz'
               ? 'СТРОЙСОЮЗ'
-              : 'КСМ';
+              : resolvedProviderId === 'profstroy'
+                ? 'ПРОФСТРОЙ'
+                : 'КСМ';
   const resolvedProviderLabel =
     providerLabel || lot?._providerLabel || defaultProviderLabel;
   const devImages = Array.isArray(resolvedDev?.images) ? resolvedDev.images : [];

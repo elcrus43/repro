@@ -94,6 +94,14 @@ import {
   syncStroysoyuzProject,
   buildStroysoyuzSummaryByProject,
 } from '../../lib/stroysoyuzLots';
+import {
+  PROFSTROY_PROJECT_SLUGS,
+  PROFSTROY_PROJECT_NAMES,
+  getProfstroySlugForDevelopment,
+  fetchProfstroyLots,
+  syncProfstroyProject,
+  buildProfstroySummaryByProject,
+} from '../../lib/profstroyLots';
 
 const LIVE_PROVIDERS = {
   ksm: {
@@ -174,6 +182,19 @@ const LIVE_PROVIDERS = {
     pillTitle: 'Синхронизация Стройсоюз: живые остатки квартир',
     syncAllTitle: 'Обновить свободные квартиры по объектам Стройсоюз',
   },
+  profstroy: {
+    id: 'profstroy',
+    label: 'ПРОФСТРОЙ',
+    slugs: PROFSTROY_PROJECT_SLUGS,
+    names: PROFSTROY_PROJECT_NAMES,
+    fetchLots: fetchProfstroyLots,
+    syncProject: syncProfstroyProject,
+    buildSummary: buildProfstroySummaryByProject,
+    getSlug: getProfstroySlugForDevelopment,
+    subtitle: 'Прямые данные по свободным квартирам Профстрой Недвижимость',
+    pillTitle: 'Синхронизация Профстрой: живые остатки квартир',
+    syncAllTitle: 'Обновить свободные квартиры по объектам Профстрой',
+  },
 };
 
 function getLatestSyncedIso(projectsMeta = []) {
@@ -200,7 +221,7 @@ export default function DevelopmentsPage() {
   const [detailModalDev, setDetailModalDev] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Live Lots state (KSM & KSSK & KINO & AVITEK & ALTAI)
+  // Live Lots state (KSM & KSSK & KINO & AVITEK & ALTAI & STROYSOYUZ & PROFSTROY)
   const [liveState, setLiveState] = useState({
     ksm: { lots: [], projects: [] },
     kssk: { lots: [], projects: [] },
@@ -208,6 +229,7 @@ export default function DevelopmentsPage() {
     avitek: { lots: [], projects: [] },
     altai: { lots: [], projects: [] },
     stroysoyuz: { lots: [], projects: [] },
+    profstroy: { lots: [], projects: [] },
   });
   const [liveProgress, setLiveProgress] = useState({
     ksm: { active: false, current: 0, total: KSM_PROJECT_SLUGS.length, currentName: '' },
@@ -216,6 +238,7 @@ export default function DevelopmentsPage() {
     avitek: { active: false, current: 0, total: AVITEK_PROJECT_SLUGS.length, currentName: '' },
     altai: { active: false, current: 0, total: ALTAI_PROJECT_SLUGS.length, currentName: '' },
     stroysoyuz: { active: false, current: 0, total: STROYSOYUZ_PROJECT_SLUGS.length, currentName: '' },
+    profstroy: { active: false, current: 0, total: PROFSTROY_PROJECT_SLUGS.length, currentName: '' },
   });
 
   // View Mode: 'split' | 'grid' | 'map' | 'lots'
@@ -262,6 +285,7 @@ export default function DevelopmentsPage() {
       avitek: buildAvitekSummaryByProject(liveState.avitek.lots, liveState.avitek.projects),
       altai: buildAltaiSummaryByProject(liveState.altai.lots, liveState.altai.projects),
       stroysoyuz: buildStroysoyuzSummaryByProject(liveState.stroysoyuz.lots, liveState.stroysoyuz.projects),
+      profstroy: buildProfstroySummaryByProject(liveState.profstroy.lots, liveState.profstroy.projects),
     }),
     [liveState]
   );
@@ -274,6 +298,7 @@ export default function DevelopmentsPage() {
       avitek: getLatestSyncedIso(liveState.avitek.projects),
       altai: getLatestSyncedIso(liveState.altai.projects),
       stroysoyuz: getLatestSyncedIso(liveState.stroysoyuz.projects),
+      profstroy: getLatestSyncedIso(liveState.profstroy.projects),
     }),
     [liveState]
   );
@@ -365,9 +390,21 @@ export default function DevelopmentsPage() {
   };
 
   const totalLiveLotsCount =
-    liveState.ksm.lots.length + liveState.kssk.lots.length + liveState.kino.lots.length;
+    liveState.ksm.lots.length +
+    liveState.kssk.lots.length +
+    liveState.kino.lots.length +
+    liveState.avitek.lots.length +
+    liveState.altai.lots.length +
+    liveState.stroysoyuz.lots.length +
+    liveState.profstroy.lots.length;
   const isAnyProviderSyncing =
-    liveProgress.ksm.active || liveProgress.kssk.active || liveProgress.kino.active;
+    liveProgress.ksm.active ||
+    liveProgress.kssk.active ||
+    liveProgress.kino.active ||
+    liveProgress.avitek.active ||
+    liveProgress.altai.active ||
+    liveProgress.stroysoyuz.active ||
+    liveProgress.profstroy.active;
 
   const handleSyncAllProviders = async () => {
     if (isAnyProviderSyncing) return;
@@ -375,6 +412,10 @@ export default function DevelopmentsPage() {
       handleSyncAllForProvider('kssk'),
       handleSyncAllForProvider('ksm'),
       handleSyncAllForProvider('kino'),
+      handleSyncAllForProvider('avitek'),
+      handleSyncAllForProvider('altai'),
+      handleSyncAllForProvider('stroysoyuz'),
+      handleSyncAllForProvider('profstroy'),
     ]);
   };
 
@@ -385,7 +426,11 @@ export default function DevelopmentsPage() {
         slug &&
         (getKsmSlugForDevelopment(d) === slug ||
           getKsskSlugForDevelopment(d) === slug ||
-          getKinoSlugForDevelopment(d) === slug)
+          getKinoSlugForDevelopment(d) === slug ||
+          getAvitekSlugForDevelopment(d) === slug ||
+          getAltaiSlugForDevelopment(d) === slug ||
+          getStroysoyuzSlugForDevelopment(d) === slug ||
+          getProfstroySlugForDevelopment(d) === slug)
       );
     }) || null;
     if (!targetDev) return;
@@ -602,12 +647,14 @@ export default function DevelopmentsPage() {
         avitekLots: liveState.avitek.lots,
         altaiLots: liveState.altai.lots,
         stroysoyuzLots: liveState.stroysoyuz.lots,
+        profstroyLots: liveState.profstroy.lots,
         ksmSummaryBySlug: liveSummaries.ksm,
         ksskSummaryBySlug: liveSummaries.kssk,
         kinoSummaryBySlug: liveSummaries.kino,
         avitekSummaryBySlug: liveSummaries.avitek,
         altaiSummaryBySlug: liveSummaries.altai,
         stroysoyuzSummaryBySlug: liveSummaries.stroysoyuz,
+        profstroySummaryBySlug: liveSummaries.profstroy,
         showHousePins,
       }),
     [
@@ -618,12 +665,14 @@ export default function DevelopmentsPage() {
       liveState.avitek.lots,
       liveState.altai.lots,
       liveState.stroysoyuz.lots,
+      liveState.profstroy.lots,
       liveSummaries.ksm,
       liveSummaries.kssk,
       liveSummaries.kino,
       liveSummaries.avitek,
       liveSummaries.altai,
       liveSummaries.stroysoyuz,
+      liveSummaries.profstroy,
       showHousePins,
     ]
   );
@@ -1049,6 +1098,7 @@ export default function DevelopmentsPage() {
               avitekLots={liveState.avitek.lots}
               altaiLots={liveState.altai.lots}
               stroysoyuzLots={liveState.stroysoyuz.lots}
+              profstroyLots={liveState.profstroy.lots}
               developments={developments}
               onOpenDetail={(d) => setDetailModalDev(d)}
               onFocusHouseOnMap={handleFocusHouseOnMap}
