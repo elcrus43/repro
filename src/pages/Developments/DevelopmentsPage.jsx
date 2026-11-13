@@ -29,8 +29,6 @@ import {
 } from '../../data/developmentsData';
 import { KIROV_DISTRICTS } from '../../data/location';
 import { DevelopmentsMap } from '../../components/Map/DevelopmentsMap';
-import { DevelopmentsGoogleMap } from '../../components/Map/DevelopmentsGoogleMap';
-import { DevelopmentsYandexMap } from '../../components/Map/DevelopmentsYandexMap';
 import { DevelopmentCard } from './DevelopmentCard';
 import { DevelopmentDetailModal } from './DevelopmentDetailModal';
 import { DevelopmentFormModal } from './DevelopmentFormModal';
@@ -154,8 +152,6 @@ export default function DevelopmentsPage() {
   // View Mode: 'split' | 'grid' | 'map' | 'lots'
   const [viewMode, setViewMode] = useState(() => (typeof window !== 'undefined' && window.innerWidth <= 900 ? 'grid' : 'split'));
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  // Map Provider: 'google' (Google Карты) | 'yandex' (Яндекс.Карты) | 'osm' (OpenStreetMap)
-  const [mapProvider, setMapProvider] = useState('google');
   const [showHousePins, setShowHousePins] = useState(true);
   const [mapFocusTarget, setMapFocusTarget] = useState(null);
 
@@ -1020,13 +1016,13 @@ export default function DevelopmentsPage() {
               </div>
             )}
 
-            {/* Right Column: Interactive Map (Google Карты / Яндекс.Карты / OSM) */}
+            {/* Right Column: Interactive Map (OpenStreetMap) */}
             {viewMode !== 'grid' && (
               <div className={`dev-map-column ${viewMode === 'map' ? 'fullscreen' : ''}`}>
-                {/* Map Provider Selector */}
+                {/* Map Control Bar */}
                 <div className="dev-map-provider-bar">
                   <div className="provider-info" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span className="provider-label">Движок карты:</span>
+                    <span className="provider-label">Карта OpenStreetMap</span>
                     <button
                       type="button"
                       className={`provider-pill ${showHousePins ? 'active' : ''}`}
@@ -1037,69 +1033,18 @@ export default function DevelopmentsPage() {
                       <span>{showHousePins ? `Дома (${mapItems.length})` : `ЖК (${mapItems.length})`}</span>
                     </button>
                   </div>
-                  <div className="dev-map-provider-pills">
-                    <button
-                      type="button"
-                      className={`provider-pill ${mapProvider === 'google' ? 'active' : ''}`}
-                      onClick={() => setMapProvider('google')}
-                      title="Google Карты (Схема, Гибрид, Спутник)"
-                    >
-                      <span className="pill-dot google" />
-                      <span>Google Карты</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`provider-pill ${mapProvider === 'yandex' ? 'active' : ''}`}
-                      onClick={() => setMapProvider('yandex')}
-                      title="Яндекс.Карты г. Кирова с номерами домов и 3D зданиями"
-                    >
-                      <span className="pill-dot yandex" />
-                      <span>Яндекс.Карты</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`provider-pill ${mapProvider === 'osm' ? 'active' : ''}`}
-                      onClick={() => setMapProvider('osm')}
-                      title="OpenStreetMap"
-                    >
-                      <span className="pill-dot osm" />
-                      <span>OpenStreetMap</span>
-                    </button>
-                  </div>
                 </div>
 
                 <div className="dev-map-embed-wrapper">
-                  {mapProvider === 'google' && (
-                    <DevelopmentsGoogleMap
-                      developments={mapItems}
-                      selectedId={selectedDevId}
-                      focusTarget={mapFocusTarget}
-                      onSelect={setSelectedDevId}
-                      onOpenDetail={setDetailModalDev}
-                      height="100%"
-                    />
-                  )}
-                  {mapProvider === 'yandex' && (
-                    <DevelopmentsYandexMap
-                      developments={mapItems}
-                      selectedId={selectedDevId}
-                      focusTarget={mapFocusTarget}
-                      onSelect={setSelectedDevId}
-                      onOpenDetail={setDetailModalDev}
-                      height="100%"
-                    />
-                  )}
-                  {mapProvider === 'osm' && (
-                    <DevelopmentsMap
-                      provider="osm"
-                      developments={mapItems}
-                      selectedId={selectedDevId}
-                      focusTarget={mapFocusTarget}
-                      onSelect={setSelectedDevId}
-                      onOpenDetail={setDetailModalDev}
-                      height="100%"
-                    />
-                  )}
+                  <DevelopmentsMap
+                    provider="osm"
+                    developments={mapItems}
+                    selectedId={selectedDevId}
+                    focusTarget={mapFocusTarget}
+                    onSelect={setSelectedDevId}
+                    onOpenDetail={setDetailModalDev}
+                    height="100%"
+                  />
                 </div>
               </div>
             )}
