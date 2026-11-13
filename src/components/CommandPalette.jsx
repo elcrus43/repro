@@ -106,7 +106,7 @@ export function CommandPalette() {
       title: 'Зафиксировать звонок',
       subtitle: 'Создать задачу звонка клиенту',
       icon: PhoneCall,
-      action: () => { setIsOpen(false); navigate('/tasks/call/new'); }
+      action: () => { setIsOpen(false); navigate('/tasks/call'); }
     },
     {
       id: 'act-new-meeting',
@@ -115,7 +115,7 @@ export function CommandPalette() {
       title: 'Назначить встречу с собственником',
       subtitle: 'Запланировать показ или переговоры',
       icon: Calendar,
-      action: () => { setIsOpen(false); navigate('/tasks/meeting/new'); }
+      action: () => { setIsOpen(false); navigate('/tasks/meeting-owner'); }
     },
     {
       id: 'act-new-history',
@@ -161,6 +161,15 @@ export function CommandPalette() {
       subtitle: 'Каталог, фильтры и база квартир',
       icon: Building2,
       action: () => { setIsOpen(false); navigate('/properties'); }
+    },
+    {
+      id: 'nav-developments',
+      type: 'navigation',
+      category: 'Разделы',
+      title: 'Новостройки г. Кирова',
+      subtitle: 'Каталог ЖК, карта и свободные квартиры',
+      icon: Landmark,
+      action: () => { setIsOpen(false); navigate('/developments'); }
     },
     {
       id: 'nav-clients',

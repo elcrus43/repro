@@ -837,7 +837,7 @@ export function DashboardPage() {
                             </div>
                         </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 auto', justifyContent: 'flex-end', minWidth: 0 }}>
                         <GlobalSearch style={{ maxWidth: 340 }} />
                         <div className="card-clickable" style={{
                             width: 40, height: 40, borderRadius: 12,

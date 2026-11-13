@@ -2,14 +2,17 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, MapPin, Sparkles } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, MapPin, Sparkles, Building2 } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
+import { useDevelopmentsCatalog } from '../../hooks/useDevelopmentsCatalog';
+import { matchDevelopmentsToRequest } from '../../lib/developmentMatching';
 
 export function ListPage() {
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const { developments } = useDevelopmentsCatalog();
     const user = state.currentUser;
     const isAdmin = user?.role === 'admin';
     const [search, setSearch] = useState('');
@@ -127,6 +130,7 @@ export function ListPage() {
                             const prop = state.properties.find(p => p.id === m.property_id);
                             return prop && !hasPassedDealStage(prop, state.deals) && isDealTypeCompatible(prop, req);
                         }) : [];
+                        const devMatches = isReqActive ? matchDevelopmentsToRequest(developments, req) : [];
                         return (
                             <div key={req.id} className="card card-clickable" onClick={() => navigate(`/requests/${req.id}`)} style={{ 
                                 padding: '14px 20px', borderRadius: 20, border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', background: 'var(--surface)', position: 'relative',
@@ -193,6 +197,74 @@ export function ListPage() {
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Highlighted New Buildings Strip */}
+                                {devMatches.length > 0 && (
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/requests/${req.id}`);
+                                        }}
+                                        style={{
+                                            marginTop: 4,
+                                            padding: '7px 10px',
+                                            borderRadius: 12,
+                                            background: 'linear-gradient(135deg, rgba(0, 82, 255, 0.07) 0%, rgba(16, 185, 129, 0.07) 100%)',
+                                            border: '1px solid rgba(0, 82, 255, 0.2)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            gap: 8,
+                                            flexWrap: 'wrap',
+                                        }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
+                                            <span
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 4,
+                                                    fontSize: 10.5,
+                                                    fontWeight: 600,
+                                                    color: 'var(--primary)',
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                <Building2 size={12} />
+                                                <span>Новостройки ({devMatches.length}):</span>
+                                            </span>
+                                            <span
+                                                style={{
+                                                    fontSize: 11.5,
+                                                    color: 'var(--text)',
+                                                    fontWeight: 400,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap',
+                                                }}
+                                            >
+                                                {devMatches
+                                                    .slice(0, 2)
+                                                    .map((d) => `${d.dev.name} (${d.effectivePriceFrom ? `от ${(d.effectivePriceFrom / 1_000_000).toFixed(1).replace('.', ',')} млн` : 'по запросу'})`)
+                                                    .join(' · ')}
+                                                {devMatches.length > 2 ? ` +${devMatches.length - 2}` : ''}
+                                            </span>
+                                        </div>
+                                        <span
+                                            style={{
+                                                fontSize: 10,
+                                                fontWeight: 600,
+                                                color: '#047857',
+                                                background: 'rgba(16, 185, 129, 0.14)',
+                                                padding: '2px 7px',
+                                                borderRadius: 999,
+                                                flexShrink: 0,
+                                            }}
+                                        >
+                                            цена + локация
+                                        </span>
+                                    </div>
+                                )}
                             </div>
                         );
                     })

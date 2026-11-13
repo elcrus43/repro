@@ -5,11 +5,14 @@ import { formatNumber } from '../../utils/format';
 import { Pencil, Trash, Sparkles, User, MapPin, Building2, Wallet, ChevronRight, TrendingUp, ChevronLeft } from 'lucide-react';
 import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
+import { useDevelopmentsCatalog } from '../../hooks/useDevelopmentsCatalog';
+import { RequestDevelopmentsSection } from '../../components/RequestDevelopmentsSection';
 
 export function DetailsPage() {
     const { id } = useParams();
     const { state, dispatch } = useApp();
     const navigate = useNavigate();
+    const { developments, ksmLots, ksskLots, ksmProjects, ksskProjects } = useDevelopmentsCatalog({ includeLiveLots: true });
     const req = state.requests.find(r => r.id === id);
     const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
     
@@ -214,6 +217,16 @@ export function DetailsPage() {
                         </div>
                     )}
                 </div>
+
+                {/* New Buildings Suggestions */}
+                <RequestDevelopmentsSection
+                    request={req}
+                    developments={developments}
+                    ksmLots={ksmLots}
+                    ksskLots={ksskLots}
+                    ksmProjects={ksmProjects}
+                    ksskProjects={ksskProjects}
+                />
 
                 {/* Clients Card */}
                 {clients.length > 0 && (

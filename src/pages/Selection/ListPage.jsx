@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
-import { Pencil, Trash, Search, Plus, MapPin, Phone, User, Trash2, Building2, Calendar, Download } from 'lucide-react';
+import { Pencil, Trash, Search, Plus, MapPin, Phone, User, Trash2, Building2, Calendar, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { useToastContext } from '../../components/Toast';
 
@@ -12,6 +12,14 @@ export function ListPage() {
     const user = state.currentUser;
     const { toast } = useToastContext();
     const [search, setSearch] = useState('');
+    const [expandedClients, setExpandedClients] = useState({});
+
+    const toggleClientGroup = (clientId) => {
+        setExpandedClients(prev => ({
+            ...prev,
+            [clientId]: !prev[clientId]
+        }));
+    };
 
     const handleImportToProperties = async (item) => {
         if (!window.confirm('Импортировать этот объект подбора в активные объекты?')) return;
@@ -141,11 +149,62 @@ export function ListPage() {
                         <button className="btn btn-primary" onClick={() => navigate('/selection/new')}>Создать подбор</button>
                     </div>
                 ) : (
-                    itemsByClient.map(group => (
+                    itemsByClient.map(group => {
+                        const isExpanded = Boolean(expandedClients[group.clientId]) || Boolean(search.trim());
+                        return (
                         <div key={group.clientId} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            <div className="font-oswald" style={{ fontSize: 16, fontWeight: 500, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', paddingLeft: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <User size={16} /> {group.clientName}
+                            <div
+                                onClick={() => toggleClientGroup(group.clientId)}
+                                className="card-clickable"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '12px 16px',
+                                    borderRadius: 16,
+                                    background: 'var(--bg-light)',
+                                    cursor: 'pointer',
+                                    userSelect: 'none',
+                                    transition: 'all 0.2s ease',
+                                    border: isExpanded ? '1px solid rgba(0, 82, 255, 0.2)' : '1px solid transparent',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        width: 30, height: 30, borderRadius: 10,
+                                        background: 'rgba(0, 82, 255, 0.1)',
+                                        color: 'var(--primary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <User size={15} />
+                                    </div>
+                                    <span className="font-oswald" style={{
+                                        fontSize: 15,
+                                        fontWeight: 500,
+                                        color: 'var(--text)',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.04em'
+                                    }}>
+                                        {group.clientName}
+                                    </span>
+                                    <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 700,
+                                        color: 'var(--primary)',
+                                        background: 'rgba(0, 82, 255, 0.12)',
+                                        borderRadius: 8,
+                                        padding: '2px 8px'
+                                    }}>
+                                        {group.items.length}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 12 }}>
+                                    <span style={{ fontWeight: 400 }}>{isExpanded ? 'Свернуть' : 'Развернуть'}</span>
+                                    {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                </div>
                             </div>
+                            {isExpanded && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                 {group.items.map(item => (
                                     <div key={item.id} className="card" style={{ 
@@ -292,8 +351,10 @@ export function ListPage() {
                                     </div>
                                 ))}
                             </div>
+                            )}
                         </div>
-                    ))
+                        );
+                    })
                 )}
             </div>
         </div>

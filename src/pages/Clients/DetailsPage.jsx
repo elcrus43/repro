@@ -48,6 +48,8 @@ import {
     CLIENT_PIPELINE_STAGES,
     getClientPipelineStage
 } from '../../utils/clientPipeline';
+import { useDevelopmentsCatalog } from '../../hooks/useDevelopmentsCatalog';
+import { matchDevelopmentsToRequest } from '../../lib/developmentMatching';
 
 const EXCLUDED_PROP_STATUSES = ['sold', 'deal_closed', 'deal'];
 const EXCLUDED_MATCH_STATUSES = ['deal', 'rejected'];
@@ -57,6 +59,7 @@ export function DetailsPage() {
     const navigate = useNavigate();
     const { id } = useParams();
     const { toast } = useToastContext();
+    const { developments } = useDevelopmentsCatalog();
     const client = state.clients.find(c => c.id === id);
     const [isEditingTypes, setIsEditingTypes] = useState(false);
     const [isVerificationOpen, setIsVerificationOpen] = useState(false);
@@ -2508,7 +2511,11 @@ export function DetailsPage() {
                                 })}
 
                                 {/* Запросы на покупку */}
-                                {myRequests.map(r => (
+                                {myRequests.map(r => {
+                                    const devMatchesCount = (r.status || 'active') === 'active'
+                                        ? matchDevelopmentsToRequest(developments, r).length
+                                        : 0;
+                                    return (
                                     <div key={r.id} className="card-clickable" onClick={() => navigate(`/requests/${r.id}`)}
                                         style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -2516,7 +2523,7 @@ export function DetailsPage() {
                                                 <FileText size={16} />
                                             </div>
                                             <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                                     <span style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</span>
                                                     <span style={{ 
                                                         fontSize: 9, 
@@ -2527,14 +2534,27 @@ export function DetailsPage() {
                                                     }}>
                                                         {(r.status || 'active') === 'active' ? 'Актуально' : 'Завершен'}
                                                     </span>
+                                                    {devMatchesCount > 0 && (
+                                                        <span style={{
+                                                            fontSize: 9,
+                                                            fontWeight: 600,
+                                                            padding: '1px 6px',
+                                                            borderRadius: 6,
+                                                            background: 'rgba(0, 82, 255, 0.12)',
+                                                            color: 'var(--primary)'
+                                                        }}>
+                                                            Новостройки: {devMatchesCount}
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой тип'}</div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '—'}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '-'}</div>
                                             </div>
                                         </div>
                                         <ChevronRight size={16} color="var(--text-muted)" />
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

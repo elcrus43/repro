@@ -7,6 +7,8 @@ import { formatNumber, parseLocalDateTime, stripPhone } from '../../utils/format
 import { MessageTemplateModal } from '../Messaging/MessageTemplateModal';
 import { Share2, Send, Pencil, Trash, Sparkles, ChevronRight, Phone, Wallet, Activity, TrendingUp, Briefcase } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
+import { useDevelopmentsCatalog } from '../../hooks/useDevelopmentsCatalog';
+import { RequestDevelopmentsSection } from '../../components/RequestDevelopmentsSection';
 
 export function MatchesPage() {
     const { state } = useApp();
@@ -16,6 +18,8 @@ export function MatchesPage() {
     const [searchParams] = useSearchParams();
     const propFilter = searchParams.get('property');
     const reqFilter = searchParams.get('request');
+    const { developments, ksmLots, ksskLots, ksmProjects, ksskProjects } = useDevelopmentsCatalog({ includeLiveLots: Boolean(reqFilter) });
+    const filteredRequest = reqFilter ? state.requests.find(r => r.id === reqFilter) : null;
 
     const matches = state.matches
         .filter(m => {
@@ -82,6 +86,17 @@ export function MatchesPage() {
             </div>
 
             <div className="page-content" style={{ padding: '12px 20px 120px', gap: 16 }}>
+                {filteredRequest && (
+                    <RequestDevelopmentsSection
+                        request={filteredRequest}
+                        developments={developments}
+                        ksmLots={ksmLots}
+                        ksskLots={ksskLots}
+                        ksmProjects={ksmProjects}
+                        ksskProjects={ksskProjects}
+                        initialExpandedCount={3}
+                    />
+                )}
                 {matches.length === 0 ? (
                     <div className="empty-state" style={{ padding: '60px 0' }}>
                         <div style={{ width: 80, height: 80, background: 'var(--bg-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--text-muted)' }}>

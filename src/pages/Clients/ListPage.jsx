@@ -192,7 +192,7 @@ export function ListPage() {
     return (
         <div className="page fade-in" style={{ paddingBottom: 100 }}>
             {/* Premium Sticky Topbar — Open Design */}
-            <div className="topbar sticky" style={{ 
+            <div className="topbar sticky list-topbar" style={{ 
                 background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '20px',
@@ -202,13 +202,13 @@ export function ListPage() {
                 gap: 16,
                 height: 'auto'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 12 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                <div className="list-topbar-row">
+                    <div className="list-topbar-title-group">
                         <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 600 }}>Клиенты</span>
                         <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 400, opacity: 0.75, letterSpacing: '0.02em' }}>База контактов</span>
                     </div>
-                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', flex: 1, justifyContent: 'flex-end' }}>
-                        <GlobalSearch />
+                    <div className="list-topbar-actions">
+                        <GlobalSearch className="list-topbar-search" />
                         {(() => {
                             const isPipelineAllowed = !['developer', 'agent', 'lawyer'].includes(filter);
                             return (
@@ -234,7 +234,7 @@ export function ListPage() {
                                 </button>
                             );
                         })()}
-                        <button className="card-clickable" onClick={() => navigate('/clients/new')} style={{ 
+                        <button className="card-clickable mobile-hide-add-btn" onClick={() => navigate('/clients/new')} style={{ 
                             width: 40, height: 40, borderRadius: 12, border: 'none', 
                             background: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',

@@ -287,38 +287,39 @@ export function ListPage() {
     return (
         <div className="page fade-in" style={{ background: 'var(--surface)' }}>
             {/* Premium Glassmorphic Topbar */}
-            <div className="topbar sticky" style={{ 
+            <div className="topbar sticky list-topbar" style={{ 
                 background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '16px 20px',
                 borderBottom: '1px solid var(--border-light)',
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: 12,
                 zIndex: 1000
             }}>
-                <div style={{ display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
-                    <span className="font-oswald" style={{ fontSize: 24, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
-                        История
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Журнал событий</span>
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
-                    <GlobalSearch />
-                    <button 
-                        onClick={() => navigate('/history/new')}
-                        className="card-clickable"
-                        style={{ 
-                            width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', 
-                            color: 'white', border: 'none', display: 'flex', alignItems: 'center', 
-                            justifyContent: 'center', boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)',
-                            flexShrink: 0
-                        }}
-                    >
-                        <Plus size={22} />
-                    </button>
+                <div className="list-topbar-row">
+                    <div className="list-topbar-title-group">
+                        <span className="font-oswald" style={{ fontSize: 24, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                            История
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.6 }}>Журнал событий</span>
+                    </div>
+                    
+                    <div className="list-topbar-actions">
+                        <GlobalSearch className="list-topbar-search" />
+                        <button 
+                            onClick={() => navigate('/history/new')}
+                            className="card-clickable mobile-hide-add-btn"
+                            style={{ 
+                                width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', 
+                                color: 'white', border: 'none', display: 'flex', alignItems: 'center', 
+                                justifyContent: 'center', boxShadow: '0 8px 16px rgba(0, 82, 255, 0.2)',
+                                flexShrink: 0
+                            }}
+                        >
+                            <Plus size={22} />
+                        </button>
+                    </div>
                 </div>
             </div>
 

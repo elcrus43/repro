@@ -4,7 +4,24 @@ import { AppProvider, useApp } from './context/AppContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
 import { RequireAdmin } from './components/RequireAdmin';
-import { Building2, Users, FileCheck, UserCircle, History, ClipboardList } from 'lucide-react';
+import {
+  Building2,
+  Users,
+  FileCheck,
+  UserCircle,
+  History,
+  ClipboardList,
+  LayoutGrid,
+  LayoutDashboard,
+  Landmark,
+  FolderHeart,
+  Target,
+  Sparkles,
+  MessageSquareText,
+  Sun,
+  Moon,
+  X
+} from 'lucide-react';
 import { DesktopSidebar } from './components/DesktopSidebar';
 import { CommandPalette } from './components/CommandPalette';
 import { QuickActionFab } from './components/QuickActionFab';
@@ -48,57 +65,238 @@ import { useMatchNotifications } from './hooks/useMatchNotifications';
 
 function BottomNav() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const { state } = useApp();
+  const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [isDark, setIsDark] = React.useState(() => document.documentElement.classList.contains('dark'));
 
-  const isAdminUser = state.currentUser?.role === 'admin';
+  const user = state.currentUser;
+  const isAdminUser = user?.role === 'admin';
   const pendingUsersCount = isAdminUser ? state.pendingUsers?.filter(u => u.status === 'pending').length : 0;
 
+  React.useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname, search]);
+
+  React.useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setIsMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMenuOpen]);
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    if (root.classList.contains('dark')) {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+      setIsDark(false);
+    } else {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+      setIsDark(true);
+    }
+  };
+
   const tabs = [
-    { path: '/properties', icon: <Building2 size={22} />, label: 'Объекты' },
-    { path: '/clients', icon: <Users size={22} />, label: 'Клиенты' },
-    { path: '/history', icon: <History size={22} />, label: 'История' },
-    { path: '/tasks', icon: <FileCheck size={22} />, label: 'Сделки' },
-    { path: '/profile', icon: <UserCircle size={22} />, label: 'Профиль', badge: pendingUsersCount > 0 },
+    { path: '/properties', icon: <Building2 size={20} />, label: 'Объекты' },
+    { path: '/clients', icon: <Users size={20} />, label: 'Клиенты' },
+    { path: '/history', icon: <History size={20} />, label: 'История' },
+    { path: '/tasks', icon: <FileCheck size={20} />, label: 'Сделки' },
+  ];
+
+  const menuSections = [
+    {
+      path: '/developments',
+      label: 'Новостройки',
+      icon: Landmark,
+      color: '#0052FF',
+      bg: 'rgba(0, 82, 255, 0.1)',
+    },
+    {
+      path: '/',
+      label: 'Дашборд',
+      icon: LayoutDashboard,
+      color: '#0284c7',
+      bg: 'rgba(2, 132, 199, 0.1)',
+    },
+    {
+      path: '/properties?filter=selection',
+      label: 'Подборки',
+      icon: FolderHeart,
+      color: '#0891b2',
+      bg: 'rgba(8, 145, 178, 0.1)',
+    },
+    {
+      path: '/requests',
+      label: 'Запросы',
+      icon: Target,
+      color: '#7c3aed',
+      bg: 'rgba(124, 58, 237, 0.1)',
+    },
+    {
+      path: '/matches',
+      label: 'Совпадения',
+      icon: Sparkles,
+      color: '#d97706',
+      bg: 'rgba(217, 119, 6, 0.12)',
+    },
+    {
+      path: '/documents',
+      label: 'Документы',
+      icon: ClipboardList,
+      color: '#10b981',
+      bg: 'rgba(16, 185, 129, 0.1)',
+    },
+    {
+      path: '/templates',
+      label: 'Шаблоны',
+      icon: MessageSquareText,
+      color: '#ec4899',
+      bg: 'rgba(236, 72, 153, 0.1)',
+    },
+    {
+      path: '/profile',
+      label: 'Профиль',
+      icon: UserCircle,
+      color: '#475569',
+      bg: 'rgba(71, 85, 105, 0.1)',
+      badge: pendingUsersCount > 0 ? pendingUsersCount : null,
+    },
   ];
 
   const isActive = (path) => {
     if (path === '/properties') {
-      return pathname.startsWith('/properties') || pathname.startsWith('/selection');
+      return pathname.startsWith('/properties') && !search.includes('filter=selection');
     }
     return pathname.startsWith(path);
   };
 
+  const isMenuRouteActive = (itemPath) => {
+    if (itemPath === '/') return pathname === '/';
+    if (itemPath === '/properties?filter=selection') {
+      return (pathname === '/properties' && search.includes('filter=selection')) || pathname.startsWith('/selection');
+    }
+    return pathname.startsWith(itemPath);
+  };
+
+  const isMoreTabActive = isMenuOpen || menuSections.some(s => isMenuRouteActive(s.path));
+  const initial = user?.full_name?.charAt(0).toUpperCase() || 'R';
+
   return (
-    <nav className="bottom-nav">
-      {tabs.map(tab => (
-        <button
-          key={tab.path}
-          className={`nav-item ${isActive(tab.path) ? 'active' : ''}`}
-          onClick={() => navigate(tab.path)}
-          style={{ 
+    <>
+      {isMenuOpen && (
+        <>
+          <div className="mobile-menu-backdrop" onClick={() => setIsMenuOpen(false)} />
+          <div className="mobile-menu-sheet" role="dialog" aria-label="Разделы CRM">
+            <div className="mobile-menu-handle" />
+            <div className="mobile-menu-header">
+              <div
+                className="mobile-menu-user"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate('/profile');
+                }}
+              >
+                <div className="mobile-menu-avatar">{initial}</div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user?.full_name || 'Риелтор'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    {isAdminUser ? 'Администратор' : 'Агент'} - Профиль
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  aria-label={isDark ? 'Включить светлую тему' : 'Включить тёмную тему'}
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, border: '1px solid var(--border)',
+                    background: 'var(--bg)', color: 'var(--text)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  {isDark ? <Sun size={17} /> : <Moon size={17} />}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsMenuOpen(false)}
+                  aria-label="Закрыть меню"
+                  style={{
+                    width: 36, height: 36, borderRadius: 10, border: '1px solid var(--border)',
+                    background: 'var(--bg)', color: 'var(--text-secondary)', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                  }}
+                >
+                  <X size={17} />
+                </button>
+              </div>
+            </div>
+
+            <div className="mobile-menu-grid">
+              {menuSections.map(item => {
+                const Icon = item.icon;
+                const active = isMenuRouteActive(item.path);
+                return (
+                  <button
+                    key={item.path}
+                    type="button"
+                    className={`mobile-menu-tile ${active ? 'active' : ''}`}
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      navigate(item.path);
+                    }}
+                  >
+                    <div
+                      className="mobile-menu-tile-icon"
+                      style={{ background: item.bg, color: item.color }}
+                    >
+                      <Icon size={18} />
+                    </div>
+                    <span className="mobile-menu-tile-label">{item.label}</span>
+                    {item.badge && (
+                      <span className="mobile-menu-badge">{item.badge}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
+
+      <nav className="bottom-nav">
+        {tabs.map(tab => (
+          <button
+            key={tab.path}
+            type="button"
+            className={`nav-item ${isActive(tab.path) ? 'active' : ''}`}
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigate(tab.path);
+            }}
+            style={{
               flex: 1, height: '100%', border: 'none', background: 'transparent',
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              gap: 2, position: 'relative', padding: '12px 0',
+              gap: 2, position: 'relative', padding: '10px 0',
               minWidth: 0,
               color: isActive(tab.path) ? 'var(--primary)' : 'var(--text-muted)',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-          }}
-        >
-          <div style={{ 
-              position: 'relative', 
+            }}
+          >
+            <div style={{
+              position: 'relative',
               transform: isActive(tab.path) ? 'translateY(-2px)' : 'translateY(0)',
               transition: 'transform 0.3s ease'
-          }}>
-            {React.cloneElement(tab.icon, { size: 20 })}
-            {tab.badge && (
-                <span style={{ 
-                    position: 'absolute', top: -2, right: -2, width: 8, height: 8, 
-                    borderRadius: '50%', background: '#EF4444', border: '2px solid white' 
-                }} />
-            )}
-          </div>
-          <span style={{ 
+            }}>
+              {tab.icon}
+            </div>
+            <span style={{
               fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
               color: isActive(tab.path) ? 'var(--primary)' : 'var(--text-secondary)',
               whiteSpace: 'nowrap',
@@ -107,12 +305,51 @@ function BottomNav() {
               width: '100%',
               textAlign: 'center',
               opacity: isActive(tab.path) ? 1 : 0.75,
-          }}>{tab.label}</span>
-          
+            }}>{tab.label}</span>
+          </button>
+        ))}
 
+        <button
+          type="button"
+          className={`nav-item ${isMoreTabActive ? 'active' : ''}`}
+          onClick={() => setIsMenuOpen(prev => !prev)}
+          aria-expanded={isMenuOpen}
+          aria-label="Открыть меню разделов"
+          style={{
+            flex: 1, height: '100%', border: 'none', background: 'transparent',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 2, position: 'relative', padding: '10px 0',
+            minWidth: 0,
+            color: isMoreTabActive ? 'var(--primary)' : 'var(--text-muted)',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+          }}
+        >
+          <div style={{
+            position: 'relative',
+            transform: isMoreTabActive ? 'translateY(-2px)' : 'translateY(0)',
+            transition: 'transform 0.3s ease'
+          }}>
+            <LayoutGrid size={20} />
+            {pendingUsersCount > 0 && (
+              <span style={{
+                position: 'absolute', top: -2, right: -2, width: 8, height: 8,
+                borderRadius: '50%', background: '#EF4444', border: '2px solid white'
+              }} />
+            )}
+          </div>
+          <span style={{
+            fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
+            color: isMoreTabActive ? 'var(--primary)' : 'var(--text-secondary)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            width: '100%',
+            textAlign: 'center',
+            opacity: isMoreTabActive ? 1 : 0.75,
+          }}>Меню</span>
         </button>
-      ))}
-    </nav>
+      </nav>
+    </>
   );
 }
 

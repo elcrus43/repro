@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  Plus, 
-  Building2, 
-  Users, 
-  PhoneCall, 
-  History, 
+import {
+  Plus,
+  Building2,
+  Users,
+  PhoneCall,
+  History,
   Search,
-  Sparkles
+  Landmark
 } from 'lucide-react';
 
 export function QuickActionFab() {
@@ -39,9 +39,9 @@ export function QuickActionFab() {
     <>
       {/* Dimmed backdrop when FAB is open */}
       {isOpen && (
-        <div 
-          className="quick-fab-backdrop" 
-          onClick={() => setIsOpen(false)} 
+        <div
+          className="quick-fab-backdrop"
+          onClick={() => setIsOpen(false)}
         />
       )}
 
@@ -49,58 +49,69 @@ export function QuickActionFab() {
         {/* Speed dial list */}
         {isOpen && (
           <div className="quick-fab-actions">
-            <button 
+            <button
               type="button"
               className="quick-fab-action-item"
               onClick={handleOpenSearch}
             >
               <span className="quick-fab-label">Поиск и действия</span>
               <div className="quick-fab-icon-btn fab-search">
-                <Search size={18} />
+                <Search size={16} />
               </div>
             </button>
 
-            <button 
+            <button
+              type="button"
+              className="quick-fab-action-item"
+              onClick={() => handleAction('/developments')}
+            >
+              <span className="quick-fab-label">Новостройки</span>
+              <div className="quick-fab-icon-btn fab-developments">
+                <Landmark size={16} />
+              </div>
+            </button>
+
+            <button
               type="button"
               className="quick-fab-action-item"
               onClick={() => handleAction('/history/new')}
             >
               <span className="quick-fab-label">Запись в историю</span>
               <div className="quick-fab-icon-btn fab-history">
-                <History size={18} />
+                <History size={16} />
               </div>
             </button>
 
-            <button 
+            <button
               type="button"
               className="quick-fab-action-item"
-              onClick={() => handleAction('/tasks/call/new')}
+              onClick={() => handleAction('/tasks/call')}
             >
               <span className="quick-fab-label">Зафиксировать звонок</span>
               <div className="quick-fab-icon-btn fab-call">
-                <PhoneCall size={18} />
+                <PhoneCall size={16} />
               </div>
             </button>
 
-            <button 
+            <button
               type="button"
               className="quick-fab-action-item"
               onClick={() => handleAction('/clients/new')}
             >
               <span className="quick-fab-label">Новый клиент</span>
               <div className="quick-fab-icon-btn fab-client">
-                <Users size={18} />
+                <Users size={16} />
               </div>
             </button>
 
-            <button 
+            <button
               type="button"
               className="quick-fab-action-item"
               onClick={() => handleAction('/properties/new')}
             >
               <span className="quick-fab-label">Новый объект</span>
               <div className="quick-fab-icon-btn fab-property">
-                <Building2 size={18} />
+                <Building2 size={16} />
               </div>
             </button>
           </div>
@@ -111,10 +122,11 @@ export function QuickActionFab() {
           type="button"
           className={`quick-fab-main-btn ${isOpen ? 'active' : ''}`}
           onClick={() => setIsOpen(prev => !prev)}
+          aria-expanded={isOpen}
           aria-label={isOpen ? 'Закрыть меню' : 'Быстрое действие за 1 клик'}
           title="Быстрое действие за 1 клик"
         >
-          <Plus size={24} className="quick-fab-plus-icon" />
+          <Plus size={20} className="quick-fab-plus-icon" />
         </button>
       </div>
     </>

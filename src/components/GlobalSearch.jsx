@@ -10,7 +10,7 @@ import { formatNumber, formatPhone, stripPhone } from '../utils/format';
  * Поле сквозного поиска по объектам, клиентам, запросам, сделкам и совпадениям.
  * Располагается в шапке каждой вкладки.
  */
-export function GlobalSearch({ placeholder = 'Сквозной поиск...', style = {} }) {
+export function GlobalSearch({ placeholder = 'Сквозной поиск...', style = {}, className = '' }) {
     const { state } = useApp();
     const navigate = useNavigate();
     const [query, setQuery] = useState('');
@@ -88,7 +88,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
     };
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', flex: '1 1 auto', maxWidth: 360, minWidth: 140, ...style }}>
+        <div ref={containerRef} className={className} style={{ position: 'relative', flex: '1 1 auto', maxWidth: 360, minWidth: 0, ...style }}>
             {/* Поле ввода поиска */}
             <div style={{
                 position: 'relative',
@@ -155,9 +155,9 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                     position: 'absolute',
                     top: 'calc(100% + 6px)',
                     right: 0,
-                    minWidth: 320,
+                    minWidth: 'min(320px, calc(100vw - 28px))',
                     width: '100%',
-                    maxWidth: 440,
+                    maxWidth: 'min(440px, calc(100vw - 28px))',
                     maxHeight: '440px',
                     background: 'var(--surface, #ffffff)',
                     border: '1px solid var(--border-light, #e2e8f0)',

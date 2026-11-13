@@ -583,7 +583,7 @@ export function DealsPage() {
     return (
         <div className="page fade-in">
             {/* Compact Sticky Topbar */}
-            <div className="topbar sticky" style={{ 
+            <div className="topbar sticky list-topbar" style={{ 
                 background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(24px) saturate(180%)',
                 padding: '14px 18px',
@@ -593,8 +593,8 @@ export function DealsPage() {
                 gap: 10,
                 height: 'auto'
             }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', gap: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                <div className="list-topbar-row">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, minWidth: 0 }}>
                         <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>Сделки</span>
                         {/* Compact Inline Month Selector */}
                         <div style={{ 
@@ -628,14 +628,14 @@ export function DealsPage() {
                         </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, justifyContent: 'flex-end' }}>
-                        <GlobalSearch />
+                    <div className="list-topbar-actions">
+                        <GlobalSearch className="list-topbar-search" />
                         <button 
                             className="card-clickable" 
                             onClick={() => { resetForm(); setShowForm(!showForm); }} 
                             style={{ 
                                 height: 38, 
-                                padding: '0 14px', 
+                                padding: '0 12px', 
                                 borderRadius: 10, 
                                 background: 'var(--primary)', 
                                 color: 'white', 
