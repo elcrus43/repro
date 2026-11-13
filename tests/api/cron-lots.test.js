@@ -16,11 +16,14 @@ describe('cron-lots config and helpers', () => {
   });
 
   it('resolves valid provider arguments', () => {
-    expect(resolveProviders()).toEqual(['kssk', 'ksm', 'kino']);
-    expect(resolveProviders('all')).toEqual(['kssk', 'ksm', 'kino']);
+    expect(resolveProviders()).toEqual(['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz']);
+    expect(resolveProviders('all')).toEqual(['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz']);
     expect(resolveProviders('kssk')).toEqual(['kssk']);
     expect(resolveProviders('KSM')).toEqual(['ksm']);
     expect(resolveProviders('kino')).toEqual(['kino']);
+    expect(resolveProviders('avitek')).toEqual(['avitek']);
+    expect(resolveProviders('altai')).toEqual(['altai']);
+    expect(resolveProviders('stroysoyuz')).toEqual(['stroysoyuz']);
     expect(resolveProviders('unknown')).toBeNull();
   });
 });

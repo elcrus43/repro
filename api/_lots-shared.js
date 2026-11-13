@@ -12,6 +12,9 @@ const ALLOWED_TABLES = {
   ksm: { lotsTable: 'ksm_lots', metaTable: 'ksm_sync_meta', indexName: 'idx_ksm_lots_project_slug' },
   kssk: { lotsTable: 'kssk_lots', metaTable: 'kssk_sync_meta', indexName: 'idx_kssk_lots_project_slug' },
   kino: { lotsTable: 'kino_lots', metaTable: 'kino_sync_meta', indexName: 'idx_kino_lots_project_slug' },
+  avitek: { lotsTable: 'avitek_lots', metaTable: 'avitek_sync_meta', indexName: 'idx_avitek_lots_project_slug' },
+  altai: { lotsTable: 'altai_lots', metaTable: 'altai_sync_meta', indexName: 'idx_altai_lots_project_slug' },
+  stroysoyuz: { lotsTable: 'stroysoyuz_lots', metaTable: 'stroysoyuz_sync_meta', indexName: 'idx_stroysoyuz_lots_project_slug' },
 };
 
 export function decodeHtmlEntities(str) {

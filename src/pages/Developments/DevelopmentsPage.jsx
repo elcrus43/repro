@@ -70,6 +70,30 @@ import {
   syncKinoProject,
   buildKinoSummaryByProject,
 } from '../../lib/kinoLots';
+import {
+  AVITEK_PROJECT_SLUGS,
+  AVITEK_PROJECT_NAMES,
+  getAvitekSlugForDevelopment,
+  fetchAvitekLots,
+  syncAvitekProject,
+  buildAvitekSummaryByProject,
+} from '../../lib/avitekLots';
+import {
+  ALTAI_PROJECT_SLUGS,
+  ALTAI_PROJECT_NAMES,
+  getAltaiSlugForDevelopment,
+  fetchAltaiLots,
+  syncAltaiProject,
+  buildAltaiSummaryByProject,
+} from '../../lib/altaiLots';
+import {
+  STROYSOYUZ_PROJECT_SLUGS,
+  STROYSOYUZ_PROJECT_NAMES,
+  getStroysoyuzSlugForDevelopment,
+  fetchStroysoyuzLots,
+  syncStroysoyuzProject,
+  buildStroysoyuzSummaryByProject,
+} from '../../lib/stroysoyuzLots';
 
 const LIVE_PROVIDERS = {
   ksm: {
@@ -111,6 +135,45 @@ const LIVE_PROVIDERS = {
     pillTitle: 'Синхронизация КИНО: живые остатки квартир',
     syncAllTitle: 'Обновить свободные квартиры по всем 3 ЖК КИНО',
   },
+  avitek: {
+    id: 'avitek',
+    label: 'АВИТЕК',
+    slugs: AVITEK_PROJECT_SLUGS,
+    names: AVITEK_PROJECT_NAMES,
+    fetchLots: fetchAvitekLots,
+    syncProject: syncAvitekProject,
+    buildSummary: buildAvitekSummaryByProject,
+    getSlug: getAvitekSlugForDevelopment,
+    subtitle: 'Прямые данные по свободным квартирам УКС АВИТЕК',
+    pillTitle: 'Синхронизация АВИТЕК: живые остатки квартир',
+    syncAllTitle: 'Обновить свободные квартиры по всем ЖК АВИТЕК',
+  },
+  altai: {
+    id: 'altai',
+    label: 'АЛТАЙ-СТРОЙ',
+    slugs: ALTAI_PROJECT_SLUGS,
+    names: ALTAI_PROJECT_NAMES,
+    fetchLots: fetchAltaiLots,
+    syncProject: syncAltaiProject,
+    buildSummary: buildAltaiSummaryByProject,
+    getSlug: getAltaiSlugForDevelopment,
+    subtitle: 'Прямые данные по свободным квартирам Алтай-Строй',
+    pillTitle: 'Синхронизация Алтай-Строй: живые остатки квартир',
+    syncAllTitle: 'Обновить свободные квартиры по объектам Алтай-Строй',
+  },
+  stroysoyuz: {
+    id: 'stroysoyuz',
+    label: 'СТРОЙСОЮЗ',
+    slugs: STROYSOYUZ_PROJECT_SLUGS,
+    names: STROYSOYUZ_PROJECT_NAMES,
+    fetchLots: fetchStroysoyuzLots,
+    syncProject: syncStroysoyuzProject,
+    buildSummary: buildStroysoyuzSummaryByProject,
+    getSlug: getStroysoyuzSlugForDevelopment,
+    subtitle: 'Прямые данные по свободным квартирам Стройсоюз',
+    pillTitle: 'Синхронизация Стройсоюз: живые остатки квартир',
+    syncAllTitle: 'Обновить свободные квартиры по объектам Стройсоюз',
+  },
 };
 
 function getLatestSyncedIso(projectsMeta = []) {
@@ -137,16 +200,22 @@ export default function DevelopmentsPage() {
   const [detailModalDev, setDetailModalDev] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Live Lots state (KSM & KSSK & KINO)
+  // Live Lots state (KSM & KSSK & KINO & AVITEK & ALTAI)
   const [liveState, setLiveState] = useState({
     ksm: { lots: [], projects: [] },
     kssk: { lots: [], projects: [] },
     kino: { lots: [], projects: [] },
+    avitek: { lots: [], projects: [] },
+    altai: { lots: [], projects: [] },
+    stroysoyuz: { lots: [], projects: [] },
   });
   const [liveProgress, setLiveProgress] = useState({
     ksm: { active: false, current: 0, total: KSM_PROJECT_SLUGS.length, currentName: '' },
     kssk: { active: false, current: 0, total: KSSK_PROJECT_SLUGS.length, currentName: '' },
     kino: { active: false, current: 0, total: KINO_PROJECT_SLUGS.length, currentName: '' },
+    avitek: { active: false, current: 0, total: AVITEK_PROJECT_SLUGS.length, currentName: '' },
+    altai: { active: false, current: 0, total: ALTAI_PROJECT_SLUGS.length, currentName: '' },
+    stroysoyuz: { active: false, current: 0, total: STROYSOYUZ_PROJECT_SLUGS.length, currentName: '' },
   });
 
   // View Mode: 'split' | 'grid' | 'map' | 'lots'
@@ -190,6 +259,9 @@ export default function DevelopmentsPage() {
       ksm: buildKsmSummaryByProject(liveState.ksm.lots, liveState.ksm.projects),
       kssk: buildKsskSummaryByProject(liveState.kssk.lots, liveState.kssk.projects),
       kino: buildKinoSummaryByProject(liveState.kino.lots, liveState.kino.projects),
+      avitek: buildAvitekSummaryByProject(liveState.avitek.lots, liveState.avitek.projects),
+      altai: buildAltaiSummaryByProject(liveState.altai.lots, liveState.altai.projects),
+      stroysoyuz: buildStroysoyuzSummaryByProject(liveState.stroysoyuz.lots, liveState.stroysoyuz.projects),
     }),
     [liveState]
   );
@@ -199,6 +271,9 @@ export default function DevelopmentsPage() {
       ksm: getLatestSyncedIso(liveState.ksm.projects),
       kssk: getLatestSyncedIso(liveState.kssk.projects),
       kino: getLatestSyncedIso(liveState.kino.projects),
+      avitek: getLatestSyncedIso(liveState.avitek.projects),
+      altai: getLatestSyncedIso(liveState.altai.projects),
+      stroysoyuz: getLatestSyncedIso(liveState.stroysoyuz.projects),
     }),
     [liveState]
   );
@@ -524,9 +599,15 @@ export default function DevelopmentsPage() {
         ksmLots: liveState.ksm.lots,
         ksskLots: liveState.kssk.lots,
         kinoLots: liveState.kino.lots,
+        avitekLots: liveState.avitek.lots,
+        altaiLots: liveState.altai.lots,
+        stroysoyuzLots: liveState.stroysoyuz.lots,
         ksmSummaryBySlug: liveSummaries.ksm,
         ksskSummaryBySlug: liveSummaries.kssk,
         kinoSummaryBySlug: liveSummaries.kino,
+        avitekSummaryBySlug: liveSummaries.avitek,
+        altaiSummaryBySlug: liveSummaries.altai,
+        stroysoyuzSummaryBySlug: liveSummaries.stroysoyuz,
         showHousePins,
       }),
     [
@@ -534,9 +615,15 @@ export default function DevelopmentsPage() {
       liveState.ksm.lots,
       liveState.kssk.lots,
       liveState.kino.lots,
+      liveState.avitek.lots,
+      liveState.altai.lots,
+      liveState.stroysoyuz.lots,
       liveSummaries.ksm,
       liveSummaries.kssk,
       liveSummaries.kino,
+      liveSummaries.avitek,
+      liveSummaries.altai,
+      liveSummaries.stroysoyuz,
       showHousePins,
     ]
   );
@@ -959,6 +1046,9 @@ export default function DevelopmentsPage() {
               ksmLots={liveState.ksm.lots}
               ksskLots={liveState.kssk.lots}
               kinoLots={liveState.kino.lots}
+              avitekLots={liveState.avitek.lots}
+              altaiLots={liveState.altai.lots}
+              stroysoyuzLots={liveState.stroysoyuz.lots}
               developments={developments}
               onOpenDetail={(d) => setDetailModalDev(d)}
               onFocusHouseOnMap={handleFocusHouseOnMap}
@@ -977,14 +1067,33 @@ export default function DevelopmentsPage() {
                       const ksmSlug = getKsmSlugForDevelopment(dev);
                       const ksskSlug = getKsskSlugForDevelopment(dev);
                       const kinoSlug = getKinoSlugForDevelopment(dev);
+                      const avitekSlug = getAvitekSlugForDevelopment(dev);
+                      const altaiSlug = getAltaiSlugForDevelopment(dev);
+                      const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
                       const liveSummary = ksmSlug
                         ? liveSummaries.ksm[ksmSlug] || null
                         : ksskSlug
                           ? liveSummaries.kssk[ksskSlug] || null
                           : kinoSlug
                             ? liveSummaries.kino[kinoSlug] || null
-                            : null;
-                      const liveProviderLabel = kinoSlug ? 'КИНО live' : ksskSlug ? 'КССК live' : 'КСМ live';
+                            : avitekSlug
+                              ? liveSummaries.avitek[avitekSlug] || null
+                              : altaiSlug
+                                ? liveSummaries.altai[altaiSlug] || null
+                                : stroysoyuzSlug
+                                  ? liveSummaries.stroysoyuz[stroysoyuzSlug] || null
+                                  : null;
+                      const liveProviderLabel = kinoSlug
+                        ? 'КИНО live'
+                        : ksskSlug
+                          ? 'КССК live'
+                          : avitekSlug
+                            ? 'АВИТЕК live'
+                            : altaiSlug
+                              ? 'АЛТАЙ live'
+                              : stroysoyuzSlug
+                                ? 'СТРОЙСОЮЗ live'
+                                : 'КСМ live';
                       return (
                         <DevelopmentCard
                           key={dev.id}
@@ -1057,8 +1166,23 @@ export default function DevelopmentsPage() {
         const ksmSlug = getKsmSlugForDevelopment(detailModalDev);
         const ksskSlug = getKsskSlugForDevelopment(detailModalDev);
         const kinoSlug = getKinoSlugForDevelopment(detailModalDev);
-        const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : kinoSlug ? 'kino' : null;
-        const activeSlug = ksmSlug || ksskSlug || kinoSlug;
+        const avitekSlug = getAvitekSlugForDevelopment(detailModalDev);
+        const altaiSlug = getAltaiSlugForDevelopment(detailModalDev);
+        const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(detailModalDev);
+        const providerId = ksmSlug
+          ? 'ksm'
+          : ksskSlug
+            ? 'kssk'
+            : kinoSlug
+              ? 'kino'
+              : avitekSlug
+                ? 'avitek'
+                : altaiSlug
+                  ? 'altai'
+                  : stroysoyuzSlug
+                    ? 'stroysoyuz'
+                    : null;
+        const activeSlug = ksmSlug || ksskSlug || kinoSlug || avitekSlug || altaiSlug || stroysoyuzSlug;
         const providerSpec = providerId ? LIVE_PROVIDERS[providerId] : null;
         const detailLots = providerId && activeSlug
           ? liveState[providerId].lots.filter((lot) => lot.project_slug === activeSlug)

@@ -6,6 +6,9 @@
 import { getKsmSlugForDevelopment } from './ksmLots';
 import { getKsskSlugForDevelopment } from './ksskLots';
 import { getKinoSlugForDevelopment } from './kinoLots';
+import { getAvitekSlugForDevelopment } from './avitekLots';
+import { getAltaiSlugForDevelopment } from './altaiLots';
+import { getStroysoyuzSlugForDevelopment } from './stroysoyuzLots';
 import { ROOM_TYPE_KEYS } from './liveLotsShared';
 
 /**
@@ -119,6 +122,24 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-gorkogo-2a', address: 'ул. Горького, 2А', lat: 58.603, lng: 49.65067 },
   { devId: 'zhk-fusion-kino', address: 'ул. Ботаническая, 7', lat: 58.46621, lng: 49.71345 },
   { devId: 'zhk-yuterra', address: 'ул. Творчества, 1', lat: 58.4681, lng: 49.7162 },
+  // УКС АВИТЕК
+  { devId: 'zhk-krylya', address: 'ул. Попова, 5-7', lat: 58.582653, lng: 49.631654 },
+  { devId: 'zhk-sovetskaya-75', address: 'ул. Советская, 75', lat: 58.612961, lng: 49.658519 },
+  { devId: 'zhk-erdyakova-19a', address: 'ул. Романа Ердякова, 19а', lat: 58.612526, lng: 49.636609 },
+  // Алтай-Строй
+  { devId: 'zhk-dinastiya', address: 'Хлебозаводской пер., 30', lat: 58.587842, lng: 49.664871 },
+  { devId: 'zhk-erdyakova-9', address: 'ул. Романа Ердякова, 9', lat: 58.613412, lng: 49.637512 },
+  // Стройсоюз
+  { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 33', lat: 58.6015, lng: 49.6820 },
+  { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 29', lat: 58.6020, lng: 49.6812 },
+  { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 28', lat: 58.5521, lng: 49.6885 },
+  { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 26', lat: 58.5525, lng: 49.6879 },
+  { devId: 'zhk-repinskie-prudy', address: 'ул. Блюхера, 46', lat: 58.5795, lng: 49.6640 },
+  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 2а', lat: 58.5385, lng: 49.6120 },
+  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 2а к1', lat: 58.5385, lng: 49.6120 },
+  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 4 к1', lat: 58.5392, lng: 49.6135 },
+  { devId: 'zhk-repinskie-prudy', address: 'ул. Володарского, 229', lat: 58.5830, lng: 49.6735 },
+  { devId: 'zhk-premier', address: 'ул. Свободы, 115Г', lat: 58.5912, lng: 49.6780 },
 ];
 
 /**
@@ -285,9 +306,15 @@ export function buildMapItemsFromDevelopments(
     ksmLots = [],
     ksskLots = [],
     kinoLots = [],
+    avitekLots = [],
+    altaiLots = [],
+    stroysoyuzLots = [],
     ksmSummaryBySlug = {},
     ksskSummaryBySlug = {},
     kinoSummaryBySlug = {},
+    avitekSummaryBySlug = {},
+    altaiSummaryBySlug = {},
+    stroysoyuzSummaryBySlug = {},
     showHousePins = true,
   } = {}
 ) {
@@ -302,27 +329,65 @@ export function buildMapItemsFromDevelopments(
     const ksmSlug = getKsmSlugForDevelopment(dev);
     const ksskSlug = getKsskSlugForDevelopment(dev);
     const kinoSlug = getKinoSlugForDevelopment(dev);
-    const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : kinoSlug ? 'kino' : null;
-    const activeSlug = ksmSlug || ksskSlug || kinoSlug;
+    const avitekSlug = getAvitekSlugForDevelopment(dev);
+    const altaiSlug = getAltaiSlugForDevelopment(dev);
+    const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
+    const providerId = ksmSlug
+      ? 'ksm'
+      : ksskSlug
+        ? 'kssk'
+        : kinoSlug
+          ? 'kino'
+          : avitekSlug
+            ? 'avitek'
+            : altaiSlug
+              ? 'altai'
+              : stroysoyuzSlug
+                ? 'stroysoyuz'
+                : null;
+    const activeSlug = ksmSlug || ksskSlug || kinoSlug || avitekSlug || altaiSlug || stroysoyuzSlug;
 
     if (!providerId || !activeSlug) {
       items.push(createParentMarker(dev));
       continue;
     }
 
-    const sourceLots = providerId === 'ksm' ? ksmLots : providerId === 'kssk' ? ksskLots : kinoLots;
+    const sourceLots =
+      providerId === 'ksm'
+        ? ksmLots
+        : providerId === 'kssk'
+          ? ksskLots
+          : providerId === 'kino'
+            ? kinoLots
+            : providerId === 'avitek'
+              ? avitekLots
+              : providerId === 'altai'
+                ? altaiLots
+                : stroysoyuzLots;
     const summaryMap =
       providerId === 'ksm'
         ? ksmSummaryBySlug
         : providerId === 'kssk'
           ? ksskSummaryBySlug
-          : kinoSummaryBySlug;
+          : providerId === 'kino'
+            ? kinoSummaryBySlug
+            : providerId === 'avitek'
+              ? avitekSummaryBySlug
+              : providerId === 'altai'
+                ? altaiSummaryBySlug
+                : stroysoyuzSummaryBySlug;
     const liveProviderLabel =
       providerId === 'ksm'
         ? 'КСМ live'
         : providerId === 'kssk'
           ? 'КССК live'
-          : 'КИНО live';
+          : providerId === 'kino'
+            ? 'КИНО live'
+            : providerId === 'avitek'
+              ? 'АВИТЕК live'
+              : providerId === 'altai'
+                ? 'АЛТАЙ live'
+                : 'СТРОЙСОЮЗ live';
     const summary = summaryMap?.[activeSlug] || null;
 
     let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter(

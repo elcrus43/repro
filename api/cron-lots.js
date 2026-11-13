@@ -16,13 +16,16 @@ import { neon } from '@neondatabase/serverless';
 import { KSM_PROJECTS, syncKsmProject } from './ksm-lots.js';
 import { KSSK_PROJECTS, syncKsskProject } from './kssk-lots.js';
 import { KINO_PROJECTS, syncKinoProject } from './kino-lots.js';
+import { AVITEK_PROJECTS, syncAvitekProject } from './avitek-lots.js';
+import { ALTAI_PROJECTS, syncAltaiProject } from './altai-lots.js';
+import { STROYSOYUZ_PROJECTS, syncStroysoyuzProject } from './stroysoyuz-lots.js';
 import { authenticateLotsRequest } from './_lots-shared.js';
 
 export const config = {
   maxDuration: 60,
 };
 
-const VALID_PROVIDERS = ['kssk', 'ksm', 'kino'];
+const VALID_PROVIDERS = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz'];
 
 function normalizeSingleValue(value) {
   if (Array.isArray(value)) return value[0];
@@ -192,11 +195,14 @@ async function syncProviderProjects({ sql, projectsMap, targetSlugs, syncFn }) {
 export async function runScheduledLotsSync(
   sql,
   {
-    providers = ['kssk', 'ksm', 'kino'],
+    providers = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz'],
     slugs,
     syncKssk = syncKsskProject,
     syncKsm = syncKsmProject,
     syncKino = syncKinoProject,
+    syncAvitek = syncAvitekProject,
+    syncAltai = syncAltaiProject,
+    syncStroysoyuz = syncStroysoyuzProject,
   } = {}
 ) {
   const startedAt = Date.now();
@@ -244,12 +250,54 @@ export async function runScheduledLotsSync(
     kino = buildSkippedSummary('Provider not requested');
   }
 
+  let avitek;
+  if (providerSet.has('avitek')) {
+    const avitekSlugs = selectProviderSlugs(AVITEK_PROJECTS, slugs, 'avitek');
+    avitek = await syncProviderProjects({
+      sql,
+      projectsMap: AVITEK_PROJECTS,
+      targetSlugs: avitekSlugs,
+      syncFn: syncAvitek,
+    });
+  } else {
+    avitek = buildSkippedSummary('Provider not requested');
+  }
+
+  let altai;
+  if (providerSet.has('altai')) {
+    const altaiSlugs = selectProviderSlugs(ALTAI_PROJECTS, slugs, 'altai');
+    altai = await syncProviderProjects({
+      sql,
+      projectsMap: ALTAI_PROJECTS,
+      targetSlugs: altaiSlugs,
+      syncFn: syncAltai,
+    });
+  } else {
+    altai = buildSkippedSummary('Provider not requested');
+  }
+
+  let stroysoyuz;
+  if (providerSet.has('stroysoyuz')) {
+    const stroysoyuzSlugs = selectProviderSlugs(STROYSOYUZ_PROJECTS, slugs, 'stroysoyuz');
+    stroysoyuz = await syncProviderProjects({
+      sql,
+      projectsMap: STROYSOYUZ_PROJECTS,
+      targetSlugs: stroysoyuzSlugs,
+      syncFn: syncStroysoyuz,
+    });
+  } else {
+    stroysoyuz = buildSkippedSummary('Provider not requested');
+  }
+
   return {
     syncedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
     kssk,
     ksm,
     kino,
+    avitek,
+    altai,
+    stroysoyuz,
   };
 }
 
@@ -309,7 +357,7 @@ export default async function handler(req, res) {
   if (!providers) {
     return res.status(400).json({
       data: null,
-      error: 'Некорректный параметр provider. Допустимые значения: all, kssk, ksm, kino',
+      error: 'Некорректный параметр provider. Допустимые значения: all, kssk, ksm, kino, avitek, altai, stroysoyuz',
     });
   }
 

@@ -6,6 +6,9 @@
 import { getKsmSlugForDevelopment, KSM_PROJECT_NAMES } from './ksmLots';
 import { getKsskSlugForDevelopment, KSSK_PROJECT_NAMES } from './ksskLots';
 import { getKinoSlugForDevelopment, KINO_PROJECT_NAMES } from './kinoLots';
+import { getAvitekSlugForDevelopment, AVITEK_PROJECT_NAMES } from './avitekLots';
+import { getAltaiSlugForDevelopment, ALTAI_PROJECT_NAMES } from './altaiLots';
+import { getStroysoyuzSlugForDevelopment, STROYSOYUZ_PROJECT_NAMES } from './stroysoyuzLots';
 import { formatNumber } from '../utils/format';
 
 export const ROOM_FILTER_OPTIONS = [
@@ -24,24 +27,54 @@ const ROOM_LABELS = {
   '4k': '4-комнатная',
 };
 
-const PROVIDER_META = {
+export const PROVIDER_META = {
   ksm: {
     id: 'ksm',
     label: 'КСМ',
+    badgeClass: 'ksm',
+    color: '#0284c7',
     projectNames: KSM_PROJECT_NAMES,
     getSlug: getKsmSlugForDevelopment,
   },
   kssk: {
     id: 'kssk',
     label: 'КССК',
+    badgeClass: 'kssk',
+    color: '#ea580c',
     projectNames: KSSK_PROJECT_NAMES,
     getSlug: getKsskSlugForDevelopment,
   },
   kino: {
     id: 'kino',
     label: 'КИНО',
+    badgeClass: 'kino',
+    color: '#8b5cf6',
     projectNames: KINO_PROJECT_NAMES,
     getSlug: getKinoSlugForDevelopment,
+  },
+  avitek: {
+    id: 'avitek',
+    label: 'АВИТЕК',
+    badgeClass: 'avitek',
+    color: '#10b981',
+    projectNames: AVITEK_PROJECT_NAMES,
+    getSlug: getAvitekSlugForDevelopment,
+  },
+  altai: {
+    id: 'altai',
+    label: 'АЛТАЙ-СТРОЙ',
+    badgeClass: 'altai',
+    color: '#f59e0b',
+    projectNames: ALTAI_PROJECT_NAMES,
+    getSlug: getAltaiSlugForDevelopment,
+  },
+  stroysoyuz: {
+    id: 'stroysoyuz',
+    label: 'СТРОЙСОЮЗ',
+    badgeClass: 'stroysoyuz',
+    color: '#0d9488',
+    projectNames: STROYSOYUZ_PROJECT_NAMES,
+    getSlug: getStroysoyuzSlugForDevelopment,
   },
 };
 
@@ -140,19 +173,33 @@ function resolveMatchedDevelopment(candidates, lot) {
 }
 
 /**
- * Merges and enriches KSM, KSSK, and KINO live lots with matched development metadata.
- * @param {{ ksmLots?: Array<object>, ksskLots?: Array<object>, kinoLots?: Array<object>, developments?: Array<object> }} [params]
+ * Merges and enriches KSM, KSSK, KINO, AVITEK, ALTAI, and STROYSOYUZ live lots with matched development metadata.
+ * @param {{ ksmLots?: Array<object>, ksskLots?: Array<object>, kinoLots?: Array<object>, avitekLots?: Array<object>, altaiLots?: Array<object>, stroysoyuzLots?: Array<object>, developments?: Array<object> }} [params]
  * @returns {Array<object>}
  */
-export function mergeAllDeveloperLots({ ksmLots = [], ksskLots = [], kinoLots = [], developments = [] } = {}) {
+export function mergeAllDeveloperLots({
+  ksmLots = [],
+  ksskLots = [],
+  kinoLots = [],
+  avitekLots = [],
+  altaiLots = [],
+  stroysoyuzLots = [],
+  developments = [],
+} = {}) {
   const ksmLookup = buildDevSlugLookup(developments, PROVIDER_META.ksm.getSlug);
   const ksskLookup = buildDevSlugLookup(developments, PROVIDER_META.kssk.getSlug);
   const kinoLookup = buildDevSlugLookup(developments, PROVIDER_META.kino.getSlug);
+  const avitekLookup = buildDevSlugLookup(developments, PROVIDER_META.avitek.getSlug);
+  const altaiLookup = buildDevSlugLookup(developments, PROVIDER_META.altai.getSlug);
+  const stroysoyuzLookup = buildDevSlugLookup(developments, PROVIDER_META.stroysoyuz.getSlug);
 
   const sources = [
     { provider: PROVIDER_META.ksm, lots: ksmLots, lookup: ksmLookup },
     { provider: PROVIDER_META.kssk, lots: ksskLots, lookup: ksskLookup },
     { provider: PROVIDER_META.kino, lots: kinoLots, lookup: kinoLookup },
+    { provider: PROVIDER_META.avitek, lots: avitekLots, lookup: avitekLookup },
+    { provider: PROVIDER_META.altai, lots: altaiLots, lookup: altaiLookup },
+    { provider: PROVIDER_META.stroysoyuz, lots: stroysoyuzLots, lookup: stroysoyuzLookup },
   ];
 
   const seenUids = new Set();
@@ -486,7 +533,13 @@ export function buildSelectionItemFromLot({
       ? 'КИНО'
       : resolvedProviderId === 'kssk'
         ? 'КССК'
-        : 'КСМ';
+        : resolvedProviderId === 'avitek'
+          ? 'АВИТЕК'
+          : resolvedProviderId === 'altai'
+            ? 'АЛТАЙ-СТРОЙ'
+            : resolvedProviderId === 'stroysoyuz'
+              ? 'СТРОЙСОЮЗ'
+              : 'КСМ';
   const resolvedProviderLabel =
     providerLabel || lot?._providerLabel || defaultProviderLabel;
   const devImages = Array.isArray(resolvedDev?.images) ? resolvedDev.images : [];

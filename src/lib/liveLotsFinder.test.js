@@ -7,6 +7,7 @@ import {
   findActiveBuyerRequestForClient,
   requestToFinderFilters,
   parseMaxFloor,
+  PROVIDER_META,
 } from './liveLotsFinder';
 
 const MOCK_DEVELOPMENTS = [
@@ -68,6 +69,32 @@ const MOCK_DEVELOPMENTS = [
     images: ['https://example.com/fusion.jpg'],
     builder_url: 'https://кинодевелопмент.рф',
     contact_phone: '+7 (8332) 45-45-45',
+  },
+  {
+    id: 'zhk-krylya',
+    name: 'ЖК Крылья на Попова, 5-7',
+    developer: 'УКС АВИТЕК',
+    district: 'Ленинский район',
+    address: 'г. Киров, ул. Попова, 5-7',
+    floors: '10-16 этажей',
+    completion_date: '2026',
+    price_from: 3200000,
+    images: ['https://example.com/krylya.jpg'],
+    builder_url: 'https://uksavitek.ru',
+    contact_phone: '+7 (8332) 33-33-33',
+  },
+  {
+    id: 'zhk-dinastiya',
+    name: 'ЖК Династия',
+    developer: 'Алтай-Строй',
+    district: 'Ленинский район',
+    address: 'г. Киров, Хлебозаводской пер., 30',
+    floors: '8-16 этажей',
+    completion_date: '2027',
+    price_from: 6500000,
+    images: ['https://example.com/dinastiya.jpg'],
+    builder_url: 'https://altai-stroi.org',
+    contact_phone: '+7 (8332) 77-88-99',
   },
 ];
 
@@ -205,7 +232,59 @@ const MOCK_KINO_LOTS = [
   },
 ];
 
+const MOCK_AVITEK_LOTS = [
+  {
+    id: 'avitek-1',
+    project_slug: 'krylya',
+    title: 'Студия, 28 м²',
+    rooms_type: 'studio',
+    rooms_label: 'Студия',
+    area: 28,
+    floor: 4,
+    flat_number: '18',
+    address: 'ул. Попова, 5-7',
+    finishing: 'Черновая',
+    price: 3200000,
+    price_sqm: 114285,
+    plan_image: 'https://uksavitek.ru/plans/st-28.png',
+    lot_url: 'https://uksavitek.ru/lot/avitek-1',
+    is_available: true,
+  },
+];
+
+const MOCK_ALTAI_LOTS = [
+  {
+    id: 'altai-1',
+    project_slug: 'dinastiya',
+    title: '1-комнатная, 45 м²',
+    rooms_type: '1k',
+    rooms_label: '1-комнатная',
+    area: 45,
+    floor: 6,
+    flat_number: '33',
+    address: 'Хлебозаводской пер., 30',
+    finishing: 'White box',
+    price: 6500000,
+    price_sqm: 144444,
+    plan_image: 'https://altai-stroi.org/plans/1k-45.png',
+    lot_url: 'https://altai-stroi.org/lot/altai-1',
+    is_available: true,
+  },
+];
+
 describe('liveLotsFinder', () => {
+  describe('PROVIDER_META', () => {
+    it('contains all 6 developers with labels, badges, and colors', () => {
+      expect(Object.keys(PROVIDER_META)).toEqual(['ksm', 'kssk', 'kino', 'avitek', 'altai', 'stroysoyuz']);
+      expect(PROVIDER_META.avitek.label).toBe('АВИТЕК');
+      expect(PROVIDER_META.avitek.badgeClass).toBe('avitek');
+      expect(PROVIDER_META.altai.label).toBe('АЛТАЙ-СТРОЙ');
+      expect(PROVIDER_META.altai.badgeClass).toBe('altai');
+      expect(PROVIDER_META.stroysoyuz.label).toBe('СТРОЙСОЮЗ');
+      expect(PROVIDER_META.stroysoyuz.badgeClass).toBe('stroysoyuz');
+    });
+  });
+
   describe('parseMaxFloor', () => {
     it('extracts max floor from various development floor strings', () => {
       expect(parseMaxFloor('4-8 этажей')).toBe(8);
@@ -218,15 +297,35 @@ describe('liveLotsFinder', () => {
   });
 
   describe('mergeAllDeveloperLots', () => {
-    it('merges KSM, KSSK, and KINO lots, skips unavailable lots, and enriches development metadata', () => {
+    it('merges KSM, KSSK, KINO, AVITEK, and ALTAI lots, skips unavailable lots, and enriches development metadata', () => {
       const merged = mergeAllDeveloperLots({
         ksmLots: MOCK_KSM_LOTS,
         ksskLots: MOCK_KSSK_LOTS,
         kinoLots: MOCK_KINO_LOTS,
+        avitekLots: MOCK_AVITEK_LOTS,
+        altaiLots: MOCK_ALTAI_LOTS,
         developments: MOCK_DEVELOPMENTS,
       });
 
-      expect(merged).toHaveLength(7);
+      expect(merged).toHaveLength(9);
+
+      const firstAvitek = merged.find((l) => l._uid === 'avitek:avitek-1');
+      expect(firstAvitek).toMatchObject({
+        _uid: 'avitek:avitek-1',
+        _provider: 'avitek',
+        _providerLabel: 'АВИТЕК',
+        _devId: 'zhk-krylya',
+        _devName: 'ЖК Крылья на Попова, 5-7',
+      });
+
+      const firstAltai = merged.find((l) => l._uid === 'altai:altai-1');
+      expect(firstAltai).toMatchObject({
+        _uid: 'altai:altai-1',
+        _provider: 'altai',
+        _providerLabel: 'АЛТАЙ-СТРОЙ',
+        _devId: 'zhk-dinastiya',
+        _devName: 'ЖК Династия',
+      });
 
       const firstKsm = merged.find((l) => l._uid === 'ksm:ksm-1');
       expect(firstKsm).toMatchObject({
@@ -459,6 +558,64 @@ describe('liveLotsFinder', () => {
       expect(item.contact_name).toBe('КИНО Девелопмент (Отдел продаж)');
       expect(item.notes).toContain('КИНО live');
       expect(item.id).toMatch(/^sel_kino_kino-1_/);
+    });
+
+    it('builds selection item from AVITEK live lot correctly', () => {
+      const lot = MOCK_AVITEK_LOTS[0];
+      const dev = MOCK_DEVELOPMENTS[5];
+      const item = buildSelectionItemFromLot({
+        lot,
+        dev,
+        providerId: 'avitek',
+      });
+
+      expect(item.contact_name).toBe('УКС АВИТЕК (Отдел продаж)');
+      expect(item.notes).toContain('АВИТЕК live');
+      expect(item.id).toMatch(/^sel_avitek_avitek-1_/);
+    });
+
+    it('builds selection item from ALTAI live lot correctly', () => {
+      const lot = MOCK_ALTAI_LOTS[0];
+      const dev = MOCK_DEVELOPMENTS[6];
+      const item = buildSelectionItemFromLot({
+        lot,
+        dev,
+        providerId: 'altai',
+      });
+
+      expect(item.contact_name).toBe('Алтай-Строй (Отдел продаж)');
+      expect(item.notes).toContain('АЛТАЙ-СТРОЙ live');
+      expect(item.id).toMatch(/^sel_altai_altai-1_/);
+    });
+
+    it('builds selection item from STROYSOYUZ live lot correctly', () => {
+      const lot = {
+        id: 'stroysoyuz-zhk-kholms-1',
+        title: '3-комнатная, 78.63 м², 1 эт.',
+        rooms_type: '3k',
+        area: 78.63,
+        floor: 1,
+        flat_number: '3',
+        price: 20443800,
+        lot_url: 'https://stroy-soyuz.ru',
+      };
+      const dev = {
+        id: 'zhk-kholms',
+        name: 'ЖК Холмс',
+        developer: 'Стройсоюз',
+        address: 'г. Киров, ул. Успенская, 33',
+        contact_phone: '+7 (8332) 715-705',
+      };
+
+      const item = buildSelectionItemFromLot({
+        lot,
+        dev,
+        providerId: 'stroysoyuz',
+      });
+
+      expect(item.contact_name).toBe('Стройсоюз (Отдел продаж)');
+      expect(item.notes).toContain('СТРОЙСОЮЗ live');
+      expect(item.id).toMatch(/^sel_stroysoyuz_stroysoyuz-zhk-kholms-1_/);
     });
   });
 

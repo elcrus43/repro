@@ -29,6 +29,9 @@ import { useToastContext } from '../../components/Toast';
 import { getKsmSlugForDevelopment, filterAndSortKsmLots } from '../../lib/ksmLots';
 import { getKsskSlugForDevelopment } from '../../lib/ksskLots';
 import { getKinoSlugForDevelopment } from '../../lib/kinoLots';
+import { getAvitekSlugForDevelopment } from '../../lib/avitekLots';
+import { getAltaiSlugForDevelopment } from '../../lib/altaiLots';
+import { getStroysoyuzSlugForDevelopment } from '../../lib/stroysoyuzLots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
 
 const KSM_ROOM_FILTERS = [
@@ -73,6 +76,9 @@ export function DevelopmentDetailModal({
   const ksmSlug = getKsmSlugForDevelopment(dev);
   const ksskSlug = getKsskSlugForDevelopment(dev);
   const kinoSlug = getKinoSlugForDevelopment(dev);
+  const avitekSlug = getAvitekSlugForDevelopment(dev);
+  const altaiSlug = getAltaiSlugForDevelopment(dev);
+  const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
   const resolvedProvider = useMemo(
     () =>
       liveProvider ||
@@ -97,8 +103,29 @@ export function DevelopmentDetailModal({
                 slug: kinoSlug,
                 subtitle: 'Прямые данные по свободным квартирам КИНО девелопмент',
               }
-            : null),
-    [liveProvider, ksmSlug, ksskSlug, kinoSlug]
+            : avitekSlug
+              ? {
+                  id: 'avitek',
+                  label: 'АВИТЕК',
+                  slug: avitekSlug,
+                  subtitle: 'Прямые данные по свободным квартирам УКС АВИТЕК',
+                }
+              : altaiSlug
+                ? {
+                    id: 'altai',
+                    label: 'АЛТАЙ-СТРОЙ',
+                    slug: altaiSlug,
+                    subtitle: 'Прямые данные по свободным квартирам Алтай-Строй',
+                  }
+                : stroysoyuzSlug
+                  ? {
+                      id: 'stroysoyuz',
+                      label: 'СТРОЙСОЮЗ',
+                      slug: stroysoyuzSlug,
+                      subtitle: 'Прямые данные по свободным квартирам Стройсоюз',
+                    }
+                  : null),
+    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug]
   );
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;

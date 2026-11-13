@@ -84,6 +84,9 @@ export function LiveLotsFinder({
   ksmLots = [],
   ksskLots = [],
   kinoLots = [],
+  avitekLots = [],
+  altaiLots = [],
+  stroysoyuzLots = [],
   developments = [],
   onOpenDetail = () => {},
   onFocusHouseOnMap = null,
@@ -127,8 +130,8 @@ export function LiveLotsFinder({
   );
 
   const mergedLots = useMemo(
-    () => mergeAllDeveloperLots({ ksmLots, ksskLots, kinoLots, developments }),
-    [ksmLots, ksskLots, kinoLots, developments]
+    () => mergeAllDeveloperLots({ ksmLots, ksskLots, kinoLots, avitekLots, altaiLots, stroysoyuzLots, developments }),
+    [ksmLots, ksskLots, kinoLots, avitekLots, altaiLots, stroysoyuzLots, developments]
   );
 
   const filteredLots = useMemo(
@@ -432,6 +435,9 @@ export function LiveLotsFinder({
               { id: 'ksm', label: 'КСМ' },
               { id: 'kssk', label: 'КССК' },
               { id: 'kino', label: 'КИНО' },
+              { id: 'avitek', label: 'АВИТЕК' },
+              { id: 'altai', label: 'АЛТАЙ-СТРОЙ' },
+              { id: 'stroysoyuz', label: 'СТРОЙСОЮЗ' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -1605,6 +1611,21 @@ export function LiveLotsFinder({
           color: #6d28d9;
           border: 1px solid #ddd6fe;
         }
+        .llf-provider-badge.avitek {
+          background: #ecfeff;
+          color: #0e7490;
+          border: 1px solid #a5f3fc;
+        }
+        .llf-provider-badge.altai {
+          background: #fffbeb;
+          color: #b45309;
+          border: 1px solid #fde68a;
+        }
+        .llf-provider-badge.stroysoyuz {
+          background: #f0fdfa;
+          color: #0f766e;
+          border: 1px solid #99f6e4;
+        }
         .dark .llf-provider-badge.ksm {
           background: #064e3b;
           color: #a7f3d0;
@@ -1619,6 +1640,21 @@ export function LiveLotsFinder({
           background: #4c1d95;
           color: #ddd6fe;
           border-color: #7c3aed;
+        }
+        .dark .llf-provider-badge.avitek {
+          background: #164e63;
+          color: #a5f3fc;
+          border-color: #0891b2;
+        }
+        .dark .llf-provider-badge.altai {
+          background: #78350f;
+          color: #fde68a;
+          border-color: #d97706;
+        }
+        .dark .llf-provider-badge.stroysoyuz {
+          background: #134e4a;
+          color: #99f6e4;
+          border-color: #0d9488;
         }
         .llf-rooms-area {
           font-size: 14px;
