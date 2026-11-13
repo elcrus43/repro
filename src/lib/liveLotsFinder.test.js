@@ -56,6 +56,19 @@ const MOCK_DEVELOPMENTS = [
     builder_url: 'https://kvartiry.kssk.ru/objects/mikheeva-1/',
     contact_phone: '+7 (8332) 222-222',
   },
+  {
+    id: 'zhk-fusion-kino',
+    name: 'ЖК Fusion (Фьюжн)',
+    developer: 'КИНО Девелопмент',
+    district: 'Нововятский район',
+    address: 'д. Шутовщина, ул. Ботаническая, 7',
+    floors: '5-8 этажей',
+    completion_date: '2027',
+    price_from: 3420000,
+    images: ['https://example.com/fusion.jpg'],
+    builder_url: 'https://кинодевелопмент.рф',
+    contact_phone: '+7 (8332) 45-45-45',
+  },
 ];
 
 const MOCK_KSM_LOTS = [
@@ -172,6 +185,26 @@ const MOCK_KSSK_LOTS = [
   },
 ];
 
+const MOCK_KINO_LOTS = [
+  {
+    id: 'kino-1',
+    project_slug: 'fusion',
+    title: 'Студия, 25.4 м²',
+    rooms_type: 'studio',
+    rooms_label: 'Студия',
+    area: 25.4,
+    floor: 3,
+    flat_number: '12',
+    address: 'д. Шутовщина, ул. Ботаническая, 7',
+    finishing: 'Чистовая',
+    price: 3420000,
+    price_sqm: 134645,
+    plan_image: 'https://кинодевелопмент.рф/plans/studio.png',
+    lot_url: 'https://кинодевелопмент.рф/lot/kino-1',
+    is_available: true,
+  },
+];
+
 describe('liveLotsFinder', () => {
   describe('parseMaxFloor', () => {
     it('extracts max floor from various development floor strings', () => {
@@ -185,14 +218,15 @@ describe('liveLotsFinder', () => {
   });
 
   describe('mergeAllDeveloperLots', () => {
-    it('merges KSM and KSSK lots, skips unavailable lots, and enriches development metadata', () => {
+    it('merges KSM, KSSK, and KINO lots, skips unavailable lots, and enriches development metadata', () => {
       const merged = mergeAllDeveloperLots({
         ksmLots: MOCK_KSM_LOTS,
         ksskLots: MOCK_KSSK_LOTS,
+        kinoLots: MOCK_KINO_LOTS,
         developments: MOCK_DEVELOPMENTS,
       });
 
-      expect(merged).toHaveLength(6);
+      expect(merged).toHaveLength(7);
 
       const firstKsm = merged.find((l) => l._uid === 'ksm:ksm-1');
       expect(firstKsm).toMatchObject({
@@ -218,6 +252,16 @@ describe('liveLotsFinder', () => {
         _devName: 'ЖК Скандинавия',
         _district: 'Ленинский район',
       });
+
+      const kinoLot = merged.find((l) => l._uid === 'kino:kino-1');
+      expect(kinoLot).toMatchObject({
+        _uid: 'kino:kino-1',
+        _provider: 'kino',
+        _providerLabel: 'КИНО',
+        _devId: 'zhk-fusion-kino',
+        _devName: 'ЖК Fusion (Фьюжн)',
+        _district: 'Нововятский район',
+      });
     });
   });
 
@@ -235,6 +279,20 @@ describe('liveLotsFinder', () => {
 
       const studiosAnd1k = filterFinderLots(merged, { roomTypes: ['studio', '1k'] });
       expect(studiosAnd1k).toHaveLength(4);
+    });
+
+    it('filters by provider including kino', () => {
+      const mergedWithKino = mergeAllDeveloperLots({
+        ksmLots: MOCK_KSM_LOTS,
+        ksskLots: MOCK_KSSK_LOTS,
+        kinoLots: MOCK_KINO_LOTS,
+        developments: MOCK_DEVELOPMENTS,
+      });
+
+      const kinoOnly = filterFinderLots(mergedWithKino, { provider: 'kino' });
+      expect(kinoOnly).toHaveLength(1);
+      expect(kinoOnly[0]._provider).toBe('kino');
+      expect(kinoOnly[0]._devName).toBe('ЖК Fusion (Фьюжн)');
     });
 
     it('filters by price, area, floor ranges, notFirstFloor, and notLastFloor', () => {
@@ -387,6 +445,20 @@ describe('liveLotsFinder', () => {
       expect(item.notes).toContain('этаж 5');
       expect(item.notes).toContain('кв. 25');
       expect(item.id).toMatch(/^sel_ksm_ksm-3_/);
+    });
+
+    it('builds selection item from KINO live lot correctly', () => {
+      const lot = MOCK_KINO_LOTS[0];
+      const dev = MOCK_DEVELOPMENTS[4];
+      const item = buildSelectionItemFromLot({
+        lot,
+        dev,
+        providerId: 'kino',
+      });
+
+      expect(item.contact_name).toBe('КИНО Девелопмент (Отдел продаж)');
+      expect(item.notes).toContain('КИНО live');
+      expect(item.id).toMatch(/^sel_kino_kino-1_/);
     });
   });
 

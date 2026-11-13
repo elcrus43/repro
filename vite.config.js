@@ -91,6 +91,10 @@ export default defineConfig(({ mode }) => {
           target: 'http://localhost:3001',
           changeOrigin: true
         },
+        '/api/kino-lots': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
         '/api/cron-lots': {
           target: 'http://localhost:3001',
           changeOrigin: true

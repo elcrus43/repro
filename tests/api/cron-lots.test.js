@@ -8,6 +8,7 @@ import {
 } from '../../api/cron-lots.js';
 import { KSM_PROJECTS } from '../../api/ksm-lots.js';
 import { KSSK_PROJECTS } from '../../api/kssk-lots.js';
+import { KINO_PROJECTS } from '../../api/kino-lots.js';
 
 describe('cron-lots config and helpers', () => {
   it('exports maxDuration 60', () => {
@@ -15,10 +16,11 @@ describe('cron-lots config and helpers', () => {
   });
 
   it('resolves valid provider arguments', () => {
-    expect(resolveProviders()).toEqual(['kssk', 'ksm']);
-    expect(resolveProviders('all')).toEqual(['kssk', 'ksm']);
+    expect(resolveProviders()).toEqual(['kssk', 'ksm', 'kino']);
+    expect(resolveProviders('all')).toEqual(['kssk', 'ksm', 'kino']);
     expect(resolveProviders('kssk')).toEqual(['kssk']);
     expect(resolveProviders('KSM')).toEqual(['ksm']);
+    expect(resolveProviders('kino')).toEqual(['kino']);
     expect(resolveProviders('unknown')).toBeNull();
   });
 });
@@ -204,5 +206,49 @@ describe('runScheduledLotsSync', () => {
     expect(summary.ksm.syncedProjects).toBe(2);
     expect(summary.ksm.failedProjects).toBe(0);
     expect(summary.ksm.totalLots).toBe(14);
+    expect(summary.kino).toMatchObject({
+      skipped: true,
+      reason: 'Provider not requested',
+      syncedProjects: 0,
+    });
+  });
+
+  it('syncs KINO projects with isolated error handling', async () => {
+    const fakeSql = { query: vi.fn() };
+    const syncKssk = vi.fn();
+    const syncKsm = vi.fn();
+    const syncKino = vi.fn(async (slug) => {
+      if (slug === 'iuterra') {
+        throw new Error('API down');
+      }
+      return {
+        projectSlug: slug,
+        projectName: KINO_PROJECTS[slug].projectName,
+        totalCount: 50,
+        syncedCount: 50,
+        syncedAt: '2026-11-13T08:00:00.000Z',
+        lots: [],
+      };
+    });
+
+    const summary = await runScheduledLotsSync(fakeSql, {
+      providers: ['kino'],
+      syncKssk,
+      syncKsm,
+      syncKino,
+    });
+
+    expect(syncKssk).not.toHaveBeenCalled();
+    expect(syncKsm).not.toHaveBeenCalled();
+    expect(syncKino).toHaveBeenCalledTimes(Object.keys(KINO_PROJECTS).length);
+
+    expect(summary.kino.syncedProjects).toBe(Object.keys(KINO_PROJECTS).length - 1);
+    expect(summary.kino.failedProjects).toBe(1);
+    expect(summary.kino.skipped).toBe(false);
+    expect(summary.kino.results.find((r) => r.projectSlug === 'iuterra')).toMatchObject({
+      projectSlug: 'iuterra',
+      status: 'error',
+      error: 'API down',
+    });
   });
 });

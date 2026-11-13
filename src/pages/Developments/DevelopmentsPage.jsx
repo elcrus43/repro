@@ -64,6 +64,14 @@ import {
   syncKsskProject,
   buildKsskSummaryByProject,
 } from '../../lib/ksskLots';
+import {
+  KINO_PROJECT_SLUGS,
+  KINO_PROJECT_NAMES,
+  getKinoSlugForDevelopment,
+  fetchKinoLots,
+  syncKinoProject,
+  buildKinoSummaryByProject,
+} from '../../lib/kinoLots';
 
 const LIVE_PROVIDERS = {
   ksm: {
@@ -92,6 +100,19 @@ const LIVE_PROVIDERS = {
     pillTitle: 'Синхронизация КССК: живые остатки квартир с kvartiry.kssk.ru',
     syncAllTitle: 'Обновить свободные квартиры по всем 6 ЖК КССК',
   },
+  kino: {
+    id: 'kino',
+    label: 'КИНО',
+    slugs: KINO_PROJECT_SLUGS,
+    names: KINO_PROJECT_NAMES,
+    fetchLots: fetchKinoLots,
+    syncProject: syncKinoProject,
+    buildSummary: buildKinoSummaryByProject,
+    getSlug: getKinoSlugForDevelopment,
+    subtitle: 'Актуальные свободные квартиры застройщика КИНО девелопмент',
+    pillTitle: 'Синхронизация КИНО: живые остатки квартир',
+    syncAllTitle: 'Обновить свободные квартиры по всем 3 ЖК КИНО',
+  },
 };
 
 function getLatestSyncedIso(projectsMeta = []) {
@@ -118,14 +139,16 @@ export default function DevelopmentsPage() {
   const [detailModalDev, setDetailModalDev] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Live Lots state (KSM & KSSK)
+  // Live Lots state (KSM & KSSK & KINO)
   const [liveState, setLiveState] = useState({
     ksm: { lots: [], projects: [] },
     kssk: { lots: [], projects: [] },
+    kino: { lots: [], projects: [] },
   });
   const [liveProgress, setLiveProgress] = useState({
     ksm: { active: false, current: 0, total: KSM_PROJECT_SLUGS.length, currentName: '' },
     kssk: { active: false, current: 0, total: KSSK_PROJECT_SLUGS.length, currentName: '' },
+    kino: { active: false, current: 0, total: KINO_PROJECT_SLUGS.length, currentName: '' },
   });
 
   // View Mode: 'split' | 'grid' | 'map' | 'lots'
@@ -170,6 +193,7 @@ export default function DevelopmentsPage() {
     () => ({
       ksm: buildKsmSummaryByProject(liveState.ksm.lots, liveState.ksm.projects),
       kssk: buildKsskSummaryByProject(liveState.kssk.lots, liveState.kssk.projects),
+      kino: buildKinoSummaryByProject(liveState.kino.lots, liveState.kino.projects),
     }),
     [liveState]
   );
@@ -178,6 +202,7 @@ export default function DevelopmentsPage() {
     () => ({
       ksm: getLatestSyncedIso(liveState.ksm.projects),
       kssk: getLatestSyncedIso(liveState.kssk.projects),
+      kino: getLatestSyncedIso(liveState.kino.projects),
     }),
     [liveState]
   );
@@ -268,21 +293,29 @@ export default function DevelopmentsPage() {
     }
   };
 
-  const totalLiveLotsCount = liveState.ksm.lots.length + liveState.kssk.lots.length;
-  const isAnyProviderSyncing = liveProgress.ksm.active || liveProgress.kssk.active;
+  const totalLiveLotsCount =
+    liveState.ksm.lots.length + liveState.kssk.lots.length + liveState.kino.lots.length;
+  const isAnyProviderSyncing =
+    liveProgress.ksm.active || liveProgress.kssk.active || liveProgress.kino.active;
 
   const handleSyncAllProviders = async () => {
     if (isAnyProviderSyncing) return;
     await Promise.all([
       handleSyncAllForProvider('kssk'),
       handleSyncAllForProvider('ksm'),
+      handleSyncAllForProvider('kino'),
     ]);
   };
 
   const handleFocusHouseOnMap = (lot, dev) => {
     const targetDev = dev || developments.find((d) => {
       const slug = lot?.project_slug;
-      return slug && (getKsmSlugForDevelopment(d) === slug || getKsskSlugForDevelopment(d) === slug);
+      return (
+        slug &&
+        (getKsmSlugForDevelopment(d) === slug ||
+          getKsskSlugForDevelopment(d) === slug ||
+          getKinoSlugForDevelopment(d) === slug)
+      );
     }) || null;
     if (!targetDev) return;
 
@@ -351,7 +384,7 @@ export default function DevelopmentsPage() {
   const requestMatchesMap = useMemo(() => {
     const map = new Map();
     if (!selectedRequest) return map;
-    const allLots = [...liveState.ksm.lots, ...liveState.kssk.lots];
+    const allLots = [...liveState.ksm.lots, ...liveState.kssk.lots, ...liveState.kino.lots];
     const matched = matchDevelopmentsToRequest(developments, selectedRequest, { liveLots: allLots });
     for (const item of matched) {
       if (item?.dev?.id) {
@@ -359,7 +392,7 @@ export default function DevelopmentsPage() {
       }
     }
     return map;
-  }, [developments, selectedRequest, liveState.ksm.lots, liveState.kssk.lots]);
+  }, [developments, selectedRequest, liveState.ksm.lots, liveState.kssk.lots, liveState.kino.lots]);
 
   const handleSelectRequestFilter = (reqId) => {
     setSelectedRequestId(reqId);
@@ -494,11 +527,22 @@ export default function DevelopmentsPage() {
       buildMapItemsFromDevelopments(filteredDevelopments, {
         ksmLots: liveState.ksm.lots,
         ksskLots: liveState.kssk.lots,
+        kinoLots: liveState.kino.lots,
         ksmSummaryBySlug: liveSummaries.ksm,
         ksskSummaryBySlug: liveSummaries.kssk,
+        kinoSummaryBySlug: liveSummaries.kino,
         showHousePins,
       }),
-    [filteredDevelopments, liveState.ksm.lots, liveState.kssk.lots, liveSummaries.ksm, liveSummaries.kssk, showHousePins]
+    [
+      filteredDevelopments,
+      liveState.ksm.lots,
+      liveState.kssk.lots,
+      liveState.kino.lots,
+      liveSummaries.ksm,
+      liveSummaries.kssk,
+      liveSummaries.kino,
+      showHousePins,
+    ]
   );
 
   // Fast Add to Client Selection
@@ -918,6 +962,7 @@ export default function DevelopmentsPage() {
             <LiveLotsFinder
               ksmLots={liveState.ksm.lots}
               ksskLots={liveState.kssk.lots}
+              kinoLots={liveState.kino.lots}
               developments={developments}
               onOpenDetail={(d) => setDetailModalDev(d)}
               onFocusHouseOnMap={handleFocusHouseOnMap}
@@ -935,12 +980,15 @@ export default function DevelopmentsPage() {
                     {filteredDevelopments.map(dev => {
                       const ksmSlug = getKsmSlugForDevelopment(dev);
                       const ksskSlug = getKsskSlugForDevelopment(dev);
+                      const kinoSlug = getKinoSlugForDevelopment(dev);
                       const liveSummary = ksmSlug
                         ? liveSummaries.ksm[ksmSlug] || null
                         : ksskSlug
                           ? liveSummaries.kssk[ksskSlug] || null
-                          : null;
-                      const liveProviderLabel = ksskSlug ? 'КССК live' : 'КСМ live';
+                          : kinoSlug
+                            ? liveSummaries.kino[kinoSlug] || null
+                            : null;
+                      const liveProviderLabel = kinoSlug ? 'КИНО live' : ksskSlug ? 'КССК live' : 'КСМ live';
                       return (
                         <DevelopmentCard
                           key={dev.id}
@@ -1063,8 +1111,9 @@ export default function DevelopmentsPage() {
       {detailModalDev && (() => {
         const ksmSlug = getKsmSlugForDevelopment(detailModalDev);
         const ksskSlug = getKsskSlugForDevelopment(detailModalDev);
-        const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : null;
-        const activeSlug = ksmSlug || ksskSlug;
+        const kinoSlug = getKinoSlugForDevelopment(detailModalDev);
+        const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : kinoSlug ? 'kino' : null;
+        const activeSlug = ksmSlug || ksskSlug || kinoSlug;
         const providerSpec = providerId ? LIVE_PROVIDERS[providerId] : null;
         const detailLots = providerId && activeSlug
           ? liveState[providerId].lots.filter((lot) => lot.project_slug === activeSlug)

@@ -2,8 +2,8 @@
 /**
  * api/cron-lots.js - Vercel Serverless Cron & Admin Sync Endpoint
  *
- * Плановая и ручная синхронизация кэша свободных лотов застройщиков (КССК, КСМ) в Neon DB.
- *   GET/POST /api/cron-lots?provider=all|kssk|ksm
+ * Плановая и ручная синхронизация кэша свободных лотов застройщиков (КССК, КСМ, КИНО) в Neon DB.
+ *   GET/POST /api/cron-lots?provider=all|kssk|ksm|kino
  *
  * Авторизация:
  *   1) CRON_SECRET через `Authorization: Bearer <CRON_SECRET>`, заголовок `x-cron-secret`
@@ -15,13 +15,14 @@ import crypto from 'crypto';
 import { neon } from '@neondatabase/serverless';
 import { KSM_PROJECTS, syncKsmProject } from './ksm-lots.js';
 import { KSSK_PROJECTS, syncKsskProject } from './kssk-lots.js';
+import { KINO_PROJECTS, syncKinoProject } from './kino-lots.js';
 import { authenticateLotsRequest } from './_lots-shared.js';
 
 export const config = {
   maxDuration: 60,
 };
 
-const VALID_PROVIDERS = ['kssk', 'ksm'];
+const VALID_PROVIDERS = ['kssk', 'ksm', 'kino'];
 
 function normalizeSingleValue(value) {
   if (Array.isArray(value)) return value[0];
@@ -182,18 +183,20 @@ async function syncProviderProjects({ sql, projectsMap, targetSlugs, syncFn }) {
  * Запускает плановую синхронизацию выбранных провайдеров и проектов с изоляцией ошибок.
  * @param {object} sql - клиент Neon DB
  * @param {object} [options]
- * @param {string[]|string} [options.providers=['kssk', 'ksm']]
+ * @param {string[]|string} [options.providers=['kssk', 'ksm', 'kino']]
  * @param {string[]|object|null} [options.slugs]
  * @param {Function} [options.syncKssk]
  * @param {Function} [options.syncKsm]
+ * @param {Function} [options.syncKino]
  */
 export async function runScheduledLotsSync(
   sql,
   {
-    providers = ['kssk', 'ksm'],
+    providers = ['kssk', 'ksm', 'kino'],
     slugs,
     syncKssk = syncKsskProject,
     syncKsm = syncKsmProject,
+    syncKino = syncKinoProject,
   } = {}
 ) {
   const startedAt = Date.now();
@@ -228,11 +231,25 @@ export async function runScheduledLotsSync(
     });
   }
 
+  let kino;
+  if (providerSet.has('kino')) {
+    const kinoSlugs = selectProviderSlugs(KINO_PROJECTS, slugs, 'kino');
+    kino = await syncProviderProjects({
+      sql,
+      projectsMap: KINO_PROJECTS,
+      targetSlugs: kinoSlugs,
+      syncFn: syncKino,
+    });
+  } else {
+    kino = buildSkippedSummary('Provider not requested');
+  }
+
   return {
     syncedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
     kssk,
     ksm,
+    kino,
   };
 }
 
@@ -292,7 +309,7 @@ export default async function handler(req, res) {
   if (!providers) {
     return res.status(400).json({
       data: null,
-      error: 'Некорректный параметр provider. Допустимые значения: all, kssk, ksm',
+      error: 'Некорректный параметр provider. Допустимые значения: all, kssk, ksm, kino',
     });
   }
 

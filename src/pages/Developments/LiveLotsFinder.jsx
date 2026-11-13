@@ -83,6 +83,7 @@ function formatRequestSummary(req) {
 export function LiveLotsFinder({
   ksmLots = [],
   ksskLots = [],
+  kinoLots = [],
   developments = [],
   onOpenDetail = () => {},
   onFocusHouseOnMap = null,
@@ -126,8 +127,8 @@ export function LiveLotsFinder({
   );
 
   const mergedLots = useMemo(
-    () => mergeAllDeveloperLots({ ksmLots, ksskLots, developments }),
-    [ksmLots, ksskLots, developments]
+    () => mergeAllDeveloperLots({ ksmLots, ksskLots, kinoLots, developments }),
+    [ksmLots, ksskLots, kinoLots, developments]
   );
 
   const filteredLots = useMemo(
@@ -430,6 +431,7 @@ export function LiveLotsFinder({
               { id: 'all', label: 'Все' },
               { id: 'ksm', label: 'КСМ' },
               { id: 'kssk', label: 'КССК' },
+              { id: 'kino', label: 'КИНО' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -1598,6 +1600,11 @@ export function LiveLotsFinder({
           color: #1d4ed8;
           border: 1px solid #bfdbfe;
         }
+        .llf-provider-badge.kino {
+          background: #f5f3ff;
+          color: #6d28d9;
+          border: 1px solid #ddd6fe;
+        }
         .dark .llf-provider-badge.ksm {
           background: #064e3b;
           color: #a7f3d0;
@@ -1607,6 +1614,11 @@ export function LiveLotsFinder({
           background: #1e3a8a;
           color: #bfdbfe;
           border-color: #2563eb;
+        }
+        .dark .llf-provider-badge.kino {
+          background: #4c1d95;
+          color: #ddd6fe;
+          border-color: #7c3aed;
         }
         .llf-rooms-area {
           font-size: 14px;

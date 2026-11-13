@@ -11,6 +11,7 @@ import crypto from 'crypto';
 const ALLOWED_TABLES = {
   ksm: { lotsTable: 'ksm_lots', metaTable: 'ksm_sync_meta', indexName: 'idx_ksm_lots_project_slug' },
   kssk: { lotsTable: 'kssk_lots', metaTable: 'kssk_sync_meta', indexName: 'idx_kssk_lots_project_slug' },
+  kino: { lotsTable: 'kino_lots', metaTable: 'kino_sync_meta', indexName: 'idx_kino_lots_project_slug' },
 };
 
 export function decodeHtmlEntities(str) {
@@ -51,7 +52,7 @@ export function extractAttrFromTag(tagHtml, attrName) {
 export function normalizeRoomsType(text) {
   const s = cleanText(text).toLowerCase();
   if (!s) return null;
-  if (/студи/.test(s) || s === 'с' || s === 'ст') return 'studio';
+  if (/студи/i.test(s) || /studio/i.test(s) || s === 'с' || s === 'ст') return 'studio';
 
   const digitMatch =
     s.match(/(?:евро[-\s]*)?(\d+)\s*[-\s]*(?:комнатн[а-яё]*|комн|к|k)(?![а-яёa-z0-9])/i) ||

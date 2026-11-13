@@ -23,6 +23,10 @@ describe('houseCoordinates', () => {
       expect(normalizeHouseAddress('г. Киров, ул. Потребкооперации, 34 к. 1')).toBe('потребкооперации, 34к1');
       expect(normalizeHouseAddress('г. Киров, Хлебозаводской проезд, 2')).toBe('хлебозаводской, 2');
       expect(normalizeHouseAddress('г. Киров, Нововятский р-н, ул. Пушкина, 25')).toBe('пушкина, 25');
+      expect(normalizeHouseAddress('Кирово-Чепецкий р-н, д. Шутовщина, ул. Ботаническая, 7')).toBe('ботаническая, 7');
+      expect(normalizeHouseAddress('Шутовщина Ботаническая 7')).toBe('ботаническая, 7');
+      expect(normalizeHouseAddress('г. Киров, ул. Горького, 2А')).toBe('горького, 2а');
+      expect(normalizeHouseAddress('ул. Творчества, 1')).toBe('творчества, 1');
     });
 
     it('handles empty or invalid values safely', () => {
@@ -40,8 +44,8 @@ describe('houseCoordinates', () => {
   });
 
   describe('HOUSE_COORDINATES and resolveHouseCoords', () => {
-    it('contains all 21 verified KSM and KSSK houses', () => {
-      expect(Object.keys(HOUSE_COORDINATES)).toHaveLength(21);
+    it('contains all 24 verified KSM, KSSK, and KINO houses', () => {
+      expect(Object.keys(HOUSE_COORDINATES)).toHaveLength(24);
 
       const checks = [
         ['Дорофеева, 20', 58.5851814, 49.5625922],
@@ -65,6 +69,9 @@ describe('houseCoordinates', () => {
         ['ул. Заводская, 14к2', 58.62781, 49.67669],
         ['ул. Пушкина, 25', 58.511224, 49.69181],
         ['ул. Пушкина, 25к1', 58.510721, 49.6919],
+        ['ул. Горького, 2А', 58.603, 49.65067],
+        ['д. Шутовщина, ул. Ботаническая, 7', 58.46621, 49.71345],
+        ['ул. Творчества, 1', 58.4681, 49.7162],
       ];
 
       for (const [addr, lat, lng] of checks) {
@@ -288,6 +295,44 @@ describe('houseCoordinates', () => {
         price_from: 4300000,
         liveCount: 2,
         liveProviderLabel: 'КССК live',
+      });
+    });
+
+    it('creates house pins and parent markers for KINO developments', () => {
+      const devFusion = {
+        id: 'zhk-fusion-kino',
+        name: 'ЖК Fusion (Фьюжн)',
+        developer: 'КИНО Девелопмент',
+        address: 'д. Шутовщина, ул. Ботаническая, 7',
+        lat: 58.46621,
+        lng: 49.71345,
+        price_from: 3420000,
+      };
+
+      const kinoLots = [
+        {
+          id: 'k1',
+          project_slug: 'fusion',
+          address: 'д. Шутовщина, ул. Ботаническая, 7',
+          rooms_type: 'studio',
+          price: 3420000,
+          is_available: true,
+        },
+      ];
+
+      const items = buildMapItemsFromDevelopments([devFusion], {
+        kinoLots,
+        showHousePins: true,
+      });
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        devId: 'zhk-fusion-kino',
+        isHousePin: true,
+        lat: 58.46621,
+        lng: 49.71345,
+        liveProviderLabel: 'КИНО live',
+        liveCount: 1,
       });
     });
   });

@@ -28,6 +28,7 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { getKsmSlugForDevelopment, filterAndSortKsmLots } from '../../lib/ksmLots';
 import { getKsskSlugForDevelopment } from '../../lib/ksskLots';
+import { getKinoSlugForDevelopment } from '../../lib/kinoLots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
 
 const KSM_ROOM_FILTERS = [
@@ -71,6 +72,7 @@ export function DevelopmentDetailModal({
 
   const ksmSlug = getKsmSlugForDevelopment(dev);
   const ksskSlug = getKsskSlugForDevelopment(dev);
+  const kinoSlug = getKinoSlugForDevelopment(dev);
   const resolvedProvider = useMemo(
     () =>
       liveProvider ||
@@ -88,8 +90,15 @@ export function DevelopmentDetailModal({
               slug: ksskSlug,
               subtitle: 'Актуальные свободные квартиры с сайта kvartiry.kssk.ru',
             }
-          : null),
-    [liveProvider, ksmSlug, ksskSlug]
+          : kinoSlug
+            ? {
+                id: 'kino',
+                label: 'КИНО',
+                slug: kinoSlug,
+                subtitle: 'Прямые данные по свободным квартирам КИНО девелопмент',
+              }
+            : null),
+    [liveProvider, ksmSlug, ksskSlug, kinoSlug]
   );
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;
@@ -379,7 +388,7 @@ export function DevelopmentDetailModal({
             </div>
             <div className="spec-card">
               <span className="spec-label">Этажность</span>
-              <span className="spec-value">{dev.floors || '–'}</span>
+              <span className="spec-value">{dev.floors || '-'}</span>
             </div>
             <div className="spec-card">
               <span className="spec-label">Материал стен</span>
@@ -857,7 +866,7 @@ export function DevelopmentDetailModal({
                           </td>
                           <td>
                             <span className="apt-sqm-val">
-                              {apt.price_sqm ? `${formatNumber(apt.price_sqm)} ₽` : '–'}
+                              {apt.price_sqm ? `${formatNumber(apt.price_sqm)} ₽` : '-'}
                             </span>
                           </td>
                           <td>

@@ -1,10 +1,11 @@
 /**
- * src/lib/houseCoordinates.js - Реальные координаты домов КСМ/КССК в г. Кирове
+ * src/lib/houseCoordinates.js - Реальные координаты домов КСМ/КССК/КИНО в г. Кирове
  * и сборка маркеров карты (по домам при наличии live-лотов или по ЖК).
  */
 
 import { getKsmSlugForDevelopment } from './ksmLots';
 import { getKsskSlugForDevelopment } from './ksskLots';
+import { getKinoSlugForDevelopment } from './kinoLots';
 import { ROOM_TYPE_KEYS } from './liveLotsShared';
 
 /**
@@ -33,6 +34,8 @@ export function normalizeHouseAddress(rawAddress) {
   s = s.replace(/(?:^|[\s,])кировская\s+обл(?:асть|\.)?(?:\s*,|\s+|$)/gi, ' ');
   s = s.replace(/(?:^|[\s,])(?:мкр\.?|микрорайон)\s*[^,]+(?=,|$)/gi, ' ');
   s = s.replace(/(?:^|[\s,])[^,]*(?:^|\s)(?:р-н|район)(?=,|$)/gi, ' ');
+  // Удаляем пригородные населенные пункты (д. Шутовщина и др.)
+  s = s.replace(/(?:^|[\s,])(?:(?:д\.?|деревня|пос\.?|поселок|с\.?|село)\s+)?шутовщина(?:\s*,|\s+|$)/gi, ' ');
 
   // Удаляем типовые обозначения улиц/проездов (границы без \b для кириллицы)
   s = s.replace(
@@ -81,6 +84,7 @@ export function formatHouseDisplayAddress(rawAddress) {
     .replace(/[\u00a0\u202f]/g, ' ')
     .replace(/\([^)]*(?:секц|очеред|этап|подъезд|лит|корп)[^)]*\)/gi, ' ')
     .replace(/^\s*(?:г\.?\s*)?киров\s*,\s*/i, '')
+    .replace(/(?:^|[\s,])(?:д\.?\s*)?шутовщина\s*,\s*/gi, ' ')
     .replace(/\s*,\s*/g, ', ')
     .replace(/(?:^[\s,]+|[\s,]+$)/g, '')
     .replace(/\s+/g, ' ')
@@ -111,6 +115,10 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-dom-u-reki', address: 'ул. Заводская, 14к2', lat: 58.62781, lng: 49.67669 },
   { devId: 'zhk-pushkina', address: 'ул. Пушкина, 25', lat: 58.511224, lng: 49.69181 },
   { devId: 'zhk-pushkina', address: 'ул. Пушкина, 25к1', lat: 58.510721, lng: 49.6919 },
+  // КИНО Девелопмент
+  { devId: 'zhk-gorkogo-2a', address: 'ул. Горького, 2А', lat: 58.603, lng: 49.65067 },
+  { devId: 'zhk-fusion-kino', address: 'ул. Ботаническая, 7', lat: 58.46621, lng: 49.71345 },
+  { devId: 'zhk-yuterra', address: 'ул. Творчества, 1', lat: 58.4681, lng: 49.7162 },
 ];
 
 /**
@@ -263,8 +271,10 @@ function createParentMarker(dev, extra = {}) {
  * @param {{
  *   ksmLots?: Array<object>,
  *   ksskLots?: Array<object>,
+ *   kinoLots?: Array<object>,
  *   ksmSummaryBySlug?: Record<string, object>,
  *   ksskSummaryBySlug?: Record<string, object>,
+ *   kinoSummaryBySlug?: Record<string, object>,
  *   showHousePins?: boolean,
  * }} [options]
  * @returns {Array<object>}
@@ -274,8 +284,10 @@ export function buildMapItemsFromDevelopments(
   {
     ksmLots = [],
     ksskLots = [],
+    kinoLots = [],
     ksmSummaryBySlug = {},
     ksskSummaryBySlug = {},
+    kinoSummaryBySlug = {},
     showHousePins = true,
   } = {}
 ) {
@@ -289,17 +301,28 @@ export function buildMapItemsFromDevelopments(
 
     const ksmSlug = getKsmSlugForDevelopment(dev);
     const ksskSlug = getKsskSlugForDevelopment(dev);
-    const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : null;
-    const activeSlug = ksmSlug || ksskSlug;
+    const kinoSlug = getKinoSlugForDevelopment(dev);
+    const providerId = ksmSlug ? 'ksm' : ksskSlug ? 'kssk' : kinoSlug ? 'kino' : null;
+    const activeSlug = ksmSlug || ksskSlug || kinoSlug;
 
     if (!providerId || !activeSlug) {
       items.push(createParentMarker(dev));
       continue;
     }
 
-    const sourceLots = providerId === 'ksm' ? ksmLots : ksskLots;
-    const summaryMap = providerId === 'ksm' ? ksmSummaryBySlug : ksskSummaryBySlug;
-    const liveProviderLabel = providerId === 'ksm' ? 'КСМ live' : 'КССК live';
+    const sourceLots = providerId === 'ksm' ? ksmLots : providerId === 'kssk' ? ksskLots : kinoLots;
+    const summaryMap =
+      providerId === 'ksm'
+        ? ksmSummaryBySlug
+        : providerId === 'kssk'
+          ? ksskSummaryBySlug
+          : kinoSummaryBySlug;
+    const liveProviderLabel =
+      providerId === 'ksm'
+        ? 'КСМ live'
+        : providerId === 'kssk'
+          ? 'КССК live'
+          : 'КИНО live';
     const summary = summaryMap?.[activeSlug] || null;
 
     let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter(

@@ -1,10 +1,11 @@
 /**
  * src/lib/liveLotsFinder.js - Unified search, layout grouping, client auto-filter,
- * and canonical selection item builder for live developer lots (KSM + KSSK).
+ * and canonical selection item builder for live developer lots (KSM + KSSK + KINO).
  */
 
 import { getKsmSlugForDevelopment, KSM_PROJECT_NAMES } from './ksmLots';
 import { getKsskSlugForDevelopment, KSSK_PROJECT_NAMES } from './ksskLots';
+import { getKinoSlugForDevelopment, KINO_PROJECT_NAMES } from './kinoLots';
 import { formatNumber } from '../utils/format';
 
 export const ROOM_FILTER_OPTIONS = [
@@ -35,6 +36,12 @@ const PROVIDER_META = {
     label: 'КССК',
     projectNames: KSSK_PROJECT_NAMES,
     getSlug: getKsskSlugForDevelopment,
+  },
+  kino: {
+    id: 'kino',
+    label: 'КИНО',
+    projectNames: KINO_PROJECT_NAMES,
+    getSlug: getKinoSlugForDevelopment,
   },
 };
 
@@ -133,17 +140,19 @@ function resolveMatchedDevelopment(candidates, lot) {
 }
 
 /**
- * Merges and enriches KSM and KSSK live lots with matched development metadata.
- * @param {{ ksmLots?: Array<object>, ksskLots?: Array<object>, developments?: Array<object> }} [params]
+ * Merges and enriches KSM, KSSK, and KINO live lots with matched development metadata.
+ * @param {{ ksmLots?: Array<object>, ksskLots?: Array<object>, kinoLots?: Array<object>, developments?: Array<object> }} [params]
  * @returns {Array<object>}
  */
-export function mergeAllDeveloperLots({ ksmLots = [], ksskLots = [], developments = [] } = {}) {
+export function mergeAllDeveloperLots({ ksmLots = [], ksskLots = [], kinoLots = [], developments = [] } = {}) {
   const ksmLookup = buildDevSlugLookup(developments, PROVIDER_META.ksm.getSlug);
   const ksskLookup = buildDevSlugLookup(developments, PROVIDER_META.kssk.getSlug);
+  const kinoLookup = buildDevSlugLookup(developments, PROVIDER_META.kino.getSlug);
 
   const sources = [
     { provider: PROVIDER_META.ksm, lots: ksmLots, lookup: ksmLookup },
     { provider: PROVIDER_META.kssk, lots: ksskLots, lookup: ksskLookup },
+    { provider: PROVIDER_META.kino, lots: kinoLots, lookup: kinoLookup },
   ];
 
   const seenUids = new Set();
@@ -472,8 +481,14 @@ export function buildSelectionItemFromLot({
 } = {}) {
   const resolvedDev = dev || lot?._dev || null;
   const resolvedProviderId = providerId || lot?._provider || 'ksm';
+  const defaultProviderLabel =
+    resolvedProviderId === 'kino'
+      ? 'КИНО'
+      : resolvedProviderId === 'kssk'
+        ? 'КССК'
+        : 'КСМ';
   const resolvedProviderLabel =
-    providerLabel || lot?._providerLabel || (resolvedProviderId === 'kssk' ? 'КССК' : 'КСМ');
+    providerLabel || lot?._providerLabel || defaultProviderLabel;
   const devImages = Array.isArray(resolvedDev?.images) ? resolvedDev.images : [];
   const devName = resolvedDev?.name || lot?._devName || lot?.project_name || '';
   const baseAddress = lot?.address || resolvedDev?.address || '';

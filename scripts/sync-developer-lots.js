@@ -2,9 +2,9 @@
 /**
  * scripts/sync-developer-lots.js
  *
- * CLI-раннер для синхронизации свободных лотов застройщиков (КССК, КСМ) в Neon DB.
+ * CLI-раннер для синхронизации свободных лотов застройщиков (КССК, КСМ, КИНО) в Neon DB.
  * Использование:
- *   node scripts/sync-developer-lots.js [--provider=all|ksm|kssk]
+ *   node scripts/sync-developer-lots.js [--provider=all|ksm|kssk|kino]
  */
 
 import 'dotenv/config';
@@ -48,7 +48,7 @@ async function main() {
   const providers = resolveProviders(providerArg);
 
   if (!providers) {
-    console.error(`[sync-lots] Invalid --provider value: "${providerArg}". Expected all|ksm|kssk.`);
+    console.error(`[sync-lots] Invalid --provider value: "${providerArg}". Expected all|ksm|kssk|kino.`);
     process.exit(1);
   }
 
@@ -64,6 +64,7 @@ async function main() {
   console.log(`[sync-lots] Completed at ${summary.syncedAt} in ${summary.durationMs}ms (providers=${providers.join(',')})`);
   logProviderSummary('KSSK', summary.kssk);
   logProviderSummary('KSM', summary.ksm);
+  logProviderSummary('KINO', summary.kino);
 
   const requestedSummaries = providers.map((p) => summary[p]).filter(Boolean);
   const totalSynced = requestedSummaries.reduce((acc, s) => acc + (s.syncedProjects || 0), 0);
