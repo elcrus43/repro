@@ -777,8 +777,8 @@ async function findLocalAnalogs(sql, property, { allowStale = false } = {}) {
         AND latitude BETWEEN ${lat - lat_delta} AND ${lat + lat_delta}
         AND longitude BETWEEN ${lon - lon_delta} AND ${lon + lon_delta}
         AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
-      ORDER BY last_seen_at DESC
-      LIMIT 50
+      ORDER BY id
+      LIMIT 500
     `;
     if (rows.length >= 3) {
       console.log(`[CMA] Found ${rows.length} analogs using step: geo (1.5km) + area ±5`);
@@ -797,8 +797,8 @@ async function findLocalAnalogs(sql, property, { allowStale = false } = {}) {
         AND total_area BETWEEN ${area - 5} AND ${area + 5}
         AND district ILIKE ${'%' + district + '%'}
         AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
-      ORDER BY last_seen_at DESC
-      LIMIT 50
+      ORDER BY id
+      LIMIT 500
     `;
     if (rows.length >= 3) {
       console.log(`[CMA] Found ${rows.length} analogs using step: district + area ±5`);
@@ -816,8 +816,8 @@ async function findLocalAnalogs(sql, property, { allowStale = false } = {}) {
         AND rooms = ${rooms}
         AND total_area BETWEEN ${area - 5} AND ${area + 5}
         AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
-      ORDER BY last_seen_at DESC
-      LIMIT 50
+      ORDER BY id
+      LIMIT 500
     `;
     if (rows.length >= 3) {
       console.log(`[CMA] Found ${rows.length} analogs using step: city + area ±5`);
@@ -835,8 +835,8 @@ async function findLocalAnalogs(sql, property, { allowStale = false } = {}) {
         AND rooms = ${rooms}
         AND total_area BETWEEN ${area - 10} AND ${area + 10}
         AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
-      ORDER BY last_seen_at DESC
-      LIMIT 50
+      ORDER BY id
+      LIMIT 500
     `;
     if (rows.length >= 3) {
       console.log(`[CMA] Found ${rows.length} analogs using step: city + area ±10`);
@@ -852,8 +852,8 @@ async function findLocalAnalogs(sql, property, { allowStale = false } = {}) {
       AND is_active = true
       AND rooms = ${rooms}
       AND (${freshCutoff}::timestamp IS NULL OR last_seen_at > ${freshCutoff}::timestamp)
-    ORDER BY last_seen_at DESC
-    LIMIT 50
+    ORDER BY id
+    LIMIT 500
   `;
   console.log(`[CMA] Fallback to all active listings in city for rooms. Found ${rows.length} analogs.`);
   return rows;
