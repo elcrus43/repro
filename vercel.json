@@ -13,6 +13,10 @@
         {
             "path": "/api/cron-lots?provider=kssk",
             "schedule": "0 5 * * *"
+        },
+        {
+            "path": "/api/tiktok-report",
+            "schedule": "0 4 * * *"
         }
     ]
 }
