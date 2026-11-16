@@ -307,8 +307,18 @@ const MOCK_PROFSTROY_LOTS = [
 
 describe('liveLotsFinder', () => {
   describe('PROVIDER_META', () => {
-    it('contains all 7 developers with labels, badges, and colors', () => {
-      expect(Object.keys(PROVIDER_META)).toEqual(['ksm', 'kssk', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy']);
+    it('contains all 9 developers with labels, badges, and colors', () => {
+      expect(Object.keys(PROVIDER_META)).toEqual([
+        'ksm',
+        'kssk',
+        'kino',
+        'avitek',
+        'altai',
+        'stroysoyuz',
+        'profstroy',
+        'smu5',
+        'zhelezno',
+      ]);
       expect(PROVIDER_META.avitek.label).toBe('АВИТЕК');
       expect(PROVIDER_META.avitek.badgeClass).toBe('avitek');
       expect(PROVIDER_META.altai.label).toBe('АЛТАЙ-СТРОЙ');
@@ -317,6 +327,10 @@ describe('liveLotsFinder', () => {
       expect(PROVIDER_META.stroysoyuz.badgeClass).toBe('stroysoyuz');
       expect(PROVIDER_META.profstroy.label).toBe('ПРОФСТРОЙ');
       expect(PROVIDER_META.profstroy.badgeClass).toBe('profstroy');
+      expect(PROVIDER_META.smu5.label).toBe('СМУ-5');
+      expect(PROVIDER_META.smu5.badgeClass).toBe('smu5');
+      expect(PROVIDER_META.zhelezno.label).toBe('ЖЕЛЕЗНО');
+      expect(PROVIDER_META.zhelezno.badgeClass).toBe('zhelezno');
     });
   });
 
