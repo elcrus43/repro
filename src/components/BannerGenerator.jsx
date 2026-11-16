@@ -9,8 +9,6 @@ import {
     shareBannerToSocial,
 } from '../lib/socialShare';
 
-
-
 const TRENDING_COLORS = [
     '#0052FF', // Samolet Blue
     '#0ea5e9', // Sky Blue
@@ -24,8 +22,34 @@ const TRENDING_COLORS = [
     '#14b8a6'  // Tiffany / Teal
 ];
 
+const DEAL_GOAL_OPTIONS = ['Продажа', 'Аренда', 'Посуточно', 'Обмен'];
+const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1080&q=80';
+
+const BANNER_FORMATS = { 
+    story: { w: 1080, h: 1920 },
+    portrait: { w: 1080, h: 1350 },
+    post: { w: 1080, h: 1080 } 
+};
+
+function safeRoundRect(ctx, x, y, w, h, r = 0) {
+    if (typeof ctx.roundRect === 'function') {
+        ctx.roundRect(x, y, w, h, r);
+        return;
+    }
+    const radius = Math.min(r, w / 2, h / 2);
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + w - radius, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+    ctx.lineTo(x + w, y + h - radius);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+    ctx.lineTo(x + radius, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+}
+
 function getWrappedLines(ctx, text, maxWidth) {
-    const words = text.split(' ');
+    const words = (text || '').split(' ');
     let line = '';
     const lines = [];
 
@@ -44,16 +68,36 @@ function getWrappedLines(ctx, text, maxWidth) {
     return lines;
 }
 
-export function BannerGenerator({ property, currentUser, agent: propAgent, onClose, onOpenProfile }) {
+export function BannerGenerator({ property = {}, currentUser, agent: propAgent, onClose, onOpenProfile }) {
     let appContext = null;
     try {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         appContext = useApp();
     } catch {
-        // Safe fallback if rendered without AppProvider
+        // Safe fallback
     }
     const state = appContext?.state;
     const effectiveUser = currentUser || state?.currentUser;
     const assignedAgent = propAgent || (property?.agent_id && state?.clients ? state.clients.find(c => c.id === property.agent_id) : null);
+
+    const isMountedRef = React.useRef(true);
+    React.useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+
+    // Закрытие по Escape
+    React.useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape' && typeof onClose === 'function') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
 
     const defaultPhone = React.useMemo(() => {
         const raw = assignedAgent?.phone || 
@@ -83,34 +127,37 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
 
     const [locationText, setLocationText] = React.useState(defaultLocation);
 
-    React.useEffect(() => {
-        if (defaultPhone) {
-            setPhone(defaultPhone);
-        }
-    }, [defaultPhone]);
-
-    React.useEffect(() => {
-        if (defaultLocation) {
-            setLocationText(defaultLocation);
-        }
-    }, [defaultLocation]);
-
     const canvasRef = React.useRef(null);
-    const [format,   setFormat]   = React.useState('story');
-    const design = 'photo';
+    const [format, setFormat] = React.useState('story'); // 'story' (9:16) | 'portrait' (4:5) | 'post' (1:1)
+    const [designTheme, setDesignTheme] = React.useState('photo'); // 'photo' | 'light' | 'brand' | 'card'
+    const [fitMode, setFitMode] = React.useState('contain'); // 'contain' (без обрезки) | 'cover' (с обрезкой)
+
+    // Цель сделки
+    const initialDealGoal = React.useMemo(() => {
+        const dt = property?.deal_type;
+        if (dt === 'rent' || dt === 'rent_long') return 'Аренда';
+        if (dt === 'rent_daily') return 'Посуточно';
+        if (dt === 'exchange') return 'Обмен';
+        return 'Продажа';
+    }, [property?.deal_type]);
+
+    const [dealGoal, setDealGoal] = React.useState(initialDealGoal);
+    const [showDealGoal, setShowDealGoal] = React.useState(true);
+    const [customGoalText, setCustomGoalText] = React.useState('');
+
     const [stickers, setStickers] = React.useState([]);
     const [customStickerText, setCustomStickerText] = React.useState('Свой текст');
-    const [loading,  setLoading]  = React.useState(true);
+    const [loading, setLoading] = React.useState(false);
     const [accentColor, setAccentColor] = React.useState('#0052FF');
 
     const propertyImages = React.useMemo(() => {
-        return (property.images && property.images.length > 0)
+        return (Array.isArray(property?.images) && property.images.length > 0)
             ? property.images
-            : ['https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1080&q=80'];
-    }, [property.images]);
+            : [DEFAULT_BANNER_IMAGE];
+    }, [property?.images]);
 
     const [selectedImages, setSelectedImages] = React.useState(() => {
-        if (property.images && property.images.length > 1) {
+        if (property?.images && property.images.length > 1) {
             return property.images.slice(0, Math.min(property.images.length, 4)).map((_, i) => i);
         }
         return [0];
@@ -118,10 +165,10 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
     const [gridLayout, setGridLayout] = React.useState('grid');
 
     const [availableLayouts, setAvailableLayouts] = React.useState(() => {
-        return property.floorplan_images || [];
+        return property?.floorplan_images || [];
     });
     const [layoutImage, setLayoutImage] = React.useState(() => {
-        return (property.floorplan_images && property.floorplan_images.length > 0)
+        return (property?.floorplan_images && property.floorplan_images.length > 0)
             ? property.floorplan_images[0]
             : null;
     });
@@ -134,380 +181,571 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
         setLayoutImage(urls[0]);
     };
 
-    const fmts = React.useMemo(() => ({ 
-        story: { w: 1080, h: 1920 }, 
-        post: { w: 1080, h: 1080 } 
-    }), []);
-    const isMobile = window.innerWidth < 768;
+    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+
+    // Кеш картинок во избежание повторной загрузки
+    const imageCacheRef = React.useRef(new Map());
+
+    const loadImageSafe = React.useCallback((src, isFloorplan = false) => {
+        if (!src) return Promise.resolve(null);
+        if (imageCacheRef.current.has(src)) {
+            return Promise.resolve(imageCacheRef.current.get(src));
+        }
+        return new Promise(resolve => {
+            const img = new Image();
+            if (!isFloorplan && !src.startsWith('data:') && !src.startsWith('blob:')) {
+                img.crossOrigin = 'anonymous';
+            }
+            img.onload = () => {
+                imageCacheRef.current.set(src, img);
+                resolve(img);
+            };
+            img.onerror = () => resolve(null);
+            img.src = src;
+        });
+    }, []);
 
     const draw = React.useCallback(async () => {
-        setLoading(true);
         const canvas = canvasRef.current;
-        if (!canvas) return;
-        const { w, h } = fmts[format];
+        if (!canvas || !isMountedRef.current) return;
+
+        const currentFmt = BANNER_FORMATS[format] || BANNER_FORMATS.story;
+        const { w, h } = currentFmt;
         canvas.width = w; canvas.height = h;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-        // Load all selected images
-        const loadedImgs = [];
-        let loadedLayoutImg = null;
+        try {
+            const hasUncached = selectedImages.some(idx => !imageCacheRef.current.has(propertyImages[idx % propertyImages.length]));
+            if (hasUncached) setLoading(true);
 
-        const promises = selectedImages.map(idx => {
-            return new Promise(r => {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.src = propertyImages[idx % propertyImages.length];
-                img.onload = () => { loadedImgs.push({ img, idx }); r(); };
-                img.onerror = () => r();
+            // Загружаем только выбранные фото
+            const promises = selectedImages.map(idx => {
+                const src = propertyImages[idx % propertyImages.length];
+                return loadImageSafe(src, false).then(img => ({ img, idx }));
             });
-        });
 
-        if (layoutImage) {
-            promises.push(new Promise(r => {
-                const img = new Image();
-                if (!layoutImage.startsWith('data:') && !layoutImage.startsWith('blob:')) {
-                    img.crossOrigin = 'anonymous';
-                }
-                img.src = layoutImage;
-                img.onload = () => { loadedLayoutImg = img; r(); };
-                img.onerror = () => r();
-            }));
-        }
+            if (layoutImage) {
+                promises.push(loadImageSafe(layoutImage, true).then(img => ({ img, idx: -1 })));
+            }
 
-        await Promise.all(promises);
+            const results = await Promise.all(promises);
+            if (!isMountedRef.current) return;
 
-        // Sort to preserve selection order
-        loadedImgs.sort((a, b) => selectedImages.indexOf(a.idx) - selectedImages.indexOf(b.idx));
-        const imgs = loadedImgs.map(item => item.img);
+            const loadedImgs = [];
+            let loadedLayoutImg = null;
 
-        if (!imgs.length) { setLoading(false); return; }
-
-        // cover-fit helper
-        const cov = (img, x, y, iw, ih) => {
-            const ir = img.width / img.height, cr = iw / ih;
-            let dw, dh, dx, dy;
-            if (ir > cr) { dh = ih; dw = ih * ir; dx = x - (dw - iw) / 2; dy = y; }
-            else          { dw = iw; dh = iw / ir; dx = x; dy = y - (dh - ih) / 2; }
-            ctx.save(); ctx.beginPath(); ctx.rect(x, y, iw, ih); ctx.clip();
-            ctx.drawImage(img, dx, dy, dw, dh); ctx.restore();
-        };
-
-        const IS = format === 'story';
-        const isLight = design === 'light';
-        const isPhoto = design === 'photo';
-
-        const px0 = IS ? 80 : 60;
-        const rawAddr = (property.address || property.city || '').replace(/,?\s*кв\.?\s*\d+/i, '').trim();
-        const loc = (locationText || '').trim();
-        const addr = loc 
-            ? (rawAddr && !rawAddr.toLowerCase().includes(loc.toLowerCase()) ? `${loc} · ${rawAddr}` : (rawAddr || loc))
-            : rawAddr;
-        const addrSize = IS ? 60 : 48;
-        const maxWidth = w - 2 * px0;
-
-        // Pre-calculate address lines to prevent overlap with the phone number at the bottom
-        ctx.font = `700 ${addrSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        const addrLines = getWrappedLines(ctx, addr, maxWidth);
-
-        // Split line or starting reference point for text elements
-        const photoH = IS ? Math.round(h * 0.55) : Math.round(h * 0.50);
-        let textStartY = isPhoto 
-            ? (IS ? Math.round(h * 0.62) : Math.round(h * 0.56)) 
-            : photoH;
-
-        // Prevent overlap by adjusting textStartY if the text block is too tall
-        const catOffset = IS ? 110 : 80;
-        const priceOffset = IS ? 110 : 80;
-        const addrOffset = IS ? 100 : 75;
-        const lineHeight = addrSize * 1.25;
-        const detailsOffset = IS ? 20 : 15;
-        const detailsSize = IS ? 40 : 32;
-
-        const totalTextHeight = catOffset + priceOffset + addrOffset + (addrLines.length * lineHeight) + detailsOffset + (detailsSize * 0.2);
-        
-        const phy = h - (IS ? 140 : 100);
-        const phoneSize = IS ? 52 : 40;
-        const targetBottom = phy - phoneSize - 20; // 20px safety margin above the phone number
-
-        if (isPhoto && textStartY + totalTextHeight > targetBottom) {
-            textStartY = Math.max(Math.round(h * 0.40), targetBottom - totalTextHeight);
-        }
-
-        let bx = 0, by = 0, bw = w, bh = h;
-        if (!isPhoto) {
-            // 1. Draw solid background
-            ctx.fillStyle = isLight ? '#ffffff' : '#0F172A';
-            ctx.fillRect(0, 0, w, h);
-
-            // Photo boundary is only the top half
-            by = 0; bh = photoH;
-        }
-
-        // Bounding box for photos is defined by (bx, by, bw, bh)
-        // Partition it into rects depending on gridLayout and selection length
-        const rects = [];
-        const N = imgs.length;
-        if (N <= 1) {
-            rects.push({ x: bx, y: by, w: bw, h: bh });
-        } else {
-            if (gridLayout === 'vertical') {
-                const w_col = bw / N;
-                for (let i = 0; i < N; i++) {
-                    rects.push({ x: bx + i * w_col, y: by, w: w_col, h: bh });
-                }
-            } else if (gridLayout === 'horizontal') {
-                const h_row = bh / N;
-                for (let i = 0; i < N; i++) {
-                    rects.push({ x: bx, y: by + i * h_row, w: bw, h: h_row });
-                }
-            } else if (gridLayout === 'main-stack') {
-                const split = 0.6;
-                if (format === 'story') {
-                    // Top-Bottom
-                    rects.push({ x: bx, y: by, w: bw, h: bh * split });
-                    const sub_w = bw / (N - 1);
-                    const sub_h = bh * (1 - split);
-                    const sub_y = by + bh * split;
-                    for (let j = 0; j < N - 1; j++) {
-                        rects.push({ x: bx + j * sub_w, y: sub_y, w: sub_w, h: sub_h });
-                    }
+            results.forEach(res => {
+                if (!res || !res.img) return;
+                if (res.idx === -1) {
+                    loadedLayoutImg = res.img;
                 } else {
-                    // Left-Right
-                    rects.push({ x: bx, y: by, w: bw * split, h: bh });
-                    const sub_w = bw * (1 - split);
-                    const sub_h = bh / (N - 1);
-                    const sub_x = bx + bw * split;
-                    for (let j = 0; j < N - 1; j++) {
-                        rects.push({ x: sub_x, y: by + j * sub_h, w: sub_w, h: sub_h });
+                    loadedImgs.push(res);
+                }
+            });
+
+            loadedImgs.sort((a, b) => selectedImages.indexOf(a.idx) - selectedImages.indexOf(b.idx));
+            const imgs = loadedImgs.map(item => item.img).filter(Boolean);
+
+            if (!imgs.length) return;
+
+            const IS = format === 'story';
+            const isPortrait = format === 'portrait';
+
+            const isLight = designTheme === 'light';
+            const isPhoto = designTheme === 'photo';
+            const isBrand = designTheme === 'brand';
+            const isCard = designTheme === 'card';
+
+            const drawCell = (img, x, y, iw, ih) => {
+                if (!img || !img.width || !img.height || !iw || !ih) return;
+                const ir = img.width / img.height;
+                const cr = iw / ih;
+
+                if (fitMode === 'cover') {
+                    let dw, dh, dx, dy;
+                    if (ir > cr) {
+                        dh = ih; dw = ih * ir; dx = x - (dw - iw) / 2; dy = y;
+                    } else {
+                        dw = iw; dh = iw / ir; dx = x; dy = y - (dh - ih) / 2;
                     }
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(x, y, iw, ih);
+                    ctx.clip();
+                    ctx.drawImage(img, dx, dy, dw, dh);
+                    ctx.restore();
+                    return;
+                }
+
+                // fitMode === 'contain' (без обрезки)
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(x, y, iw, ih);
+                ctx.clip();
+
+                // Мягкая фоновая подложка ячейки
+                let bgDw, bgDh, bgDx, bgDy;
+                if (ir > cr) {
+                    bgDh = ih; bgDw = ih * ir; bgDx = x - (bgDw - iw) / 2; bgDy = y;
+                } else {
+                    bgDw = iw; bgDh = iw / ir; bgDx = x; bgDy = y - (bgDh - ih) / 2;
+                }
+                ctx.globalAlpha = 0.22;
+                ctx.drawImage(img, bgDx, bgDy, bgDw, bgDh);
+                ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.75)' : 'rgba(15, 23, 42, 0.75)';
+                ctx.fillRect(x, y, iw, ih);
+                ctx.globalAlpha = 1.0;
+
+                // Фото целиком без обрезки с пропорциями
+                let dw, dh, dx, dy;
+                if (ir > cr) {
+                    dw = iw;
+                    dh = iw / ir;
+                    dx = x;
+                    dy = y + (ih - dh) / 2;
+                } else {
+                    dh = ih;
+                    dw = ih * ir;
+                    dx = x + (iw - dw) / 2;
+                    dy = y;
+                }
+                ctx.drawImage(img, dx, dy, dw, dh);
+                ctx.restore();
+            };
+
+            const px0 = IS ? 80 : (isPortrait ? 70 : 60);
+            const rawAddr = (property?.address || property?.city || '').replace(/,?\s*кв\.?\s*\d+/i, '').trim();
+            const loc = (locationText || '').trim();
+            const addr = loc 
+                ? (rawAddr && !rawAddr.toLowerCase().includes(loc.toLowerCase()) ? `${loc} · ${rawAddr}` : (rawAddr || loc))
+                : rawAddr;
+            const addrSize = IS ? 60 : (isPortrait ? 52 : 48);
+            const maxWidth = w - 2 * px0;
+
+            ctx.font = `700 ${addrSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            const addrLines = getWrappedLines(ctx, addr, maxWidth);
+
+            const N = imgs.length;
+            let photoH;
+            if (fitMode === 'contain' && N === 1 && imgs[0] && imgs[0].width && imgs[0].height) {
+                const imgRatio = imgs[0].width / imgs[0].height;
+                if (Number.isFinite(imgRatio) && imgRatio > 0) {
+                    const maxPhotoRatio = IS ? 0.62 : (isPortrait ? 0.54 : 0.50);
+                    const minPhotoRatio = 0.38;
+                    const naturalH = Math.round(w / imgRatio);
+                    photoH = Math.min(Math.round(h * maxPhotoRatio), Math.max(Math.round(h * minPhotoRatio), naturalH));
+                } else {
+                    photoH = IS ? Math.round(h * 0.55) : (isPortrait ? Math.round(h * 0.51) : Math.round(h * 0.48));
                 }
             } else {
-                // standard grid
-                const cols = Math.ceil(Math.sqrt(N));
-                const rows = Math.ceil(N / cols);
-                for (let i = 0; i < N; i++) {
-                    const r_idx = Math.floor(i / cols);
-                    const c_idx = i % cols;
-                    const w_cell = bw / cols;
-                    const h_cell = bh / rows;
-                    rects.push({ x: bx + c_idx * w_cell, y: by + r_idx * h_cell, w: w_cell, h: h_cell });
-                }
+                photoH = IS ? Math.round(h * 0.55) : (isPortrait ? Math.round(h * 0.51) : Math.round(h * 0.48));
             }
-        }
 
-        // Draw each image inside its designated rectangle
-        rects.forEach((r, idx) => {
-            cov(imgs[idx % imgs.length], r.x, r.y, r.w, r.h);
-        });
+            let textStartY = isPhoto 
+                ? (IS ? Math.round(h * 0.62) : (isPortrait ? Math.round(h * 0.58) : Math.round(h * 0.54)))
+                : photoH;
 
-        // Draw separating lines between images in multi-photo mode
-        if (N > 1) {
-            ctx.save();
-            ctx.strokeStyle = isLight ? '#ffffff' : (isPhoto ? '#0F172A' : '#0F172A');
-            ctx.lineWidth = IS ? 12 : 8;
-            rects.forEach(r => {
-                ctx.strokeRect(r.x, r.y, r.w, r.h);
-            });
-            ctx.restore();
-        }
+            const catOffset = IS ? 110 : (isPortrait ? 90 : 80);
+            const priceOffset = IS ? 110 : (isPortrait ? 92 : 80);
+            const addrOffset = IS ? 100 : (isPortrait ? 85 : 75);
+            const lineHeight = addrSize * 1.25;
+            const detailsOffset = IS ? 20 : 15;
+            const detailsSize = IS ? 40 : (isPortrait ? 35 : 32);
 
-        if (isPhoto) {
-            // Draw black gradient with transparency from 100% (at the bottom) to 0% (at h * 0.5)
-            const grad = ctx.createLinearGradient(0, h, 0, h * 0.5);
-            grad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
-            grad.addColorStop(0.2, 'rgba(0, 0, 0, 0.95)');
-            grad.addColorStop(0.5, 'rgba(0, 0, 0, 0.8)');
-            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, h * 0.5, w, h * 0.5);
-        }
-
-        // 3. Draw text info in the bottom section
-        const parts = [];
-        const type = property.property_type;
-        
-        if (type === 'apartment') {
-            parts.push(property.rooms === 0 ? 'Студия' : property.rooms + '-комн.');
-        } else if (type === 'room') {
-            parts.push('Комната');
-        } else if (type === 'house') {
-            if (property.rooms > 0) {
-                parts.push(property.rooms + '-комн.');
-            }
-        } else if (!type) {
-            if (property.rooms !== undefined) {
-                parts.push(property.rooms === 0 ? 'Студия' : property.rooms + '-комн.');
-            }
-        }
-        
-        if (property.area_total) {
-            parts.push(property.area_total + ' м²');
-        }
-        
-        if (['apartment', 'room', 'commercial'].includes(type) && property.floor) {
-            parts.push(property.floor + '/' + (property.floors_total || '?') + ' эт.');
-        } else if (type === 'house' && property.floors_total) {
-            parts.push(property.floors_total + ' эт.');
-        } else if (!type && property.floor) {
-            parts.push(property.floor + '/' + (property.floors_total || '?') + ' эт.');
-        }
-
-        const activePhone = phone?.trim() ? (formatPhone(phone) || phone) : '+7 (999) 000-00-00';
-
-        // Category label (spaced out)
-        const roomsCount = property.rooms;
-        let categoryText = 'ОБЪЕКТ НЕДВИЖИМОСТИ';
-        
-        if (type === 'land') {
-            categoryText = 'ЗЕМЕЛЬНЫЙ УЧАСТОК';
-        } else if (type === 'garden') {
-            categoryText = 'САД';
-        } else if (type === 'commercial') {
-            categoryText = 'КОММЕРЧЕСКАЯ НЕДВИЖИМОСТЬ';
-        } else if (type === 'room') {
-            categoryText = 'КОМНАТА';
-        } else if (type === 'house') {
-            categoryText = roomsCount > 0 ? `${roomsCount}-КОМНАТНЫЙ ДОМ` : 'ДОМ';
-        } else if (type === 'apartment') {
-            categoryText = roomsCount === 0 ? 'СТУДИЯ' : `${roomsCount}-КОМНАТНАЯ КВАРТИРА`;
-        } else {
-            if (roomsCount !== undefined) {
-                categoryText = roomsCount === 0 ? 'СТУДИЯ' : `${roomsCount}-КОМНАТНАЯ КВАРТИРА`;
-            }
-        }
-        const spacedCategory = categoryText.split('').join(' ');
-        
-        ctx.fillStyle = isLight ? '#9CA3AF' : (isPhoto ? '#E2E8F0' : '#64748B');
-        const catSize = IS ? 30 : 22;
-        ctx.font = `400 ${catSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        const catY = textStartY + (IS ? 110 : 80);
-        ctx.fillText(spacedCategory, px0, catY);
-
-        // Price and Price per Sqm (placed on the same line to the right of the price)
-        const priceText = formatNumber(property.price) + ' ₽';
-        const priceSize = IS ? 96 : 80;
-        ctx.font = `700 ${priceSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        ctx.fillStyle = accentColor;
-        const priceY = catY + (IS ? 110 : 80);
-        ctx.fillText(priceText, px0, priceY);
-
-        const priceWidth = ctx.measureText(priceText).width;
-
-        if (property.price && property.area_total) {
-            const m2 = Math.round(property.price / property.area_total);
-            const sqmText = `(${formatNumber(m2)} ₽/м²)`;
-            const sqmSize = IS ? 44 : 36;
-            ctx.font = `300 ${sqmSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-            ctx.fillStyle = isLight ? '#4B5563' : '#94A3B8';
-            ctx.fillText(sqmText, px0 + priceWidth + (IS ? 36 : 24), priceY);
-        }
-
-        // Address drawing
-        ctx.font = `700 ${addrSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
-        const addrY = priceY + (IS ? 100 : 75);
-        
-        let currentY = addrY;
-        for (let i = 0; i < addrLines.length; i++) {
-            ctx.fillText(addrLines[i], px0, currentY);
-            currentY += lineHeight;
-        }
-        const currentYAfterAddr = currentY;
-
-        // Property details (rooms, area, floor)
-        ctx.font = `300 ${detailsSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        ctx.fillStyle = isLight ? '#4B5563' : '#94A3B8';
-        const detailsY = currentYAfterAddr + (IS ? 20 : 15);
-        ctx.fillText(parts.join('  ·  '), px0, detailsY);
-
-        // Realtor Contact info with CTA
-        const ctaText = 'подробнее по тел. ';
-
-        // 1. Draw CTA text in light weight
-        ctx.font = `300 ${phoneSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        ctx.fillStyle = isLight ? '#4B5563' : (isPhoto ? '#E2E8F0' : '#94A3B8');
-        ctx.fillText(ctaText, px0, phy);
-
-        const ctaWidth = ctx.measureText(ctaText).width;
-
-        // 2. Draw actual phone number in bold
-        ctx.font = `700 ${phoneSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-        ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
-        ctx.fillText(activePhone, px0 + ctaWidth, phy);
-
-        /* ── LAYOUT IMAGE ───────────────────────────────────────────── */
-        if (loadedLayoutImg) {
-            const boxSize = IS ? 380 : 280;
-            const boxX = w - px0 - boxSize;
-            const boxY = textStartY - boxSize - (IS ? 40 : 20);
-
-            // Draw the image inside with fit-contain
-            ctx.save();
-            ctx.beginPath();
-            ctx.rect(boxX, boxY, boxSize, boxSize);
-            ctx.clip();
-
-            const imgW = loadedLayoutImg.width;
-            const imgH = loadedLayoutImg.height;
-            const imgRatio = imgW / imgH;
+            const totalTextHeight = catOffset + priceOffset + addrOffset + (addrLines.length * lineHeight) + detailsOffset + (detailsSize * 0.2);
             
-            let dw, dh, dx, dy;
-            if (imgRatio > 1) {
-                dw = boxSize;
-                dh = boxSize / imgRatio;
-                dx = boxX;
-                dy = boxY + (boxSize - dh) / 2;
-            } else {
-                dh = boxSize;
-                dw = boxSize * imgRatio;
-                dx = boxX + (boxSize - dw) / 2;
-                dy = boxY;
-            }
-            
-            ctx.drawImage(loadedLayoutImg, dx, dy, dw, dh);
-            ctx.restore();
-        }
+            const phy = h - (IS ? 140 : (isPortrait ? 115 : 100));
+            const phoneSize = IS ? 52 : (isPortrait ? 44 : 40);
+            const targetBottom = phy - phoneSize - 20;
 
-        /* ── STICKERS ───────────────────────────────────────────────── */
-        if (stickers.length) {
-            const sp = IS ? 70 : 50, sh = IS ? 66 : 48, sf = IS ? 30 : 22;
-            let sy = sp + 20;
-            ctx.textAlign = 'center';
-            stickers.forEach(s => {
-                const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
-                ctx.font = `700 ${sf}px 'Medeo Sans', ui-sans-serif, sans-serif`;
-                const tw = ctx.measureText(txt.toUpperCase()).width + 48;
-                const sx = w - sp - tw;
-                
-                if (s === 'Срочно') {
-                    ctx.fillStyle = '#EF4444';
-                } else {
-                    ctx.fillStyle = accentColor;
-                }
-                
-                ctx.beginPath(); 
-                ctx.roundRect(sx, sy, tw, sh, 10); 
-                ctx.fill();
-                
+            if (isPhoto && textStartY + totalTextHeight > targetBottom) {
+                textStartY = Math.max(Math.round(h * 0.38), targetBottom - totalTextHeight);
+            }
+
+            // Фоновая подложка баннера
+            if (isLight) {
                 ctx.fillStyle = '#ffffff';
-                ctx.fillText(txt.toUpperCase(), sx + tw / 2, sy + sh / 2 + sf / 3);
-                sy += sh + 14;
-            });
-            ctx.textAlign = 'left';
-        }
+                ctx.fillRect(0, 0, w, h);
+            } else if (isBrand) {
+                ctx.fillStyle = '#0F172A';
+                ctx.fillRect(0, 0, w, h);
+                ctx.fillStyle = accentColor;
+                ctx.fillRect(0, photoH, w, h - photoH);
+            } else if (isCard) {
+                ctx.fillStyle = '#0b1120';
+                ctx.fillRect(0, 0, w, h);
+            } else {
+                ctx.fillStyle = '#0F172A';
+                ctx.fillRect(0, 0, w, h);
+            }
 
-        setLoading(false);
-    }, [format, design, selectedImages, gridLayout, stickers, customStickerText, property, currentUser, fmts, propertyImages, accentColor, layoutImage, phone, locationText]);
+            // Границы фото-зоны
+            let bx = 0, by = 0, bw = w, bh = photoH;
+            if (isPhoto) {
+                bh = h;
+            } else if (isCard) {
+                const cardMargin = IS ? 40 : 30;
+                bx = cardMargin;
+                by = cardMargin;
+                bw = w - cardMargin * 2;
+                bh = photoH - cardMargin;
+            }
+
+            const rects = [];
+            if (N <= 1) {
+                rects.push({ x: bx, y: by, w: bw, h: bh });
+            } else {
+                if (gridLayout === 'vertical') {
+                    const w_col = bw / N;
+                    for (let i = 0; i < N; i++) {
+                        rects.push({ x: bx + i * w_col, y: by, w: w_col, h: bh });
+                    }
+                } else if (gridLayout === 'horizontal') {
+                    const h_row = bh / N;
+                    for (let i = 0; i < N; i++) {
+                        rects.push({ x: bx, y: by + i * h_row, w: bw, h: h_row });
+                    }
+                } else if (gridLayout === 'main-stack') {
+                    const split = 0.6;
+                    if (format === 'story') {
+                        rects.push({ x: bx, y: by, w: bw, h: bh * split });
+                        const sub_w = bw / (N - 1);
+                        const sub_h = bh * (1 - split);
+                        const sub_y = by + bh * split;
+                        for (let j = 0; j < N - 1; j++) {
+                            rects.push({ x: bx + j * sub_w, y: sub_y, w: sub_w, h: sub_h });
+                        }
+                    } else {
+                        rects.push({ x: bx, y: by, w: bw * split, h: bh });
+                        const sub_w = bw * (1 - split);
+                        const sub_h = bh / (N - 1);
+                        const sub_x = bx + bw * split;
+                        for (let j = 0; j < N - 1; j++) {
+                            rects.push({ x: sub_x, y: by + j * sub_h, w: sub_w, h: sub_h });
+                        }
+                    }
+                } else {
+                    const cols = Math.ceil(Math.sqrt(N));
+                    const rows = Math.ceil(N / cols);
+                    for (let i = 0; i < N; i++) {
+                        const r_idx = Math.floor(i / cols);
+                        const c_idx = i % cols;
+                        const w_cell = bw / cols;
+                        const h_cell = bh / rows;
+                        rects.push({ x: bx + c_idx * w_cell, y: by + r_idx * h_cell, w: w_cell, h: h_cell });
+                    }
+                }
+            }
+
+            if (isCard) {
+                ctx.save();
+                ctx.beginPath();
+                safeRoundRect(ctx, bx, by, bw, bh, 24);
+                ctx.clip();
+            }
+
+            rects.forEach((r, idx) => {
+                drawCell(imgs[idx % imgs.length], r.x, r.y, r.w, r.h);
+            });
+
+            if (N > 1) {
+                ctx.save();
+                ctx.strokeStyle = isLight ? '#ffffff' : '#0F172A';
+                ctx.lineWidth = IS ? 12 : 8;
+                rects.forEach(r => {
+                    ctx.strokeRect(r.x, r.y, r.w, r.h);
+                });
+                ctx.restore();
+            }
+
+            if (isCard) {
+                ctx.restore();
+            }
+
+            if (isPhoto) {
+                const grad = ctx.createLinearGradient(0, h, 0, h * 0.45);
+                grad.addColorStop(0, 'rgba(0, 0, 0, 1.0)');
+                grad.addColorStop(0.25, 'rgba(0, 0, 0, 0.95)');
+                grad.addColorStop(0.55, 'rgba(0, 0, 0, 0.82)');
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, h * 0.45, w, h * 0.55);
+            }
+
+            // Данные объекта
+            const parts = [];
+            const type = property?.property_type;
+            
+            if (type === 'apartment') {
+                parts.push(property?.rooms === 0 ? 'Студия' : property?.rooms + '-комн.');
+            } else if (type === 'room') {
+                parts.push('Комната');
+            } else if (type === 'house') {
+                if (property?.rooms > 0) {
+                    parts.push(property?.rooms + '-комн.');
+                }
+            } else if (!type) {
+                if (property?.rooms !== undefined) {
+                    parts.push(property?.rooms === 0 ? 'Студия' : property?.rooms + '-комн.');
+                }
+            }
+            
+            if (property?.area_total) {
+                parts.push(property?.area_total + ' м²');
+            }
+            
+            if (['apartment', 'room', 'commercial'].includes(type) && property?.floor) {
+                parts.push(property?.floor + '/' + (property?.floors_total || '?') + ' эт.');
+            } else if (type === 'house' && property?.floors_total) {
+                parts.push(property?.floors_total + ' эт.');
+            } else if (!type && property?.floor) {
+                parts.push(property?.floor + '/' + (property?.floors_total || '?') + ' эт.');
+            }
+
+            const activePhone = phone?.trim() ? (formatPhone(phone) || phone) : '+7 (999) 000-00-00';
+
+            const roomsCount = property?.rooms;
+            let categoryText = 'ОБЪЕКТ НЕДВИЖИМОСТИ';
+            
+            if (type === 'land') {
+                categoryText = 'ЗЕМЕЛЬНЫЙ УЧАСТОК';
+            } else if (type === 'garden') {
+                categoryText = 'САД';
+            } else if (type === 'commercial') {
+                categoryText = 'КОММЕРЧЕСКАЯ НЕДВИЖИМОСТЬ';
+            } else if (type === 'room') {
+                categoryText = 'КОМНАТА';
+            } else if (type === 'house') {
+                categoryText = roomsCount > 0 ? `${roomsCount}-КОМНАТНЫЙ ДОМ` : 'ДОМ';
+            } else if (type === 'apartment') {
+                categoryText = roomsCount === 0 ? 'СТУДИЯ' : `${roomsCount}-КОМНАТНАЯ КВАРТИРА`;
+            } else {
+                if (roomsCount !== undefined) {
+                    categoryText = roomsCount === 0 ? 'СТУДИЯ' : `${roomsCount}-КОМНАТНАЯ КВАРТИРА`;
+                }
+            }
+            const spacedCategory = categoryText.split('').join(' ');
+            
+            ctx.fillStyle = isLight ? '#9CA3AF' : (isBrand ? 'rgba(255, 255, 255, 0.85)' : '#E2E8F0');
+            const catSize = IS ? 30 : (isPortrait ? 25 : 22);
+            ctx.font = `400 ${catSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            const catY = textStartY + catOffset;
+            ctx.fillText(spacedCategory, px0, catY);
+
+            // Цена
+            const priceText = formatNumber(property?.price) + ' ₽';
+            const priceSize = IS ? 96 : (isPortrait ? 86 : 80);
+            ctx.font = `700 ${priceSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            ctx.fillStyle = isBrand ? '#ffffff' : accentColor;
+            const priceY = catY + priceOffset;
+            ctx.fillText(priceText, px0, priceY);
+
+            const priceWidth = ctx.measureText(priceText).width;
+
+            if (property?.price && property?.area_total) {
+                const m2 = Math.round(property.price / property.area_total);
+                const sqmText = `(${formatNumber(m2)} ₽/м²)`;
+                const sqmSize = IS ? 44 : (isPortrait ? 38 : 36);
+                ctx.font = `300 ${sqmSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+                ctx.fillStyle = isLight ? '#4B5563' : (isBrand ? 'rgba(255, 255, 255, 0.78)' : '#94A3B8');
+                ctx.fillText(sqmText, px0 + priceWidth + (IS ? 36 : 24), priceY);
+            }
+
+            // Адрес
+            ctx.font = `700 ${addrSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
+            const addrY = priceY + addrOffset;
+            
+            let currentY = addrY;
+            for (let i = 0; i < addrLines.length; i++) {
+                ctx.fillText(addrLines[i], px0, currentY);
+                currentY += lineHeight;
+            }
+            const currentYAfterAddr = currentY;
+
+            // Характеристики
+            ctx.font = `300 ${detailsSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            ctx.fillStyle = isLight ? '#4B5563' : (isBrand ? 'rgba(255, 255, 255, 0.85)' : '#94A3B8');
+            const detailsY = currentYAfterAddr + detailsOffset;
+            ctx.fillText(parts.join('  ·  '), px0, detailsY);
+
+            // Телефон риелтора
+            const ctaText = 'подробнее по тел. ';
+
+            ctx.font = `300 ${phoneSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            ctx.fillStyle = isLight ? '#4B5563' : (isBrand ? 'rgba(255, 255, 255, 0.85)' : '#E2E8F0');
+            ctx.fillText(ctaText, px0, phy);
+
+            const ctaWidth = ctx.measureText(ctaText).width;
+
+            ctx.font = `700 ${phoneSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+            ctx.fillStyle = isLight ? '#111827' : '#FFFFFF';
+            ctx.fillText(activePhone, px0 + ctaWidth, phy);
+
+            /* ── ПЛАНИРОВКА (УВЕЛИЧЕНА НА 30%) ───────────────────────────── */
+            if (loadedLayoutImg) {
+                const boxSize = IS ? 500 : (isPortrait ? 416 : 364);
+                const boxX = w - px0 - boxSize;
+                const boxY = Math.max(photoH - boxSize - (IS ? 40 : 20), (IS ? 70 : 50) + 20);
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+                ctx.shadowBlur = 24;
+                ctx.shadowOffsetY = 6;
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                safeRoundRect(ctx, boxX, boxY, boxSize, boxSize, 20);
+                ctx.fill();
+                ctx.restore();
+
+                const pad = IS ? 20 : 16;
+                const innerW = boxSize - pad * 2;
+                const innerH = boxSize - pad * 2;
+                const innerX = boxX + pad;
+                const innerY = boxY + pad;
+
+                ctx.save();
+                ctx.beginPath();
+                safeRoundRect(ctx, innerX, innerY, innerW, innerH, 12);
+                ctx.clip();
+
+                const imgW = loadedLayoutImg.width;
+                const imgH = loadedLayoutImg.height;
+                const imgRatio = (imgW && imgH) ? (imgW / imgH) : 1;
+                
+                let dw, dh, dx, dy;
+                if (imgRatio > innerW / innerH) {
+                    dw = innerW;
+                    dh = innerW / imgRatio;
+                    dx = innerX;
+                    dy = innerY + (innerH - dh) / 2;
+                } else {
+                    dh = innerH;
+                    dw = innerH * imgRatio;
+                    dx = innerX + (innerW - dw) / 2;
+                    dy = innerY;
+                }
+                
+                ctx.drawImage(loadedLayoutImg, dx, dy, dw, dh);
+                ctx.restore();
+            }
+
+            /* ── ПЛАШКА ЦЕЛИ СДЕЛКИ (ПРАВЫЙ ВЕРХНИЙ УГОЛ) ─────────────────── */
+            const sp = IS ? 70 : (isPortrait ? 60 : 50);
+            let dealBadgeBottom = sp + 20;
+
+            if (showDealGoal) {
+                const goalStr = (dealGoal === 'Свой вариант' ? customGoalText.trim() : dealGoal) || 'Продажа';
+                const badgeText = goalStr.toUpperCase();
+                const badgeH = IS ? 64 : (isPortrait ? 56 : 48);
+                const badgeFontSize = IS ? 28 : (isPortrait ? 24 : 20);
+                ctx.font = `700 ${badgeFontSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+                const textMetrics = ctx.measureText(badgeText);
+                const padX = IS ? 28 : 22;
+                const badgeW = textMetrics.width + padX * 2;
+                const badgeX = w - sp - badgeW;
+                const badgeY = sp + 20;
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+                ctx.shadowBlur = 18;
+                ctx.shadowOffsetY = 4;
+
+                ctx.beginPath();
+                safeRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, 12);
+                ctx.fillStyle = isLight ? accentColor : '#ffffff';
+                ctx.fill();
+                ctx.restore();
+
+                ctx.fillStyle = isLight ? '#ffffff' : '#0F172A';
+                ctx.font = `700 ${badgeFontSize}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + badgeFontSize * 0.35);
+                ctx.textAlign = 'left';
+
+                dealBadgeBottom = badgeY + badgeH + (IS ? 18 : 12);
+            }
+
+            /* ── СТИКЕРЫ ─────────────────────────────────────────────────── */
+            if (stickers.length) {
+                const sh = IS ? 66 : (isPortrait ? 56 : 48);
+                const sf = IS ? 30 : (isPortrait ? 26 : 22);
+                let sy = showDealGoal ? dealBadgeBottom : (sp + 20);
+                ctx.textAlign = 'center';
+                stickers.forEach(s => {
+                    const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
+                    ctx.font = `700 ${sf}px 'Medeo Sans', ui-sans-serif, sans-serif`;
+                    const tw = ctx.measureText(txt.toUpperCase()).width + 48;
+                    const sx = w - sp - tw;
+                    
+                    if (s === 'Срочно') {
+                        ctx.fillStyle = '#EF4444';
+                    } else {
+                        ctx.fillStyle = accentColor;
+                    }
+                    
+                    ctx.beginPath(); 
+                    safeRoundRect(ctx, sx, sy, tw, sh, 10); 
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(txt.toUpperCase(), sx + tw / 2, sy + sh / 2 + sf / 3);
+                    sy += sh + 14;
+                });
+                ctx.textAlign = 'left';
+            }
+
+            if (isMountedRef.current && hasUncached) {
+                setLoading(false);
+            }
+        } catch (err) {
+            console.error('[BannerGenerator] draw error:', err);
+            if (isMountedRef.current) {
+                setLoading(false);
+            }
+        }
+    }, [
+        format, 
+        designTheme, 
+        fitMode,
+        dealGoal,
+        showDealGoal,
+        customGoalText,
+        selectedImages, 
+        gridLayout, 
+        stickers, 
+        customStickerText, 
+        property?.address,
+        property?.city,
+        property?.property_type,
+        property?.rooms,
+        property?.area_total,
+        property?.price,
+        property?.floor,
+        property?.floors_total,
+        propertyImages, 
+        accentColor, 
+        layoutImage, 
+        phone, 
+        locationText,
+        loadImageSafe
+    ]);
 
     React.useEffect(() => {
         draw();
     }, [draw]);
 
     const dl = () => {
-        const a = document.createElement('a');
-        a.download = `banner-${property.id}-${format}.png`;
-        a.href = canvasRef.current.toDataURL('image/png');
-        a.click();
+        if (!canvasRef.current) return;
+        try {
+            const a = document.createElement('a');
+            a.download = `banner-${property?.id || 'object'}-${format}.png`;
+            a.href = canvasRef.current.toDataURL('image/png');
+            a.click();
+        } catch (err) {
+            console.error('[BannerGenerator] download error:', err);
+        }
     };
 
     const [showSocialPanel, setShowSocialPanel] = React.useState(false);
@@ -539,7 +777,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
     }, [showSocialPanel, tokenStatus, connectedSocials]);
 
     const handleOpenProfile = () => {
-        if (onClose) onClose();
+        if (typeof onClose === 'function') onClose();
         if (typeof onOpenProfile === 'function') {
             onOpenProfile();
         } else if (typeof window !== 'undefined') {
@@ -572,7 +810,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
             const result = await shareBannerToSocial({
                 networkId: net.id,
                 dataUrl,
-                fileName: `banner-${property.id || 'object'}-${format}.png`,
+                fileName: `banner-${property?.id || 'object'}-${format}.png`,
                 caption,
                 linkUrl,
                 account: net.account,
@@ -598,8 +836,23 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
     const AVAILABLE_STICKERS = ['Свободная продажа', 'Ищем встречный вариант', 'Срочно', 'Свой текст'];
 
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, color: 'var(--text)' }}>
-            <button onClick={onClose} style={{ position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--border-light)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}>
+        <div 
+            onClick={(e) => {
+                if (e.target === e.currentTarget && typeof onClose === 'function') {
+                    onClose();
+                }
+            }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'var(--modal-bg)', backdropFilter: 'blur(20px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, color: 'var(--text)' }}
+        >
+            <button 
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (typeof onClose === 'function') onClose();
+                }} 
+                style={{ position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--border-light)', color: 'var(--text)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', zIndex: 10001 }}
+                title="Закрыть (Esc)"
+            >
                 <X size={22} />
             </button>
 
@@ -611,11 +864,109 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
 
                     {/* Format */}
                     <Section label="ФОРМАТ">
-                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                            {[['story', 'Story 9:16'], ['post', 'Post 1:1']].map(([f, l]) => (
+                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                            {[
+                                ['story', 'Story 9:16'],
+                                ['portrait', 'Пост 4:5'],
+                                ['post', 'Квадрат 1:1']
+                            ].map(([f, l]) => (
                                 <Chip key={f} active={format === f} color={activeColor} onClick={() => setFormat(f)}>{l}</Chip>
                             ))}
                         </div>
+                    </Section>
+
+                    {/* Theme */}
+                    <Section label="ТЕМА ОФОРМЛЕНИЯ">
+                        <div style={{ display: 'flex', gap: '6px 14px', flexWrap: 'wrap' }}>
+                            {[
+                                ['photo', 'Тёмная'],
+                                ['light', 'Светлая'],
+                                ['brand', 'Цветная'],
+                                ['card', 'Карточка']
+                            ].map(([t, l]) => (
+                                <Chip key={t} active={designTheme === t} color={activeColor} onClick={() => setDesignTheme(t)}>{l}</Chip>
+                            ))}
+                        </div>
+                    </Section>
+
+                    {/* Photo fit mode */}
+                    <Section label="ПОДГОНКА ФОТО">
+                        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+                            {[
+                                ['contain', 'Без обрезки'],
+                                ['cover', 'С обрезкой']
+                            ].map(([m, l]) => (
+                                <Chip key={m} active={fitMode === m} color={activeColor} onClick={() => setFitMode(m)}>{l}</Chip>
+                            ))}
+                        </div>
+                    </Section>
+
+                    {/* Deal Goal Badge */}
+                    <Section label="ЦЕЛЬ СДЕЛКИ (ПЛАШКА СВЕРХУ)">
+                        <div style={{ display: 'flex', gap: '6px 12px', flexWrap: 'wrap', marginBottom: 6 }}>
+                            {DEAL_GOAL_OPTIONS.map(g => (
+                                <button
+                                    key={g}
+                                    type="button"
+                                    onClick={() => {
+                                        setDealGoal(g);
+                                        setShowDealGoal(true);
+                                    }}
+                                    style={{
+                                        padding: '3px 8px',
+                                        borderRadius: 6,
+                                        border: `1px solid ${showDealGoal && dealGoal === g ? activeColor : 'var(--border)'}`,
+                                        background: showDealGoal && dealGoal === g ? 'var(--primary-light, rgba(0, 82, 255, 0.1))' : 'transparent',
+                                        color: showDealGoal && dealGoal === g ? activeColor : 'var(--text-muted)',
+                                        fontSize: 11,
+                                        fontFamily: 'Medeo Sans',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s'
+                                    }}
+                                >
+                                    {g}
+                                </button>
+                            ))}
+                            <button
+                                type="button"
+                                onClick={() => setShowDealGoal(prev => !prev)}
+                                style={{
+                                    padding: '3px 8px',
+                                    borderRadius: 6,
+                                    border: '1px dashed var(--border)',
+                                    background: 'transparent',
+                                    color: !showDealGoal ? activeColor : 'var(--text-muted)',
+                                    fontSize: 11,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                }}
+                            >
+                                {showDealGoal ? '✕ Скрыть' : '✓ Показать'}
+                            </button>
+                        </div>
+                        {showDealGoal && (
+                            <input
+                                type="text"
+                                value={dealGoal === 'Свой вариант' ? customGoalText : (DEAL_GOAL_OPTIONS.includes(dealGoal) ? '' : dealGoal)}
+                                onChange={e => {
+                                    setDealGoal('Свой вариант');
+                                    setCustomGoalText(e.target.value);
+                                }}
+                                placeholder="Свой текст плашки..."
+                                style={{
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    borderRadius: 8,
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--bg)',
+                                    color: 'var(--text)',
+                                    fontSize: 12,
+                                    fontFamily: 'Medeo Sans',
+                                    outline: 'none',
+                                    boxSizing: 'border-box'
+                                }}
+                            />
+                        )}
                     </Section>
 
                     {/* Phone Number */}
@@ -778,8 +1129,6 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                         </div>
                     </Section>
 
-
-
                     {/* Photo selection thumbnails */}
                     {propertyImages.length > 1 && (
                         <Section label="ФОТОГРАФИИ (1-9)">
@@ -833,8 +1182,8 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                     {/* Layout selection */}
                     <Section label="ПЛАНИРОВКА НА БАННЕРЕ">
                         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                            {/* Option to have no layout */}
                             <button 
+                                type="button"
                                 onClick={() => setLayoutImage(null)}
                                 style={{
                                     width: 44,
@@ -855,7 +1204,6 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                 БЕЗ
                             </button>
 
-                            {/* Available layouts */}
                             {availableLayouts.map((url, idx) => {
                                 const isSel = layoutImage === url;
                                 return (
@@ -880,7 +1228,6 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                 );
                             })}
 
-                            {/* Upload button */}
                             <label
                                 style={{
                                     width: 44,
@@ -938,6 +1285,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                             {TRENDING_COLORS.map(c => (
                                 <button 
                                     key={c}
+                                    type="button"
                                     onClick={() => setAccentColor(c)}
                                     style={{
                                         width: 24,
@@ -963,6 +1311,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
                                 return (
                                     <button 
                                         key={s} 
+                                        type="button"
                                         onClick={() => setStickers(p => p.includes(s) ? p.filter(x => x !== s) : [...p, s])}
                                         style={{ 
                                             padding: '4px 0', 
@@ -1006,18 +1355,24 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
 
                     {/* Actions */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 12 }}>
-                        <button onClick={() => {
-                            if (selectedImages.length === 1) {
-                                setSelectedImages([ (selectedImages[0] + 1) % propertyImages.length ]);
-                            } else {
-                                setSelectedImages(prev => [...prev.slice(1), prev[0]]);
-                            }
-                        }}
-                            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontFamily: 'Medeo Sans', transition: 'all 0.15s' }}>
+                        <button 
+                            type="button"
+                            onClick={() => {
+                                if (selectedImages.length === 1) {
+                                    setSelectedImages([ (selectedImages[0] + 1) % propertyImages.length ]);
+                                } else {
+                                    setSelectedImages(prev => [...prev.slice(1), prev[0]]);
+                                }
+                            }}
+                            style={{ padding: '8px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 12, fontFamily: 'Medeo Sans', transition: 'all 0.15s' }}
+                        >
                             ↻ Сдвиг
                         </button>
-                        <button onClick={dl}
-                            style={{ padding: '8px 12px', borderRadius: 10, border: 'none', background: activeColor, color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'Medeo Sans', fontWeight: 700, letterSpacing: '0.06em', transition: 'all 0.15s' }}>
+                        <button 
+                            type="button"
+                            onClick={dl}
+                            style={{ padding: '8px 12px', borderRadius: 10, border: 'none', background: activeColor, color: '#fff', cursor: 'pointer', fontSize: 13, fontFamily: 'Medeo Sans', fontWeight: 700, letterSpacing: '0.06em', transition: 'all 0.15s' }}
+                        >
                             ↓ СКАЧАТЬ
                         </button>
                     </div>
@@ -1200,7 +1555,7 @@ export function BannerGenerator({ property, currentUser, agent: propAgent, onClo
 
                 {/* Preview */}
                 <div style={{ flex: 1, height: isMobile ? '500px' : '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-                    <div style={{ position: 'relative', height: '100%', aspectRatio: `${fmts[format].w}/${fmts[format].h}`, boxShadow: '0 20px 50px rgba(0,0,0,0.15)', borderRadius: 24, overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+                    <div style={{ position: 'relative', height: '100%', aspectRatio: `${BANNER_FORMATS[format].w}/${BANNER_FORMATS[format].h}`, boxShadow: '0 20px 50px rgba(0,0,0,0.15)', borderRadius: 24, overflow: 'hidden', background: 'var(--surface)', border: '1px solid var(--border)' }}>
                         <canvas ref={canvasRef} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         {loading && (
                             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--modal-bg)', backdropFilter: 'blur(4px)' }}>
@@ -1226,6 +1581,7 @@ function Section({ label, children }) {
 function Chip({ active, color, onClick, children }) {
     return (
         <button 
+            type="button"
             onClick={onClick} 
             style={{ 
                 padding: '4px 0', 

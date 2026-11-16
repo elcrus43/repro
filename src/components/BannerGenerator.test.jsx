@@ -158,4 +158,63 @@ describe('BannerGenerator phone resolution', () => {
 
     delete window.Capacitor;
   });
+
+  it('supports 4:5 portrait format and changes banner format', () => {
+    const property = { id: 'p1', address: 'ул. Ленина 10', price: 3000000 };
+    render(
+      <BannerGenerator
+        property={property}
+        onClose={() => {}}
+      />
+    );
+
+    const portraitBtn = screen.getByRole('button', { name: /Пост 4:5/i });
+    expect(portraitBtn).toBeInTheDocument();
+    fireEvent.click(portraitBtn);
+    expect(portraitBtn).toBeInTheDocument();
+  });
+
+  it('renders deal goal badge controls and allows selecting deal goal', () => {
+    const property = { id: 'p1', address: 'ул. Ленина 10', price: 3000000, deal_type: 'rent' };
+    render(
+      <BannerGenerator
+        property={property}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Аренда' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Продажа' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Посуточно' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Обмен' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Продажа' }));
+    const hideBtn = screen.getByRole('button', { name: /✕ Скрыть/i });
+    expect(hideBtn).toBeInTheDocument();
+    fireEvent.click(hideBtn);
+    expect(screen.getByRole('button', { name: /✓ Показать/i })).toBeInTheDocument();
+  });
+
+  it('supports switching themes and photo fit modes', () => {
+    const property = { id: 'p1', address: 'ул. Ленина 10', price: 3000000 };
+    render(
+      <BannerGenerator
+        property={property}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: 'Светлая' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Цветная' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Карточка' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Светлая' }));
+
+    const containBtn = screen.getByRole('button', { name: 'Без обрезки' });
+    const coverBtn = screen.getByRole('button', { name: 'С обрезкой' });
+    expect(containBtn).toBeInTheDocument();
+    expect(coverBtn).toBeInTheDocument();
+
+    fireEvent.click(coverBtn);
+  });
 });

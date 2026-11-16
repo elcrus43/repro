@@ -98,7 +98,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                 background: 'var(--bg-light, rgba(0,0,0,0.03))',
                 borderRadius: 12,
                 border: isOpen ? '1px solid var(--primary)' : '1px solid var(--border-light, rgba(0,0,0,0.08))',
-                transition: 'all 0.2s ease',
+                transition: 'border-color 0.2s var(--ease-spring), box-shadow 0.2s var(--ease-spring)',
                 boxShadow: isOpen ? '0 0 0 3px rgba(0, 82, 255, 0.12)' : 'none'
             }}>
                 <Search size={16} color={isOpen ? 'var(--primary)' : 'var(--text-muted)'} style={{ position: 'absolute', left: 12, pointerEvents: 'none', transition: 'color 0.2s', flexShrink: 0 }} />
@@ -167,7 +167,8 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                     overflowY: 'auto',
                     display: 'flex',
                     flexDirection: 'column',
-                    animation: 'fadeIn 0.15s ease'
+                    animation: 'springDropdown 0.25s var(--ease-spring)',
+                    transformOrigin: 'top right'
                 }}>
                     {!hasResults ? (
                         <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -185,7 +186,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                                         <div
                                             key={p.id}
                                             onClick={() => handleSelect(`/properties/${p.id}`)}
-                                            className="card-clickable"
+                                            className="card-clickable search-result-row"
                                             style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                         >
                                             <div style={{ minWidth: 0 }}>
@@ -212,7 +213,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                                         <div
                                             key={c.id}
                                             onClick={() => handleSelect(`/clients/${c.id}`)}
-                                            className="card-clickable"
+                                            className="card-clickable search-result-row"
                                             style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                         >
                                             <div style={{ minWidth: 0 }}>
@@ -239,7 +240,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                                         <div
                                             key={d.id}
                                             onClick={() => handleSelect(`/tasks`)}
-                                            className="card-clickable"
+                                            className="card-clickable search-result-row"
                                             style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                         >
                                             <div style={{ minWidth: 0 }}>
@@ -266,7 +267,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                                         <div
                                             key={r.id}
                                             onClick={() => handleSelect(`/requests/${r.id}`)}
-                                            className="card-clickable"
+                                            className="card-clickable search-result-row"
                                             style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                         >
                                             <div style={{ minWidth: 0 }}>
@@ -293,7 +294,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                                         <div
                                             key={m.id}
                                             onClick={() => handleSelect(`/matches/${m.id}`)}
-                                            className="card-clickable"
+                                            className="card-clickable search-result-row"
                                             style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                                         >
                                             <div style={{ minWidth: 0 }}>

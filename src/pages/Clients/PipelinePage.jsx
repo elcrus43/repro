@@ -1,10 +1,15 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
+import { useToastContext } from '../../components/Toast';
 import { formatPhone, formatNumber, stripPhone } from '../../utils/format';
 import { getContractTypeConfig } from '../../utils/contractTerms';
 import { CLIENT_PIPELINE_STAGES, getClientPipelineMeta, getClientPipelineStage } from '../../utils/clientPipeline';
-import { Phone, User, Home, Tag, Calendar, FileText, CheckCircle2 } from 'lucide-react';
+import { nanoid } from '../../utils/nanoid';
+import {
+  Phone, User, Home, Tag, Calendar, FileText, CheckCircle2,
+  XCircle, Plus, MessageSquare, ChevronDown, ChevronUp, X, Pencil
+} from 'lucide-react';
 
 const EXCLUDED_TYPES = ['developer', 'agent', 'lawyer'];
 const DEAL_TYPES = ['buyer', 'seller', 'legal_entity', 'landlord', 'tenant', 'lessor', 'lessee'];
@@ -27,8 +32,14 @@ const SEGMENTS = [
   { id: 'rent',         label: 'Аренда / Найм' },
 ];
 
+const toLocalISOString = (date) => {
+  const tzOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+};
+
 export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
   const { state, dispatch } = useApp();
+  const { toast } = useToastContext();
   const navigate = useNavigate();
   const isAdmin = state.currentUser?.role === 'admin';
 
@@ -40,6 +51,25 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
       : 'all';
 
   const [activeSegment, setActiveSegment] = useState(defaultSegment);
+  const [activeDropZone, setActiveDropZone] = useState(null);
+  const [showCompletedList, setShowCompletedList] = useState(false);
+  const [showRefusedList, setShowRefusedList] = useState(false);
+  const [quickMenuClientId, setQuickMenuClientId] = useState(null);
+  const [activeModalAction, setActiveModalAction] = useState(null);
+  const [actionForm, setActionForm] = useState({
+    date: '',
+    comment: '',
+    property_id: '',
+    call_status: 'completed'
+  });
+
+  // Close quick menu on outside click
+  useEffect(() => {
+    if (!quickMenuClientId) return;
+    const handleOutsideClick = () => setQuickMenuClientId(null);
+    window.addEventListener('click', handleOutsideClick);
+    return () => window.removeEventListener('click', handleOutsideClick);
+  }, [quickMenuClientId]);
 
   const getClientStage = useCallback((client) => {
     return getClientPipelineStage(client, {
@@ -113,8 +143,14 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     return dealClients;
   }, [dealClients, activeSegment]);
 
-  // Pipeline columns
+  // Full pipeline stages configuration
   const pipelineColumns = CLIENT_PIPELINE_STAGES;
+
+  // Visible columns on the board: Лиды (other), На контроле (control), В работе (active)
+  // "Сделка закрыта" and "Отказ / Архив" are hidden from vertical columns and rendered as drop target fields below
+  const visibleColumns = useMemo(() => {
+    return pipelineColumns.filter(col => !['completed', 'refused'].includes(col.id));
+  }, [pipelineColumns]);
 
   const columnMap = useMemo(() => {
     const map = {};
@@ -124,10 +160,13 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     return map;
   }, [filteredClients, pipelineColumns, getClientStage]);
 
+  const completedCards = columnMap['completed'] || [];
+  const refusedCards = columnMap['refused'] || [];
+
   const handleDrop = (e, columnId) => {
     e.preventDefault();
     const clientId = e.dataTransfer.getData('clientId');
-    const client = filteredClients.find(c => c.id === clientId);
+    const client = filteredClients.find(c => c.id === clientId) || (state.clients || []).find(c => c.id === clientId);
     if (!client) return;
 
     const currentStage = getClientStage(client);
@@ -145,6 +184,14 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
         updated_at: new Date().toISOString()
       }
     });
+
+    if (columnId === 'completed') {
+      toast.success(`Клиент "${client.full_name}" перенесен в "Сделка закрыта"`);
+    } else if (columnId === 'refused') {
+      toast.success(`Клиент "${client.full_name}" перенесен в "Отказ / Архив"`);
+    } else {
+      toast.success(`Клиент "${client.full_name}" перемещен на этап "${targetStage?.label || columnId}"`);
+    }
   };
 
   const handleDragOver = (e) => {
@@ -154,7 +201,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
   // Helper to get client's budget or request info
   const getClientMeta = (client) => {
     const types = Array.isArray(client.client_types) ? client.client_types : (client.client_type ? [client.client_type] : []);
-    
+
     // For buyers / tenants / lessees: look for request budget
     if (types.some(t => ['buyer', 'tenant', 'lessee'].includes(t))) {
       const req = (state.requests || []).find(r => r.client_id === client.id || r.client_ids?.includes(client.id));
@@ -175,6 +222,99 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     }
 
     return null;
+  };
+
+  // Quick Action Form Submission
+  const handleSaveQuickAction = (e) => {
+    e.preventDefault();
+    if (!activeModalAction) return;
+    const { client, type } = activeModalAction;
+
+    if (type === 'meeting') {
+      let dateIso = null;
+      if (actionForm.date) {
+        const parsed = new Date(actionForm.date);
+        if (!isNaN(parsed.getTime())) dateIso = parsed.toISOString();
+      }
+      if (!dateIso) {
+        toast.error('Укажите дату и время встречи');
+        return;
+      }
+      const newShowing = {
+        id: nanoid(),
+        realtor_id: state.currentUser?.id || client.realtor_id || null,
+        client_id: client.id,
+        client_ids: [client.id],
+        property_id: actionForm.property_id || null,
+        showing_date: dateIso,
+        status: 'planned',
+        event_type: 'meeting',
+        feedback_comment: actionForm.comment?.trim() || `Встреча с клиентом ${client.full_name}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+      toast.success('Встреча добавлена');
+    } else if (type === 'call') {
+      let dateIso = null;
+      if (actionForm.date) {
+        const parsed = new Date(actionForm.date);
+        if (!isNaN(parsed.getTime())) dateIso = parsed.toISOString();
+      } else {
+        dateIso = new Date().toISOString();
+      }
+      const newShowing = {
+        id: nanoid(),
+        realtor_id: state.currentUser?.id || client.realtor_id || null,
+        client_id: client.id,
+        client_ids: [client.id],
+        property_id: actionForm.property_id || null,
+        showing_date: dateIso,
+        status: actionForm.call_status || 'completed',
+        event_type: 'call',
+        feedback_comment: actionForm.comment?.trim() || `Звонок клиенту ${client.full_name}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+      toast.success('Звонок сохранен');
+    } else if (type === 'comment') {
+      const text = actionForm.comment?.trim();
+      if (!text) {
+        toast.error('Введите текст комментария');
+        return;
+      }
+      const newShowing = {
+        id: nanoid(),
+        realtor_id: state.currentUser?.id || client.realtor_id || null,
+        client_id: client.id,
+        client_ids: [client.id],
+        property_id: null,
+        showing_date: new Date().toISOString(),
+        status: 'completed',
+        event_type: 'comment',
+        feedback_comment: text,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+
+      const currentNotes = client.notes || '';
+      const dateLabel = new Date().toLocaleDateString('ru-RU');
+      const updatedNotes = currentNotes ? `${currentNotes}\n[${dateLabel}]: ${text}` : `[${dateLabel}]: ${text}`;
+      dispatch({
+        type: 'UPDATE_CLIENT',
+        client: {
+          ...client,
+          notes: updatedNotes,
+          updated_at: new Date().toISOString()
+        }
+      });
+      toast.success('Комментарий сохранен');
+    }
+
+    setActiveModalAction(null);
+    setActionForm({ date: '', comment: '', property_id: '', call_status: 'completed' });
   };
 
   return (
@@ -228,13 +368,13 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
         })}
       </div>
 
-      {/* ── КАНБАН ДОСКА ВОРОНКИ ── */}
+      {/* ── КАНБАН ДОСКА ВОРОНКИ (ВИДИМЫЕ ЭТАПЫ: ЛИДЫ, НА КОНТРОЛЕ, В РАБОТЕ) ── */}
       <div className="pipeline-scrollbar" style={{
         overflowX: 'auto',
         scrollbarWidth: 'none',
         display: 'flex',
         gap: 12,
-        padding: '4px 0 24px',
+        padding: '4px 0 16px',
         width: '100%',
         boxSizing: 'border-box',
         minHeight: 460,
@@ -243,7 +383,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
           .pipeline-scrollbar::-webkit-scrollbar { display: none; }
         `}</style>
 
-        {pipelineColumns.map(column => {
+        {visibleColumns.map(column => {
           const cards = columnMap[column.id] || [];
           return (
             <div
@@ -328,6 +468,8 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                   ? [...meetingEvents].sort((a, b) => new Date(b.showing_date) - new Date(a.showing_date))[0]
                   : null;
 
+                const isMenuOpen = quickMenuClientId === client.id;
+
                 return (
                   <div
                     key={client.id}
@@ -339,14 +481,16 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                       background: 'var(--surface)',
                       borderRadius: 16,
                       padding: 14,
-                      boxShadow: '0 4px 16px rgba(0,0,0,0.05)',
+                      boxShadow: isMenuOpen ? '0 12px 32px rgba(0,0,0,0.14)' : '0 4px 16px rgba(0,0,0,0.05)',
                       cursor: 'grab',
-                      border: '1px solid var(--border-light)',
+                      border: isMenuOpen ? '1px solid var(--primary)' : '1px solid var(--border-light)',
                       userSelect: 'none',
                       transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: 8
+                      gap: 8,
+                      position: 'relative',
+                      zIndex: isMenuOpen ? 120 : 1
                     }}
                     onMouseEnter={e => {
                       e.currentTarget.style.transform = 'translateY(-2px)';
@@ -357,15 +501,196 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                       e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.05)';
                     }}
                   >
-                    {/* Top Row: Full Name + Badges */}
+                    {/* Top Row: Full Name + Quick Actions Button */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <div style={{
-                        fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                        lineHeight: 1.3,
-                        overflow: 'hidden', textOverflow: 'ellipsis',
-                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'
-                      }}>
-                        {client.full_name}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
+                        <div style={{
+                          fontSize: 13, fontWeight: 600, color: 'var(--text)',
+                          lineHeight: 1.3,
+                          overflow: 'hidden', textOverflow: 'ellipsis',
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                          flex: 1
+                        }}>
+                          {client.full_name}
+                        </div>
+
+                        {/* Top-right card actions: Quick Edit + Plus Action Menu */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            className="card-clickable"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/clients/${client.id}/edit`);
+                            }}
+                            title="Редактировать клиента"
+                            style={{
+                              width: 26,
+                              height: 26,
+                              borderRadius: 8,
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg-light)',
+                              color: 'var(--text-secondary)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            <Pencil size={13} />
+                          </button>
+
+                          <div style={{ position: 'relative' }}>
+                            <button
+                              type="button"
+                              className="card-clickable"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickMenuClientId(isMenuOpen ? null : client.id);
+                              }}
+                              title="Добавить активность: встреча, звонок, комментарий"
+                              style={{
+                                width: 26,
+                                height: 26,
+                                borderRadius: 8,
+                                border: isMenuOpen ? '1px solid var(--primary)' : '1px solid var(--border)',
+                                background: isMenuOpen ? 'var(--primary)' : 'var(--bg-light)',
+                                color: isMenuOpen ? '#ffffff' : 'var(--text-secondary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              <Plus size={15} />
+                            </button>
+
+                            {/* Quick Action Popup Menu */}
+                            {isMenuOpen && (
+                              <div
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                  position: 'absolute',
+                                  top: 32,
+                                  right: 0,
+                                  zIndex: 250,
+                                  background: 'var(--surface)',
+                                  borderRadius: 14,
+                                  boxShadow: '0 12px 36px rgba(0,0,0,0.22)',
+                                  border: '1px solid var(--border)',
+                                  minWidth: 190,
+                                  padding: 6,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  gap: 2
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextHour = new Date(Date.now() + 60 * 60 * 1000);
+                                    setQuickMenuClientId(null);
+                                    setActionForm({
+                                      date: toLocalISOString(nextHour),
+                                      comment: '',
+                                      property_id: '',
+                                      call_status: 'completed'
+                                    });
+                                    setActiveModalAction({ client, type: 'meeting' });
+                                  }}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '8px 10px', borderRadius: 8, border: 'none',
+                                    background: 'transparent', color: 'var(--text)',
+                                    fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                                    textAlign: 'left', width: '100%'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-light)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Calendar size={14} color="#8b5cf6" />
+                                  <span>+ Встреча</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setQuickMenuClientId(null);
+                                    setActionForm({
+                                      date: toLocalISOString(new Date()),
+                                      comment: '',
+                                      property_id: '',
+                                      call_status: 'completed'
+                                    });
+                                    setActiveModalAction({ client, type: 'call' });
+                                  }}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '8px 10px', borderRadius: 8, border: 'none',
+                                    background: 'transparent', color: 'var(--text)',
+                                    fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                                    textAlign: 'left', width: '100%'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-light)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Phone size={14} color="#3b82f6" />
+                                  <span>+ Звонок</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setQuickMenuClientId(null);
+                                    setActionForm({
+                                      date: toLocalISOString(new Date()),
+                                      comment: '',
+                                      property_id: '',
+                                      call_status: 'completed'
+                                    });
+                                    setActiveModalAction({ client, type: 'comment' });
+                                  }}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '8px 10px', borderRadius: 8, border: 'none',
+                                    background: 'transparent', color: 'var(--text)',
+                                    fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                                    textAlign: 'left', width: '100%'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-light)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <MessageSquare size={14} color="#10b981" />
+                                  <span>+ Комментарий</span>
+                                </button>
+
+                                <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 0' }} />
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setQuickMenuClientId(null);
+                                    navigate(`/clients/${client.id}/edit`);
+                                  }}
+                                  style={{
+                                    display: 'flex', alignItems: 'center', gap: 8,
+                                    padding: '8px 10px', borderRadius: 8, border: 'none',
+                                    background: 'transparent', color: 'var(--text)',
+                                    fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
+                                    textAlign: 'left', width: '100%'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-light)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                >
+                                  <Pencil size={14} color="var(--primary)" />
+                                  <span>Редактировать</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       {/* Type Badges */}
@@ -521,6 +846,540 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
           );
         })}
       </div>
+
+      {/* ── ПОЛЯ ДЛЯ ПЕРЕНОСА КАРТОЧЕК: "СДЕЛКА ЗАКРЫТА" И "ОТКАЗ / АРХИВ" ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 12,
+        paddingTop: 4
+      }}>
+        {/* Drop Zone: Сделка закрыта */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (activeDropZone !== 'completed') setActiveDropZone('completed');
+          }}
+          onDragLeave={() => setActiveDropZone(null)}
+          onDrop={(e) => {
+            setActiveDropZone(null);
+            handleDrop(e, 'completed');
+          }}
+          style={{
+            border: activeDropZone === 'completed'
+              ? '2px solid #0f766e'
+              : '2px dashed rgba(15, 118, 110, 0.40)',
+            background: activeDropZone === 'completed'
+              ? 'rgba(15, 118, 110, 0.16)'
+              : 'rgba(15, 118, 110, 0.05)',
+            borderRadius: 18,
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            transition: 'all 0.2s ease',
+            boxShadow: activeDropZone === 'completed' ? '0 0 16px rgba(15, 118, 110, 0.25)' : 'none',
+            cursor: 'default'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: 'rgba(15, 118, 110, 0.14)',
+                color: '#0f766e',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <CheckCircle2 size={22} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: '#0f766e', letterSpacing: '0.03em' }}>
+                    СДЕЛКА ЗАКРЫТА
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    background: 'rgba(15, 118, 110, 0.15)',
+                    color: '#0f766e',
+                    borderRadius: 8, padding: '2px 8px'
+                  }}>
+                    {completedCards.length}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  Перетащите карточку сюда для успешного закрытия сделки
+                </div>
+              </div>
+            </div>
+
+            {completedCards.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowCompletedList(prev => !prev)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(15, 118, 110, 0.3)',
+                  background: showCompletedList ? '#0f766e' : 'var(--surface)',
+                  color: showCompletedList ? '#ffffff' : '#0f766e',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <span>{showCompletedList ? 'Скрыть' : `Список (${completedCards.length})`}</span>
+                {showCompletedList ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+            )}
+          </div>
+
+          {/* Expandable list of closed deal clients */}
+          {showCompletedList && completedCards.length > 0 && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              maxHeight: 240,
+              overflowY: 'auto',
+              paddingTop: 6,
+              borderTop: '1px solid rgba(15, 118, 110, 0.15)'
+            }}>
+              {completedCards.map(client => (
+                <div
+                  key={client.id}
+                  className="card-clickable"
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: 'var(--surface)',
+                    borderRadius: 10,
+                    border: '1px solid rgba(15, 118, 110, 0.2)',
+                    fontSize: 12.5
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                    <CheckCircle2 size={14} color="#0f766e" />
+                    <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {client.full_name}
+                    </span>
+                    {client.phone && (
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {formatPhone(client.phone)}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: '#0f766e', fontWeight: 600, marginLeft: 8 }}>
+                    Профиль →
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Drop Zone: Отказ / Архив */}
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (activeDropZone !== 'refused') setActiveDropZone('refused');
+          }}
+          onDragLeave={() => setActiveDropZone(null)}
+          onDrop={(e) => {
+            setActiveDropZone(null);
+            handleDrop(e, 'refused');
+          }}
+          style={{
+            border: activeDropZone === 'refused'
+              ? '2px solid #ef4444'
+              : '2px dashed rgba(239, 68, 68, 0.40)',
+            background: activeDropZone === 'refused'
+              ? 'rgba(239, 68, 68, 0.12)'
+              : 'rgba(239, 68, 68, 0.04)',
+            borderRadius: 18,
+            padding: '16px 20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 10,
+            transition: 'all 0.2s ease',
+            boxShadow: activeDropZone === 'refused' ? '0 0 16px rgba(239, 68, 68, 0.25)' : 'none',
+            cursor: 'default'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 40, height: 40, borderRadius: 12,
+                background: 'rgba(239, 68, 68, 0.12)',
+                color: '#ef4444',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <XCircle size={22} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="font-oswald" style={{ fontSize: 14, fontWeight: 600, color: '#ef4444', letterSpacing: '0.03em' }}>
+                    ОТКАЗ / АРХИВ
+                  </span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700,
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    color: '#ef4444',
+                    borderRadius: 8, padding: '2px 8px'
+                  }}>
+                    {refusedCards.length}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
+                  Перетащите карточку сюда в случае отказа клиента
+                </div>
+              </div>
+            </div>
+
+            {refusedCards.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowRefusedList(prev => !prev)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  background: showRefusedList ? '#ef4444' : 'var(--surface)',
+                  color: showRefusedList ? '#ffffff' : '#ef4444',
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}
+              >
+                <span>{showRefusedList ? 'Скрыть' : `Список (${refusedCards.length})`}</span>
+                {showRefusedList ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              </button>
+            )}
+          </div>
+
+          {/* Expandable list of refused clients */}
+          {showRefusedList && refusedCards.length > 0 && (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              maxHeight: 240,
+              overflowY: 'auto',
+              paddingTop: 6,
+              borderTop: '1px solid rgba(239, 68, 68, 0.15)'
+            }}>
+              {refusedCards.map(client => (
+                <div
+                  key={client.id}
+                  className="card-clickable"
+                  onClick={() => navigate(`/clients/${client.id}`)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '8px 12px',
+                    background: 'var(--surface)',
+                    borderRadius: 10,
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    fontSize: 12.5
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                    <XCircle size={14} color="#ef4444" />
+                    <span style={{ fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {client.full_name}
+                    </span>
+                    {client.phone && (
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        {formatPhone(client.phone)}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 11, color: '#ef4444', fontWeight: 600, marginLeft: 8 }}>
+                    Профиль →
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── МОДАЛЬНОЕ ОКНО БЫСТРОГО ДОБАВЛЕНИЯ ВСТРЕЧИ / ЗВОНКА / КОММЕНТАРИЯ ── */}
+      {activeModalAction && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+          onClick={() => setActiveModalAction(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 22,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+              border: '1px solid var(--border)',
+              width: '100%',
+              maxWidth: 440,
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12,
+                  background: activeModalAction.type === 'meeting' ? 'rgba(139, 92, 246, 0.12)' : activeModalAction.type === 'call' ? 'rgba(59, 130, 246, 0.12)' : 'rgba(16, 185, 129, 0.12)',
+                  color: activeModalAction.type === 'meeting' ? '#8b5cf6' : activeModalAction.type === 'call' ? '#3b82f6' : '#10b981',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {activeModalAction.type === 'meeting' && <Calendar size={18} />}
+                  {activeModalAction.type === 'call' && <Phone size={18} />}
+                  {activeModalAction.type === 'comment' && <MessageSquare size={18} />}
+                </div>
+                <div>
+                  <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+                    {activeModalAction.type === 'meeting' && 'Новая встреча'}
+                    {activeModalAction.type === 'call' && 'Звонок клиенту'}
+                    {activeModalAction.type === 'comment' && 'Добавить комментарий'}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {activeModalAction.client.full_name}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveModalAction(null)}
+                style={{
+                  background: 'transparent', border: 'none',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                  padding: 4, borderRadius: 6
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleSaveQuickAction} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {activeModalAction.type === 'meeting' && (
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Дата и время встречи *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={actionForm.date}
+                      onChange={e => setActionForm(prev => ({ ...prev, date: e.target.value }))}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                        borderRadius: 10, border: '1px solid var(--border)',
+                        background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13
+                      }}
+                    />
+                  </div>
+
+                  {(() => {
+                    const clientProps = (state.properties || []).filter(p =>
+                      p.owner_id === activeModalAction.client.id ||
+                      p.client_id === activeModalAction.client.id ||
+                      (Array.isArray(p.client_ids) && p.client_ids.includes(activeModalAction.client.id))
+                    );
+                    if (clientProps.length === 0) return null;
+                    return (
+                      <div>
+                        <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                          Объект (опционально)
+                        </label>
+                        <select
+                          value={actionForm.property_id}
+                          onChange={e => setActionForm(prev => ({ ...prev, property_id: e.target.value }))}
+                          style={{
+                            width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                            borderRadius: 10, border: '1px solid var(--border)',
+                            background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13
+                          }}
+                        >
+                          <option value="">Без привязки к объекту</option>
+                          {clientProps.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.address || p.city || 'Объект'} ({formatNumber(p.price || 0)} ₽)
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    );
+                  })()}
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Повестка / комментарий
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="Где встречаемся, что обсуждаем..."
+                      value={actionForm.comment}
+                      onChange={e => setActionForm(prev => ({ ...prev, comment: e.target.value }))}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                        borderRadius: 10, border: '1px solid var(--border)',
+                        background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13,
+                        resize: 'vertical', fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeModalAction.type === 'call' && (
+                <>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Дата и время звонка
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={actionForm.date}
+                      onChange={e => setActionForm(prev => ({ ...prev, date: e.target.value }))}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                        borderRadius: 10, border: '1px solid var(--border)',
+                        background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Статус звонка
+                    </label>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setActionForm(prev => ({ ...prev, call_status: 'completed' }))}
+                        style={{
+                          flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+                          border: actionForm.call_status === 'completed' ? '1px solid #10b981' : '1px solid var(--border)',
+                          background: actionForm.call_status === 'completed' ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-light)',
+                          color: actionForm.call_status === 'completed' ? '#059669' : 'var(--text-secondary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✓ Состоялся
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActionForm(prev => ({ ...prev, call_status: 'planned' }))}
+                        style={{
+                          flex: 1, padding: '8px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+                          border: actionForm.call_status === 'planned' ? '1px solid #3b82f6' : '1px solid var(--border)',
+                          background: actionForm.call_status === 'planned' ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-light)',
+                          color: actionForm.call_status === 'planned' ? '#2563eb' : 'var(--text-secondary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🕒 Запланирован
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                      Результат звонка / заметка
+                    </label>
+                    <textarea
+                      rows={3}
+                      placeholder="О чем договорились с клиентом..."
+                      value={actionForm.comment}
+                      onChange={e => setActionForm(prev => ({ ...prev, comment: e.target.value }))}
+                      style={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                        borderRadius: 10, border: '1px solid var(--border)',
+                        background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13,
+                        resize: 'vertical', fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
+                </>
+              )}
+
+              {activeModalAction.type === 'comment' && (
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                    Комментарий / Заметка *
+                  </label>
+                  <textarea
+                    required
+                    rows={4}
+                    placeholder="Введите заметку по клиенту..."
+                    value={actionForm.comment}
+                    onChange={e => setActionForm(prev => ({ ...prev, comment: e.target.value }))}
+                    style={{
+                      width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                      borderRadius: 10, border: '1px solid var(--border)',
+                      background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13,
+                      resize: 'vertical', fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveModalAction(null)}
+                  style={{
+                    flex: 1, padding: '10px 16px', borderRadius: 10,
+                    border: '1px solid var(--border)', background: 'var(--bg-light)',
+                    color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                  }}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1, padding: '10px 16px', borderRadius: 10,
+                    border: 'none', background: 'var(--primary)',
+                    color: '#ffffff', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)'
+                  }}
+                >
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

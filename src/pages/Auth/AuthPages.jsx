@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Building2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { authService } from '../../lib/auth';
+import { BrandLogo } from '../../components/BrandLogo';
 
 const ADMIN_EMAIL = 'yelchugin@gmail.com';
 
@@ -75,9 +75,7 @@ export function LoginPage() {
     return (
         <div className="auth-page">
             <div className="auth-logo">
-                <div style={{ fontSize: 40, fontWeight: 900, letterSpacing: -2, color: 'var(--primary)', margin: '0 auto 8px', textAlign: 'center' }}>
-                    <Building2 size={40} style={{ margin: '0 auto' }} />
-                </div>
+                <BrandLogo height={44} style={{ margin: '0 auto 16px' }} />
             </div>
             <div className="auth-card">
                 <h2>{mode === 'login' ? 'Вход в систему' : 'Регистрация'}</h2>

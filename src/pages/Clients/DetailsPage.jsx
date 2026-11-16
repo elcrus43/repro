@@ -1030,39 +1030,300 @@ export function DetailsPage() {
                 </div>
             </div>
 
-            <div className="page-content" style={{ padding: '16px 18px 120px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="page-content" style={{ padding: '14px 16px 120px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <style>{`
+                    .client-profile-grid {
+                        display: grid;
+                        grid-template-columns: 1fr;
+                        gap: 12px;
+                        align-items: start;
+                    }
+                    @media (min-width: 860px) {
+                        .client-profile-grid {
+                            grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+                            gap: 14px;
+                        }
+                    }
+                    @media (min-width: 1440px) {
+                        .client-profile-grid {
+                            grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+                            gap: 16px;
+                        }
+                    }
+                `}</style>
 
-                {/* ── Профиль ── */}
+                {/* ── Компактный профиль и воронка ── */}
                 <div className="card" style={{
-                    padding: '22px 24px',
+                    padding: '16px 18px',
                     border: '1px solid var(--border-light)',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
-                    borderRadius: 20,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                    borderRadius: 18,
                     background: 'var(--surface)',
                     display: 'flex',
                     flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center'
+                    gap: 12
                 }}>
+                    {/* Верхняя строка: Аватар + ФИО + Контакты + Метрики */}
                     <div style={{
-                        width: 52,
-                        height: 52,
-                        borderRadius: 18,
-                        background: 'rgba(0, 82, 255, 0.08)',
-                        color: 'var(--primary)',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 18,
-                        fontWeight: 700,
-                        marginBottom: 10,
-                        border: '1px solid rgba(0, 82, 255, 0.15)'
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 14
                     }}>
-                        {(client.full_name || 'К').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+                        {/* Слева: Аватар + Имя + Типы + Контакты */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 260, flex: '1 1 auto' }}>
+                            <div style={{
+                                width: 44,
+                                height: 44,
+                                borderRadius: 14,
+                                background: 'rgba(0, 82, 255, 0.08)',
+                                color: 'var(--primary)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 16,
+                                fontWeight: 700,
+                                border: '1px solid rgba(0, 82, 255, 0.15)',
+                                flexShrink: 0
+                            }}>
+                                {(client.full_name || 'К').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.01em' }}>
+                                        {client.full_name}
+                                    </span>
+
+                                    {/* Типы клиента */}
+                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                        {client.client_types?.map(t => {
+                                            const isAgent = t === 'agent';
+                                            const isLegal = t === 'legal_entity';
+                                            return (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => setIsEditingTypes(true)}
+                                                    className="card-clickable"
+                                                    style={{
+                                                        padding: '2px 8px',
+                                                        borderRadius: 6,
+                                                        fontSize: 11,
+                                                        fontWeight: 600,
+                                                        background: isAgent ? 'rgba(16, 185, 129, 0.1)' : (isLegal ? 'rgba(2, 132, 199, 0.1)' : 'var(--bg-light)'),
+                                                        color: isAgent ? '#059669' : (isLegal ? '#0284c7' : 'var(--text-secondary)'),
+                                                        border: isAgent ? '1px solid rgba(16, 185, 129, 0.25)' : (isLegal ? '1px solid rgba(2, 132, 199, 0.25)' : '1px solid var(--border-light)'),
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Нажмите, чтобы изменить типы"
+                                                >
+                                                    {typeLabels[t] || t}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Телефон, Мессенджеры, Email, Источник */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 12 }}>
+                                    <a
+                                        href={`tel:+${stripPhone(client.phone)}`}
+                                        onClick={handleCall}
+                                        style={{
+                                            color: 'var(--primary)',
+                                            textDecoration: 'none',
+                                            fontWeight: 600,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 4
+                                        }}
+                                    >
+                                        <Phone size={12} />
+                                        <span>{formatPhone(client.phone)}</span>
+                                    </a>
+
+                                    {/* Быстрые мессенджеры */}
+                                    <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+                                        <a
+                                            href={`https://wa.me/${stripPhone(client.phone)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="card-clickable"
+                                            title="WhatsApp"
+                                            style={{
+                                                width: 24, height: 24, borderRadius: 7,
+                                                background: 'rgba(34, 197, 94, 0.10)',
+                                                border: '1px solid rgba(34, 197, 94, 0.25)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#16a34a'
+                                            }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.634 1.437h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                        </a>
+                                        <a
+                                            href={`https://t.me/+${stripPhone(client.phone)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="card-clickable"
+                                            title="Telegram"
+                                            style={{
+                                                width: 24, height: 24, borderRadius: 7,
+                                                background: 'rgba(2, 132, 199, 0.10)',
+                                                border: '1px solid rgba(2, 132, 199, 0.25)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                color: '#0284c7'
+                                            }}
+                                        >
+                                            <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
+                                        </a>
+                                    </div>
+
+                                    {client.email && (
+                                        <a href={`mailto:${client.email}`} style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 11.5 }}>
+                                            {client.email}
+                                        </a>
+                                    )}
+                                    {client.source && (
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                            Источник: <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{client.source}</span>
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Справа: Компактные метрики / статистика */}
+                        {!client.client_types?.includes('lawyer') && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: 'var(--bg-light)',
+                                padding: '5px 10px',
+                                borderRadius: 12,
+                                border: '1px solid var(--border-light)',
+                                flexWrap: 'wrap'
+                            }}>
+                                <div
+                                    className="card-clickable"
+                                    onClick={() => navigate('/tasks')}
+                                    style={{ textAlign: 'center', padding: '0 6px', cursor: 'pointer' }}
+                                    title={`Комиссия: ${formatNumber(totalCommission)} ₽`}
+                                >
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: '#059669', lineHeight: 1.2 }}>
+                                        {formatNumber(totalCommission)} ₽
+                                    </div>
+                                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Комиссия</div>
+                                </div>
+
+                                <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
+
+                                <div
+                                    className="card-clickable"
+                                    onClick={() => navigate(`/properties?client=${id}`)}
+                                    style={{ textAlign: 'center', padding: '0 6px', cursor: 'pointer' }}
+                                >
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+                                        {myProperties.length}
+                                    </div>
+                                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Объектов</div>
+                                </div>
+
+                                <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
+
+                                <div
+                                    className="card-clickable"
+                                    onClick={() => navigate(`/requests?client=${id}`)}
+                                    style={{ textAlign: 'center', padding: '0 6px', cursor: 'pointer' }}
+                                >
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+                                        {myRequests.length}
+                                    </div>
+                                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Запросов</div>
+                                </div>
+
+                                <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
+
+                                <div
+                                    className="card-clickable"
+                                    onClick={() => navigate('/tasks')}
+                                    style={{ textAlign: 'center', padding: '0 6px', cursor: 'pointer' }}
+                                >
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+                                        {myDeals.length}
+                                    </div>
+                                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>Сделок</div>
+                                </div>
+
+                                <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
+
+                                <div
+                                    style={{ textAlign: 'center', padding: '0 6px' }}
+                                    title={`${activeContracts.length} в работе, ${fulfilledContracts.length} исполнен`}
+                                >
+                                    <div style={{ fontSize: 13.5, fontWeight: 700, color: activeContracts.length > 0 ? '#10b981' : (fulfilledContracts.length > 0 ? '#0f766e' : 'var(--text-muted)'), lineHeight: 1.2 }}>
+                                        {activeContracts.length > 0 ? activeContracts.length : (fulfilledContracts.length > 0 ? `✓${fulfilledContracts.length}` : 0)}
+                                    </div>
+                                    <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>АД</div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div style={{ fontSize: 21, fontWeight: 600, color: 'var(--text)', marginBottom: 6, letterSpacing: '-0.01em' }}>
-                        {client.full_name}
-                    </div>
+
+                    {/* Режим изменения типов (при нажатии) */}
+                    {isEditingTypes && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '12px', borderRadius: 14, width: '100%', border: '1px solid var(--border-light)' }}>
+                            <div style={{ width: '100%', fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2, fontWeight: 600 }}>Выберите типы клиента:</div>
+                            {CLIENT_TYPES.map(({ id: typeId, label }) => {
+                                const isActive = client.client_types?.includes(typeId);
+                                return (
+                                    <button
+                                        key={typeId}
+                                        onClick={() => handleToggleType(typeId)}
+                                        className="card-clickable"
+                                        style={{
+                                            padding: '4px 10px',
+                                            borderRadius: 8,
+                                            fontSize: 11,
+                                            fontWeight: isActive ? 600 : 400,
+                                            background: isActive ? 'var(--primary)' : 'var(--surface)',
+                                            color: isActive ? '#fff' : 'var(--text)',
+                                            border: isActive ? 'none' : '1px solid var(--border-light)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease'
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                            <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 6 }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditingTypes(false)}
+                                    className="card-clickable"
+                                    style={{
+                                        padding: '5px 16px',
+                                        borderRadius: 8,
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        background: '#10b981',
+                                        color: '#fff',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 5
+                                    }}
+                                >
+                                    <Check size={12} /> Готово
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Нижняя строка: Воронка клиента + Быстрые действия */}
                     {(() => {
                         const isCounterparty = (client?.client_types || []).some(t => ['developer', 'agent', 'lawyer'].includes(t));
                         if (isCounterparty) return null;
@@ -1075,26 +1336,24 @@ export function DetailsPage() {
 
                         return (
                             <div style={{
-                                marginBottom: 12,
-                                width: '100%',
                                 display: 'flex',
-                                flexDirection: 'column',
                                 alignItems: 'center',
-                                gap: 6
+                                justifyContent: 'space-between',
+                                flexWrap: 'wrap',
+                                gap: 8,
+                                paddingTop: 8,
+                                borderTop: '1px solid var(--border-light)'
                             }}>
-                                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-                                    Воронка клиента
-                                </div>
+                                {/* 5 этапов воронки */}
                                 <div style={{
                                     display: 'flex',
-                                    gap: 6,
-                                    justifyContent: 'center',
-                                    flexWrap: 'wrap',
-                                    background: 'var(--bg-light)',
-                                    padding: '6px 8px',
-                                    borderRadius: 14,
-                                    border: '1px solid var(--border-light)'
+                                    gap: 4,
+                                    alignItems: 'center',
+                                    flexWrap: 'wrap'
                                 }}>
+                                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em', marginRight: 4 }}>
+                                        Воронка:
+                                    </span>
                                     {CLIENT_PIPELINE_STAGES.map(stage => {
                                         const isActiveStage = stage.id === currentStageId;
                                         return (
@@ -1107,22 +1366,21 @@ export function DetailsPage() {
                                                 style={{
                                                     display: 'inline-flex',
                                                     alignItems: 'center',
-                                                    gap: 5,
-                                                    padding: '5px 10px',
-                                                    borderRadius: 10,
-                                                    fontSize: 11.5,
+                                                    gap: 4,
+                                                    padding: '3px 8px',
+                                                    borderRadius: 8,
+                                                    fontSize: 11,
                                                     fontWeight: isActiveStage ? 700 : 500,
-                                                    background: isActiveStage ? stage.badgeBg : 'var(--surface)',
+                                                    background: isActiveStage ? stage.badgeBg : 'var(--bg-light)',
                                                     color: isActiveStage ? stage.textColor : 'var(--text-secondary)',
                                                     border: isActiveStage ? `1.5px solid ${stage.color}` : '1px solid var(--border-light)',
                                                     cursor: 'pointer',
-                                                    transition: 'all 0.15s ease',
-                                                    boxShadow: isActiveStage ? `0 2px 6px ${stage.badgeBg}` : 'none'
+                                                    transition: 'all 0.15s ease'
                                                 }}
                                             >
                                                 <span style={{
-                                                    width: 7,
-                                                    height: 7,
+                                                    width: 6,
+                                                    height: 6,
                                                     borderRadius: '50%',
                                                     background: isActiveStage ? stage.color : 'var(--text-muted)',
                                                     opacity: isActiveStage ? 1 : 0.45,
@@ -1133,799 +1391,67 @@ export function DetailsPage() {
                                         );
                                     })}
                                 </div>
+
+                                {/* Быстрые действия */}
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <button
+                                        type="button"
+                                        className="card-clickable"
+                                        onClick={() => openQuickModal('meeting')}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                            padding: '4px 10px', borderRadius: 8,
+                                            background: 'rgba(124, 58, 237, 0.08)',
+                                            color: '#7c3aed',
+                                            border: '1px solid rgba(124, 58, 237, 0.25)',
+                                            fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Calendar size={12} /> + Встреча
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="card-clickable"
+                                        onClick={() => openQuickModal('call')}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                            padding: '4px 10px', borderRadius: 8,
+                                            background: 'rgba(0, 82, 255, 0.08)',
+                                            color: 'var(--primary)',
+                                            border: '1px solid rgba(0, 82, 255, 0.25)',
+                                            fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Phone size={12} /> + Звонок
+                                    </button>
+                                    {client.client_types?.includes('buyer') && (
+                                        <button
+                                            type="button"
+                                            className="card-clickable"
+                                            onClick={() => navigate(`/requests/new?client=${id}`)}
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                padding: '4px 10px', borderRadius: 8,
+                                                border: '1px solid rgba(217, 119, 6, 0.25)',
+                                                background: 'rgba(217, 119, 6, 0.08)',
+                                                color: '#b45309',
+                                                fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Plus size={12} /> + Запрос
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         );
                     })()}
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 14, alignItems: 'center' }}>
-                        {!isEditingTypes ? (
-                            <>
-                                {client.client_types?.map(t => {
-                                    const isAgent = t === 'agent';
-                                    const isLegal = t === 'legal_entity';
-                                    return (
-                                        <button
-                                            key={t}
-                                            onClick={() => setIsEditingTypes(true)}
-                                            className="card-clickable"
-                                            style={{
-                                                padding: '4px 10px',
-                                                borderRadius: 8,
-                                                fontSize: 11,
-                                                fontWeight: 500,
-                                                background: isAgent ? 'rgba(16, 185, 129, 0.1)' : (isLegal ? 'rgba(2, 132, 199, 0.1)' : 'var(--bg-light)'),
-                                                color: isAgent ? '#059669' : (isLegal ? '#0284c7' : 'var(--text-secondary)'),
-                                                border: isAgent ? '1px solid rgba(16, 185, 129, 0.25)' : (isLegal ? '1px solid rgba(2, 132, 199, 0.25)' : '1px solid var(--border-light)'),
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s ease'
-                                            }}
-                                            title="Нажмите, чтобы изменить типы"
-                                        >
-                                            {typeLabels[t] || t}
-                                        </button>
-                                    );
-                                })}
-                            </>
-                        ) : (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, justifyContent: 'center', alignItems: 'center', background: 'var(--bg-light)', padding: '14px', borderRadius: 16, width: '100%', marginTop: 6, border: '1px solid var(--border-light)' }}>
-                                <div style={{ width: '100%', fontSize: 11.5, color: 'var(--text-secondary)', marginBottom: 2, fontWeight: 500 }}>Выберите типы клиента:</div>
-                                {CLIENT_TYPES.map(({ id: typeId, label }) => {
-                                    const isActive = client.client_types?.includes(typeId);
-                                    return (
-                                        <button
-                                            key={typeId}
-                                            onClick={() => handleToggleType(typeId)}
-                                            className="card-clickable"
-                                            style={{
-                                                padding: '5px 12px',
-                                                borderRadius: 8,
-                                                fontSize: 11.5,
-                                                fontWeight: isActive ? 600 : 400,
-                                                background: isActive ? 'var(--primary)' : 'var(--surface)',
-                                                color: isActive ? '#fff' : 'var(--text)',
-                                                border: isActive ? 'none' : '1px solid var(--border-light)',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s ease'
-                                            }}
-                                        >
-                                            {label}
-                                        </button>
-                                    );
-                                })}
-                                <div style={{ width: '100%', display: 'flex', justifyContent: 'center', marginTop: 8 }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsEditingTypes(false)}
-                                        className="card-clickable"
-                                        style={{
-                                            padding: '6px 20px',
-                                            borderRadius: 10,
-                                            fontSize: 11.5,
-                                            fontWeight: 600,
-                                            background: '#10b981',
-                                            color: '#fff',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: 5
-                                        }}
-                                    >
-                                        <Check size={13} /> Готово
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                        <a href={`tel:+${stripPhone(client.phone)}`} onClick={handleCall} style={{ color: 'var(--text)', textDecoration: 'none', fontWeight: 500 }}>
-                            {formatPhone(client.phone)}
-                        </a>
-                        {client.email && (
-                            <a href={`mailto:${client.email}`} style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: 11.5 }}>
-                                {client.email}
-                            </a>
-                        )}
-                        {client.source && (
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                Источник: <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{client.source}</span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Спокойные кнопки связи */}
-                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-                        <a
-                            href={`tel:+${stripPhone(client.phone)}`}
-                            className="card-clickable"
-                            onClick={handleCall}
-                            title="Позвонить"
-                            style={{
-                                width: 40, height: 40, borderRadius: 12,
-                                background: 'var(--bg-light)',
-                                border: '1px solid var(--border-light)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: 'var(--text)'
-                            }}
-                        >
-                            <Phone size={17} />
-                        </a>
-                        <a
-                            href={`https://wa.me/${stripPhone(client.phone)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="card-clickable"
-                            title="WhatsApp"
-                            style={{
-                                width: 40, height: 40, borderRadius: 12,
-                                background: 'rgba(34, 197, 94, 0.08)',
-                                border: '1px solid rgba(34, 197, 94, 0.25)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: '#16a34a'
-                            }}
-                        >
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.634 1.437h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
-                        </a>
-                        <a
-                            href={`https://t.me/+${stripPhone(client.phone)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="card-clickable"
-                            title="Telegram"
-                            style={{
-                                width: 40, height: 40, borderRadius: 12,
-                                background: 'rgba(2, 132, 199, 0.08)',
-                                border: '1px solid rgba(2, 132, 199, 0.25)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                color: '#0284c7'
-                            }}
-                        >
-                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
-                        </a>
-                    </div>
-
-                    {client.client_types?.includes('buyer') && (
-                        <div style={{ marginTop: 12 }}>
-                            <button
-                                onClick={() => navigate(`/requests/new?client=${id}`)}
-                                className="card-clickable"
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: 5,
-                                    padding: '5px 12px',
-                                    borderRadius: 8,
-                                    border: '1px solid rgba(217, 119, 6, 0.25)',
-                                    background: 'rgba(217, 119, 6, 0.06)',
-                                    color: '#b45309',
-                                    fontSize: 12,
-                                    fontWeight: 500,
-                                    cursor: 'pointer',
-                                    transition: 'opacity 0.2s'
-                                }}
-                            >
-                                <Plus size={13} /> Создать запрос
-                            </button>
-                        </div>
-                    )}
                 </div>
 
-                {/* ── Компактная статистика ── */}
-                {!client.client_types?.includes('lawyer') && (
-                    <div className="card" style={{ 
-                        padding: '14px 16px', 
-                        border: '1px solid var(--border-light)', 
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)', 
-                        borderRadius: 18, 
-                        background: 'var(--surface)', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-around' 
-                    }}>
-                        {/* Комиссия */}
-                        <div 
-                            className="card-clickable" 
-                            onClick={() => navigate('/tasks')} 
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
-                            title={`${formatNumber(totalCommission)} ₽`}
-                        >
-                            <div style={{ fontSize: 16, fontWeight: 600, color: '#059669', lineHeight: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
-                                {formatNumber(totalCommission)} ₽
-                            </div>
-                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Комиссия</div>
-                        </div>
-
-                        {/* Разделитель */}
-                        <div style={{ width: 1, height: 26, background: 'var(--border-light)', flexShrink: 0 }} />
-
-                        {/* Объектов */}
-                        <div 
-                            className="card-clickable" 
-                            onClick={() => navigate(`/properties?client=${id}`)} 
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
-                        >
-                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{myProperties.length}</div>
-                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Объектов</div>
-                        </div>
-
-                        {/* Разделитель */}
-                        <div style={{ width: 1, height: 26, background: 'var(--border-light)', flexShrink: 0 }} />
-
-                        {/* Запросов */}
-                        <div 
-                            className="card-clickable" 
-                            onClick={() => navigate(`/requests?client=${id}`)} 
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
-                        >
-                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{myRequests.length}</div>
-                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Запросов</div>
-                        </div>
-
-                        {/* Разделитель */}
-                        <div style={{ width: 1, height: 26, background: 'var(--border-light)', flexShrink: 0 }} />
-
-                        {/* Сделок */}
-                        <div 
-                            className="card-clickable" 
-                            onClick={() => navigate('/tasks')} 
-                            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minWidth: 0, textAlign: 'center' }}
-                        >
-                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', lineHeight: 1 }}>{myDeals.length}</div>
-                            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>Сделок</div>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Реквизиты организации (для юридических лиц) ── */}
-                {isLegalEntity && (
-                    <div className="card" style={{
-                        padding: '20px 22px',
-                        border: '1px solid var(--border-light)',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
-                        borderRadius: 20,
-                        background: 'var(--surface)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 14
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{
-                                    width: 38, height: 38, borderRadius: 11,
-                                    background: 'rgba(2, 132, 199, 0.1)',
-                                    color: '#0284c7',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    flexShrink: 0
-                                }}>
-                                    <Building2 size={19} />
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
-                                            Реквизиты организации
-                                        </span>
-                                        <span style={{
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            padding: '2px 7px',
-                                            borderRadius: 6,
-                                            background: 'rgba(2, 132, 199, 0.08)',
-                                            color: '#0284c7',
-                                            border: '1px solid rgba(2, 132, 199, 0.2)'
-                                        }}>
-                                            Юрлицо
-                                        </span>
-                                    </div>
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                        {client.company_details?.short_name || client.full_name}
-                                    </div>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => navigate(`/clients/${id}/edit`)}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 5,
-                                    padding: '6px 12px',
-                                    borderRadius: 10,
-                                    border: '1px solid var(--border-light)',
-                                    background: 'var(--bg-light)',
-                                    color: 'var(--text)',
-                                    fontSize: 11.5,
-                                    fontWeight: 500,
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <Pencil size={12} /> Редактировать
-                            </button>
-                        </div>
-
-                        {/* Сетка реквизитов */}
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                            gap: 12,
-                            padding: 14,
-                            background: 'var(--bg-light)',
-                            borderRadius: 14
-                        }}>
-                            <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                                    ИНН
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                                        {client.company_details?.inn || client.inn || '—'}
-                                    </span>
-                                    {(client.company_details?.inn || client.inn) && (
-                                        <button
-                                            type="button"
-                                            onClick={() => copyToClipboard(client.company_details?.inn || client.inn, 'ИНН скопирован')}
-                                            title="Скопировать ИНН"
-                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
-                                        >
-                                            <Copy size={13} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                                    КПП
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                                        {client.company_details?.kpp || '—'}
-                                    </span>
-                                    {client.company_details?.kpp && (
-                                        <button
-                                            type="button"
-                                            onClick={() => copyToClipboard(client.company_details?.kpp, 'КПП скопирован')}
-                                            title="Скопировать КПП"
-                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
-                                        >
-                                            <Copy size={13} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                                    ОГРН / ОГРНИП
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
-                                        {client.company_details?.ogrn || '—'}
-                                    </span>
-                                    {client.company_details?.ogrn && (
-                                        <button
-                                            type="button"
-                                            onClick={() => copyToClipboard(client.company_details?.ogrn, 'ОГРН скопирован')}
-                                            title="Скопировать ОГРН"
-                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
-                                        >
-                                            <Copy size={13} />
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
-                                    Руководитель
-                                </div>
-                                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 4 }}>
-                                    {client.company_details?.director_name || '—'}
-                                </div>
-                                {client.company_details?.director_position && (
-                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                        {client.company_details.director_position}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Адреса */}
-                        {((client.company_details?.legal_address || client.reg_address) || client.company_details?.actual_address) && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
-                                {(client.company_details?.legal_address || client.reg_address) && (
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--text)' }}>
-                                        <MapPin size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
-                                        <div>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Юр. адрес: </span>
-                                            <span>{client.company_details?.legal_address || client.reg_address}</span>
-                                        </div>
-                                    </div>
-                                )}
-                                {client.company_details?.actual_address && client.company_details.actual_address !== (client.company_details?.legal_address || client.reg_address) && (
-                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--text)' }}>
-                                        <MapPin size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
-                                        <div>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Факт. адрес: </span>
-                                            <span>{client.company_details.actual_address}</span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Банковские реквизиты */}
-                        {(client.bank_details?.bank_name || client.bank_details?.bik || client.bank_details?.account) && (
-                            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                                    <Landmark size={14} color="var(--primary)" /> Банковские реквизиты
-                                </div>
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                    gap: 10,
-                                    fontSize: 12,
-                                    background: 'var(--bg-light)',
-                                    padding: 12,
-                                    borderRadius: 14
-                                }}>
-                                    {client.bank_details.bank_name && (
-                                        <div style={{ gridColumn: '1 / -1' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>Банк: </span>
-                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.bank_name}</span>
-                                        </div>
-                                    )}
-                                    {client.bank_details.bik && (
-                                        <div>
-                                            <span style={{ color: 'var(--text-muted)' }}>БИК: </span>
-                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.bik}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => copyToClipboard(client.bank_details.bik, 'БИК скопирован')}
-                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 6 }}
-                                            >
-                                                <Copy size={11} />
-                                            </button>
-                                        </div>
-                                    )}
-                                    {client.bank_details.account && (
-                                        <div>
-                                            <span style={{ color: 'var(--text-muted)' }}>Р/с: </span>
-                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.account}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => copyToClipboard(client.bank_details.account, 'Расчетный счет скопирован')}
-                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 6 }}
-                                            >
-                                                <Copy size={11} />
-                                            </button>
-                                        </div>
-                                    )}
-                                    {client.bank_details.corr_account && (
-                                        <div>
-                                            <span style={{ color: 'var(--text-muted)' }}>К/с: </span>
-                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.corr_account}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Уполномоченное лицо / Представитель (для юрлиц) ── */}
-                {isLegalEntity && (
-                    <div className="card" style={{
-                        padding: '20px 22px',
-                        border: '1px solid var(--border-light)',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
-                        borderRadius: 20,
-                        background: 'var(--surface)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 14
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <div style={{
-                                    width: 38, height: 38, borderRadius: 11,
-                                    background: (authPersonClient || client.authorized_person?.name) ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-light)',
-                                    color: (authPersonClient || client.authorized_person?.name) ? '#0284c7' : 'var(--text-muted)',
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    flexShrink: 0
-                                }}>
-                                    <UserCheck size={19} />
-                                </div>
-                                <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
-                                            Уполномоченное лицо
-                                        </span>
-                                        {(authPersonClient || client.authorized_person?.name) && (
-                                            <span style={{
-                                                fontSize: 11,
-                                                fontWeight: 600,
-                                                padding: '2px 7px',
-                                                borderRadius: 6,
-                                                background: 'rgba(2, 132, 199, 0.08)',
-                                                color: '#0284c7',
-                                                border: '1px solid rgba(2, 132, 199, 0.2)'
-                                            }}>
-                                                {authPersonClient ? 'Привязано физлицо' : 'Указано вручную'}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {(authPersonClient || client.authorized_person?.name) && (
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                    <button
-                                        type="button"
-                                        onClick={openEditAuthModal}
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: 6,
-                                            padding: '8px 14px',
-                                            borderRadius: 12,
-                                            border: 'none',
-                                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                                            color: '#fff',
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            cursor: 'pointer',
-                                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
-                                        }}
-                                    >
-                                        <Pencil size={13} /> Изменить
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleUnlinkAuthPerson}
-                                        title="Отвязать представителя"
-                                        style={{
-                                            width: 36,
-                                            height: 36,
-                                            borderRadius: 12,
-                                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                                            background: 'rgba(239, 68, 68, 0.08)',
-                                            color: '#ef4444',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <Unlink2 size={16} />
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-
-                        {(authPersonClient || client.authorized_person?.name) ? (
-                            <div style={{
-                                background: 'var(--bg-light)',
-                                borderRadius: 18,
-                                padding: 16,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 12
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{
-                                            width: 42,
-                                            height: 42,
-                                            borderRadius: 14,
-                                            background: '#0284c7',
-                                            color: '#fff',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            fontWeight: 600,
-                                            fontSize: 15
-                                        }}>
-                                            {(authPersonClient?.full_name || client.authorized_person?.name || '?').charAt(0).toUpperCase()}
-                                        </div>
-                                        <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
-                                                    {authPersonClient?.full_name || client.authorized_person?.name}
-                                                </span>
-                                                {authPersonClient && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => navigate(`/clients/${authPersonClient.id}`)}
-                                                        title="Открыть карточку физлица"
-                                                        style={{
-                                                            border: 'none',
-                                                            background: 'transparent',
-                                                            color: '#0284c7',
-                                                            cursor: 'pointer',
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: 4,
-                                                            fontSize: 12,
-                                                            fontWeight: 500,
-                                                            padding: 0
-                                                        }}
-                                                    >
-                                                        Профиль <ExternalLink size={12} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                                {client.authorized_person?.position || 'Генеральный директор'}
-                                                {client.authorized_person?.basis_document && (
-                                                    <span style={{ color: 'var(--text-muted)' }}> • на основании: {client.authorized_person.basis_document}</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {(authPersonClient?.phone || client.authorized_person?.phone) && (
-                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                                            <a
-                                                href={`tel:+${stripPhone(authPersonClient?.phone || client.authorized_person?.phone)}`}
-                                                className="card-clickable"
-                                                style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: 6,
-                                                    padding: '8px 14px',
-                                                    borderRadius: 12,
-                                                    background: 'var(--surface)',
-                                                    color: 'var(--text)',
-                                                    textDecoration: 'none',
-                                                    fontSize: 12,
-                                                    fontWeight: 500,
-                                                    border: '1px solid var(--border-light)'
-                                                }}
-                                            >
-                                                <Phone size={14} color="var(--primary)" />
-                                                {formatPhone(authPersonClient?.phone || client.authorized_person?.phone)}
-                                            </a>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ) : (
-                            <div style={{
-                                background: 'var(--bg-light)',
-                                borderRadius: 20,
-                                padding: '24px 20px',
-                                textAlign: 'center',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: 12
-                            }}>
-                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                                    Представитель еще не назначен
-                                </div>
-                                <button
-                                    type="button"
-                                    className="card-clickable"
-                                    onClick={openEditAuthModal}
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: 6,
-                                        padding: '8px 18px',
-                                        borderRadius: 12,
-                                        border: 'none',
-                                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
-                                        color: '#fff',
-                                        fontSize: 13,
-                                        fontWeight: 500,
-                                        cursor: 'pointer',
-                                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
-                                    }}
-                                >
-                                    <Plus size={15} /> Назначить представителя
-                                </button>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Представитель в организациях (для физлиц, уполномоченных за юрлица) ── */}
-                {representedCompanies.length > 0 && (
-                    <div className="card" style={{
-                        padding: '22px 24px',
-                        border: 'none',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
-                        borderRadius: 28,
-                        background: 'var(--surface)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <div style={{
-                                width: 44, height: 44, borderRadius: 14,
-                                background: 'rgba(2, 132, 199, 0.12)',
-                                color: '#0284c7',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                flexShrink: 0
-                            }}>
-                                <Building2 size={22} />
-                            </div>
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
-                                        Представитель организаций
-                                    </span>
-                                    <span style={{
-                                        fontSize: 11,
-                                        fontWeight: 600,
-                                        padding: '3px 8px',
-                                        borderRadius: 8,
-                                        background: 'rgba(2, 132, 199, 0.1)',
-                                        color: '#0284c7',
-                                        border: '1px solid rgba(2, 132, 199, 0.25)'
-                                    }}>
-                                        {representedCompanies.length} {representedCompanies.length === 1 ? 'компания' : 'компаний'}
-                                    </span>
-                                </div>
-                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                    Данный клиент является уполномоченным лицом в следующих организациях:
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {representedCompanies.map(comp => (
-                                <div
-                                    key={comp.id}
-                                    className="card-clickable"
-                                    onClick={() => navigate(`/clients/${comp.id}`)}
-                                    style={{
-                                        padding: '14px 16px',
-                                        borderRadius: 16,
-                                        background: 'var(--bg-light)',
-                                        border: '1px solid var(--border-light)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: 12,
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                                        <div style={{
-                                            width: 38,
-                                            height: 38,
-                                            borderRadius: 12,
-                                            background: 'rgba(2, 132, 199, 0.15)',
-                                            color: '#0284c7',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            flexShrink: 0
-                                        }}>
-                                            <Building2 size={20} />
-                                        </div>
-                                        <div style={{ minWidth: 0 }}>
-                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                {comp.company_details?.short_name || comp.full_name}
-                                            </div>
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                                                {(comp.company_details?.inn || comp.inn) && `ИНН: ${comp.company_details?.inn || comp.inn}`}
-                                                {comp.authorized_person?.position && ` • ${comp.authorized_person.position}`}
-                                                {comp.authorized_person?.basis_document && ` (${comp.authorized_person.basis_document})`}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Агентские договоры ── */}
+                {/* ── ДИНАМИЧЕСКИЕ КОЛОНКИ ПРОФИЛЯ ── */}
+                <div className="client-profile-grid">
+                    {/* Левая колонка: Агентские договоры, Сделки, Проверка, Реквизиты */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        {/* ── Агентские договоры ── */}
                 <div className="card" style={{
                     padding: '20px 22px',
                     border: '1px solid var(--border-light)',
@@ -2394,314 +1920,7 @@ export function DetailsPage() {
                         </div>
                     )}
                 </div>
-                {!client.client_types?.includes('lawyer') && (
-                    <div className="card" style={{
-                        padding: '20px 22px',
-                        border: '1px solid var(--border-light)',
-                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
-                        borderRadius: 20,
-                        background: 'var(--surface)'
-                    }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
-                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>Последняя активность</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <button
-                                    className="card-clickable"
-                                    onClick={() => openQuickModal('meeting')}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 5,
-                                        padding: '5px 12px', borderRadius: 10,
-                                        background: 'rgba(124, 58, 237, 0.08)',
-                                        color: '#7c3aed',
-                                        border: '1px solid rgba(124, 58, 237, 0.25)',
-                                        fontSize: 11.5, fontWeight: 500, cursor: 'pointer'
-                                    }}
-                                    title="Быстро добавить встречу"
-                                >
-                                    <Calendar size={13} /> + Встреча
-                                </button>
-                                <button
-                                    className="card-clickable"
-                                    onClick={() => openQuickModal('call')}
-                                    style={{
-                                        display: 'flex', alignItems: 'center', gap: 5,
-                                        padding: '5px 12px', borderRadius: 10,
-                                        background: 'rgba(0, 82, 255, 0.08)',
-                                        color: 'var(--primary)',
-                                        border: '1px solid rgba(0, 82, 255, 0.25)',
-                                        fontSize: 11.5, fontWeight: 500, cursor: 'pointer'
-                                    }}
-                                    title="Быстро добавить звонок"
-                                >
-                                    <Phone size={13} /> + Звонок
-                                </button>
-                                <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)} title="Добавить другое событие" style={{ width: 32, height: 32, borderRadius: 10, border: '1px solid var(--border-light)' }}>
-                                    <Plus size={15} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {activeProperties.length === 0 && myRequests.length === 0 && myShowings.length === 0 ? (
-                            <div style={{ padding: '32px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14, opacity: 0.6 }}>Активности пока нет</div>
-                        ) : (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-                                {/* События / Встречи / Звонки / Показы */}
-                                {myShowings.map(s => {
-                                    const prop = state.properties.find(p => p.id === s.property_id);
-                                    const isCall = s.event_type === 'call';
-                                    const isMeeting = s.event_type === 'meeting';
-                                    const iconBg = isCall ? '#eff6ff' : isMeeting ? '#f5f3ff' : '#ecfdf5';
-                                    const iconColor = isCall ? '#3b82f6' : isMeeting ? '#8b5cf6' : '#10b981';
-                                    const IconComp = isCall ? Phone : (isMeeting ? Calendar : Home);
-                                    const dateStr = s.showing_date ? new Date(s.showing_date).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-                                    const typeTitle = eventTypeLabels[s.event_type] || 'Событие';
-                                    const statusText = getEventStatusLabel(s.event_type, s.status);
-
-                                    return (
-                                        <div key={s.id} className="card-clickable" onClick={() => navigate(`/history`)}
-                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
-                                                    <IconComp size={16} />
-                                                </div>
-                                                <div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                                        <div style={{ fontSize: 10, fontWeight: 300, color: iconColor }}>
-                                                            {typeTitle} · {statusText}
-                                                        </div>
-                                                    </div>
-                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>
-                                                        {dateStr ? dateStr : 'Дата не указана'} {prop ? `(${prop.address || prop.city})` : ''}
-                                                    </div>
-                                                    {s.feedback_comment && (
-                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>
-                                                            {s.feedback_comment}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} color="var(--text-muted)" />
-                                        </div>
-                                    );
-                                })}
-
-                                {/* Объекты в продаже (все статусы кроме sold/deal_closed) */}
-                                {activeProperties.map(p => {
-                                    const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый' };
-                                    const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981' };
-                                    return (
-                                        <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
-                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                                                    <Home size={16} />
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontSize: 10, fontWeight: 300, color: propStatusColor[p.status] || 'var(--primary)' }}>
-                                                        {propStatusLabel[p.status] || 'Объект в продаже'}
-                                                    </div>
-                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>{p.address || p.city}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>{p.price ? formatNumber(p.price) + ' ₽' : ''}</div>
-                                                </div>
-                                            </div>
-                                            <ChevronRight size={16} color="var(--text-muted)" />
-                                        </div>
-                                    );
-                                })}
-
-                                {/* Запросы на покупку */}
-                                {myRequests.map(r => {
-                                    const devMatchesCount = (r.status || 'active') === 'active'
-                                        ? matchDevelopmentsToRequest(developments, r).length
-                                        : 0;
-                                    return (
-                                    <div key={r.id} className="card-clickable" onClick={() => navigate(`/requests/${r.id}`)}
-                                        style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                                                <FileText size={16} />
-                                            </div>
-                                            <div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                                    <span style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</span>
-                                                    <span style={{ 
-                                                        fontSize: 9, 
-                                                        padding: '1px 6px', 
-                                                        borderRadius: 6, 
-                                                        background: (r.status || 'active') === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
-                                                        color: (r.status || 'active') === 'active' ? '#10b981' : '#64748b'
-                                                    }}>
-                                                        {(r.status || 'active') === 'active' ? 'Актуально' : 'Завершен'}
-                                                    </span>
-                                                    {devMatchesCount > 0 && (
-                                                        <span style={{
-                                                            fontSize: 9,
-                                                            fontWeight: 600,
-                                                            padding: '1px 6px',
-                                                            borderRadius: 6,
-                                                            background: 'rgba(0, 82, 255, 0.12)',
-                                                            color: 'var(--primary)'
-                                                        }}>
-                                                            Новостройки: {devMatchesCount}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой тип'}</div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '-'}</div>
-                                            </div>
-                                        </div>
-                                        <ChevronRight size={16} color="var(--text-muted)" />
-                                    </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ── Модальное окно быстрого создания встречи/звонка ── */}
-                {quickModalType && (
-                    <div
-                        className="modal-overlay fade-in"
-                        onClick={() => setQuickModalType(null)}
-                        style={{
-                            position: 'fixed',
-                            inset: 0,
-                            background: 'var(--modal-bg, rgba(0,0,0,0.5))',
-                            backdropFilter: 'blur(8px)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 2000,
-                            padding: 16
-                        }}
-                    >
-                        <div
-                            className="modal-content fade-up"
-                            onClick={e => e.stopPropagation()}
-                            style={{
-                                background: 'var(--surface)',
-                                borderRadius: 24,
-                                padding: 24,
-                                width: '100%',
-                                maxWidth: 440,
-                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-                                border: '1px solid var(--border-light)'
-                            }}
-                        >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <div style={{
-                                        width: 40, height: 40, borderRadius: 12,
-                                        background: quickModalType === 'meeting' ? '#f5f3ff' : '#eff6ff',
-                                        color: quickModalType === 'meeting' ? '#8b5cf6' : '#3b82f6',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                    }}>
-                                        {quickModalType === 'meeting' ? <Calendar size={20} /> : <Phone size={20} />}
-                                    </div>
-                                    <div>
-                                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
-                                            {quickModalType === 'meeting' ? 'Запланировать встречу' : 'Запланировать звонок'}
-                                        </div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>
-                                    </div>
-                                </div>
-                                <button
-                                    onClick={() => setQuickModalType(null)}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
-                                >
-                                    <X size={20} />
-                                </button>
-                            </div>
-
-                            <form onSubmit={handleQuickSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                        Дата и время *
-                                    </label>
-                                    <input
-                                        type="datetime-local"
-                                        className="form-input"
-                                        required
-                                        value={quickForm.showing_date}
-                                        onChange={e => setQuickForm({ ...quickForm, showing_date: e.target.value })}
-                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                    />
-                                </div>
-
-                                {myProperties.length > 0 && (
-                                    <div>
-                                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                            Объект недвижимости {myProperties.length > 1 ? `(${myProperties.length})` : ''}
-                                        </label>
-                                        <select
-                                            className="form-select"
-                                            value={quickForm.property_id || ''}
-                                            onChange={e => setQuickForm({ ...quickForm, property_id: e.target.value })}
-                                            style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                        >
-                                            <option value="">— Без объекта —</option>
-                                            {myProperties.map(p => (
-                                                <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                        Статус
-                                    </label>
-                                    <select
-                                        className="form-select"
-                                        value={quickForm.status}
-                                        onChange={e => setQuickForm({ ...quickForm, status: e.target.value })}
-                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
-                                    >
-                                        <option value="planned">Запланировано</option>
-                                        <option value="completed">{quickModalType === 'meeting' ? 'Состоялась' : 'Совершен'}</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
-                                        Комментарий / Заметка
-                                    </label>
-                                    <textarea
-                                        className="form-textarea"
-                                        rows={3}
-                                        placeholder={quickModalType === 'meeting' ? 'Тема или детали встречи...' : 'Заметка к звонку...'}
-                                        value={quickForm.feedback_comment}
-                                        onChange={e => setQuickForm({ ...quickForm, feedback_comment: e.target.value })}
-                                        style={{ width: '100%', borderRadius: 14, border: '1px solid var(--border-light)', padding: '10px 14px', background: 'var(--bg-light)', color: 'var(--text)', resize: 'none' }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                                    <button
-                                        type="button"
-                                        onClick={() => setQuickModalType(null)}
-                                        style={{ flex: 1, height: 46, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
-                                    >
-                                        Отмена
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        style={{
-                                            flex: 1.5, height: 46, borderRadius: 14, border: 'none',
-                                            background: quickModalType === 'meeting' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                            color: '#fff', fontWeight: 600, cursor: 'pointer',
-                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                                        }}
-                                    >
-                                        Добавить в календарь
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-
-                {/* ── Сделки клиента ───────────────────────────────── */}
+                                        {/* ── Сделки клиента ───────────────────────────────── */}
                 <div className="card" style={{
                     padding: '20px 22px',
                     border: '1px solid var(--border-light)',
@@ -2823,7 +2042,7 @@ export function DetailsPage() {
                     )}
                 </div>
 
-                {/* ── Блок проверки по госреестрам (ФССП, МВД, Федресурс, ФНС) ── */}
+                                        {/* ── Блок проверки по госреестрам (ФССП, МВД, Федресурс, ФНС) ── */}
                 <div className="card" style={{
                     padding: '18px 22px',
                     border: '1px solid var(--border-light)',
@@ -2879,6 +2098,837 @@ export function DetailsPage() {
                         <span>Проверить в ФССП, МВД</span>
                     </button>
                 </div>
+                                        {/* ── Реквизиты организации (для юридических лиц) ── */}
+                {isLegalEntity && (
+                    <div className="card" style={{
+                        padding: '20px 22px',
+                        border: '1px solid var(--border-light)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                        borderRadius: 20,
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 14
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 38, height: 38, borderRadius: 11,
+                                    background: 'rgba(2, 132, 199, 0.1)',
+                                    color: '#0284c7',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <Building2 size={19} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+                                            Реквизиты организации
+                                        </span>
+                                        <span style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            padding: '2px 7px',
+                                            borderRadius: 6,
+                                            background: 'rgba(2, 132, 199, 0.08)',
+                                            color: '#0284c7',
+                                            border: '1px solid rgba(2, 132, 199, 0.2)'
+                                        }}>
+                                            Юрлицо
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {client.company_details?.short_name || client.full_name}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => navigate(`/clients/${id}/edit`)}
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    padding: '6px 12px',
+                                    borderRadius: 10,
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--bg-light)',
+                                    color: 'var(--text)',
+                                    fontSize: 11.5,
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <Pencil size={12} /> Редактировать
+                            </button>
+                        </div>
+
+                        {/* Сетка реквизитов */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                            gap: 12,
+                            padding: 14,
+                            background: 'var(--bg-light)',
+                            borderRadius: 14
+                        }}>
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    ИНН
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                        {client.company_details?.inn || client.inn || '-'}
+                                    </span>
+                                    {(client.company_details?.inn || client.inn) && (
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(client.company_details?.inn || client.inn, 'ИНН скопирован')}
+                                            title="Скопировать ИНН"
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    КПП
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                        {client.company_details?.kpp || '-'}
+                                    </span>
+                                    {client.company_details?.kpp && (
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(client.company_details?.kpp, 'КПП скопирован')}
+                                            title="Скопировать КПП"
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    ОГРН / ОГРНИП
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                                        {client.company_details?.ogrn || '-'}
+                                    </span>
+                                    {client.company_details?.ogrn && (
+                                        <button
+                                            type="button"
+                                            onClick={() => copyToClipboard(client.company_details?.ogrn, 'ОГРН скопирован')}
+                                            title="Скопировать ОГРН"
+                                            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2, display: 'inline-flex' }}
+                                        >
+                                            <Copy size={13} />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
+                                    Руководитель
+                                </div>
+                                <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginTop: 4 }}>
+                                    {client.company_details?.director_name || '-'}
+                                </div>
+                                {client.company_details?.director_position && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                        {client.company_details.director_position}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Адреса */}
+                        {((client.company_details?.legal_address || client.reg_address) || client.company_details?.actual_address) && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+                                {(client.company_details?.legal_address || client.reg_address) && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--text)' }}>
+                                        <MapPin size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Юр. адрес: </span>
+                                            <span>{client.company_details?.legal_address || client.reg_address}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {client.company_details?.actual_address && client.company_details.actual_address !== (client.company_details?.legal_address || client.reg_address) && (
+                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, color: 'var(--text)' }}>
+                                        <MapPin size={16} color="var(--text-muted)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Факт. адрес: </span>
+                                            <span>{client.company_details.actual_address}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Банковские реквизиты */}
+                        {(client.bank_details?.bank_name || client.bank_details?.bik || client.bank_details?.account) && (
+                            <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                                    <Landmark size={14} color="var(--primary)" /> Банковские реквизиты
+                                </div>
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                                    gap: 10,
+                                    fontSize: 12,
+                                    background: 'var(--bg-light)',
+                                    padding: 12,
+                                    borderRadius: 14
+                                }}>
+                                    {client.bank_details.bank_name && (
+                                        <div style={{ gridColumn: '1 / -1' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>Банк: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.bank_name}</span>
+                                        </div>
+                                    )}
+                                    {client.bank_details.bik && (
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>БИК: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.bik}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(client.bank_details.bik, 'БИК скопирован')}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 6 }}
+                                            >
+                                                <Copy size={11} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {client.bank_details.account && (
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>Р/с: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.account}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(client.bank_details.account, 'Расчетный счет скопирован')}
+                                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: 6 }}
+                                            >
+                                                <Copy size={11} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    {client.bank_details.corr_account && (
+                                        <div>
+                                            <span style={{ color: 'var(--text-muted)' }}>К/с: </span>
+                                            <span style={{ fontWeight: 500, color: 'var(--text)' }}>{client.bank_details.corr_account}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+                                        {/* ── Уполномоченное лицо / Представитель (для юрлиц) ── */}
+                {isLegalEntity && (
+                    <div className="card" style={{
+                        padding: '20px 22px',
+                        border: '1px solid var(--border-light)',
+                        boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
+                        borderRadius: 20,
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 14
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 38, height: 38, borderRadius: 11,
+                                    background: (authPersonClient || client.authorized_person?.name) ? 'rgba(2, 132, 199, 0.12)' : 'var(--bg-light)',
+                                    color: (authPersonClient || client.authorized_person?.name) ? '#0284c7' : 'var(--text-muted)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <UserCheck size={19} />
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+                                            Уполномоченное лицо
+                                        </span>
+                                        {(authPersonClient || client.authorized_person?.name) && (
+                                            <span style={{
+                                                fontSize: 11,
+                                                fontWeight: 600,
+                                                padding: '2px 7px',
+                                                borderRadius: 6,
+                                                background: 'rgba(2, 132, 199, 0.08)',
+                                                color: '#0284c7',
+                                                border: '1px solid rgba(2, 132, 199, 0.2)'
+                                            }}>
+                                                {authPersonClient ? 'Привязано физлицо' : 'Указано вручную'}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {(authPersonClient || client.authorized_person?.name) && (
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={openEditAuthModal}
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            padding: '8px 14px',
+                                            borderRadius: 12,
+                                            border: 'none',
+                                            background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                            color: '#fff',
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                        }}
+                                    >
+                                        <Pencil size={13} /> Изменить
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleUnlinkAuthPerson}
+                                        title="Отвязать представителя"
+                                        style={{
+                                            width: 36,
+                                            height: 36,
+                                            borderRadius: 12,
+                                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                                            background: 'rgba(239, 68, 68, 0.08)',
+                                            color: '#ef4444',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Unlink2 size={16} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {(authPersonClient || client.authorized_person?.name) ? (
+                            <div style={{
+                                background: 'var(--bg-light)',
+                                borderRadius: 18,
+                                padding: 16,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 12
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <div style={{
+                                            width: 42,
+                                            height: 42,
+                                            borderRadius: 14,
+                                            background: '#0284c7',
+                                            color: '#fff',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontWeight: 600,
+                                            fontSize: 15
+                                        }}>
+                                            {(authPersonClient?.full_name || client.authorized_person?.name || '?').charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                                    {authPersonClient?.full_name || client.authorized_person?.name}
+                                                </span>
+                                                {authPersonClient && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => navigate(`/clients/${authPersonClient.id}`)}
+                                                        title="Открыть карточку физлица"
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'transparent',
+                                                            color: '#0284c7',
+                                                            cursor: 'pointer',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 4,
+                                                            fontSize: 12,
+                                                            fontWeight: 500,
+                                                            padding: 0
+                                                        }}
+                                                    >
+                                                        Профиль <ExternalLink size={12} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                {client.authorized_person?.position || 'Генеральный директор'}
+                                                {client.authorized_person?.basis_document && (
+                                                    <span style={{ color: 'var(--text-muted)' }}> • на основании: {client.authorized_person.basis_document}</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {(authPersonClient?.phone || client.authorized_person?.phone) && (
+                                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                            <a
+                                                href={`tel:+${stripPhone(authPersonClient?.phone || client.authorized_person?.phone)}`}
+                                                className="card-clickable"
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 6,
+                                                    padding: '8px 14px',
+                                                    borderRadius: 12,
+                                                    background: 'var(--surface)',
+                                                    color: 'var(--text)',
+                                                    textDecoration: 'none',
+                                                    fontSize: 12,
+                                                    fontWeight: 500,
+                                                    border: '1px solid var(--border-light)'
+                                                }}
+                                            >
+                                                <Phone size={14} color="var(--primary)" />
+                                                {formatPhone(authPersonClient?.phone || client.authorized_person?.phone)}
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{
+                                background: 'var(--bg-light)',
+                                borderRadius: 20,
+                                padding: '24px 20px',
+                                textAlign: 'center',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 12
+                            }}>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                                    Представитель еще не назначен
+                                </div>
+                                <button
+                                    type="button"
+                                    className="card-clickable"
+                                    onClick={openEditAuthModal}
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 6,
+                                        padding: '8px 18px',
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                                        color: '#fff',
+                                        fontSize: 13,
+                                        fontWeight: 500,
+                                        cursor: 'pointer',
+                                        boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
+                                    }}
+                                >
+                                    <Plus size={15} /> Назначить представителя
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                )}
+                                        {/* ── Представитель в организациях (для физлиц, уполномоченных за юрлица) ── */}
+                {representedCompanies.length > 0 && (
+                    <div className="card" style={{
+                        padding: '22px 24px',
+                        border: 'none',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.03)',
+                        borderRadius: 28,
+                        background: 'var(--surface)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <div style={{
+                                width: 44, height: 44, borderRadius: 14,
+                                background: 'rgba(2, 132, 199, 0.12)',
+                                color: '#0284c7',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                                <Building2 size={22} />
+                            </div>
+                            <div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                    <span className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                        Представитель организаций
+                                    </span>
+                                    <span style={{
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        padding: '3px 8px',
+                                        borderRadius: 8,
+                                        background: 'rgba(2, 132, 199, 0.1)',
+                                        color: '#0284c7',
+                                        border: '1px solid rgba(2, 132, 199, 0.25)'
+                                    }}>
+                                        {representedCompanies.length} {representedCompanies.length === 1 ? 'компания' : 'компаний'}
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                    Данный клиент является уполномоченным лицом в следующих организациях:
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {representedCompanies.map(comp => (
+                                <div
+                                    key={comp.id}
+                                    className="card-clickable"
+                                    onClick={() => navigate(`/clients/${comp.id}`)}
+                                    style={{
+                                        padding: '14px 16px',
+                                        borderRadius: 16,
+                                        background: 'var(--bg-light)',
+                                        border: '1px solid var(--border-light)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: 12,
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                                        <div style={{
+                                            width: 38,
+                                            height: 38,
+                                            borderRadius: 12,
+                                            background: 'rgba(2, 132, 199, 0.15)',
+                                            color: '#0284c7',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                            <Building2 size={20} />
+                                        </div>
+                                        <div style={{ minWidth: 0 }}>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {comp.company_details?.short_name || comp.full_name}
+                                            </div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                {(comp.company_details?.inn || comp.inn) && `ИНН: ${comp.company_details?.inn || comp.inn}`}
+                                                {comp.authorized_person?.position && ` • ${comp.authorized_person.position}`}
+                                                {comp.authorized_person?.basis_document && ` (${comp.authorized_person.basis_document})`}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                    </div>
+
+                    {/* Правая колонка: Активность, Объекты, Запросы, Заметки */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* ── Последняя активность (Встречи / звонки) ── */}
+                        {!client.client_types?.includes('lawyer') && (
+                            <div className="card" style={{
+                                padding: '16px 18px',
+                                border: '1px solid var(--border-light)',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                                borderRadius: 18,
+                                background: 'var(--surface)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Calendar size={16} color="#8b5cf6" />
+                                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                            Последняя активность {myShowings.length > 0 && `(${myShowings.length})`}
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <button
+                                            className="card-clickable"
+                                            onClick={() => openQuickModal('meeting')}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 4,
+                                                padding: '4px 10px', borderRadius: 8,
+                                                background: 'rgba(124, 58, 237, 0.08)',
+                                                color: '#7c3aed',
+                                                border: '1px solid rgba(124, 58, 237, 0.25)',
+                                                fontSize: 11, fontWeight: 500, cursor: 'pointer'
+                                            }}
+                                            title="Быстро добавить встречу"
+                                        >
+                                            <Calendar size={12} /> + Встреча
+                                        </button>
+                                        <button
+                                            className="card-clickable"
+                                            onClick={() => openQuickModal('call')}
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 4,
+                                                padding: '4px 10px', borderRadius: 8,
+                                                background: 'rgba(0, 82, 255, 0.08)',
+                                                color: 'var(--primary)',
+                                                border: '1px solid rgba(0, 82, 255, 0.25)',
+                                                fontSize: 11, fontWeight: 500, cursor: 'pointer'
+                                            }}
+                                            title="Быстро добавить звонок"
+                                        >
+                                            <Phone size={12} /> + Звонок
+                                        </button>
+                                        <button className="icon-btn" onClick={() => navigate(`/history/new?client_id=${id}`)} title="Добавить другое событие" style={{ width: 28, height: 28, borderRadius: 8, border: '1px solid var(--border-light)' }}>
+                                            <Plus size={14} />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {myShowings.length === 0 ? (
+                                    <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 12.5, opacity: 0.7 }}>
+                                        Активности пока нет
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                        {/* События / Встречи / Звонки / Показы */}
+                                {myShowings.map(s => {
+                                    const prop = state.properties.find(p => p.id === s.property_id);
+                                    const isCall = s.event_type === 'call';
+                                    const isMeeting = s.event_type === 'meeting';
+                                    const iconBg = isCall ? '#eff6ff' : isMeeting ? '#f5f3ff' : '#ecfdf5';
+                                    const iconColor = isCall ? '#3b82f6' : isMeeting ? '#8b5cf6' : '#10b981';
+                                    const IconComp = isCall ? Phone : (isMeeting ? Calendar : Home);
+                                    const dateStr = s.showing_date ? new Date(s.showing_date).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+                                    const typeTitle = eventTypeLabels[s.event_type] || 'Событие';
+                                    const statusText = getEventStatusLabel(s.event_type, s.status);
+
+                                    return (
+                                        <div key={s.id} className="card-clickable" onClick={() => navigate(`/history`)}
+                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
+                                                    <IconComp size={16} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                        <div style={{ fontSize: 10, fontWeight: 300, color: iconColor }}>
+                                                            {typeTitle} · {statusText}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>
+                                                        {dateStr ? dateStr : 'Дата не указана'} {prop ? `(${prop.address || prop.city})` : ''}
+                                                    </div>
+                                                    {s.feedback_comment && (
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>
+                                                            {s.feedback_comment}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} color="var(--text-muted)" />
+                                        </div>
+                                    );
+                                })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── Объекты клиента (в продаже / найме) ── */}
+                        {myProperties.length > 0 && (
+                            <div className="card" style={{
+                                padding: '16px 18px',
+                                border: '1px solid var(--border-light)',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                                borderRadius: 18,
+                                background: 'var(--surface)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <Home size={16} color="var(--primary)" />
+                                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                            Объекты в продаже ({activeProperties.length})
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate(`/properties/new?client_id=${id}`)}
+                                        className="card-clickable"
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                            padding: '4px 10px', borderRadius: 8,
+                                            background: 'rgba(0, 82, 255, 0.08)',
+                                            color: 'var(--primary)',
+                                            border: '1px solid rgba(0, 82, 255, 0.25)',
+                                            fontSize: 11, fontWeight: 500, cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Plus size={12} /> + Объект
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                    {/* Объекты в продаже (все статусы кроме sold/deal_closed) */}
+                                {activeProperties.map(p => {
+                                    const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый' };
+                                    const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981' };
+                                    return (
+                                        <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
+                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+                                                    <Home size={16} />
+                                                </div>
+                                                <div>
+                                                    <div style={{ fontSize: 10, fontWeight: 300, color: propStatusColor[p.status] || 'var(--primary)' }}>
+                                                        {propStatusLabel[p.status] || 'Объект в продаже'}
+                                                    </div>
+                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>{p.address || p.city}</div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>{p.price ? formatNumber(p.price) + ' ₽' : ''}</div>
+                                                </div>
+                                            </div>
+                                            <ChevronRight size={16} color="var(--text-muted)" />
+                                        </div>
+                                    );
+                                })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Запросы на покупку / подбор ── */}
+                        {myRequests.length > 0 && (
+                            <div className="card" style={{
+                                padding: '16px 18px',
+                                border: '1px solid var(--border-light)',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                                borderRadius: 18,
+                                background: 'var(--surface)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <FileText size={16} color="#f59e0b" />
+                                        <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                                            Запросы на подбор ({myRequests.length})
+                                        </span>
+                                    </div>
+                                    <button
+                                        onClick={() => navigate(`/requests/new?client=${id}`)}
+                                        className="card-clickable"
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                                            padding: '4px 10px', borderRadius: 8,
+                                            border: '1px solid rgba(217, 119, 6, 0.25)',
+                                            background: 'rgba(217, 119, 6, 0.08)',
+                                            color: '#b45309',
+                                            fontSize: 11, fontWeight: 500, cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Plus size={12} /> + Запрос
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                                                    {/* Запросы на покупку */}
+                                {myRequests.map(r => {
+                                    const devMatchesCount = (r.status || 'active') === 'active'
+                                        ? matchDevelopmentsToRequest(developments, r).length
+                                        : 0;
+                                    return (
+                                    <div key={r.id} className="card-clickable" onClick={() => navigate(`/requests/${r.id}`)}
+                                        style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: '#fef3c7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                                                <FileText size={16} />
+                                            </div>
+                                            <div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                    <span style={{ fontSize: 10, fontWeight: 300, color: '#f59e0b' }}>Запрос на покупку</span>
+                                                    <span style={{ 
+                                                        fontSize: 9, 
+                                                        padding: '1px 6px', 
+                                                        borderRadius: 6, 
+                                                        background: (r.status || 'active') === 'active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                                                        color: (r.status || 'active') === 'active' ? '#10b981' : '#64748b'
+                                                    }}>
+                                                        {(r.status || 'active') === 'active' ? 'Актуально' : 'Завершен'}
+                                                    </span>
+                                                    {devMatchesCount > 0 && (
+                                                        <span style={{
+                                                            fontSize: 9,
+                                                            fontWeight: 600,
+                                                            padding: '1px 6px',
+                                                            borderRadius: 6,
+                                                            background: 'rgba(0, 82, 255, 0.12)',
+                                                            color: 'var(--primary)'
+                                                        }}>
+                                                            Новостройки: {devMatchesCount}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div style={{ fontSize: 14, fontWeight: 300 }}>{r.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой тип'}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>до {r.budget_max ? formatNumber(r.budget_max) + ' ₽' : '-'}</div>
+                                            </div>
+                                        </div>
+                                        <ChevronRight size={16} color="var(--text-muted)" />
+                                    </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                        {/* ── Заметки клиента ── */}
+                        {client.notes && (
+                            <div className="card" style={{
+                                padding: '14px 16px',
+                                border: '1px solid var(--border-light)',
+                                boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                                borderRadius: 18,
+                                background: 'var(--surface)'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                        Заметки по клиенту
+                                    </span>
+                                    <button
+                                        onClick={() => navigate(`/clients/${id}/edit`)}
+                                        className="card-clickable"
+                                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
+                                        title="Редактировать заметки"
+                                    >
+                                        <Pencil size={12} />
+                                    </button>
+                                </div>
+                                <div style={{
+                                    fontSize: 12,
+                                    color: 'var(--text-secondary)',
+                                    background: 'var(--bg-light)',
+                                    padding: '8px 12px',
+                                    borderRadius: 10,
+                                    whiteSpace: 'pre-wrap',
+                                    lineHeight: 1.45
+                                }}>
+                                    {client.notes}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
 
                 {/* ── Кнопка удаления клиента ── */}
                 <button
@@ -2908,7 +2958,146 @@ export function DetailsPage() {
                 </button>
             </div>
 
-            {/* Диалог предупреждения о недостающих реквизитах */}
+                            {quickModalType && (
+                    <div
+                        className="modal-overlay fade-in"
+                        onClick={() => setQuickModalType(null)}
+                        style={{
+                            position: 'fixed',
+                            inset: 0,
+                            background: 'var(--modal-bg, rgba(0,0,0,0.5))',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 2000,
+                            padding: 16
+                        }}
+                    >
+                        <div
+                            className="modal-content fade-up"
+                            onClick={e => e.stopPropagation()}
+                            style={{
+                                background: 'var(--surface)',
+                                borderRadius: 24,
+                                padding: 24,
+                                width: '100%',
+                                maxWidth: 440,
+                                boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+                                border: '1px solid var(--border-light)'
+                            }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    <div style={{
+                                        width: 40, height: 40, borderRadius: 12,
+                                        background: quickModalType === 'meeting' ? '#f5f3ff' : '#eff6ff',
+                                        color: quickModalType === 'meeting' ? '#8b5cf6' : '#3b82f6',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        {quickModalType === 'meeting' ? <Calendar size={20} /> : <Phone size={20} />}
+                                    </div>
+                                    <div>
+                                        <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
+                                            {quickModalType === 'meeting' ? 'Запланировать встречу' : 'Запланировать звонок'}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setQuickModalType(null)}
+                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={handleQuickSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Дата и время *
+                                    </label>
+                                    <input
+                                        type="datetime-local"
+                                        className="form-input"
+                                        required
+                                        value={quickForm.showing_date}
+                                        onChange={e => setQuickForm({ ...quickForm, showing_date: e.target.value })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    />
+                                </div>
+
+                                {myProperties.length > 0 && (
+                                    <div>
+                                        <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                            Объект недвижимости {myProperties.length > 1 ? `(${myProperties.length})` : ''}
+                                        </label>
+                                        <select
+                                            className="form-select"
+                                            value={quickForm.property_id || ''}
+                                            onChange={e => setQuickForm({ ...quickForm, property_id: e.target.value })}
+                                            style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                        >
+                                            <option value="">- Без объекта -</option>
+                                            {myProperties.map(p => (
+                                                <option key={p.id} value={p.id}>{p.address} ({(p.price || 0).toLocaleString()} ₽)</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Статус
+                                    </label>
+                                    <select
+                                        className="form-select"
+                                        value={quickForm.status}
+                                        onChange={e => setQuickForm({ ...quickForm, status: e.target.value })}
+                                        style={{ width: '100%', height: 46, borderRadius: 14, border: '1px solid var(--border-light)', padding: '0 14px', background: 'var(--bg-light)', color: 'var(--text)' }}
+                                    >
+                                        <option value="planned">Запланировано</option>
+                                        <option value="completed">{quickModalType === 'meeting' ? 'Состоялась' : 'Совершен'}</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6, display: 'block' }}>
+                                        Комментарий / Заметка
+                                    </label>
+                                    <textarea
+                                        className="form-textarea"
+                                        rows={3}
+                                        placeholder={quickModalType === 'meeting' ? 'Тема или детали встречи...' : 'Заметка к звонку...'}
+                                        value={quickForm.feedback_comment}
+                                        onChange={e => setQuickForm({ ...quickForm, feedback_comment: e.target.value })}
+                                        style={{ width: '100%', borderRadius: 14, border: '1px solid var(--border-light)', padding: '10px 14px', background: 'var(--bg-light)', color: 'var(--text)', resize: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setQuickModalType(null)}
+                                        style={{ flex: 1, height: 46, borderRadius: 14, border: '1px solid var(--border-light)', background: 'transparent', color: 'var(--text)', fontWeight: 500, cursor: 'pointer' }}
+                                    >
+                                        Отмена
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        style={{
+                                            flex: 1.5, height: 46, borderRadius: 14, border: 'none',
+                                            background: quickModalType === 'meeting' ? 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                            color: '#fff', fontWeight: 600, cursor: 'pointer',
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                                        }}
+                                    >
+                                        Добавить в календарь
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+                        {/* Диалог предупреждения о недостающих реквизитах */}
             {showMissingModal && (
                 <div style={{
                     position: 'fixed', inset: 0, zIndex: 10000,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { BrandLogo } from './BrandLogo';
 import { 
   Building2, 
   Users, 
@@ -81,13 +82,7 @@ export function DesktopSidebar() {
     <aside className="app-sidebar">
       {/* Brand Header */}
       <div className="sidebar-brand" onClick={() => navigate('/')}>
-        <div className="sidebar-logo">
-          <Building2 size={22} color="#ffffff" />
-        </div>
-        <div className="sidebar-brand-text">
-          <span className="sidebar-title">REA crm</span>
-          <span className="sidebar-subtitle">CRM Платформа</span>
-        </div>
+        <BrandLogo height={32} />
       </div>
 
       {/* Quick 1-Click Search & Command Trigger */}

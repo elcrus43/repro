@@ -25,6 +25,7 @@ import {
 import { DesktopSidebar } from './components/DesktopSidebar';
 import { CommandPalette } from './components/CommandPalette';
 import { QuickActionFab } from './components/QuickActionFab';
+import { BrandLogo } from './components/BrandLogo';
 
 // Pages - lazy loaded for code splitting
 const LoginPage = lazy(() => import('./pages/Auth/AuthPages').then(m => ({ default: m.LoginPage })));
@@ -265,6 +266,10 @@ function BottomNav() {
                   </button>
                 );
               })}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '16px 0 6px', opacity: 0.9 }}>
+              <BrandLogo height={24} />
             </div>
           </div>
         </>

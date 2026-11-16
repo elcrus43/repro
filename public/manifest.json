@@ -1,11 +1,11 @@
 {
-    "name": "REM",
-    "short_name": "REM",
-    "description": "R Match — профессиональная платформа для управления недвижимостью",
+    "name": "REA CRM",
+    "short_name": "REA CRM",
+    "description": "REA CRM - профессиональная платформа для управления недвижимостью",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
-    "theme_color": "#2563EB",
+    "theme_color": "#0058F1",
     "orientation": "portrait",
     "lang": "ru",
     "icons": [

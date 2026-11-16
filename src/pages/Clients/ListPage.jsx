@@ -19,7 +19,7 @@ export function ListPage() {
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
-    const [viewMode, setViewMode] = useState('list');
+    const [viewMode, setViewMode] = useState('pipeline');
 
     // Auto-revert to list mode if filter is changed to counterparty types without deal pipeline
     useEffect(() => {
@@ -266,45 +266,47 @@ export function ListPage() {
                         }} onClick={() => setScope('mine')}>Мои клиенты</button>
                     </div>
 
-                    <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
-                        {[
-                            ['all', 'Все'],
-                            ['buyer', 'Покупатели'],
-                            ['seller', 'Продавцы'],
-                            ['contract_alert', clientsNeedingContractAttentionCount > 0 ? `⚠️ Контроль АД (${clientsNeedingContractAttentionCount})` : 'Контроль АД'],
-                            ['legal_entity', 'Юрлица'],
-                            ['developer', 'Застройщики'],
-                            ['agent', 'Агенты'],
-                            ['lawyer', 'Юристы']
-                        ].map(([val, label]) => {
-                            const isAlertTab = val === 'contract_alert';
-                            const hasAlerts = isAlertTab && clientsNeedingContractAttentionCount > 0;
-                            return (
-                                <button 
-                                    key={val} 
-                                    className={`tab-filter ${filter === val ? 'active' : ''}`} 
-                                    onClick={() => setFilter(val)}
-                                    style={{ 
-                                        whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 10, border: '1px solid',
-                                        borderColor: filter === val 
-                                            ? (hasAlerts ? '#ef4444' : 'var(--primary)') 
-                                            : (hasAlerts ? 'rgba(239, 68, 68, 0.4)' : 'var(--border)'),
-                                        background: filter === val 
-                                            ? (hasAlerts ? '#ef4444' : 'var(--primary)') 
-                                            : (hasAlerts ? 'rgba(239, 68, 68, 0.08)' : 'var(--surface)'),
-                                        color: filter === val 
-                                            ? '#ffffff' 
-                                            : (hasAlerts ? '#dc2626' : 'var(--text-secondary)'),
-                                        fontSize: 13, fontWeight: hasAlerts ? 600 : 500,
-                                        boxShadow: filter === val ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
-                                        cursor: 'pointer', transition: 'all 0.18s ease'
-                                    }}
-                                >
-                                    {label}
-                                </button>
-                            );
-                        })}
-                    </div>
+                    {viewMode === 'list' && (
+                        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+                            {[
+                                ['all', 'Все'],
+                                ['buyer', 'Покупатели'],
+                                ['seller', 'Продавцы'],
+                                ['contract_alert', clientsNeedingContractAttentionCount > 0 ? `⚠️ Контроль АД (${clientsNeedingContractAttentionCount})` : 'Контроль АД'],
+                                ['legal_entity', 'Юрлица'],
+                                ['developer', 'Застройщики'],
+                                ['agent', 'Агенты'],
+                                ['lawyer', 'Юристы']
+                            ].map(([val, label]) => {
+                                const isAlertTab = val === 'contract_alert';
+                                const hasAlerts = isAlertTab && clientsNeedingContractAttentionCount > 0;
+                                return (
+                                    <button 
+                                        key={val} 
+                                        className={`tab-filter ${filter === val ? 'active' : ''}`} 
+                                        onClick={() => setFilter(val)}
+                                        style={{ 
+                                            whiteSpace: 'nowrap', padding: '8px 16px', borderRadius: 10, border: '1px solid',
+                                            borderColor: filter === val 
+                                                ? (hasAlerts ? '#ef4444' : 'var(--primary)') 
+                                                : (hasAlerts ? 'rgba(239, 68, 68, 0.4)' : 'var(--border)'),
+                                            background: filter === val 
+                                                ? (hasAlerts ? '#ef4444' : 'var(--primary)') 
+                                                : (hasAlerts ? 'rgba(239, 68, 68, 0.08)' : 'var(--surface)'),
+                                            color: filter === val 
+                                                ? '#ffffff' 
+                                                : (hasAlerts ? '#dc2626' : 'var(--text-secondary)'),
+                                            fontSize: 13, fontWeight: hasAlerts ? 600 : 500,
+                                            boxShadow: filter === val ? '0 2px 8px rgba(0, 82, 255, 0.25)' : 'none',
+                                            cursor: 'pointer', transition: 'all 0.18s ease'
+                                        }}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
 
                 {viewMode === 'pipeline' && <PipelinePage initialSegment={filter} scope={scope} />}

@@ -50,9 +50,9 @@ export function useMatchNotifications() {
                         body = `Запрос клиента и объект по адресу ${prop.address} совпали на ${match.score}%.`;
                     }
 
-                    const n = new Notification('Realtor Match', {
+                    const n = new Notification('REA CRM', {
                         body: body,
-                        icon: '/vite.svg', // Assuming standard Vite icon or you can place a logo in public/
+                        icon: '/icons/icon-192.png',
                     });
 
                     n.onclick = () => {

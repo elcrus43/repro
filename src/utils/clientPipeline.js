@@ -2,15 +2,15 @@ import { getContractStatusInfo } from './contractTerms';
 
 export const CLIENT_PIPELINE_STAGES = [
   {
-    id: 'active',
-    statusValue: 'active',
-    label: 'В работе',
-    shortLabel: 'В работе',
-    subLabel: 'Действующий АД, сделка не закрыта',
-    color: '#10b981',
-    textColor: '#059669',
-    badgeBg: 'rgba(16, 185, 129, 0.12)',
-    border: 'rgba(16, 185, 129, 0.30)'
+    id: 'other',
+    statusValue: 'new',
+    label: 'Лиды',
+    shortLabel: 'Лиды',
+    subLabel: 'Новые контакты и в подборе',
+    color: '#3b82f6',
+    textColor: '#2563eb',
+    badgeBg: 'rgba(59, 130, 246, 0.12)',
+    border: 'rgba(59, 130, 246, 0.30)'
   },
   {
     id: 'control',
@@ -24,15 +24,15 @@ export const CLIENT_PIPELINE_STAGES = [
     border: 'rgba(245, 158, 11, 0.30)'
   },
   {
-    id: 'other',
-    statusValue: 'new',
-    label: 'Остальные',
-    shortLabel: 'Остальные',
-    subLabel: 'Новые контакты и в подборе',
-    color: '#3b82f6',
-    textColor: '#2563eb',
-    badgeBg: 'rgba(59, 130, 246, 0.12)',
-    border: 'rgba(59, 130, 246, 0.30)'
+    id: 'active',
+    statusValue: 'active',
+    label: 'В работе',
+    shortLabel: 'В работе',
+    subLabel: 'Действующий АД, сделка не закрыта',
+    color: '#10b981',
+    textColor: '#059669',
+    badgeBg: 'rgba(16, 185, 129, 0.12)',
+    border: 'rgba(16, 185, 129, 0.30)'
   },
   {
     id: 'completed',

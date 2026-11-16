@@ -908,7 +908,11 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
           showingResult = await neonDb.upsert('showings', showingData);
         }
         if (showingResult?.error) {
-          handleError(`Ошибка сохранения события: ${showingResult.error?.message || showingResult.error}`);
+          const rawErr = showingResult.error?.message || showingResult.error;
+          const userMsg = String(rawErr).includes('fetch failed') || String(rawErr).includes('connecting to database')
+            ? 'Не удалось подключиться к базе данных. Повторите попытку через пару секунд.'
+            : rawErr;
+          handleError(`Ошибка сохранения события: ${userMsg}`);
           if (typeof onRollback === 'function') onRollback(action);
           return false;
         }
@@ -973,7 +977,7 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         const showingData = mapShowingToDb(sanitizeObj(rawShowing));
         showingData.updated_at = new Date().toISOString();
         const sId = action.showing.id;
-        const { id, ...dataToUpdate } = showingData;
+        const { id: _id, ...dataToUpdate } = showingData;
         
         let showingResult = await neonDb.update('showings', sId, dataToUpdate);
         if (showingResult?.error || !showingResult?.data || showingResult.data.length === 0) {
@@ -1283,6 +1287,8 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
         handleError('Не заполнено обязательное поле.');
       } else if (errCode === '23503') {
         handleError('Связанный объект не найден. Проверьте данные.');
+      } else if (String(errMsg).includes('fetch failed') || String(errMsg).includes('connecting to database')) {
+        handleError('Не удалось подключиться к базе данных. Повторите попытку через пару секунд.');
       } else {
         handleError(`Ошибка сохранения: ${errMsg}`);
       }

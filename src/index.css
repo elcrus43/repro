@@ -65,6 +65,15 @@
   --radius-pill: 9999px;
   
   --nav-h: 72px;
+
+  /* Motion Foundation - DesignBookmark inspired curves */
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring-soft: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 0.15s;
+  --duration-normal: 0.25s;
+  --duration-spring: 0.35s;
 }
 
 /* ===== Utilities ===== */
@@ -95,7 +104,7 @@
 .shadow-lg { box-shadow: var(--shadow-premium); }
 
 .fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: fadeIn 0.35s var(--ease-spring);
 }
 
 @keyframes fadeIn {
@@ -599,10 +608,15 @@ a:focus:not(:focus-visible) {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 6px 10px 18px;
+    padding: 8px 12px 18px;
     border-bottom: 1px solid var(--border-light);
     cursor: pointer;
     user-select: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .sidebar-brand:hover {
+    opacity: 0.9;
   }
 
   .sidebar-logo {
@@ -819,27 +833,32 @@ a:focus:not(:focus-visible) {
   background: none;
   cursor: pointer;
   border-radius: 12px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.15s var(--ease-spring), color 0.15s ease;
   flex: 1;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-item:active {
+  transform: scale(0.92);
 }
 
 .nav-item .nav-icon {
   font-size: 20px;
   color: #94a3b8;
-  transition: all 0.2s;
+  transition: transform 0.22s var(--ease-spring-bounce), color 0.2s ease;
 }
 
 .nav-item .nav-label {
   font-size: 10px;
   font-weight: 600;
   color: var(--text-muted);
-  transition: all 0.2s;
+  transition: color 0.2s ease, font-weight 0.2s ease;
   opacity: 0.8;
 }
 
 .nav-item.active .nav-icon {
   color: var(--primary);
-  transform: translateY(-2px);
+  transform: translateY(-2px) scale(1.08);
 }
 
 .nav-item.active .nav-label {
@@ -911,7 +930,8 @@ a:focus:not(:focus-visible) {
 
 .card-clickable {
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.22s var(--ease-spring), box-shadow 0.22s var(--ease-spring), border-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .card-clickable:hover {
@@ -921,8 +941,8 @@ a:focus:not(:focus-visible) {
 }
 
 .card-clickable:active {
-  transform: scale(0.96);
-  transition: transform 0.1s ease;
+  transform: scale(0.965);
+  transition: transform 0.1s var(--ease-spring);
 }
 
 /* ===== Buttons ===== */
@@ -939,13 +959,15 @@ a:focus:not(:focus-visible) {
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.18s var(--ease-spring), background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
   min-height: 42px;
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.965);
+  transition: transform 0.08s var(--ease-spring);
 }
 
 .btn-primary {
@@ -1242,6 +1264,36 @@ a:focus:not(:focus-visible) {
 .list-row:hover {
   box-shadow: var(--shadow-sm);
   border-color: var(--border);
+}
+
+/* ===== Brand Logo ===== */
+.brand-logo-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.brand-logo-img {
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+
+.brand-logo-img-light {
+  display: block;
+}
+
+.brand-logo-img-dark {
+  display: none;
+}
+
+.dark .brand-logo-img-light {
+  display: none;
+}
+
+.dark .brand-logo-img-dark {
+  display: block;
 }
 
 /* ===== Logo ===== */
@@ -1687,7 +1739,7 @@ a:focus:not(:focus-visible) {
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease;
+  animation: fadeIn 0.3s var(--ease-spring);
 }
 
 @keyframes slideUp {
@@ -1703,7 +1755,40 @@ a:focus:not(:focus-visible) {
 }
 
 .slide-up {
-  animation: slideUp 0.4s ease;
+  animation: slideUp 0.35s var(--ease-spring);
+}
+
+@keyframes springDropdown {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(1px) scale(1.005);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.spring-dropdown {
+  animation: springDropdown 0.25s var(--ease-spring);
+  transform-origin: top right;
+}
+
+.search-result-row {
+  transition: transform 0.18s var(--ease-spring), background-color 0.15s ease;
+}
+
+.search-result-row:hover {
+  background-color: var(--primary-light, #eef4ff);
+  transform: translateX(4px);
+}
+
+.search-result-row:active {
+  transform: scale(0.98) translateX(2px);
 }
 
 /* ===== Misc ===== */
@@ -1935,8 +2020,13 @@ a:focus:not(:focus-visible) {
   color: #000000 !important;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: transform 0.15s var(--ease-spring), background 0.15s ease;
   box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tab-filter:active {
+  transform: scale(0.94);
 }
 
 .tab-filter.active {
@@ -2152,17 +2242,17 @@ a:focus:not(:focus-visible) {
 }
 
 .card-clickable {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.22s var(--ease-spring), box-shadow 0.22s var(--ease-spring);
   cursor: pointer;
 }
 
 .card-clickable:hover {
-  transform: translateY(-4px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-premium);
 }
 
 .card-clickable:active {
-  transform: scale(0.98);
+  transform: scale(0.965);
 }
 
 /* Style square/icon buttons with thin black borders and no shadow */
@@ -2193,13 +2283,13 @@ button.icon-btn:focus {
 }
 
 .btn {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.18s var(--ease-spring), box-shadow 0.18s ease, background-color 0.18s ease;
   position: relative;
   overflow: hidden;
 }
 
 .btn:active {
-  transform: scale(0.96);
+  transform: scale(0.965);
 }
 
 .text-accent {
@@ -2961,11 +3051,11 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  animation: cmdSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cmdSlideDown 0.28s var(--ease-spring);
 }
 
 @keyframes cmdSlideDown {
-  from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+  from { opacity: 0; transform: translateY(-20px) scale(0.96); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -3246,12 +3336,13 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease, border-radius 0.2s ease;
+  transition: transform 0.25s var(--ease-spring-bounce), box-shadow 0.2s ease, border-radius 0.2s ease;
   -webkit-tap-highlight-color: transparent;
 }
 
 .quick-fab-main-btn.active {
   border-radius: 50%;
+  transform: scale(1.04);
 }
 
 .quick-fab-main-btn:active {
@@ -3259,11 +3350,11 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
 }
 
 .quick-fab-plus-icon {
-  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.3s var(--ease-spring-bounce);
 }
 
 .quick-fab-main-btn.active .quick-fab-plus-icon {
-  transform: rotate(45deg);
+  transform: rotate(135deg);
 }
 
 .quick-fab-actions {
@@ -3272,12 +3363,21 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   align-items: flex-end;
   gap: 10px;
   margin-bottom: 10px;
-  animation: fabStackIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes fabStackIn {
-  from { opacity: 0; transform: translateY(12px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+@keyframes fabItemSpring {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.85);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .quick-fab-action-item {
@@ -3289,6 +3389,23 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   padding: 0;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  transition: transform 0.15s var(--ease-spring);
+  animation: fabItemSpring 0.32s var(--ease-spring) backwards;
+}
+
+.quick-fab-action-item:nth-child(1) { animation-delay: 0.02s; }
+.quick-fab-action-item:nth-child(2) { animation-delay: 0.05s; }
+.quick-fab-action-item:nth-child(3) { animation-delay: 0.08s; }
+.quick-fab-action-item:nth-child(4) { animation-delay: 0.11s; }
+.quick-fab-action-item:nth-child(5) { animation-delay: 0.14s; }
+.quick-fab-action-item:nth-child(6) { animation-delay: 0.17s; }
+
+.quick-fab-action-item:hover {
+  transform: translateX(-3px);
+}
+
+.quick-fab-action-item:active {
+  transform: scale(0.94);
 }
 
 .quick-fab-label {
@@ -3303,6 +3420,11 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   box-shadow: var(--shadow-sm);
   white-space: nowrap;
   letter-spacing: -0.01em;
+  transition: box-shadow 0.15s ease;
+}
+
+.quick-fab-action-item:hover .quick-fab-label {
+  box-shadow: var(--shadow);
 }
 
 .quick-fab-icon-btn {
@@ -3314,7 +3436,12 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   justify-content: center;
   color: #ffffff;
   box-shadow: var(--shadow);
-  transition: transform 0.15s ease;
+  transition: transform 0.2s var(--ease-spring-bounce), box-shadow 0.2s ease;
+}
+
+.quick-fab-action-item:hover .quick-fab-icon-btn {
+  transform: scale(1.08);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 .quick-fab-action-item:active .quick-fab-icon-btn {
@@ -3373,12 +3500,12 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   box-shadow: 0 -16px 48px rgba(15, 23, 42, 0.18);
   max-height: 82vh;
   overflow-y: auto;
-  animation: sheetSlideUp 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: sheetSlideUp 0.28s var(--ease-spring);
 }
 
 @keyframes sheetSlideUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(32px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .mobile-menu-handle {

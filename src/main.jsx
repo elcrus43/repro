@@ -13,5 +13,12 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Service Worker отключён - вызывает проблемы при разработке
+// Service Worker отключён - принудительно удаляем старые регистрации на localhost
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    for (const registration of registrations) {
+      registration.unregister().catch(() => {});
+    }
+  }).catch(() => {});
+}
 
