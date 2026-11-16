@@ -33,10 +33,17 @@ export function DevelopmentCard({
       {/* Photo Header */}
       <div className="dev-card-image-wrap">
         <img
-          src={dev.images && dev.images[0] ? dev.images[0] : 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80'}
+          src={dev.images && dev.images[0] ? dev.images[0] : '/images/developments/zhk-bulychev.jpg'}
           alt={dev.name}
           className="dev-card-image"
           loading="lazy"
+          onError={(e) => {
+            if (dev.images && dev.images.length > 1 && !e.target.src.endsWith(dev.images[1])) {
+              e.target.src = dev.images[1];
+            } else if (!e.target.src.endsWith('/images/developments/zhk-bulychev.jpg')) {
+              e.target.src = '/images/developments/zhk-bulychev.jpg';
+            }
+          }}
         />
         <div className="dev-card-badges">
           <span className="dev-badge-class">{dev.housing_class || 'Комфорт'}</span>

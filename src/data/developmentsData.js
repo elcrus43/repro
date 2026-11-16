@@ -60,8 +60,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "7 этажей",
     "wall_material": "Кирпич, неоклассика",
     "images": [
-      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/8f31d1106e6632d285504ce729b30920e6e4a6b4.jpg"
-    ],
+            "/images/developments/zhk-bulychev.jpg",
+            "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/8f31d1106e6632d285504ce729b30920e6e4a6b4.jpg"
+      ],
     "description": "Первый в России умный дом высшего класса «А» с неоклассической архитектурой, приватным спа-комплексом, консьерж-сервисом и панорамными террасами в историческом центре Кирова.",
     "features": [
       "Класс «А» умный дом",
@@ -1345,8 +1346,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "4-5 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://stroy-soyuz.ru/upload/iblock/5cd/xbd2h2y024ssixjyeco9e3uha8aiu494.png"
-    ],
+            "/images/developments/zhk-zapovedny.png",
+            "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png"
+      ],
     "description": "Малоэтажный кирпичный квартал в зеленой зоне. В новой очереди действует программа с ремонтом 15 000 ₽/м² и сниженной ипотечной ставкой.",
     "features": [
       "Малоэтажная кирпичная застройка",
@@ -1621,8 +1623,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "11 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://gorkogo2a.ru/storage/5618bead37da0014987ffc9b590d2dc0/1/6fde92586f77ffbd48c5e30a9108b56e.png"
-    ],
+            "/images/developments/zhk-gorkogo-2a.jpg",
+            "https://gorkogo2a.ru/static/images/start-screen-bg.jpeg"
+      ],
     "description": "Кирпичный дом бизнес-класса в центральной части Кирова с подземным паркингом. В ноябре 2026 действуют скидки до 2.2 млн руб.",
     "features": [
       "Бизнес-класс",
@@ -1675,8 +1678,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "5-8 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-      "https://cdn.idalite.ru/s/thumbnails/thumbnail-1ba4956a-9b9b-4353-9221-112a50d9812d.png"
-    ],
+            "/images/developments/zhk-fusion-kino.jpg",
+            "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg"
+      ],
     "description": "Среднеэтажный пригородный проект рядом с Нововятским районом. Компактные студии и евро-планировки с выбором чистовой отделки.",
     "features": [
       "Доступный старт цены",
@@ -2144,8 +2148,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "12-16 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80"
-    ],
+            "/images/developments/zhk-krasina-6.jpg"
+      ],
     "description": "Монолитно-кирпичный дом комфорт-класса на улице Красина. Планируемый ввод во II квартале 2028 года.",
     "features": [
       "Монолитно-кирпичная технология",
@@ -2182,6 +2186,8 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
+const CATALOG_VERSION = '2026-11-16-v3';
+
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();
   (baseList || []).forEach(item => {
@@ -2190,10 +2196,12 @@ function mergeDevelopmentsLists(baseList, customList) {
   (customList || []).forEach(item => {
     if (item && item.id) {
       const existing = map.get(item.id);
-      const hasFreshImages = existing?.images?.length && !existing.images[0].includes('unsplash.com');
-      const cacheIsUnsplash = item?.images?.length && item.images[0].includes('unsplash.com');
-      if (hasFreshImages && cacheIsUnsplash) {
-        map.set(item.id, { ...item, images: existing.images });
+      if (existing) {
+        // Always prioritize the canonical high-res images from baseList (DEFAULT_DEVELOPMENTS)
+        const imagesToUse = (existing.images && existing.images.length > 0)
+          ? existing.images
+          : (item.images || []);
+        map.set(item.id, { ...item, ...existing, images: imagesToUse });
       } else {
         map.set(item.id, item);
       }
@@ -2204,19 +2212,25 @@ function mergeDevelopmentsLists(baseList, customList) {
 
 export function getDevelopmentsSyncMeta() {
   if (typeof window === 'undefined') {
-    return { updatedAt: null, source: 'static' };
+    return { updatedAt: null, source: 'static', catalogVersion: CATALOG_VERSION };
   }
   try {
     const raw = localStorage.getItem(REMOTE_META_KEY);
-    return raw ? JSON.parse(raw) : { updatedAt: null, source: 'static' };
+    return raw ? JSON.parse(raw) : { updatedAt: null, source: 'static', catalogVersion: CATALOG_VERSION };
   } catch {
-    return { updatedAt: null, source: 'static' };
+    return { updatedAt: null, source: 'static', catalogVersion: CATALOG_VERSION };
   }
 }
 
 export function getStoredDevelopments() {
   if (typeof window === 'undefined') return DEFAULT_DEVELOPMENTS;
   try {
+    const meta = getDevelopmentsSyncMeta();
+    if (meta?.catalogVersion !== CATALOG_VERSION) {
+      // Clear outdated remote cache so fresh canonical DEFAULT_DEVELOPMENTS are used immediately
+      localStorage.removeItem(REMOTE_CACHE_KEY);
+    }
+
     let baseList = DEFAULT_DEVELOPMENTS;
     const cachedRaw = localStorage.getItem(REMOTE_CACHE_KEY);
     if (cachedRaw) {
@@ -2246,9 +2260,10 @@ export async function fetchLatestDevelopments({ forceRefresh = false } = {}) {
 
   const todayKey = new Date().toISOString().slice(0, 10);
   const meta = getDevelopmentsSyncMeta();
+  const needVersionRefresh = meta?.catalogVersion !== CATALOG_VERSION;
 
-  // Если за сегодня уже синхронизировали и нет явного forceRefresh - отдаем локальный кеш
-  if (!forceRefresh && meta.lastCheckedDate === todayKey) {
+  // Если за сегодня уже синхронизировали, нет явного forceRefresh и версия актуальна - отдаем локальный кеш
+  if (!forceRefresh && !needVersionRefresh && meta.lastCheckedDate === todayKey) {
     return {
       developments: getStoredDevelopments(),
       updatedAt: meta.updatedAt || null,
@@ -2257,9 +2272,9 @@ export async function fetchLatestDevelopments({ forceRefresh = false } = {}) {
   }
 
   try {
-    const cacheBust = forceRefresh ? Date.now() : todayKey;
+    const cacheBust = forceRefresh || needVersionRefresh ? Date.now() : todayKey;
     const res = await fetch(`/data/developments.json?v=${cacheBust}`, {
-      cache: forceRefresh ? 'reload' : 'no-cache'
+      cache: forceRefresh || needVersionRefresh ? 'reload' : 'no-cache'
     });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
@@ -2272,7 +2287,8 @@ export async function fetchLatestDevelopments({ forceRefresh = false } = {}) {
         updatedAt: payload.updated_at || new Date().toISOString(),
         source: payload.source || 'remote',
         lastCheckedDate: todayKey,
-        count: remoteList.length
+        count: remoteList.length,
+        catalogVersion: CATALOG_VERSION
       };
       localStorage.setItem(REMOTE_META_KEY, JSON.stringify(nextMeta));
       return {

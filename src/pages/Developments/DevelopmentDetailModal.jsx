@@ -293,7 +293,16 @@ export function DevelopmentDetailModal({
           {/* Gallery Section */}
           <div className="dev-gallery-section">
             <div className="dev-gallery-main">
-              <img src={images[activeImgIndex]} alt={dev.name} className="dev-gallery-main-img" />
+              <img 
+                src={images[activeImgIndex] || '/images/developments/zhk-bulychev.jpg'} 
+                alt={dev.name} 
+                className="dev-gallery-main-img" 
+                onError={(e) => {
+                  if (!e.target.src.endsWith('/images/developments/zhk-bulychev.jpg')) {
+                    e.target.src = '/images/developments/zhk-bulychev.jpg';
+                  }
+                }}
+              />
               {images.length > 1 && (
                 <>
                   <button
