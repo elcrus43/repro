@@ -48,6 +48,13 @@ export default async function handler(req, res) {
     provider = provider.split('?')[0];
   }
 
+  if (!provider && req.url) {
+    const match = req.url.match(/\/api\/([a-z0-9_-]+)-lots/i);
+    if (match && match[1]) {
+      provider = match[1].toLowerCase();
+    }
+  }
+
   const targetHandler = HANDLERS[provider];
   if (!targetHandler) {
     return res.status(400).json({
