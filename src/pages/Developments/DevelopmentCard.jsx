@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, MapPin, Calendar, ExternalLink, PlusCircle, Check, ArrowRight } from 'lucide-react';
+import { Building2, MapPin, Calendar, PlusCircle, Check } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
 
 export function DevelopmentCard({
@@ -25,7 +25,10 @@ export function DevelopmentCard({
   return (
     <div
       className={`development-card ${isSelected ? 'selected' : ''} ${isRequestMatched ? 'request-matched' : ''}`}
-      onClick={() => onSelect(dev.id)}
+      onClick={() => {
+        onSelect(dev.id);
+        onOpenDetail(dev);
+      }}
     >
       {/* Photo Header */}
       <div className="dev-card-image-wrap">
@@ -110,60 +113,21 @@ export function DevelopmentCard({
           </div>
         )}
 
-        {/* External Badges & Actions */}
+        {/* Card Footer: Action */}
         <div className="dev-card-footer">
-          <div className="dev-card-links">
-            {dev.domrf_url && (
-              <a
-                href={dev.domrf_url}
-                target="_blank"
-                rel="noreferrer"
-                className="dev-external-link domrf"
-                title="ЕИСЖС (наш.дом.рф)"
-                onClick={(e) => e.stopPropagation()}
-              >
-                наш.дом.рф ↗
-              </a>
-            )}
-            {dev.avito_url && (
-              <a
-                href={dev.avito_url}
-                target="_blank"
-                rel="noreferrer"
-                className="dev-external-link avito"
-                title="Объявления на Avito"
-                onClick={(e) => e.stopPropagation()}
-              >
-                Авито ↗
-              </a>
-            )}
-          </div>
-
-          <div className="dev-card-actions">
-            <button
-              type="button"
-              className="dev-btn-selection"
-              title="Добавить в подборку клиенту"
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddToSelection(dev);
-              }}
-            >
-              <PlusCircle size={15} />
-              <span>В подборку</span>
-            </button>
-            <button
-              type="button"
-              className="dev-btn-detail"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenDetail(dev);
-              }}
-            >
-              <span>Подробнее</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
+          <span className="dev-card-hint">Подробнее о ЖК</span>
+          <button
+            type="button"
+            className="dev-btn-selection"
+            title="Добавить в подборку клиенту"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddToSelection(dev);
+            }}
+          >
+            <PlusCircle size={14} />
+            <span>В подборку</span>
+          </button>
         </div>
       </div>
 
@@ -413,57 +377,24 @@ export function DevelopmentCard({
           align-items: center;
           gap: 8px;
         }
-        .dev-card-links {
-          display: flex;
-          gap: 6px;
-        }
-        .dev-external-link {
-          font-size: 10px;
-          font-weight: 600;
-          padding: 3px 7px;
-          border-radius: 6px;
-          text-decoration: none;
-          transition: opacity 0.2s;
-        }
-        .dev-external-link:hover {
-          opacity: 0.8;
-        }
-        .dev-external-link.domrf {
-          background: #eff6ff;
-          color: #1d4ed8;
-          border: 1px solid #bfdbfe;
-        }
-        .dark .dev-external-link.domrf {
-          background: #1e3a8a;
-          color: #bfdbfe;
-          border-color: #2563eb;
-        }
-        .dev-external-link.avito {
-          background: #ecfdf5;
-          color: #047857;
-          border: 1px solid #a7f3d0;
-        }
-        .dark .dev-external-link.avito {
-          background: #064e3b;
-          color: #a7f3d0;
-          border-color: #059669;
-        }
-        .dev-card-actions {
-          display: flex;
-          align-items: center;
-          gap: 6px;
+        .dev-card-hint {
+          font-size: 11px;
+          font-weight: 300;
+          color: var(--text-muted, #94a3b8);
+          letter-spacing: 0.02em;
+          user-select: none;
         }
         .dev-btn-selection {
           display: flex;
           align-items: center;
-          gap: 4px;
+          gap: 5px;
           background: transparent;
           border: 1px solid var(--border, #e2e8f0);
           color: var(--text-secondary, #475569);
-          padding: 6px 10px;
+          padding: 6px 12px;
           border-radius: 8px;
           font-size: 11px;
-          font-weight: 600;
+          font-weight: 500;
           cursor: pointer;
           transition: all 0.2s;
         }
@@ -471,23 +402,6 @@ export function DevelopmentCard({
           background: var(--primary-light, #eef4ff);
           color: var(--primary, #0052FF);
           border-color: var(--primary, #0052FF);
-        }
-        .dev-btn-detail {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          background: var(--primary, #0052FF);
-          border: none;
-          color: #ffffff;
-          padding: 6px 12px;
-          border-radius: 8px;
-          font-size: 11px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: background 0.2s;
-        }
-        .dev-btn-detail:hover {
-          background: var(--primary-hover, #0043D9);
         }
       `}</style>
     </div>

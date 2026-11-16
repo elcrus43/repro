@@ -6,6 +6,7 @@ import {
   Calendar, 
   ShieldCheck, 
   ExternalLink, 
+  Globe,
   Phone, 
   PlusCircle, 
   Check, 
@@ -365,62 +366,61 @@ export function DevelopmentDetailModal({
             </div>
           </div>
 
-          {/* Official Verification & Portals Links */}
-          <div className="dev-portals-card">
-            <div className="dev-portals-title">
-              <ShieldCheck size={18} className="text-success" />
-              <span>Официальные реестры и площадки новостройки:</span>
-            </div>
-            <div className="dev-portals-grid">
-              {dev.domrf_url && (
-                <a
-                  href={dev.domrf_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="portal-link-btn domrf"
-                >
-                  <div className="portal-icon">🏛️</div>
-                  <div className="portal-meta">
-                    <strong>ЕИСЖС наш.дом.рф</strong>
-                    <span>Проектная декларация • Эскроу • Разрешение</span>
-                  </div>
-                  <ExternalLink size={16} className="portal-arrow" />
-                </a>
-              )}
+          {/* Official Verification & Portals Links (Ultra-compact & multi-weight typography) */}
+          {(dev.domrf_url || dev.avito_url || dev.builder_url) && (
+            <div className="dev-portals-strip">
+              <div className="dev-portals-strip-header">
+                <ShieldCheck size={13} className="text-success flex-shrink-0" />
+                <span className="dev-portals-strip-label">Официальные реестры и источники</span>
+              </div>
+              <div className="dev-portals-strip-pills">
+                {dev.domrf_url && (
+                  <a
+                    href={dev.domrf_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="portal-strip-pill domrf"
+                    title="ЕИСЖС (наш.дом.рф) - Проектная декларация и эскроу"
+                  >
+                    <span className="pill-badge">ЕИСЖС</span>
+                    <span className="pill-title">наш.дом.рф</span>
+                    <span className="pill-sub">декларация • эскроу</span>
+                    <ExternalLink size={11} className="pill-icon" />
+                  </a>
+                )}
 
-              {dev.avito_url && (
-                <a
-                  href={dev.avito_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="portal-link-btn avito"
-                >
-                  <div className="portal-icon">🟦</div>
-                  <div className="portal-meta">
-                    <strong>Каталог на Авито</strong>
-                    <span>Все объявления и лоты от застройщика</span>
-                  </div>
-                  <ExternalLink size={16} className="portal-arrow" />
-                </a>
-              )}
+                {dev.avito_url && (
+                  <a
+                    href={dev.avito_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="portal-strip-pill avito"
+                    title="Каталог на Авито - Все объявления от застройщика"
+                  >
+                    <span className="pill-badge">Авито</span>
+                    <span className="pill-title">Каталог</span>
+                    <span className="pill-sub">лоты застройщика</span>
+                    <ExternalLink size={11} className="pill-icon" />
+                  </a>
+                )}
 
-              {dev.builder_url && (
-                <a
-                  href={dev.builder_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="portal-link-btn builder"
-                >
-                  <div className="portal-icon">🌐</div>
-                  <div className="portal-meta">
-                    <strong>Официальный сайт</strong>
-                    <span>Сайт застройщика «{dev.developer}»</span>
-                  </div>
-                  <ExternalLink size={16} className="portal-arrow" />
-                </a>
-              )}
+                {dev.builder_url && (
+                  <a
+                    href={dev.builder_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="portal-strip-pill builder"
+                    title={`Официальный сайт застройщика «${dev.developer}»`}
+                  >
+                    <Globe size={11} className="pill-badge-icon" />
+                    <span className="pill-title">Сайт</span>
+                    <span className="pill-sub">{dev.developer}</span>
+                    <ExternalLink size={11} className="pill-icon" />
+                  </a>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Specs Grid */}
           <div className="dev-specs-grid">
@@ -1237,79 +1237,152 @@ export function DevelopmentDetailModal({
           font-weight: 600;
           text-decoration: none;
         }
-        .dev-portals-card {
-          background: var(--surface, #ffffff);
-          border: 1px solid var(--border, #e2e8f0);
-          border-radius: var(--radius, 12px);
-          padding: 16px;
-        }
-        .dev-portals-title {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 13px;
-          font-weight: 700;
-          margin-bottom: 12px;
-        }
-        .dev-portals-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 10px;
-        }
-        .portal-link-btn {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          padding: 12px 14px;
+        .dev-portals-strip {
+          background: rgba(248, 250, 252, 0.7);
+          border: 1px solid var(--border-light, #e2e8f0);
           border-radius: 10px;
+          padding: 8px 12px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .dark .dev-portals-strip {
+          background: rgba(15, 23, 42, 0.55);
+          border-color: #334155;
+        }
+        .dev-portals-strip-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .dev-portals-strip-label {
+          font-size: 10.5px;
+          font-weight: 200;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: var(--text-muted, #94a3b8);
+          user-select: none;
+        }
+        .dev-portals-strip-pills {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .portal-strip-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 9px;
+          border-radius: 6px;
           text-decoration: none;
-          transition: all 0.2s;
-          border: 1px solid transparent;
+          font-size: 11.5px;
+          border: 1px solid var(--border, #e2e8f0);
+          background: var(--surface, #ffffff);
+          color: var(--text, #0f172a);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          line-height: 1.2;
         }
-        .portal-link-btn.domrf {
-          background: #eff6ff;
+        .portal-strip-pill:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+        }
+        .portal-strip-pill.domrf {
           border-color: #bfdbfe;
-          color: #1e3a8a;
         }
-        .dark .portal-link-btn.domrf {
-          background: #1e293b;
-          border-color: #2563eb;
-          color: #bfdbfe;
+        .portal-strip-pill.domrf:hover {
+          background: #eff6ff;
+          border-color: #60a5fa;
         }
-        .portal-link-btn.avito {
-          background: #ecfdf5;
+        .portal-strip-pill.avito {
           border-color: #a7f3d0;
-          color: #065f46;
         }
-        .dark .portal-link-btn.avito {
+        .portal-strip-pill.avito:hover {
+          background: #ecfdf5;
+          border-color: #34d399;
+        }
+        .portal-strip-pill.builder {
+          border-color: #cbd5e1;
+        }
+        .portal-strip-pill.builder:hover {
+          background: #f1f5f9;
+          border-color: #94a3b8;
+        }
+        .dark .portal-strip-pill {
           background: #1e293b;
-          border-color: #059669;
-          color: #a7f3d0;
-        }
-        .portal-link-btn.builder {
-          background: #f8fafc;
-          border-color: #e2e8f0;
-          color: #1e293b;
-        }
-        .dark .portal-link-btn.builder {
-          background: #1e293b;
-          border-color: #475569;
+          border-color: #334155;
           color: #f1f5f9;
         }
-        .portal-icon {
-          font-size: 20px;
+        .dark .portal-strip-pill.domrf:hover {
+          background: #1e3a8a;
+          border-color: #3b82f6;
         }
-        .portal-meta {
-          display: flex;
-          flex-direction: column;
-          flex: 1;
+        .dark .portal-strip-pill.avito:hover {
+          background: #064e3b;
+          border-color: #10b981;
         }
-        .portal-meta strong {
-          font-size: 13px;
+        .dark .portal-strip-pill.builder:hover {
+          background: #334155;
+          border-color: #64748b;
         }
-        .portal-meta span {
+        .portal-strip-pill .pill-badge {
+          font-size: 9px;
+          font-weight: 300;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          padding: 1px 4px;
+          border-radius: 3px;
+          background: rgba(0, 0, 0, 0.05);
+          color: var(--text-secondary, #475569);
+        }
+        .dark .portal-strip-pill .pill-badge {
+          background: rgba(255, 255, 255, 0.08);
+          color: #94a3b8;
+        }
+        .portal-strip-pill.domrf .pill-badge {
+          background: rgba(29, 78, 216, 0.1);
+          color: #1d4ed8;
+        }
+        .dark .portal-strip-pill.domrf .pill-badge {
+          background: rgba(96, 165, 250, 0.15);
+          color: #93c5fd;
+        }
+        .portal-strip-pill.avito .pill-badge {
+          background: rgba(4, 120, 87, 0.1);
+          color: #047857;
+        }
+        .dark .portal-strip-pill.avito .pill-badge {
+          background: rgba(52, 211, 153, 0.15);
+          color: #6ee7b7;
+        }
+        .portal-strip-pill .pill-title {
+          font-weight: 500;
+          font-size: 11.5px;
+          color: var(--text, #0f172a);
+        }
+        .dark .portal-strip-pill .pill-title {
+          color: #f8fafc;
+        }
+        .portal-strip-pill .pill-sub {
+          font-weight: 200;
           font-size: 10px;
-          opacity: 0.8;
+          color: var(--text-muted, #94a3b8);
+          letter-spacing: 0.01em;
+        }
+        .portal-strip-pill .pill-badge-icon {
+          color: var(--primary, #0052FF);
+          flex-shrink: 0;
+        }
+        .portal-strip-pill .pill-icon {
+          color: var(--text-muted, #94a3b8);
+          margin-left: 2px;
+          transition: transform 0.2s;
+        }
+        .portal-strip-pill:hover .pill-icon {
+          transform: translate(1px, -1px);
+          color: var(--text, #0f172a);
         }
         .dev-specs-grid {
           display: grid;

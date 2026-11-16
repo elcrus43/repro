@@ -3,16 +3,19 @@
  * и сборка маркеров карты (по домам при наличии live-лотов или по ЖК).
  */
 
-import { getKsmSlugForDevelopment } from './ksmLots';
-import { getKsskSlugForDevelopment } from './ksskLots';
-import { getKinoSlugForDevelopment } from './kinoLots';
-import { getAvitekSlugForDevelopment } from './avitekLots';
-import { getAltaiSlugForDevelopment } from './altaiLots';
-import { getStroysoyuzSlugForDevelopment } from './stroysoyuzLots';
-import { getProfstroySlugForDevelopment } from './profstroyLots';
-import { getSmu5SlugForDevelopment } from './smu5Lots';
-import { getZheleznoSlugForDevelopment } from './zheleznoLots';
-import { ROOM_TYPE_KEYS } from './liveLotsShared';
+import { getKsmSlugForDevelopment } from './ksmLots.js';
+import { getKsskSlugForDevelopment } from './ksskLots.js';
+import { getKinoSlugForDevelopment } from './kinoLots.js';
+import { getAvitekSlugForDevelopment } from './avitekLots.js';
+import { getAltaiSlugForDevelopment } from './altaiLots.js';
+import {
+  getStroysoyuzSlugForDevelopment,
+  STROYSOYUZ_DEVELOPMENT_TO_ALL_SLUGS,
+} from './stroysoyuzLots.js';
+import { getProfstroySlugForDevelopment } from './profstroyLots.js';
+import { getSmu5SlugForDevelopment } from './smu5Lots.js';
+import { getZheleznoSlugForDevelopment } from './zheleznoLots.js';
+import { ROOM_TYPE_KEYS } from './liveLotsShared.js';
 
 /**
  * Нормализует адрес дома для сопоставления с геокодированной базой HOUSE_COORDINATES
@@ -137,12 +140,17 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 29', lat: 58.6020, lng: 49.6812 },
   { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 28', lat: 58.5521, lng: 49.6885 },
   { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 26', lat: 58.5525, lng: 49.6879 },
-  { devId: 'zhk-repinskie-prudy', address: 'ул. Блюхера, 46', lat: 58.5795, lng: 49.6640 },
-  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 2а', lat: 58.5385, lng: 49.6120 },
-  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 2а к1', lat: 58.5385, lng: 49.6120 },
-  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 4 к1', lat: 58.5392, lng: 49.6135 },
-  { devId: 'zhk-repinskie-prudy', address: 'ул. Володарского, 229', lat: 58.5830, lng: 49.6735 },
-  { devId: 'zhk-premier', address: 'ул. Свободы, 115Г', lat: 58.5912, lng: 49.6780 },
+  { devId: 'zhk-repinskie-prudy', address: 'ул. Блюхера, 46', lat: 58.58245, lng: 49.67530 },
+  { devId: 'zhk-repinskie-prudy', address: 'Блюхера, 46', lat: 58.58245, lng: 49.67530 },
+  { devId: 'zhk-repinskie-prudy', address: 'ул. Блюхера, 46 / ул. Никитская', lat: 58.58245, lng: 49.67530 },
+  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 2а', lat: 58.62139, lng: 49.71333 },
+  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 2а к1', lat: 58.62139, lng: 49.71333 },
+  { devId: 'zhk-zapovedny', address: 'ул. Сандаловская, 4 к1', lat: 58.62180, lng: 49.71400 },
+  { devId: 'zhk-repinskie-prudy', address: 'ул. Володарского, 229', lat: 58.58204, lng: 49.67597 },
+  { devId: 'zhk-repinskie-prudy', address: 'Володарского, 229', lat: 58.58204, lng: 49.67597 },
+  { devId: 'zhk-repinskie-prudy', address: 'ул. Никитская, 229', lat: 58.58204, lng: 49.67597 },
+  { devId: 'zhk-repinskie-prudy', address: 'Никитская, 229', lat: 58.58204, lng: 49.67597 },
+  { devId: 'zhk-premier', address: 'ул. Свободы, 115Г', lat: 58.59489, lng: 49.67625 },
   // Профстрой
   { devId: 'zhk-kapital', address: 'ул. Владимирская, 99 / ул. Орловская, 62Б', lat: 58.59485, lng: 49.666452 },
   { devId: 'zhk-kapital', address: 'ул. Орловская, 62Б', lat: 58.59485, lng: 49.666452 },
@@ -458,9 +466,16 @@ export function buildMapItemsFromDevelopments(
                       : 'ЖЕЛЕЗНО live';
     const summary = summaryMap?.[activeSlug] || null;
 
-    let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter(
-      (lot) => lot && lot.project_slug === activeSlug && lot.is_available !== false
-    );
+    const stroysoyuzAllSlugs =
+      providerId === 'stroysoyuz' && dev?.id ? STROYSOYUZ_DEVELOPMENT_TO_ALL_SLUGS[dev.id] : null;
+
+    let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter((lot) => {
+      if (!lot || lot.is_available === false) return false;
+      if (stroysoyuzAllSlugs && Array.isArray(stroysoyuzAllSlugs)) {
+        return stroysoyuzAllSlugs.includes(lot.project_slug);
+      }
+      return lot.project_slug === activeSlug;
+    });
 
     // Если в списке есть и ЖК Чистые Пруды, и отдельная карточка дома 11А,
     // не дублируем все 4 дома: 11А остается родительским маркером для своего дома.

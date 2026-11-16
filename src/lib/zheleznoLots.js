@@ -116,7 +116,7 @@ export function getZheleznoSlugForDevelopment(dev) {
  */
 export async function fetchZheleznoLots(projectSlug, options = {}) {
   const slug = typeof projectSlug === 'string' ? projectSlug : projectSlug?.projectSlug || '';
-  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/developer-lots?provider=zhelezno';
+  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/zhelezno-lots';
   return fetchLotsFromEndpoint(endpoint, slug || undefined, 'лотов Железно');
 }
 
@@ -128,7 +128,7 @@ export async function fetchZheleznoLots(projectSlug, options = {}) {
  */
 export async function syncZheleznoProject(projectSlug, options = {}) {
   const slug = typeof projectSlug === 'string' ? projectSlug : projectSlug?.projectSlug || '';
-  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/developer-lots?provider=zhelezno';
+  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/zhelezno-lots';
   const timeoutMs = options?.timeoutMs || (typeof projectSlug === 'object' && projectSlug?.timeoutMs) || undefined;
   return syncProjectViaEndpoint(endpoint, slug, 'проекта Железно', timeoutMs);
 }

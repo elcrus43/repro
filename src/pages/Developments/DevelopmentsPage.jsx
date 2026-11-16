@@ -1097,57 +1097,77 @@ export default function DevelopmentsPage() {
             </button>
           )}
 
-          <div className="dev-count-indicator">
-            {Object.entries(LIVE_PROVIDERS).map(([providerId, provider]) => {
-              const pLots = liveState[providerId].lots;
-              const pProgress = liveProgress[providerId];
-              const pLastSynced = liveLastSyncedAt[providerId];
-              return (
-                <div key={providerId} className="ksm-sync-control" title={provider.pillTitle}>
-                  <span className="ksm-live-pill">
-                    {provider.label} live: <strong>{pLots.length}</strong> кв.
-                    {pLastSynced ? ` (${new Date(pLastSynced).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })})` : ''}
-                  </span>
+          <div className="dev-live-toolbar">
+            {/* Left: Master Live Summary & Global Refresh */}
+            <div className="live-summary-group">
+              <span className="live-total-badge" title="Суммарный остаток свободных квартир по всем застройщикам">
+                <span className="live-dot" />
+                Live: <strong>{formatNumber(totalLiveLotsCount)}</strong> кв.
+              </span>
+              <button
+                type="button"
+                className="btn-sync-all-live"
+                onClick={handleSyncAllProviders}
+                disabled={isAnyProviderSyncing}
+                title="Синхронизировать свободные квартиры по всем застройщикам"
+              >
+                <RefreshCw size={11} className={isAnyProviderSyncing ? 'animate-spin' : ''} />
+                <span>{isAnyProviderSyncing ? 'Синхронизация...' : 'Обновить все'}</span>
+              </button>
+            </div>
+
+            {/* Middle: Provider Quick-Sync Chips */}
+            <div className="live-providers-chips">
+              {Object.entries(LIVE_PROVIDERS).map(([providerId, provider]) => {
+                const pLots = liveState[providerId].lots;
+                const pProgress = liveProgress[providerId];
+                const pLastSynced = liveLastSyncedAt[providerId];
+                const timeStr = pLastSynced ? new Date(pLastSynced).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
+                return (
                   <button
+                    key={providerId}
                     type="button"
-                    className="btn-ksm-sync"
+                    className={`live-provider-chip ${pProgress.active ? 'syncing' : ''} ${pLots.length > 0 ? 'has-lots' : 'empty'}`}
                     onClick={() => handleSyncAllForProvider(providerId)}
                     disabled={pProgress.active}
-                    title={provider.syncAllTitle}
+                    title={`${provider.label}: ${pLots.length} кв.${timeStr ? ` (обновлено в ${timeStr})` : ''}. Кликните, чтобы синхронизировать.`}
                   >
-                    <RefreshCw size={12} className={pProgress.active ? 'animate-spin' : ''} style={{ display: 'inline', marginRight: 4 }} />
-                    {pProgress.active
-                      ? `${provider.label} ${pProgress.current}/${pProgress.total}: ${pProgress.currentName}`
-                      : `Обновить ${provider.label}`}
+                    <span className="chip-label">{provider.label}</span>
+                    <span className="chip-count">{pLots.length}</span>
+                    <RefreshCw size={9} className={`chip-spin ${pProgress.active ? 'animate-spin' : ''}`} />
                   </button>
-                </div>
-              );
-            })}
-            {syncMeta?.updatedAt && (
-              <span className="dev-sync-date" title="Дата последнего ежедневного обновления базы">
-                Обновлено: {new Date(syncMeta.updatedAt).toLocaleDateString('ru-RU')}
-              </span>
-            )}
-            <button
-              type="button"
-              className="btn-link-map"
-              onClick={handleManualSync}
-              disabled={isSyncing}
-              title="Обновить список новостроек из актуального каталога"
-            >
-              <RefreshCw size={12} className={isSyncing ? 'animate-spin' : ''} style={{ display: 'inline', marginRight: 4 }} />
-              {isSyncing ? 'Обновление...' : 'Обновить'}
-            </button>
-            <span>Найдено: <strong>{filteredDevelopments.length}</strong> ЖК</span>
-            {viewMode === 'grid' && (
-              <button 
-                type="button" 
-                className="btn-link-map" 
-                onClick={() => setViewMode('split')}
+                );
+              })}
+            </div>
+
+            {/* Right: Meta & Actions */}
+            <div className="live-meta-group">
+              {syncMeta?.updatedAt && (
+                <span className="dev-sync-date" title="Дата последнего обновления базы каталога">
+                  База: {new Date(syncMeta.updatedAt).toLocaleDateString('ru-RU')}
+                </span>
+              )}
+              <button
+                type="button"
+                className="btn-catalog-refresh"
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                title="Обновить список новостроек из актуального каталога"
               >
-                📍 Показать на карте
+                <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
+                <span>Каталог</span>
               </button>
-            )}
+              <span className="dev-found-count">Найдено: <strong>{filteredDevelopments.length}</strong> ЖК</span>
+              {viewMode === 'grid' && (
+                <button 
+                  type="button" 
+                  className="btn-link-map" 
+                  onClick={() => setViewMode('split')}
+                >
+                  📍 Карта
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -1517,16 +1537,22 @@ export default function DevelopmentsPage() {
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.22s var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
           white-space: nowrap;
+          -webkit-tap-highlight-color: transparent;
         }
         .mode-btn:hover {
           color: var(--primary, #0052FF);
+          transform: translateY(-1px);
+        }
+        .mode-btn:active {
+          transform: scale(0.96);
         }
         .mode-btn.active {
           background: var(--primary, #0052FF);
           color: #ffffff;
-          box-shadow: 0 4px 12px rgba(0, 82, 255, 0.25);
+          box-shadow: 0 4px 14px rgba(0, 82, 255, 0.3);
+          transform: scale(1.02);
         }
         .btn-add-dev {
           display: flex;
@@ -1540,10 +1566,16 @@ export default function DevelopmentsPage() {
           font-size: 13px;
           font-weight: 600;
           cursor: pointer;
-          transition: background 0.2s;
+          transition: transform 0.18s var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1)), background 0.2s, box-shadow 0.2s;
+          -webkit-tap-highlight-color: transparent;
         }
         .btn-add-dev:hover {
           background: var(--primary-hover, #0043D9);
+          box-shadow: 0 4px 12px rgba(0, 82, 255, 0.3);
+          transform: translateY(-1px);
+        }
+        .btn-add-dev:active {
+          transform: scale(0.965);
         }
         .dev-filters-card {
           background: var(--surface, #ffffff);
@@ -1718,54 +1750,173 @@ export default function DevelopmentsPage() {
           cursor: pointer;
           padding: 4px 8px;
         }
-        .dev-count-indicator {
-          margin-left: auto;
-          font-size: 12px;
-          color: var(--text-secondary, #475569);
+        .dev-live-toolbar {
+          width: 100%;
           display: flex;
           align-items: center;
+          justify-content: space-between;
           flex-wrap: wrap;
           gap: 10px;
+          padding: 8px 12px;
+          margin-top: 6px;
+          background: rgba(248, 250, 252, 0.85);
+          border: 1px solid var(--border-light, #e2e8f0);
+          border-radius: 12px;
+          font-size: 11.5px;
         }
-        .ksm-sync-control {
+        .dark .dev-live-toolbar {
+          background: rgba(15, 23, 42, 0.6);
+          border-color: #334155;
+        }
+        .live-summary-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .live-total-badge {
           display: inline-flex;
           align-items: center;
           gap: 6px;
+          padding: 3px 9px;
           background: #ecfdf5;
+          color: #065f46;
           border: 1px solid #a7f3d0;
-          padding: 3px 6px 3px 10px;
-          border-radius: 10px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 500;
         }
-        .dark .ksm-sync-control {
+        .dark .live-total-badge {
           background: #064e3b;
+          color: #a7f3d0;
           border-color: #059669;
         }
-        .ksm-live-pill {
-          font-size: 11px;
-          color: #047857;
-          white-space: nowrap;
+        .live-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #10b981;
+          box-shadow: 0 0 6px #10b981;
         }
-        .dark .ksm-live-pill {
-          color: #a7f3d0;
-        }
-        .btn-ksm-sync {
+        .btn-sync-all-live {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
           background: #059669;
           color: #ffffff;
           border: none;
+          padding: 4px 10px;
           border-radius: 7px;
-          padding: 4px 9px;
           font-size: 11px;
           font-weight: 600;
           cursor: pointer;
-          white-space: nowrap;
-          transition: background 0.2s;
+          transition: all 0.2s;
         }
-        .btn-ksm-sync:hover:not(:disabled) {
+        .btn-sync-all-live:hover:not(:disabled) {
           background: #047857;
+          transform: translateY(-1px);
         }
-        .btn-ksm-sync:disabled {
-          opacity: 0.75;
+        .btn-sync-all-live:disabled {
+          opacity: 0.7;
           cursor: wait;
+        }
+        .live-providers-chips {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+        .live-provider-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 8px;
+          border-radius: 6px;
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          color: var(--text, #0f172a);
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .dark .live-provider-chip {
+          background: #1e293b;
+          border-color: #334155;
+          color: #e2e8f0;
+        }
+        .live-provider-chip:hover:not(:disabled) {
+          border-color: var(--primary, #0052FF);
+          background: var(--primary-light, #eef4ff);
+          color: var(--primary, #0052FF);
+          transform: translateY(-1px);
+        }
+        .dark .live-provider-chip:hover:not(:disabled) {
+          background: #0f172a;
+          border-color: #3b82f6;
+          color: #93c5fd;
+        }
+        .live-provider-chip.syncing {
+          border-color: #f59e0b;
+          background: rgba(245, 158, 11, 0.1);
+          color: #b45309;
+        }
+        .live-provider-chip .chip-label {
+          font-weight: 500;
+          letter-spacing: 0.02em;
+        }
+        .live-provider-chip .chip-count {
+          font-weight: 700;
+          color: #059669;
+          font-variant-numeric: tabular-nums;
+        }
+        .dark .live-provider-chip .chip-count {
+          color: #34d399;
+        }
+        .live-provider-chip.empty .chip-count {
+          color: var(--text-muted, #94a3b8);
+          font-weight: 400;
+        }
+        .live-provider-chip .chip-spin {
+          color: var(--text-muted, #94a3b8);
+          opacity: 0.6;
+        }
+        .live-meta-group {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-left: auto;
+        }
+        .dev-sync-date {
+          font-size: 10.5px;
+          font-weight: 300;
+          color: var(--text-muted, #94a3b8);
+          letter-spacing: 0.02em;
+        }
+        .btn-catalog-refresh {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: transparent;
+          border: 1px solid var(--border, #cbd5e1);
+          color: var(--text-secondary, #475569);
+          padding: 2px 8px;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .btn-catalog-refresh:hover:not(:disabled) {
+          border-color: var(--primary, #0052FF);
+          color: var(--primary, #0052FF);
+          background: var(--primary-light, #eef4ff);
+        }
+        .dark .btn-catalog-refresh {
+          border-color: #475569;
+          color: #cbd5e1;
+        }
+        .dev-found-count {
+          font-size: 11px;
+          color: var(--text-secondary, #475569);
         }
         .btn-link-map {
           background: var(--primary-light, #eef4ff);

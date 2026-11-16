@@ -28,7 +28,18 @@ export default defineConfig(({ mode }) => {
       }
     ],
     optimizeDeps: {
-      include: ['react', 'react-dom', 'react-router-dom']
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'lucide-react',
+        'docx',
+        'xlsx',
+        'jspdf',
+        'html2canvas',
+        'leaflet',
+        '@neondatabase/serverless'
+      ]
     },
     server: {
       watch: {
@@ -37,7 +48,11 @@ export default defineConfig(({ mode }) => {
           '**/.notes/**',
           '**/extension/**',
           '**/dist/**',
-          '**/supabase/**'
+          '**/supabase/**',
+          '**/.make-feature/**',
+          '**/public/data/**',
+          '**/scripts/**',
+          '**/.git/**'
         ]
       },
       proxy: {
@@ -108,6 +123,18 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true
         },
         '/api/profstroy-lots': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
+        '/api/smu5-lots': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
+        '/api/zhelezno-lots': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
+        '/api/developer-lots': {
           target: 'http://localhost:3001',
           changeOrigin: true
         },

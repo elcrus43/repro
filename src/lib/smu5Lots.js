@@ -107,7 +107,7 @@ export function getSmu5SlugForDevelopment(dev) {
  */
 export async function fetchSmu5Lots(projectSlug, options = {}) {
   const slug = typeof projectSlug === 'string' ? projectSlug : projectSlug?.projectSlug || '';
-  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/developer-lots?provider=smu5';
+  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/smu5-lots';
   return fetchLotsFromEndpoint(endpoint, slug || undefined, 'лотов СМУ-5');
 }
 
@@ -119,7 +119,7 @@ export async function fetchSmu5Lots(projectSlug, options = {}) {
  */
 export async function syncSmu5Project(projectSlug, options = {}) {
   const slug = typeof projectSlug === 'string' ? projectSlug : projectSlug?.projectSlug || '';
-  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/developer-lots?provider=smu5';
+  const endpoint = options?.endpoint || (typeof projectSlug === 'object' && projectSlug?.endpoint) || '/api/smu5-lots';
   const timeoutMs = options?.timeoutMs || (typeof projectSlug === 'object' && projectSlug?.timeoutMs) || undefined;
   return syncProjectViaEndpoint(endpoint, slug, 'проекта СМУ-5', timeoutMs);
 }

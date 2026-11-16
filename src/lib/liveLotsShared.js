@@ -32,7 +32,8 @@ export function getAuthHeaders() {
  * @returns {Promise<{ projects: Array<object>, lots: Array<object>, configured: boolean }>}
  */
 export async function fetchLotsFromEndpoint(endpoint, projectSlug, errorLabel = 'лотов') {
-  const query = projectSlug ? `?projectSlug=${encodeURIComponent(projectSlug)}` : '';
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const query = projectSlug ? `${separator}projectSlug=${encodeURIComponent(projectSlug)}` : '';
   const res = await apiFetch(`${endpoint}${query}`, {
     method: 'GET',
     headers: getAuthHeaders(),

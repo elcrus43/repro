@@ -37,12 +37,16 @@ const HANDLERS = {
 };
 
 export default async function handler(req, res) {
-  const provider = (
+  let provider = (
     req.query?.provider ||
     req.body?.provider ||
     req.headers['x-developer-provider'] ||
     ''
   ).toString().toLowerCase().trim();
+
+  if (provider.includes('?')) {
+    provider = provider.split('?')[0];
+  }
 
   const targetHandler = HANDLERS[provider];
   if (!targetHandler) {

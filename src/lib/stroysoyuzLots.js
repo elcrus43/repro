@@ -56,6 +56,14 @@ export const STROYSOYUZ_DEVELOPMENT_TO_SLUG = {
   'zhk-premier': 'svobody-115g',
 };
 
+export const STROYSOYUZ_DEVELOPMENT_TO_ALL_SLUGS = {
+  'zhk-repinskie-prudy': ['blyuhera-46', 'volodarskogo-229'],
+  'zhk-zapovedny': ['zapovedny-sandalovskaya-2a-1', 'zapovedny-sandalovskaya-2a', 'zapovedny-sandalovskaya-4-1'],
+  'zhk-sloboda-solomintsy': ['solomintsy-michurina-28', 'solomintsy-michurina-26'],
+  'zhk-uspenskaya': ['zhk-kholms', 'uspenskaya-29'],
+  'zhk-premier': ['svobody-115g'],
+};
+
 export { getAuthHeaders };
 
 /**
