@@ -11,6 +11,7 @@ import { getAltaiSlugForDevelopment } from './altaiLots';
 import { getStroysoyuzSlugForDevelopment } from './stroysoyuzLots';
 import { getProfstroySlugForDevelopment } from './profstroyLots';
 import { getSmu5SlugForDevelopment } from './smu5Lots';
+import { getZheleznoSlugForDevelopment } from './zheleznoLots';
 import { ROOM_TYPE_KEYS } from './liveLotsShared';
 
 /**
@@ -158,6 +159,13 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-sovremennik', address: 'Хлыновская, 21', lat: 58.581337, lng: 49.681596 },
   { devId: 'zhk-rudnitskogo-32', address: 'ул. Рудницкого, 32', lat: 58.57076, lng: 49.691328 },
   { devId: 'zhk-rudnitskogo-32', address: 'Рудницкого, 32', lat: 58.57076, lng: 49.691328 },
+  // Железно
+  { devId: 'zhk-bulychev', address: 'ул. Свободы, 28', lat: 58.612221, lng: 49.676611 },
+  { devId: 'zhk-bulychev', address: 'Свободы, 28', lat: 58.612221, lng: 49.676611 },
+  { devId: 'zhk-zaryadnoe', address: 'ул. 4-й Пятилетки, 82', lat: 58.557453, lng: 49.667168 },
+  { devId: 'zhk-zaryadnoe', address: 'ул. 4-й Пятилетки, 82А', lat: 58.56268, lng: 49.65867 },
+  { devId: 'zhk-znak', address: 'ул. Энтузиастов / ул. Капитана Дорофеева', lat: 58.581228, lng: 49.564403 },
+  { devId: 'zhk-innograd', address: 'ул. Песочная', lat: 58.555326, lng: 49.655972 },
 ];
 
 /**
@@ -329,6 +337,7 @@ export function buildMapItemsFromDevelopments(
     stroysoyuzLots = [],
     profstroyLots = [],
     smu5Lots = [],
+    zheleznoLots = [],
     ksmSummaryBySlug = {},
     ksskSummaryBySlug = {},
     kinoSummaryBySlug = {},
@@ -337,6 +346,7 @@ export function buildMapItemsFromDevelopments(
     stroysoyuzSummaryBySlug = {},
     profstroySummaryBySlug = {},
     smu5SummaryBySlug = {},
+    zheleznoSummaryBySlug = {},
     showHousePins = true,
   } = {}
 ) {
@@ -356,6 +366,7 @@ export function buildMapItemsFromDevelopments(
     const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
     const profstroySlug = getProfstroySlugForDevelopment(dev);
     const smu5Slug = getSmu5SlugForDevelopment(dev);
+    const zheleznoSlug = getZheleznoSlugForDevelopment(dev);
     const providerId = ksmSlug
       ? 'ksm'
       : ksskSlug
@@ -372,7 +383,9 @@ export function buildMapItemsFromDevelopments(
                   ? 'profstroy'
                   : smu5Slug
                     ? 'smu5'
-                    : null;
+                    : zheleznoSlug
+                      ? 'zhelezno'
+                      : null;
     const activeSlug =
       ksmSlug ||
       ksskSlug ||
@@ -381,7 +394,8 @@ export function buildMapItemsFromDevelopments(
       altaiSlug ||
       stroysoyuzSlug ||
       profstroySlug ||
-      smu5Slug;
+      smu5Slug ||
+      zheleznoSlug;
 
     if (!providerId || !activeSlug) {
       items.push(createParentMarker(dev));
@@ -403,7 +417,9 @@ export function buildMapItemsFromDevelopments(
                   ? stroysoyuzLots
                   : providerId === 'profstroy'
                     ? profstroyLots
-                    : smu5Lots;
+                    : providerId === 'smu5'
+                      ? smu5Lots
+                      : zheleznoLots;
     const summaryMap =
       providerId === 'ksm'
         ? ksmSummaryBySlug
@@ -419,7 +435,9 @@ export function buildMapItemsFromDevelopments(
                   ? stroysoyuzSummaryBySlug
                   : providerId === 'profstroy'
                     ? profstroySummaryBySlug
-                    : smu5SummaryBySlug;
+                    : providerId === 'smu5'
+                      ? smu5SummaryBySlug
+                      : zheleznoSummaryBySlug;
     const liveProviderLabel =
       providerId === 'ksm'
         ? 'КСМ live'
@@ -435,7 +453,9 @@ export function buildMapItemsFromDevelopments(
                   ? 'СТРОЙСОЮЗ live'
                   : providerId === 'profstroy'
                     ? 'ПРОФСТРОЙ live'
-                    : 'СМУ-5 live';
+                    : providerId === 'smu5'
+                      ? 'СМУ-5 live'
+                      : 'ЖЕЛЕЗНО live';
     const summary = summaryMap?.[activeSlug] || null;
 
     let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter(

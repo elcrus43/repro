@@ -17,6 +17,7 @@ const ALLOWED_TABLES = {
   stroysoyuz: { lotsTable: 'stroysoyuz_lots', metaTable: 'stroysoyuz_sync_meta', indexName: 'idx_stroysoyuz_lots_project_slug' },
   profstroy: { lotsTable: 'profstroy_lots', metaTable: 'profstroy_sync_meta', indexName: 'idx_profstroy_lots_project_slug' },
   smu5: { lotsTable: 'smu5_lots', metaTable: 'smu5_sync_meta', indexName: 'idx_smu5_lots_project_slug' },
+  zhelezno: { lotsTable: 'zhelezno_lots', metaTable: 'zhelezno_sync_meta', indexName: 'idx_zhelezno_lots_project_slug' },
 };
 
 export function decodeHtmlEntities(str) {

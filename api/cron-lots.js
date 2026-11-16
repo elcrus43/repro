@@ -21,13 +21,14 @@ import { ALTAI_PROJECTS, syncAltaiProject } from './_altai-lots.js';
 import { STROYSOYUZ_PROJECTS, syncStroysoyuzProject } from './_stroysoyuz-lots.js';
 import { PROFSTROY_PROJECTS, syncProfstroyProject } from './_profstroy-lots.js';
 import { SMU5_PROJECTS, syncSmu5Project } from './_smu5-lots.js';
+import { ZHELEZNO_PROJECTS, syncZheleznoProject } from './_zhelezno-lots.js';
 import { authenticateLotsRequest } from './_lots-shared.js';
 
 export const config = {
   maxDuration: 60,
 };
 
-const VALID_PROVIDERS = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy', 'smu5'];
+const VALID_PROVIDERS = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy', 'smu5', 'zhelezno'];
 
 function normalizeSingleValue(value) {
   if (Array.isArray(value)) return value[0];
@@ -197,7 +198,7 @@ async function syncProviderProjects({ sql, projectsMap, targetSlugs, syncFn }) {
 export async function runScheduledLotsSync(
   sql,
   {
-    providers = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy', 'smu5'],
+    providers = ['kssk', 'ksm', 'kino', 'avitek', 'altai', 'stroysoyuz', 'profstroy', 'smu5', 'zhelezno'],
     slugs,
     syncKssk = syncKsskProject,
     syncKsm = syncKsmProject,
@@ -207,6 +208,7 @@ export async function runScheduledLotsSync(
     syncStroysoyuz = syncStroysoyuzProject,
     syncProfstroy = syncProfstroyProject,
     syncSmu5 = syncSmu5Project,
+    syncZhelezno = syncZheleznoProject,
   } = {}
 ) {
   const startedAt = Date.now();
@@ -319,6 +321,19 @@ export async function runScheduledLotsSync(
     smu5 = buildSkippedSummary('Provider not requested');
   }
 
+  let zhelezno;
+  if (providerSet.has('zhelezno')) {
+    const zheleznoSlugs = selectProviderSlugs(ZHELEZNO_PROJECTS, slugs, 'zhelezno');
+    zhelezno = await syncProviderProjects({
+      sql,
+      projectsMap: ZHELEZNO_PROJECTS,
+      targetSlugs: zheleznoSlugs,
+      syncFn: syncZhelezno,
+    });
+  } else {
+    zhelezno = buildSkippedSummary('Provider not requested');
+  }
+
   return {
     syncedAt: new Date().toISOString(),
     durationMs: Date.now() - startedAt,
@@ -330,6 +345,7 @@ export async function runScheduledLotsSync(
     stroysoyuz,
     profstroy,
     smu5,
+    zhelezno,
   };
 }
 

@@ -38,6 +38,61 @@ export const ROOM_TYPES = [
 // @DEVELOPMENTS_DATA_START
 export const DEFAULT_DEVELOPMENTS = [
   {
+    "id": "zhk-bulychev",
+    "name": "Дом «Булычев»",
+    "developer": "Железно",
+    "district": "Первомайский район",
+    "microdistrict": "Центр (Первомайский)",
+    "address": "г. Киров, ул. Свободы, 28",
+    "lat": 58.612221,
+    "lng": 49.676611,
+    "price_from": 16190000,
+    "price_to": 26500000,
+    "price_sqm_from": 240000,
+    "completion_date": "Сдан (2024)",
+    "completion_year": 2024,
+    "is_completed": true,
+    "housing_class": "Элитный",
+    "finishing": [
+      "white_box"
+    ],
+    "floors": "7-9 этажей",
+    "wall_material": "Монолит-кирпич",
+    "images": [
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/74d49dd475c6b09c3d66e56c268f58d661be02ac.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/8adcc3a123fba1b59edd563bf8b7cd156b757d4e.jpg"
+    ],
+    "description": "Первый в России умный дом высшего класса «А» от девелопера «Железно». Расположен в историческом центре Кирова на ул. Свободы, 28.",
+    "features": [
+      "Класс умного дома «А»",
+      "Исторический центр",
+      "Консьерж-сервис",
+      "Подземный паркинг"
+    ],
+    "apartments": [
+      {
+        "type": "3k",
+        "name": "3-комнатная (евро)",
+        "area": "64.2 - 80.0 м²",
+        "price_from": 16190080,
+        "price_sqm": 252000,
+        "count": 5
+      },
+      {
+        "type": "3k",
+        "name": "3-комнатная",
+        "area": "78.4 - 95.0 м²",
+        "price_from": 20235040,
+        "price_sqm": 258000,
+        "count": 2
+      }
+    ],
+    "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
+    "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Булычев+Свободы+28",
+    "builder_url": "https://zhcom.ru/kirov/projects/bulychev/",
+    "contact_phone": "+7 (8332) 203-722"
+  },
+  {
     "id": "zhk-znak",
     "name": "ЖК ZNAK (Знак)",
     "developer": "Железно",

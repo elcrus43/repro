@@ -89,6 +89,7 @@ export function LiveLotsFinder({
   stroysoyuzLots = [],
   profstroyLots = [],
   smu5Lots = [],
+  zheleznoLots = [],
   developments = [],
   onOpenDetail = () => {},
   onFocusHouseOnMap = null,
@@ -132,8 +133,8 @@ export function LiveLotsFinder({
   );
 
   const mergedLots = useMemo(
-    () => mergeAllDeveloperLots({ ksmLots, ksskLots, kinoLots, avitekLots, altaiLots, stroysoyuzLots, profstroyLots, smu5Lots, developments }),
-    [ksmLots, ksskLots, kinoLots, avitekLots, altaiLots, stroysoyuzLots, profstroyLots, smu5Lots, developments]
+    () => mergeAllDeveloperLots({ ksmLots, ksskLots, kinoLots, avitekLots, altaiLots, stroysoyuzLots, profstroyLots, smu5Lots, zheleznoLots, developments }),
+    [ksmLots, ksskLots, kinoLots, avitekLots, altaiLots, stroysoyuzLots, profstroyLots, smu5Lots, zheleznoLots, developments]
   );
 
   const filteredLots = useMemo(
@@ -442,6 +443,7 @@ export function LiveLotsFinder({
               { id: 'stroysoyuz', label: 'СТРОЙСОЮЗ' },
               { id: 'profstroy', label: 'ПРОФСТРОЙ' },
               { id: 'smu5', label: 'СМУ-5' },
+              { id: 'zhelezno', label: 'ЖЕЛЕЗНО' },
             ].map((p) => (
               <button
                 key={p.id}
@@ -1640,6 +1642,11 @@ export function LiveLotsFinder({
           color: #86198f;
           border: 1px solid #f0abfc;
         }
+        .llf-provider-badge.zhelezno {
+          background: #fff1f2;
+          color: #be123c;
+          border: 1px solid #fecdd3;
+        }
         .dark .llf-provider-badge.ksm {
           background: #064e3b;
           color: #a7f3d0;
@@ -1679,6 +1686,11 @@ export function LiveLotsFinder({
           background: #701a75;
           color: #f5d0fe;
           border-color: #c026d3;
+        }
+        .dark .llf-provider-badge.zhelezno {
+          background: #881337;
+          color: #fecdd3;
+          border-color: #e11d48;
         }
         .llf-rooms-area {
           font-size: 14px;

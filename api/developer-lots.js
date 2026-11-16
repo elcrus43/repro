@@ -18,6 +18,7 @@ import altaiHandler from './_altai-lots.js';
 import stroysoyuzHandler from './_stroysoyuz-lots.js';
 import profstroyHandler from './_profstroy-lots.js';
 import smu5Handler from './_smu5-lots.js';
+import zheleznoHandler from './_zhelezno-lots.js';
 
 export const config = {
   maxDuration: 60,
@@ -32,6 +33,7 @@ const HANDLERS = {
   stroysoyuz: stroysoyuzHandler,
   profstroy: profstroyHandler,
   smu5: smu5Handler,
+  zhelezno: zheleznoHandler,
 };
 
 export default async function handler(req, res) {

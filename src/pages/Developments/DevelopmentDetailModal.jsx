@@ -34,6 +34,7 @@ import { getAltaiSlugForDevelopment } from '../../lib/altaiLots';
 import { getStroysoyuzSlugForDevelopment } from '../../lib/stroysoyuzLots';
 import { getProfstroySlugForDevelopment } from '../../lib/profstroyLots';
 import { getSmu5SlugForDevelopment } from '../../lib/smu5Lots';
+import { getZheleznoSlugForDevelopment } from '../../lib/zheleznoLots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
 
 const KSM_ROOM_FILTERS = [
@@ -83,6 +84,7 @@ export function DevelopmentDetailModal({
   const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
   const profstroySlug = getProfstroySlugForDevelopment(dev);
   const smu5Slug = getSmu5SlugForDevelopment(dev);
+  const zheleznoSlug = getZheleznoSlugForDevelopment(dev);
   const resolvedProvider = useMemo(
     () =>
       liveProvider ||
@@ -142,8 +144,15 @@ export function DevelopmentDetailModal({
                           slug: smu5Slug,
                           subtitle: 'Прямые данные по свободным квартирам СМУ-5 (domoplaner.ru)',
                         }
-                      : null),
-    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug, profstroySlug, smu5Slug]
+                      : zheleznoSlug
+                        ? {
+                            id: 'zhelezno',
+                            label: 'ЖЕЛЕЗНО',
+                            slug: zheleznoSlug,
+                            subtitle: 'Прямые данные по свободным квартирам девелопера «Железно» (zhcom.ru)',
+                          }
+                        : null),
+    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug, profstroySlug, smu5Slug, zheleznoSlug]
   );
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;
