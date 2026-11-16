@@ -10,6 +10,7 @@ import { getAvitekSlugForDevelopment, AVITEK_PROJECT_NAMES } from './avitekLots'
 import { getAltaiSlugForDevelopment, ALTAI_PROJECT_NAMES } from './altaiLots';
 import { getStroysoyuzSlugForDevelopment, STROYSOYUZ_PROJECT_NAMES } from './stroysoyuzLots';
 import { getProfstroySlugForDevelopment, PROFSTROY_PROJECT_NAMES } from './profstroyLots';
+import { getSmu5SlugForDevelopment, SMU5_PROJECT_NAMES } from './smu5Lots';
 import { formatNumber } from '../utils/format';
 
 export const ROOM_FILTER_OPTIONS = [
@@ -84,6 +85,14 @@ export const PROVIDER_META = {
     color: '#4f46e5',
     projectNames: PROFSTROY_PROJECT_NAMES,
     getSlug: getProfstroySlugForDevelopment,
+  },
+  smu5: {
+    id: 'smu5',
+    label: 'СМУ-5',
+    badgeClass: 'smu5',
+    color: '#7c3aed',
+    projectNames: SMU5_PROJECT_NAMES,
+    getSlug: getSmu5SlugForDevelopment,
   },
 };
 
@@ -194,6 +203,7 @@ export function mergeAllDeveloperLots({
   altaiLots = [],
   stroysoyuzLots = [],
   profstroyLots = [],
+  smu5Lots = [],
   developments = [],
 } = {}) {
   const ksmLookup = buildDevSlugLookup(developments, PROVIDER_META.ksm.getSlug);
@@ -203,6 +213,7 @@ export function mergeAllDeveloperLots({
   const altaiLookup = buildDevSlugLookup(developments, PROVIDER_META.altai.getSlug);
   const stroysoyuzLookup = buildDevSlugLookup(developments, PROVIDER_META.stroysoyuz.getSlug);
   const profstroyLookup = buildDevSlugLookup(developments, PROVIDER_META.profstroy.getSlug);
+  const smu5Lookup = buildDevSlugLookup(developments, PROVIDER_META.smu5.getSlug);
 
   const sources = [
     { provider: PROVIDER_META.ksm, lots: ksmLots, lookup: ksmLookup },
@@ -212,6 +223,7 @@ export function mergeAllDeveloperLots({
     { provider: PROVIDER_META.altai, lots: altaiLots, lookup: altaiLookup },
     { provider: PROVIDER_META.stroysoyuz, lots: stroysoyuzLots, lookup: stroysoyuzLookup },
     { provider: PROVIDER_META.profstroy, lots: profstroyLots, lookup: profstroyLookup },
+    { provider: PROVIDER_META.smu5, lots: smu5Lots, lookup: smu5Lookup },
   ];
 
   const seenUids = new Set();
@@ -553,7 +565,9 @@ export function buildSelectionItemFromLot({
               ? 'СТРОЙСОЮЗ'
               : resolvedProviderId === 'profstroy'
                 ? 'ПРОФСТРОЙ'
-                : 'КСМ';
+                : resolvedProviderId === 'smu5'
+                  ? 'СМУ-5'
+                  : 'КСМ';
   const resolvedProviderLabel =
     providerLabel || lot?._providerLabel || defaultProviderLabel;
   const devImages = Array.isArray(resolvedDev?.images) ? resolvedDev.images : [];

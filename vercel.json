@@ -29,6 +29,10 @@
             "destination": "/api/developer-lots?provider=profstroy"
         },
         {
+            "source": "/api/smu5-lots",
+            "destination": "/api/developer-lots?provider=smu5"
+        },
+        {
             "source": "/api/(.*)",
             "destination": "/api/$1"
         },

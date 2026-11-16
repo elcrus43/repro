@@ -17,6 +17,7 @@ import avitekHandler from './_avitek-lots.js';
 import altaiHandler from './_altai-lots.js';
 import stroysoyuzHandler from './_stroysoyuz-lots.js';
 import profstroyHandler from './_profstroy-lots.js';
+import smu5Handler from './_smu5-lots.js';
 
 export const config = {
   maxDuration: 60,
@@ -30,6 +31,7 @@ const HANDLERS = {
   altai: altaiHandler,
   stroysoyuz: stroysoyuzHandler,
   profstroy: profstroyHandler,
+  smu5: smu5Handler,
 };
 
 export default async function handler(req, res) {

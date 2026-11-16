@@ -102,6 +102,14 @@ import {
   syncProfstroyProject,
   buildProfstroySummaryByProject,
 } from '../../lib/profstroyLots';
+import {
+  SMU5_PROJECT_SLUGS,
+  SMU5_PROJECT_NAMES,
+  getSmu5SlugForDevelopment,
+  fetchSmu5Lots,
+  syncSmu5Project,
+  buildSmu5SummaryByProject,
+} from '../../lib/smu5Lots';
 
 const LIVE_PROVIDERS = {
   ksm: {
@@ -195,6 +203,19 @@ const LIVE_PROVIDERS = {
     pillTitle: 'Синхронизация Профстрой: живые остатки квартир',
     syncAllTitle: 'Обновить свободные квартиры по объектам Профстрой',
   },
+  smu5: {
+    id: 'smu5',
+    label: 'СМУ-5',
+    slugs: SMU5_PROJECT_SLUGS,
+    names: SMU5_PROJECT_NAMES,
+    fetchLots: fetchSmu5Lots,
+    syncProject: syncSmu5Project,
+    buildSummary: buildSmu5SummaryByProject,
+    getSlug: getSmu5SlugForDevelopment,
+    subtitle: 'Прямые данные по свободным квартирам СМУ-5 (domoplaner.ru)',
+    pillTitle: 'Синхронизация СМУ-5: живые остатки квартир с domoplaner.ru',
+    syncAllTitle: 'Обновить свободные квартиры по объектам СМУ-5',
+  },
 };
 
 function getLatestSyncedIso(projectsMeta = []) {
@@ -230,6 +251,7 @@ export default function DevelopmentsPage() {
     altai: { lots: [], projects: [] },
     stroysoyuz: { lots: [], projects: [] },
     profstroy: { lots: [], projects: [] },
+    smu5: { lots: [], projects: [] },
   });
   const [liveProgress, setLiveProgress] = useState({
     ksm: { active: false, current: 0, total: KSM_PROJECT_SLUGS.length, currentName: '' },
@@ -239,6 +261,7 @@ export default function DevelopmentsPage() {
     altai: { active: false, current: 0, total: ALTAI_PROJECT_SLUGS.length, currentName: '' },
     stroysoyuz: { active: false, current: 0, total: STROYSOYUZ_PROJECT_SLUGS.length, currentName: '' },
     profstroy: { active: false, current: 0, total: PROFSTROY_PROJECT_SLUGS.length, currentName: '' },
+    smu5: { active: false, current: 0, total: SMU5_PROJECT_SLUGS.length, currentName: '' },
   });
 
   // View Mode: 'split' | 'grid' | 'map' | 'lots'
@@ -286,6 +309,7 @@ export default function DevelopmentsPage() {
       altai: buildAltaiSummaryByProject(liveState.altai.lots, liveState.altai.projects),
       stroysoyuz: buildStroysoyuzSummaryByProject(liveState.stroysoyuz.lots, liveState.stroysoyuz.projects),
       profstroy: buildProfstroySummaryByProject(liveState.profstroy.lots, liveState.profstroy.projects),
+      smu5: buildSmu5SummaryByProject(liveState.smu5.lots, liveState.smu5.projects),
     }),
     [liveState]
   );
@@ -299,6 +323,7 @@ export default function DevelopmentsPage() {
       altai: getLatestSyncedIso(liveState.altai.projects),
       stroysoyuz: getLatestSyncedIso(liveState.stroysoyuz.projects),
       profstroy: getLatestSyncedIso(liveState.profstroy.projects),
+      smu5: getLatestSyncedIso(liveState.smu5.projects),
     }),
     [liveState]
   );
@@ -396,7 +421,8 @@ export default function DevelopmentsPage() {
     liveState.avitek.lots.length +
     liveState.altai.lots.length +
     liveState.stroysoyuz.lots.length +
-    liveState.profstroy.lots.length;
+    liveState.profstroy.lots.length +
+    liveState.smu5.lots.length;
   const isAnyProviderSyncing =
     liveProgress.ksm.active ||
     liveProgress.kssk.active ||
@@ -404,7 +430,8 @@ export default function DevelopmentsPage() {
     liveProgress.avitek.active ||
     liveProgress.altai.active ||
     liveProgress.stroysoyuz.active ||
-    liveProgress.profstroy.active;
+    liveProgress.profstroy.active ||
+    liveProgress.smu5.active;
 
   const handleSyncAllProviders = async () => {
     if (isAnyProviderSyncing) return;
@@ -416,6 +443,7 @@ export default function DevelopmentsPage() {
       handleSyncAllForProvider('altai'),
       handleSyncAllForProvider('stroysoyuz'),
       handleSyncAllForProvider('profstroy'),
+      handleSyncAllForProvider('smu5'),
     ]);
   };
 
@@ -430,7 +458,8 @@ export default function DevelopmentsPage() {
           getAvitekSlugForDevelopment(d) === slug ||
           getAltaiSlugForDevelopment(d) === slug ||
           getStroysoyuzSlugForDevelopment(d) === slug ||
-          getProfstroySlugForDevelopment(d) === slug)
+          getProfstroySlugForDevelopment(d) === slug ||
+          getSmu5SlugForDevelopment(d) === slug)
       );
     }) || null;
     if (!targetDev) return;
@@ -648,6 +677,7 @@ export default function DevelopmentsPage() {
         altaiLots: liveState.altai.lots,
         stroysoyuzLots: liveState.stroysoyuz.lots,
         profstroyLots: liveState.profstroy.lots,
+        smu5Lots: liveState.smu5.lots,
         ksmSummaryBySlug: liveSummaries.ksm,
         ksskSummaryBySlug: liveSummaries.kssk,
         kinoSummaryBySlug: liveSummaries.kino,
@@ -655,6 +685,7 @@ export default function DevelopmentsPage() {
         altaiSummaryBySlug: liveSummaries.altai,
         stroysoyuzSummaryBySlug: liveSummaries.stroysoyuz,
         profstroySummaryBySlug: liveSummaries.profstroy,
+        smu5SummaryBySlug: liveSummaries.smu5,
         showHousePins,
       }),
     [
@@ -666,6 +697,7 @@ export default function DevelopmentsPage() {
       liveState.altai.lots,
       liveState.stroysoyuz.lots,
       liveState.profstroy.lots,
+      liveState.smu5.lots,
       liveSummaries.ksm,
       liveSummaries.kssk,
       liveSummaries.kino,
@@ -673,6 +705,7 @@ export default function DevelopmentsPage() {
       liveSummaries.altai,
       liveSummaries.stroysoyuz,
       liveSummaries.profstroy,
+      liveSummaries.smu5,
       showHousePins,
     ]
   );
@@ -1099,6 +1132,7 @@ export default function DevelopmentsPage() {
               altaiLots={liveState.altai.lots}
               stroysoyuzLots={liveState.stroysoyuz.lots}
               profstroyLots={liveState.profstroy.lots}
+              smu5Lots={liveState.smu5.lots}
               developments={developments}
               onOpenDetail={(d) => setDetailModalDev(d)}
               onFocusHouseOnMap={handleFocusHouseOnMap}
@@ -1121,6 +1155,7 @@ export default function DevelopmentsPage() {
                       const altaiSlug = getAltaiSlugForDevelopment(dev);
                       const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
                       const profstroySlug = getProfstroySlugForDevelopment(dev);
+                      const smu5Slug = getSmu5SlugForDevelopment(dev);
                       const liveSummary = ksmSlug
                         ? liveSummaries.ksm[ksmSlug] || null
                         : ksskSlug
@@ -1135,7 +1170,9 @@ export default function DevelopmentsPage() {
                                   ? liveSummaries.stroysoyuz[stroysoyuzSlug] || null
                                   : profstroySlug
                                     ? liveSummaries.profstroy[profstroySlug] || null
-                                    : null;
+                                    : smu5Slug
+                                      ? liveSummaries.smu5[smu5Slug] || null
+                                      : null;
                       const liveProviderLabel = kinoSlug
                         ? 'КИНО live'
                         : ksskSlug
@@ -1148,7 +1185,9 @@ export default function DevelopmentsPage() {
                                 ? 'СТРОЙСОЮЗ live'
                                 : profstroySlug
                                   ? 'ПРОФСТРОЙ live'
-                                  : 'КСМ live';
+                                  : smu5Slug
+                                    ? 'СМУ-5 live'
+                                    : 'КСМ live';
                       return (
                         <DevelopmentCard
                           key={dev.id}
@@ -1225,6 +1264,7 @@ export default function DevelopmentsPage() {
         const altaiSlug = getAltaiSlugForDevelopment(detailModalDev);
         const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(detailModalDev);
         const profstroySlug = getProfstroySlugForDevelopment(detailModalDev);
+        const smu5Slug = getSmu5SlugForDevelopment(detailModalDev);
         const providerId = ksmSlug
           ? 'ksm'
           : ksskSlug
@@ -1239,7 +1279,9 @@ export default function DevelopmentsPage() {
                     ? 'stroysoyuz'
                     : profstroySlug
                       ? 'profstroy'
-                      : null;
+                      : smu5Slug
+                        ? 'smu5'
+                        : null;
         const activeSlug =
           ksmSlug ||
           ksskSlug ||
@@ -1247,7 +1289,8 @@ export default function DevelopmentsPage() {
           avitekSlug ||
           altaiSlug ||
           stroysoyuzSlug ||
-          profstroySlug;
+          profstroySlug ||
+          smu5Slug;
         const providerSpec = providerId ? LIVE_PROVIDERS[providerId] : null;
         const detailLots = providerId && activeSlug
           ? liveState[providerId].lots.filter((lot) => lot.project_slug === activeSlug)

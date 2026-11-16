@@ -10,6 +10,7 @@ import { getAvitekSlugForDevelopment } from './avitekLots';
 import { getAltaiSlugForDevelopment } from './altaiLots';
 import { getStroysoyuzSlugForDevelopment } from './stroysoyuzLots';
 import { getProfstroySlugForDevelopment } from './profstroyLots';
+import { getSmu5SlugForDevelopment } from './smu5Lots';
 import { ROOM_TYPE_KEYS } from './liveLotsShared';
 
 /**
@@ -149,6 +150,14 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-murashinskiy-7', address: 'Мурашинский проезд, 7', lat: 58.616364, lng: 49.608994 },
   { devId: 'zhk-garmoniya', address: 'ул. Ленина, 106', lat: 58.591145, lng: 49.682926 },
   { devId: 'zhk-metropolis', address: 'ул. Воровского, 173 корп. 1', lat: 58.597355, lng: 49.582656 },
+  // СМУ-5
+  { devId: 'zhk-mayak', address: 'ул. Молодой Гвардии, 84/4', lat: 58.597769, lng: 49.652341 },
+  { devId: 'zhk-mayak', address: 'ул. Молодой Гвардии, 84 к.4', lat: 58.597769, lng: 49.652341 },
+  { devId: 'zhk-mayak', address: 'М. Гвардии, 84/4', lat: 58.597769, lng: 49.652341 },
+  { devId: 'zhk-sovremennik', address: 'ул. Хлыновская, 21', lat: 58.581337, lng: 49.681596 },
+  { devId: 'zhk-sovremennik', address: 'Хлыновская, 21', lat: 58.581337, lng: 49.681596 },
+  { devId: 'zhk-rudnitskogo-32', address: 'ул. Рудницкого, 32', lat: 58.57076, lng: 49.691328 },
+  { devId: 'zhk-rudnitskogo-32', address: 'Рудницкого, 32', lat: 58.57076, lng: 49.691328 },
 ];
 
 /**
@@ -319,6 +328,7 @@ export function buildMapItemsFromDevelopments(
     altaiLots = [],
     stroysoyuzLots = [],
     profstroyLots = [],
+    smu5Lots = [],
     ksmSummaryBySlug = {},
     ksskSummaryBySlug = {},
     kinoSummaryBySlug = {},
@@ -326,6 +336,7 @@ export function buildMapItemsFromDevelopments(
     altaiSummaryBySlug = {},
     stroysoyuzSummaryBySlug = {},
     profstroySummaryBySlug = {},
+    smu5SummaryBySlug = {},
     showHousePins = true,
   } = {}
 ) {
@@ -344,6 +355,7 @@ export function buildMapItemsFromDevelopments(
     const altaiSlug = getAltaiSlugForDevelopment(dev);
     const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
     const profstroySlug = getProfstroySlugForDevelopment(dev);
+    const smu5Slug = getSmu5SlugForDevelopment(dev);
     const providerId = ksmSlug
       ? 'ksm'
       : ksskSlug
@@ -358,7 +370,9 @@ export function buildMapItemsFromDevelopments(
                 ? 'stroysoyuz'
                 : profstroySlug
                   ? 'profstroy'
-                  : null;
+                  : smu5Slug
+                    ? 'smu5'
+                    : null;
     const activeSlug =
       ksmSlug ||
       ksskSlug ||
@@ -366,7 +380,8 @@ export function buildMapItemsFromDevelopments(
       avitekSlug ||
       altaiSlug ||
       stroysoyuzSlug ||
-      profstroySlug;
+      profstroySlug ||
+      smu5Slug;
 
     if (!providerId || !activeSlug) {
       items.push(createParentMarker(dev));
@@ -386,7 +401,9 @@ export function buildMapItemsFromDevelopments(
                 ? altaiLots
                 : providerId === 'stroysoyuz'
                   ? stroysoyuzLots
-                  : profstroyLots;
+                  : providerId === 'profstroy'
+                    ? profstroyLots
+                    : smu5Lots;
     const summaryMap =
       providerId === 'ksm'
         ? ksmSummaryBySlug
@@ -400,7 +417,9 @@ export function buildMapItemsFromDevelopments(
                 ? altaiSummaryBySlug
                 : providerId === 'stroysoyuz'
                   ? stroysoyuzSummaryBySlug
-                  : profstroySummaryBySlug;
+                  : providerId === 'profstroy'
+                    ? profstroySummaryBySlug
+                    : smu5SummaryBySlug;
     const liveProviderLabel =
       providerId === 'ksm'
         ? 'КСМ live'
@@ -414,7 +433,9 @@ export function buildMapItemsFromDevelopments(
                 ? 'АЛТАЙ live'
                 : providerId === 'stroysoyuz'
                   ? 'СТРОЙСОЮЗ live'
-                  : 'ПРОФСТРОЙ live';
+                  : providerId === 'profstroy'
+                    ? 'ПРОФСТРОЙ live'
+                    : 'СМУ-5 live';
     const summary = summaryMap?.[activeSlug] || null;
 
     let matchingLots = (Array.isArray(sourceLots) ? sourceLots : []).filter(

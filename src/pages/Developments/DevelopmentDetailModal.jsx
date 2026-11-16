@@ -33,6 +33,7 @@ import { getAvitekSlugForDevelopment } from '../../lib/avitekLots';
 import { getAltaiSlugForDevelopment } from '../../lib/altaiLots';
 import { getStroysoyuzSlugForDevelopment } from '../../lib/stroysoyuzLots';
 import { getProfstroySlugForDevelopment } from '../../lib/profstroyLots';
+import { getSmu5SlugForDevelopment } from '../../lib/smu5Lots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
 
 const KSM_ROOM_FILTERS = [
@@ -81,6 +82,7 @@ export function DevelopmentDetailModal({
   const altaiSlug = getAltaiSlugForDevelopment(dev);
   const stroysoyuzSlug = getStroysoyuzSlugForDevelopment(dev);
   const profstroySlug = getProfstroySlugForDevelopment(dev);
+  const smu5Slug = getSmu5SlugForDevelopment(dev);
   const resolvedProvider = useMemo(
     () =>
       liveProvider ||
@@ -133,8 +135,15 @@ export function DevelopmentDetailModal({
                         slug: profstroySlug,
                         subtitle: 'Прямые данные по свободным квартирам Профстрой Недвижимость',
                       }
-                    : null),
-    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug, profstroySlug]
+                    : smu5Slug
+                      ? {
+                          id: 'smu5',
+                          label: 'СМУ-5',
+                          slug: smu5Slug,
+                          subtitle: 'Прямые данные по свободным квартирам СМУ-5 (domoplaner.ru)',
+                        }
+                      : null),
+    [liveProvider, ksmSlug, ksskSlug, kinoSlug, avitekSlug, altaiSlug, stroysoyuzSlug, profstroySlug, smu5Slug]
   );
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;

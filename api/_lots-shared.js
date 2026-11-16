@@ -16,6 +16,7 @@ const ALLOWED_TABLES = {
   altai: { lotsTable: 'altai_lots', metaTable: 'altai_sync_meta', indexName: 'idx_altai_lots_project_slug' },
   stroysoyuz: { lotsTable: 'stroysoyuz_lots', metaTable: 'stroysoyuz_sync_meta', indexName: 'idx_stroysoyuz_lots_project_slug' },
   profstroy: { lotsTable: 'profstroy_lots', metaTable: 'profstroy_sync_meta', indexName: 'idx_profstroy_lots_project_slug' },
+  smu5: { lotsTable: 'smu5_lots', metaTable: 'smu5_sync_meta', indexName: 'idx_smu5_lots_project_slug' },
 };
 
 export function decodeHtmlEntities(str) {

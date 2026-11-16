@@ -4,7 +4,7 @@
  *
  * CLI-раннер для синхронизации свободных лотов застройщиков (КССК, КСМ, КИНО, АВИТЕК, АЛТАЙ, СТРОЙСОЮЗ, ПРОФСТРОЙ) в Neon DB.
  * Использование:
- *   node scripts/sync-developer-lots.js [--provider=all|ksm|kssk|kino|avitek|altai|stroysoyuz|profstroy]
+ *   node scripts/sync-developer-lots.js [--provider=all|ksm|kssk|kino|avitek|altai|stroysoyuz|profstroy|smu5]
  */
 
 import 'dotenv/config';
@@ -48,7 +48,7 @@ async function main() {
   const providers = resolveProviders(providerArg);
 
   if (!providers) {
-    console.error(`[sync-lots] Invalid --provider value: "${providerArg}". Expected all|ksm|kssk|kino|avitek|altai|stroysoyuz|profstroy.`);
+    console.error(`[sync-lots] Invalid --provider value: "${providerArg}". Expected all|ksm|kssk|kino|avitek|altai|stroysoyuz|profstroy|smu5.`);
     process.exit(1);
   }
 
@@ -69,6 +69,7 @@ async function main() {
   logProviderSummary('ALTAI', summary.altai);
   logProviderSummary('STROYSOYUZ', summary.stroysoyuz);
   logProviderSummary('PROFSTROY', summary.profstroy);
+  logProviderSummary('SMU5', summary.smu5);
 
   const requestedSummaries = providers.map((p) => summary[p]).filter(Boolean);
   const totalSynced = requestedSummaries.reduce((acc, s) => acc + (s.syncedProjects || 0), 0);
