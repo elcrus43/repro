@@ -34,7 +34,8 @@ import {
     RotateCw,
     CheckCircle2,
     Users,
-    BookUser
+    BookUser,
+    Search
 } from 'lucide-react';
 import { saveClientToDevice } from '../../lib/contactsSync';
 import {
@@ -77,6 +78,8 @@ export function DetailsPage() {
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingContractId, setEditingContractId] = useState(null);
     const [isSyncingContact, setIsSyncingContact] = useState(false);
+    const [isLinkPropertyModalOpen, setIsLinkPropertyModalOpen] = useState(false);
+    const [propertySearch, setPropertySearch] = useState('');
     const [contractForm, setContractForm] = useState({
         contract_number: '',
         type: 'АД Продажа',
@@ -167,14 +170,41 @@ export function DetailsPage() {
     const myProperties = state.properties.filter(p =>
         p.client_id === id || (p.client_ids || []).includes(id)
     );
-    // Объекты в продаже — все кроме sold / deal_closed
+    // Объекты в продаже - все кроме sold / deal_closed
     const activeProperties = myProperties.filter(p => !EXCLUDED_PROP_STATUSES.includes(p.status));
+
+    const isSellerOrLandlord = useMemo(() => {
+        return (client?.client_types || []).some(t =>
+            ['seller', 'landlord', 'lessor', 'owner'].includes(t)
+        );
+    }, [client?.client_types]);
+
+    const isLandlord = useMemo(() => {
+        return (client?.client_types || []).some(t =>
+            ['landlord', 'lessor'].includes(t)
+        );
+    }, [client?.client_types]);
+
+    const unlinkedProperties = useMemo(() => {
+        const myPropIds = new Set(myProperties.map(p => p.id));
+        let list = (state.properties || []).filter(p => !myPropIds.has(p.id));
+        if (propertySearch.trim()) {
+            const q = propertySearch.toLowerCase().trim();
+            list = list.filter(p =>
+                (p.address || '').toLowerCase().includes(q) ||
+                (p.city || '').toLowerCase().includes(q) ||
+                (p.title || '').toLowerCase().includes(q) ||
+                String(p.price || '').includes(q)
+            );
+        }
+        return list.slice(0, 60);
+    }, [state.properties, myProperties, propertySearch]);
 
     const myRequests = state.requests.filter(r =>
         r.client_id === id || (r.client_ids || []).includes(id)
     );
 
-    // Матчи — все кроме deal / rejected, и объект не должен пройти этап сделки
+    // Матчи - все кроме deal / rejected, и объект не должен пройти этап сделки
     const propMatches = state.matches.filter(m => {
         if (EXCLUDED_MATCH_STATUSES.includes(m.status)) return false;
         const prop = state.properties.find(p => p.id === m.property_id && (p.client_id === id || (p.client_ids || []).includes(id)));
@@ -683,6 +713,51 @@ export function DetailsPage() {
         }
     }
 
+    function handleLinkProperty(propertyToLink) {
+        if (!propertyToLink || !client) return;
+        const existingIds = Array.isArray(propertyToLink.client_ids)
+            ? propertyToLink.client_ids
+            : (propertyToLink.client_id ? [propertyToLink.client_id] : []);
+        const newClientIds = Array.from(new Set([...existingIds, id]));
+        const updatedProperty = {
+            ...propertyToLink,
+            client_ids: newClientIds,
+            client_id: propertyToLink.client_id || id
+        };
+        dispatch({ type: 'UPDATE_PROPERTY', property: updatedProperty });
+
+        // Если у клиента не было типа продавца / наймодателя, добавляем для консистентности
+        if (!isSellerOrLandlord) {
+            const updatedTypes = Array.from(new Set([...(client.client_types || []), 'seller']));
+            dispatch({
+                type: 'UPDATE_CLIENT',
+                client: { ...client, client_types: updatedTypes }
+            });
+        }
+
+        toast.success(`Объект "${propertyToLink.address || propertyToLink.city || 'Без адреса'}" привязан к клиенту`);
+        setIsLinkPropertyModalOpen(false);
+        setPropertySearch('');
+    }
+
+    function handleUnlinkProperty(propertyToUnlink, e) {
+        if (e) e.stopPropagation();
+        if (!propertyToUnlink || !client) return;
+        if (!window.confirm(`Отвязать объект "${propertyToUnlink.address || 'Без адреса'}" от клиента?`)) return;
+
+        const existingIds = Array.isArray(propertyToUnlink.client_ids)
+            ? propertyToUnlink.client_ids
+            : (propertyToUnlink.client_id ? [propertyToUnlink.client_id] : []);
+        const newClientIds = existingIds.filter(cId => cId !== id);
+        const updatedProperty = {
+            ...propertyToUnlink,
+            client_ids: newClientIds,
+            client_id: propertyToUnlink.client_id === id ? (newClientIds[0] || null) : propertyToUnlink.client_id
+        };
+        dispatch({ type: 'UPDATE_PROPERTY', property: updatedProperty });
+        toast.success('Объект отвязан от клиента');
+    }
+
     function handleSaveContract(e) {
         if (e) e.preventDefault();
         if (!contractForm.date) {
@@ -1022,6 +1097,18 @@ export function DetailsPage() {
                     <span style={{ fontSize: 10.5, color: 'var(--text-secondary)' }}>Карточка CRM</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <button 
+                        className="card-clickable" 
+                        onClick={handleStartVerification}
+                        title="Проверить в ФССП, МВД, Федресурс, ФНС"
+                        style={{
+                            width: 38, height: 38, borderRadius: 12, border: '1px solid rgba(16, 185, 129, 0.28)',
+                            background: 'rgba(16, 185, 129, 0.08)', color: '#10b981', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', cursor: 'pointer'
+                        }}
+                    >
+                        <ShieldCheck size={18} />
+                    </button>
                     <button 
                         className="card-clickable" 
                         onClick={handleSyncContact}
@@ -1486,6 +1573,40 @@ export function DetailsPage() {
                                     >
                                         <Phone size={12} /> + Звонок
                                     </button>
+                                    <button
+                                        type="button"
+                                        className="card-clickable"
+                                        onClick={handleStartVerification}
+                                        title="Проверка благонадежности: ФССП (долги), МВД (паспорт), Федресурс (банкротство), ФНС и нотариат"
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 5,
+                                            padding: '4px 10px', borderRadius: 8,
+                                            background: 'rgba(16, 185, 129, 0.08)',
+                                            color: '#059669',
+                                            border: '1px solid rgba(16, 185, 129, 0.28)',
+                                            fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                    >
+                                        <ShieldCheck size={12} /> Проверить в ФССП, МВД
+                                    </button>
+                                    {isSellerOrLandlord && (
+                                        <button
+                                            type="button"
+                                            className="card-clickable"
+                                            onClick={() => setIsLinkPropertyModalOpen(true)}
+                                            title="Привязать объект недвижимости из базы"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                padding: '4px 10px', borderRadius: 8,
+                                                background: 'rgba(0, 82, 255, 0.08)',
+                                                color: 'var(--primary)',
+                                                border: '1px solid rgba(0, 82, 255, 0.25)',
+                                                fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Link2 size={12} /> + Привязать объект
+                                        </button>
+                                    )}
                                     {client.client_types?.includes('buyer') && (
                                         <button
                                             type="button"
@@ -1515,95 +1636,86 @@ export function DetailsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                                         {/* ── Агентские договоры ── */}
                 <div className="card" style={{
-                    padding: '20px 22px',
+                    padding: '14px 16px',
                     border: '1px solid var(--border-light)',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
-                    borderRadius: 20,
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                    borderRadius: 18,
                     background: 'var(--surface)',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 14
+                    gap: 10
                 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{
-                                width: 38, height: 38, borderRadius: 11,
+                                width: 32, height: 32, borderRadius: 10,
                                 background: activeContracts.length > 0 ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-light)',
                                 color: activeContracts.length > 0 ? '#10b981' : 'var(--text-muted)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 flexShrink: 0
                             }}>
-                                <FileText size={19} />
+                                <FileText size={16} />
                             </div>
-                            <div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
-                                        Агентские договоры
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--text)' }}>
+                                    Агентские договоры
+                                </span>
+                                {activeContracts.length > 0 && (
+                                    <span style={{
+                                        fontSize: 10.5,
+                                        fontWeight: 600,
+                                        padding: '1px 6px',
+                                        borderRadius: 6,
+                                        background: '#ecfdf5',
+                                        color: '#059669',
+                                        border: '1px solid #10b98140'
+                                    }}>
+                                        {activeContracts.length} в работе
                                     </span>
-                                    {activeContracts.length > 0 && (
-                                        <span style={{
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            padding: '2px 7px',
-                                            borderRadius: 6,
-                                            background: '#ecfdf5',
-                                            color: '#059669',
-                                            border: '1px solid #10b98140'
-                                        }}>
-                                            {activeContracts.length} в работе
-                                        </span>
-                                    )}
-                                    {fulfilledContracts.length > 0 && (
-                                        <span style={{
-                                            fontSize: 11,
-                                            fontWeight: 600,
-                                            padding: '2px 7px',
-                                            borderRadius: 6,
-                                            background: 'rgba(16, 185, 129, 0.1)',
-                                            color: '#059669',
-                                            border: '1px solid rgba(16, 185, 129, 0.3)'
-                                        }}>
-                                            {fulfilledContracts.length} исполнен
-                                        </span>
-                                    )}
-                                    {activeContracts.length === 0 && fulfilledContracts.length === 0 && clientContracts.length > 0 && (
-                                        <span style={{
-                                            fontSize: 11,
-                                            fontWeight: 500,
-                                            padding: '2px 7px',
-                                            borderRadius: 6,
-                                            background: 'var(--bg-light)',
-                                            color: 'var(--text-muted)',
-                                            border: '1px solid var(--border-light)'
-                                        }}>
-                                            Архив
-                                        </span>
-                                    )}
-                                </div>
-                                {clientContracts.length > 0 && (
-                                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                        Договоры по объектам клиента
-                                    </div>
+                                )}
+                                {fulfilledContracts.length > 0 && (
+                                    <span style={{
+                                        fontSize: 10.5,
+                                        fontWeight: 600,
+                                        padding: '1px 6px',
+                                        borderRadius: 6,
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        color: '#059669',
+                                        border: '1px solid rgba(16, 185, 129, 0.3)'
+                                    }}>
+                                        {fulfilledContracts.length} исполнен
+                                    </span>
+                                )}
+                                {activeContracts.length === 0 && fulfilledContracts.length === 0 && clientContracts.length > 0 && (
+                                    <span style={{
+                                        fontSize: 10.5,
+                                        fontWeight: 500,
+                                        padding: '1px 6px',
+                                        borderRadius: 6,
+                                        background: 'var(--bg-light)',
+                                        color: 'var(--text-muted)',
+                                        border: '1px solid var(--border-light)'
+                                    }}>
+                                        Архив
+                                    </span>
                                 )}
                             </div>
                         </div>
 
-                        {clientContracts.length > 0 && (
-                            <button
-                                type="button"
-                                className="card-clickable"
-                                onClick={openAddContractModal}
-                                style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                                    padding: '6px 12px', borderRadius: 10, border: 'none',
-                                    background: 'var(--primary)',
-                                    color: '#fff', fontSize: 11.5, fontWeight: 500, cursor: 'pointer',
-                                    boxShadow: '0 1px 4px rgba(0,82,255,0.15)'
-                                }}
-                            >
-                                <Plus size={13} /> Добавить
-                            </button>
-                        )}
+                        <button
+                            type="button"
+                            className="card-clickable"
+                            onClick={openAddContractModal}
+                            style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                padding: '4px 10px', borderRadius: 8, border: 'none',
+                                background: 'var(--primary)',
+                                color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                                boxShadow: '0 1px 4px rgba(0,82,255,0.15)'
+                            }}
+                        >
+                            <Plus size={12} /> {clientContracts.length > 0 ? 'Добавить' : 'Заключить договор'}
+                        </button>
                     </div>
 
                     {/* Предупреждение о соблюдении сроков договоров и напоминание за 7 дней */}
@@ -1651,32 +1763,24 @@ export function DetailsPage() {
 
                     {clientContracts.length === 0 ? (
                         <div style={{
+                            fontSize: 12,
+                            color: 'var(--text-muted)',
+                            padding: '8px 12px',
                             background: 'var(--bg-light)',
-                            padding: '24px 20px',
-                            borderRadius: 20,
-                            textAlign: 'center',
+                            borderRadius: 10,
                             display: 'flex',
-                            flexDirection: 'column',
                             alignItems: 'center',
-                            gap: 12
+                            justifyContent: 'space-between',
+                            gap: 8
                         }}>
-                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                                Договоры еще не заключены
-                            </div>
-                            <button
-                                type="button"
-                                className="card-clickable"
+                            <span>Договоры еще не заключены</span>
+                            <span
+                                role="button"
                                 onClick={openAddContractModal}
-                                style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                                    padding: '9px 18px', borderRadius: 12, border: 'none',
-                                    background: 'linear-gradient(135deg, #0052ff 0%, #0041cc 100%)',
-                                    color: '#fff', fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                                    boxShadow: '0 2px 8px rgba(0,82,255,0.25)'
-                                }}
+                                style={{ fontSize: 11.5, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}
                             >
-                                <Plus size={15} /> Заключить договор
-                            </button>
+                                + Оформить
+                            </span>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1773,7 +1877,7 @@ export function DetailsPage() {
                                                 )}
                                             </div>
 
-                                            {/* Правый верхний угол: Кнопки "Редактировать" и "Удалить", а под ними — кнопка "Документ" */}
+                                            {/* Правый верхний угол: Кнопки "Редактировать" и "Удалить", а под ними - кнопка "Документ" */}
                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 }}>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                     <button
@@ -2104,63 +2208,7 @@ export function DetailsPage() {
                     )}
                 </div>
 
-                                        {/* ── Блок проверки по госреестрам (ФССП, МВД, Федресурс, ФНС) ── */}
-                <div className="card" style={{
-                    padding: '18px 22px',
-                    border: '1px solid var(--border-light)',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.02)',
-                    borderRadius: 20,
-                    background: 'var(--surface)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexWrap: 'wrap',
-                    gap: 14
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{
-                            width: 38, height: 38, borderRadius: 11,
-                            background: 'rgba(16, 185, 129, 0.1)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            color: '#10b981', flexShrink: 0
-                        }}>
-                            <ShieldCheck size={20} />
-                        </div>
-                        <div>
-                            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
-                                Проверка благонадёжности
-                            </div>
-                            <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
-                                ФССП (долги), МВД (паспорт), Федресурс (банкротство), ФНС и нотариат
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={handleStartVerification}
-                        className="card-clickable"
-                        style={{
-                            padding: '8px 16px',
-                            borderRadius: 10,
-                            border: 'none',
-                            background: '#10b981',
-                            color: '#ffffff',
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            cursor: 'pointer',
-                            boxShadow: '0 1px 4px rgba(16,185,129,0.2)',
-                            width: 'auto'
-                        }}
-                    >
-                        <ShieldCheck size={15} />
-                        <span>Проверить в ФССП, МВД</span>
-                    </button>
-                </div>
-                                        {/* ── Реквизиты организации (для юридических лиц) ── */}
+                {/* ── Реквизиты организации (для юридических лиц) ── */}
                 {isLegalEntity && (
                     <div className="card" style={{
                         padding: '20px 22px',
@@ -2812,8 +2860,8 @@ export function DetailsPage() {
                             </div>
                         )}
 
-                        {/* ── Объекты клиента (в продаже / найме) ── */}
-                        {myProperties.length > 0 && (
+                        {/* ── Объекты клиента (в собственности / продаже / найме) ── */}
+                        {(myProperties.length > 0 || isSellerOrLandlord) && (
                             <div className="card" style={{
                                 padding: '16px 18px',
                                 border: '1px solid var(--border-light)',
@@ -2821,54 +2869,110 @@ export function DetailsPage() {
                                 borderRadius: 18,
                                 background: 'var(--surface)'
                             }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                         <Home size={16} color="var(--primary)" />
                                         <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
-                                            Объекты в продаже ({activeProperties.length})
+                                            {isLandlord ? 'Объекты в найме / аренде' : 'Объекты в собственности'} ({myProperties.length})
                                         </span>
                                     </div>
-                                    <button
-                                        onClick={() => navigate(`/properties/new?client_id=${id}`)}
-                                        className="card-clickable"
-                                        style={{
-                                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                                            padding: '4px 10px', borderRadius: 8,
-                                            background: 'rgba(0, 82, 255, 0.08)',
-                                            color: 'var(--primary)',
-                                            border: '1px solid rgba(0, 82, 255, 0.25)',
-                                            fontSize: 11, fontWeight: 500, cursor: 'pointer'
-                                        }}
-                                    >
-                                        <Plus size={12} /> + Объект
-                                    </button>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsLinkPropertyModalOpen(true)}
+                                            className="card-clickable"
+                                            title="Привязать существующий объект из базы"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                padding: '4px 10px', borderRadius: 8,
+                                                background: 'rgba(16, 185, 129, 0.08)',
+                                                color: '#059669',
+                                                border: '1px solid rgba(16, 185, 129, 0.25)',
+                                                fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Link2 size={12} /> Привязать
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(`/properties/new?client_id=${id}`)}
+                                            className="card-clickable"
+                                            style={{
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                padding: '4px 10px', borderRadius: 8,
+                                                background: 'rgba(0, 82, 255, 0.08)',
+                                                color: 'var(--primary)',
+                                                border: '1px solid rgba(0, 82, 255, 0.25)',
+                                                fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Plus size={12} /> + Объект
+                                        </button>
+                                    </div>
                                 </div>
 
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                                    {/* Объекты в продаже (все статусы кроме sold/deal_closed) */}
-                                {activeProperties.map(p => {
-                                    const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый' };
-                                    const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981' };
-                                    return (
-                                        <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
-                                            style={{ padding: '14px 16px', background: 'var(--bg-light)', borderRadius: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                                <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-                                                    <Home size={16} />
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontSize: 10, fontWeight: 300, color: propStatusColor[p.status] || 'var(--primary)' }}>
-                                                        {propStatusLabel[p.status] || 'Объект в продаже'}
+                                {myProperties.length === 0 ? (
+                                    <div style={{
+                                        fontSize: 12, color: 'var(--text-muted)',
+                                        background: 'var(--bg-light)', padding: '12px 14px', borderRadius: 12,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8
+                                    }}>
+                                        <span>У собственника пока нет привязанных объектов</span>
+                                        <span
+                                            role="button"
+                                            onClick={() => setIsLinkPropertyModalOpen(true)}
+                                            style={{ color: 'var(--primary)', fontWeight: 600, fontSize: 11.5, cursor: 'pointer' }}
+                                        >
+                                            + Привязать из базы
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                        {myProperties.map(p => {
+                                            const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый', sold: 'Продан', deal_closed: 'Сделка закрыта' };
+                                            const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981', sold: '#64748b', deal_closed: '#0f766e' };
+                                            return (
+                                                <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
+                                                    style={{ padding: '12px 14px', background: 'var(--bg-light)', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                                                        <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', flexShrink: 0 }}>
+                                                            <Home size={16} />
+                                                        </div>
+                                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                                            <div style={{ fontSize: 10, fontWeight: 500, color: propStatusColor[p.status] || 'var(--primary)' }}>
+                                                                {propStatusLabel[p.status] || 'Объект недвижимости'}
+                                                            </div>
+                                                            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {p.address || p.city || 'Адрес не указан'}
+                                                            </div>
+                                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                                {p.price ? formatNumber(p.price) + ' ₽' : ''}
+                                                                {p.rooms ? ` • ${p.rooms}-к кв.` : ''}
+                                                                {p.area ? ` • ${p.area} м²` : ''}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div style={{ fontSize: 14, fontWeight: 300 }}>{p.address || p.city}</div>
-                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 200 }}>{p.price ? formatNumber(p.price) + ' ₽' : ''}</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                                        <button
+                                                            type="button"
+                                                            className="card-clickable"
+                                                            onClick={(e) => handleUnlinkProperty(p, e)}
+                                                            title="Отвязать объект от собственника"
+                                                            style={{
+                                                                border: 'none', background: 'transparent',
+                                                                color: 'var(--text-muted)', cursor: 'pointer', padding: 6,
+                                                                borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}
+                                                        >
+                                                            <Unlink2 size={15} />
+                                                        </button>
+                                                        <ChevronRight size={16} color="var(--text-muted)" />
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            <ChevronRight size={16} color="var(--text-muted)" />
-                                        </div>
-                                    );
-                                })}
-                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
                             </div>
                         )}
 
@@ -3966,6 +4070,201 @@ export function DetailsPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Модальное окно привязки объекта недвижимости к собственнику */}
+            {isLinkPropertyModalOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1200,
+                    background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 16
+                }} onClick={() => setIsLinkPropertyModalOpen(false)}>
+                    <div
+                        className="card"
+                        style={{
+                            maxWidth: 520, width: '100%', maxHeight: '85vh',
+                            background: 'var(--surface)', borderRadius: 20,
+                            padding: '22px 24px', boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
+                            border: '1px solid var(--border-light)',
+                            display: 'flex', flexDirection: 'column', gap: 14,
+                            overflow: 'hidden'
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 38, height: 38, borderRadius: 12,
+                                    background: 'rgba(0, 82, 255, 0.1)', color: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <Home size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>
+                                        Привязать объект собственности
+                                    </h3>
+                                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                        Собственник / наймодатель: {client.full_name}
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsLinkPropertyModalOpen(false)}
+                                style={{
+                                    border: 'none', background: 'transparent',
+                                    cursor: 'pointer', color: 'var(--text-muted)', padding: 4
+                                }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Поиск объекта */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', gap: 8,
+                            background: 'var(--bg-light)', borderRadius: 12,
+                            padding: '0 12px', height: 40, border: '1px solid var(--border-light)'
+                        }}>
+                            <Search size={16} color="var(--text-muted)" />
+                            <input
+                                type="text"
+                                placeholder="Поиск по адресу, комнатам или цене..."
+                                value={propertySearch}
+                                onChange={e => setPropertySearch(e.target.value)}
+                                style={{
+                                    border: 'none', background: 'transparent',
+                                    width: '100%', outline: 'none', fontSize: 13,
+                                    color: 'var(--text)'
+                                }}
+                                autoFocus
+                            />
+                            {propertySearch && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPropertySearch('')}
+                                    style={{ border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: 2 }}
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Список объектов для привязки */}
+                        <div style={{
+                            display: 'flex', flexDirection: 'column', gap: 8,
+                            overflowY: 'auto', maxHeight: '50vh', paddingRight: 4
+                        }}>
+                            {unlinkedProperties.length === 0 ? (
+                                <div style={{
+                                    padding: '24px 16px', textAlign: 'center',
+                                    background: 'var(--bg-light)', borderRadius: 14,
+                                    color: 'var(--text-muted)', fontSize: 12.5,
+                                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10
+                                }}>
+                                    <span>
+                                        {propertySearch ? 'Объекты по запросу не найдены' : 'Все объекты в базе уже привязаны к этому клиенту'}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        className="card-clickable"
+                                        onClick={() => {
+                                            setIsLinkPropertyModalOpen(false);
+                                            navigate(`/properties/new?client_id=${id}`);
+                                        }}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                                            padding: '7px 14px', borderRadius: 10, border: 'none',
+                                            background: 'var(--primary)', color: '#fff', fontSize: 12,
+                                            fontWeight: 600, cursor: 'pointer'
+                                        }}
+                                    >
+                                        <Plus size={14} /> Создать новый объект
+                                    </button>
+                                </div>
+                            ) : (
+                                unlinkedProperties.map(p => {
+                                    const otherOwners = (p.client_ids || (p.client_id ? [p.client_id] : []))
+                                        .map(cid => state.clients.find(c => c.id === cid)?.full_name)
+                                        .filter(Boolean);
+
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            style={{
+                                                padding: '12px 14px', borderRadius: 14,
+                                                background: 'var(--bg-light)',
+                                                border: '1px solid var(--border-light)',
+                                                display: 'flex', alignItems: 'center',
+                                                justifyContent: 'space-between', gap: 12
+                                            }}
+                                        >
+                                            <div style={{ minWidth: 0, flex: 1 }}>
+                                                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {p.address || p.city || 'Адрес не указан'}
+                                                </div>
+                                                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                    {p.price ? formatNumber(p.price) + ' ₽' : 'Цена не указана'}
+                                                    {p.rooms ? ` • ${p.rooms}-к кв.` : ''}
+                                                    {p.area ? ` • ${p.area} м²` : ''}
+                                                </div>
+                                                {otherOwners.length > 0 && (
+                                                    <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                                                        Собственники: {otherOwners.join(', ')}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="card-clickable"
+                                                onClick={() => handleLinkProperty(p)}
+                                                style={{
+                                                    padding: '6px 14px', borderRadius: 8, border: 'none',
+                                                    background: '#10b981', color: '#fff',
+                                                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                                                    flexShrink: 0
+                                                }}
+                                            >
+                                                Привязать
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 8, borderTop: '1px solid var(--border-light)' }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsLinkPropertyModalOpen(false);
+                                    navigate(`/properties/new?client_id=${id}`);
+                                }}
+                                style={{
+                                    border: 'none', background: 'transparent',
+                                    color: 'var(--primary)', fontSize: 12, fontWeight: 600,
+                                    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4
+                                }}
+                            >
+                                <Plus size={14} /> Создать объект с нуля
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setIsLinkPropertyModalOpen(false)}
+                                style={{
+                                    padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border-light)',
+                                    background: 'transparent', color: 'var(--text-secondary)', fontSize: 12,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Закрыть
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
