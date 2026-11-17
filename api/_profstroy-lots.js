@@ -278,7 +278,10 @@ export async function syncProfstroyProject(projectSlug, sql, options = {}) {
     throw err;
   }
 
-  const rawLots = await fetchProfstroyProjectLots(projectSpec, options);
+  const rawLots = await fetchProfstroyProjectLots(projectSpec, {
+    onlyAvailable: options.onlyAvailable ?? true,
+    ...options,
+  });
   const normalizedLots = rawLots.map((item) =>
     normalizeProfstroyLot(item, projectSpec, canonicalSlug, options)
   );

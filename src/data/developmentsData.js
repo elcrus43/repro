@@ -2242,7 +2242,7 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
-const CATALOG_VERSION = '2026-11-16-v3';
+const CATALOG_VERSION = '2026-11-17-v2';
 
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();

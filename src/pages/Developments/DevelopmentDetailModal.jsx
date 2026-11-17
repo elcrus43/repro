@@ -1249,13 +1249,13 @@ export function DevelopmentDetailModal({
         .dev-portals-strip {
           background: rgba(248, 250, 252, 0.7);
           border: 1px solid var(--border-light, #e2e8f0);
-          border-radius: 10px;
-          padding: 8px 12px;
+          border-radius: 8px;
+          padding: 6px 10px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           flex-wrap: wrap;
-          gap: 8px;
+          gap: 6px;
         }
         .dark .dev-portals-strip {
           background: rgba(15, 23, 42, 0.55);
@@ -1264,10 +1264,10 @@ export function DevelopmentDetailModal({
         .dev-portals-strip-header {
           display: flex;
           align-items: center;
-          gap: 6px;
+          gap: 5px;
         }
         .dev-portals-strip-label {
-          font-size: 10.5px;
+          font-size: 10px;
           font-weight: 200;
           letter-spacing: 0.08em;
           text-transform: uppercase;
@@ -1283,15 +1283,15 @@ export function DevelopmentDetailModal({
         .portal-strip-pill {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 9px;
+          gap: 5px;
+          padding: 3px 8px;
           border-radius: 6px;
           text-decoration: none;
-          font-size: 11.5px;
+          font-size: 11px;
           border: 1px solid var(--border, #e2e8f0);
           background: var(--surface, #ffffff);
           color: var(--text, #0f172a);
-          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
           line-height: 1.2;
         }
         .portal-strip-pill:hover {

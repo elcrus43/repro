@@ -1825,6 +1825,19 @@ export default function DevelopmentsPage() {
           flex-wrap: wrap;
           gap: 5px;
         }
+        @media (max-width: 900px) {
+          .live-providers-chips {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            max-width: 100%;
+            padding-bottom: 2px;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+          }
+          .live-providers-chips::-webkit-scrollbar {
+            display: none;
+          }
+        }
         .live-provider-chip {
           display: inline-flex;
           align-items: center;

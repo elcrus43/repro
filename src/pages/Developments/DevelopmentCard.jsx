@@ -122,7 +122,6 @@ export function DevelopmentCard({
 
         {/* Card Footer: Action */}
         <div className="dev-card-footer">
-          <span className="dev-card-hint">Подробнее о ЖК</span>
           <button
             type="button"
             className="dev-btn-selection"
@@ -380,16 +379,9 @@ export function DevelopmentCard({
           padding-top: 10px;
           border-top: 1px solid var(--border-light, #f1f5f9);
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: center;
           gap: 8px;
-        }
-        .dev-card-hint {
-          font-size: 11px;
-          font-weight: 300;
-          color: var(--text-muted, #94a3b8);
-          letter-spacing: 0.02em;
-          user-select: none;
         }
         .dev-btn-selection {
           display: flex;
