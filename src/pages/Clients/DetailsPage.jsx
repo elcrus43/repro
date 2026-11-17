@@ -33,8 +33,10 @@ import {
     Clock,
     RotateCw,
     CheckCircle2,
-    Users
+    Users,
+    BookUser
 } from 'lucide-react';
+import { saveClientToDevice } from '../../lib/contactsSync';
 import {
     DEFAULT_CONTRACT_DURATION_MONTHS,
     CONTRACT_DURATION_OPTIONS,
@@ -74,6 +76,7 @@ export function DetailsPage() {
     });
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingContractId, setEditingContractId] = useState(null);
+    const [isSyncingContact, setIsSyncingContact] = useState(false);
     const [contractForm, setContractForm] = useState({
         contract_number: '',
         type: 'АД Продажа',
@@ -652,6 +655,34 @@ export function DetailsPage() {
         toast.info('Оформление нового договора взамен истекшего (перезаключение)');
     }
 
+    async function handleSyncContact() {
+        if (!client) return;
+        setIsSyncingContact(true);
+        try {
+            const res = await saveClientToDevice(client);
+            if (res.success) {
+                if (res.mode === 'native') {
+                    if (res.alreadyExists) {
+                        toast.info('Контакт уже записан в телефонной книге');
+                    } else {
+                        toast.success(res.googleAccount 
+                            ? `Контакт сохранен в Google (${res.googleAccount})` 
+                            : 'Контакт сохранен в телефонную книгу');
+                    }
+                } else {
+                    toast.success('Карточка контакта (.vcf) скачана для импорта в Google');
+                }
+            } else {
+                toast.error(res.error || 'Не удалось сохранить контакт');
+            }
+        } catch (err) {
+            console.error('handleSyncContact error:', err);
+            toast.error('Ошибка при сохранении контакта');
+        } finally {
+            setIsSyncingContact(false);
+        }
+    }
+
     function handleSaveContract(e) {
         if (e) e.preventDefault();
         if (!contractForm.date) {
@@ -993,6 +1024,19 @@ export function DetailsPage() {
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                     <button 
                         className="card-clickable" 
+                        onClick={handleSyncContact}
+                        disabled={isSyncingContact}
+                        title="Синхронизировать с контактами телефона / Google"
+                        style={{
+                            width: 38, height: 38, borderRadius: 12, border: '1px solid var(--border-light)',
+                            background: 'var(--surface)', color: 'var(--primary)', display: 'flex', alignItems: 'center',
+                            justifyContent: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', cursor: isSyncingContact ? 'wait' : 'pointer'
+                        }}
+                    >
+                        <BookUser size={17} />
+                    </button>
+                    <button 
+                        className="card-clickable" 
                         onClick={handleCreateDocument}
                         title="Создать документ"
                         style={{
@@ -1177,6 +1221,24 @@ export function DetailsPage() {
                                         >
                                             <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor"><path d="m20.665 3.717-17.73 6.837c-1.21.486-1.203 1.161-.222 1.462l4.552 1.42 10.532-6.645c.498-.303.953-.14.579.192l-8.533 7.701h-.002l.002.001-.314 4.692c.46 0 .663-.211.921-.46l2.211-2.15 4.599 3.397c.848.467 1.457.227 1.668-.785l3.019-14.228c.309-1.239-.473-1.8-1.282-1.434z" /></svg>
                                         </a>
+                                        <button
+                                            type="button"
+                                            onClick={handleSyncContact}
+                                            disabled={isSyncingContact}
+                                            className="card-clickable"
+                                            title="Синхронизировать с Google Контактами / скачать .vcf"
+                                            style={{
+                                                height: 24, padding: '0 8px', borderRadius: 7,
+                                                background: 'rgba(0, 82, 255, 0.08)',
+                                                border: '1px solid rgba(0, 82, 255, 0.22)',
+                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                color: 'var(--primary)', fontSize: 11, fontWeight: 600,
+                                                cursor: isSyncingContact ? 'wait' : 'pointer'
+                                            }}
+                                        >
+                                            <BookUser size={12} />
+                                            <span>В контакты</span>
+                                        </button>
                                     </div>
 
                                     {client.email && (

@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { usePagination } from '../../hooks/usePagination';
-import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList, FileText, AlertTriangle, Clock } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Columns3, LayoutList, FileText, AlertTriangle, Clock, BookUser, Download, Smartphone, X } from 'lucide-react';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { useExport } from '../../hooks/useExport';
+import { useToastContext } from '../../components/Toast';
+import { syncClientsBatchToDevice, downloadBatchVCard, downloadGoogleContactsCsv, isNativeContactsSupported } from '../../lib/contactsSync';
 import { PipelinePage } from './PipelinePage';
 import { CLIENT_TYPE_LABELS } from '../../data/constants';
 import { getClientContractAlerts } from '../../utils/contractTerms';
@@ -16,10 +18,13 @@ export function ListPage() {
     const { exportToCSV } = useExport();
     const user = state.currentUser;
     const isAdmin = user?.role === 'admin';
+    const { toast } = useToastContext();
     const [search, setSearch] = useState('');
     const [filter, setFilter] = useState('all');
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
     const [viewMode, setViewMode] = useState('pipeline');
+    const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+    const [isSyncingBatch, setIsSyncingBatch] = useState(false);
 
     // Auto-revert to list mode if filter is changed to counterparty types without deal pipeline
     useEffect(() => {
@@ -189,6 +194,52 @@ export function ListPage() {
         exportToCSV(filteredClients, 'clients_export', headers);
     };
 
+    const handleNativeBatchSync = async () => {
+        if (!filteredClients.length) {
+            toast.info('Список клиентов пуст');
+            return;
+        }
+        setIsSyncingBatch(true);
+        try {
+            const res = await syncClientsBatchToDevice(filteredClients);
+            if (res.success) {
+                if (res.mode === 'native') {
+                    toast.success(`Синхронизировано: ${res.saved}, уже было в контактах: ${res.skipped}`);
+                } else {
+                    toast.success('Файл контактов (.vcf) скачан для импорта в телефон');
+                }
+                setIsSyncModalOpen(false);
+            } else {
+                toast.error(res.error || 'Ошибка синхронизации');
+            }
+        } catch (err) {
+            console.error('handleNativeBatchSync error:', err);
+            toast.error('Ошибка при синхронизации контактов');
+        } finally {
+            setIsSyncingBatch(false);
+        }
+    };
+
+    const handleDownloadVCardBatch = () => {
+        if (!filteredClients.length) {
+            toast.info('Список клиентов пуст');
+            return;
+        }
+        downloadBatchVCard(filteredClients, 'rea_crm_contacts');
+        toast.success(`Скачан файл .vcf (${filteredClients.length} контактов)`);
+        setIsSyncModalOpen(false);
+    };
+
+    const handleDownloadGoogleCsv = () => {
+        if (!filteredClients.length) {
+            toast.info('Список клиентов пуст');
+            return;
+        }
+        downloadGoogleContactsCsv(filteredClients, 'google_contacts_rea');
+        toast.success(`Скачан CSV для Google Контактов (${filteredClients.length} контактов)`);
+        setIsSyncModalOpen(false);
+    };
+
     return (
         <div className="page fade-in" style={{ paddingBottom: 100 }}>
             {/* Premium Sticky Topbar — Open Design */}
@@ -234,6 +285,20 @@ export function ListPage() {
                                 </button>
                             );
                         })()}
+                        <button
+                            className="card-clickable"
+                            onClick={() => setIsSyncModalOpen(true)}
+                            title="Синхронизация с телефоном и экспорт в Google Контакты"
+                            style={{
+                                width: 40, height: 40, borderRadius: 12, border: '1px solid var(--border)',
+                                background: 'var(--surface)', color: 'var(--primary)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                cursor: 'pointer',
+                                flexShrink: 0
+                            }}
+                        >
+                            <BookUser size={18} />
+                        </button>
                         <button className="card-clickable mobile-hide-add-btn" onClick={() => navigate('/clients/new')} style={{ 
                             width: 40, height: 40, borderRadius: 12, border: 'none', 
                             background: 'var(--primary)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -583,6 +648,153 @@ export function ListPage() {
                     </div>
                 )}
             </div>
+
+            {/* Модальное окно синхронизации и экспорта контактов */}
+            {isSyncModalOpen && (
+                <div style={{
+                    position: 'fixed', inset: 0, zIndex: 1200,
+                    background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 16
+                }} onClick={() => setIsSyncModalOpen(false)}>
+                    <div
+                        className="card"
+                        style={{
+                            maxWidth: 480, width: '100%',
+                            background: 'var(--surface)', borderRadius: 20,
+                            padding: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
+                            border: '1px solid var(--border-light)',
+                            display: 'flex', flexDirection: 'column', gap: 16
+                        }}
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <div style={{
+                                    width: 38, height: 38, borderRadius: 12,
+                                    background: 'rgba(0, 82, 255, 0.1)', color: 'var(--primary)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                }}>
+                                    <BookUser size={20} />
+                                </div>
+                                <div>
+                                    <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>Контакты и Google</h3>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                        Синхронизация ({filteredClients.length} контактов в выборке)
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsSyncModalOpen(false)}
+                                style={{
+                                    border: 'none', background: 'transparent',
+                                    cursor: 'pointer', color: 'var(--text-muted)', padding: 4
+                                }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                            {/* Нативная синхронизация с телефоном */}
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={handleNativeBatchSync}
+                                disabled={isSyncingBatch}
+                                style={{
+                                    padding: '14px 16px', borderRadius: 14,
+                                    border: '1.5px solid var(--primary)',
+                                    background: 'rgba(0, 82, 255, 0.05)',
+                                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                                    textAlign: 'left', cursor: isSyncingBatch ? 'wait' : 'pointer'
+                                }}
+                            >
+                                <Smartphone size={22} color="var(--primary)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <span>В телефонную книгу Android</span>
+                                        {isNativeContactsSupported() && (
+                                            <span style={{ fontSize: 10, background: '#10b981', color: '#fff', padding: '1px 6px', borderRadius: 6 }}>
+                                                Android активен
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                        Записывает клиентов в контакты телефона с привязкой к Google-аккаунту (авто-облако Google Контакты).
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* Скачать мульти-vCard */}
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={handleDownloadVCardBatch}
+                                style={{
+                                    padding: '12px 16px', borderRadius: 14,
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--surface)',
+                                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                                    textAlign: 'left', cursor: 'pointer'
+                                }}
+                            >
+                                <Download size={20} color="var(--text)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
+                                        Скачать карточки контактов (.vcf)
+                                    </div>
+                                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                        Универсальный файл vCard 3.0: открывается на смартфонах (Android, iOS) и ПК для импорта всех клиентов в 1 клик.
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* Скачать Google Contacts CSV */}
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={handleDownloadGoogleCsv}
+                                style={{
+                                    padding: '12px 16px', borderRadius: 14,
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--surface)',
+                                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                                    textAlign: 'left', cursor: 'pointer'
+                                }}
+                            >
+                                <Download size={20} color="var(--text)" style={{ flexShrink: 0, marginTop: 2 }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
+                                        Экспорт для contacts.google.com (CSV)
+                                    </div>
+                                    <div style={{ fontSize: 11.5, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                        Файл формата Google Contacts: загружается на contacts.google.com с автоматическим ярлыком «REA CRM».
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* Стандартный CSV экспорт */}
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={() => { handleExport(); setIsSyncModalOpen(false); }}
+                                style={{
+                                    padding: '10px 16px', borderRadius: 12,
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--bg-light)',
+                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                    fontSize: 12.5, color: 'var(--text-secondary)', cursor: 'pointer'
+                                }}
+                            >
+                                <span>Экспорт таблицы в Excel / CSV</span>
+                                <FileText size={15} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

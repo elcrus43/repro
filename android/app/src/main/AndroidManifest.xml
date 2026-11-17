@@ -42,6 +42,11 @@
     <!-- Чтение истории звонков для автоматической фиксации звонков в CRM -->
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
 
+    <!-- Синхронизация контактов с адресной книгой телефона и Google Контактами -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.WRITE_CONTACTS" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
     <!-- Видимость приложений соцсетей на Android 11+ для отправки баннеров в Сторис -->
     <queries>
         <package android:name="com.vkontakte.android" />
