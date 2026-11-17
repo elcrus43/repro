@@ -5,6 +5,7 @@ import { useToastContext } from '../../components/Toast';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { CITIES, KIROV_DISTRICTS } from '../../data/location';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
+import { PriceInput } from '../../components/PriceInput';
 
 export function FormPage() {
     const { id } = useParams();
@@ -127,7 +128,7 @@ export function FormPage() {
                     {/* Budget */}
                     <div className="form-group">
                         <label className="form-label">Бюджет макс. (₽)</label>
-                        <input className="form-input" value={form.budget_max ? form.budget_max.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''} onChange={e => setF('budget_max', Number(e.target.value.replace(/\D/g, '')))} placeholder="0" />
+                        <PriceInput value={form.budget_max || ''} onChange={val => setF('budget_max', val)} placeholder="0" />
                     </div>
 
                     {/* Location */}
@@ -164,7 +165,7 @@ export function FormPage() {
                         </div>
                         <div className="form-group">
                             <label className="form-label">Комиссия (₽)</label>
-                            <input className="form-input" value={form.commission ? form.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''} onChange={e => setF('commission', Number(e.target.value.replace(/\D/g, '')) || 0)} />
+                            <PriceInput value={form.commission || ''} onChange={val => setF('commission', val)} placeholder="0" />
                         </div>
                     </div>
 

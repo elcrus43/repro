@@ -61,7 +61,7 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич, неоклассика",
     "images": [
       "/images/developments/zhk-bulychev.jpg",
-      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/8f31d1106e6632d285504ce729b30920e6e4a6b4.jpg"
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/74d49dd475c6b09c3d66e56c268f58d661be02ac.jpg"
     ],
     "description": "Первый в России умный дом высшего класса «А» с неоклассической архитектурой, приватным спа-комплексом, консьерж-сервисом и панорамными террасами в историческом центре Кирова.",
     "features": [
@@ -2242,7 +2242,7 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
-const CATALOG_VERSION = '2026-11-17-v2';
+const CATALOG_VERSION = '2026-11-17-v3';
 
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();

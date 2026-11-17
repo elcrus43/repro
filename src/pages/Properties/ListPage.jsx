@@ -2,13 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
-import { Trash, MapPin, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download, Copy } from 'lucide-react';
+import { Trash, MapPin, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Search, Plus, Building2, Filter, Columns3, LayoutList, SlidersHorizontal, Check, Phone, Pencil, User, Trash2, Calendar, Download, Copy, Sparkles } from 'lucide-react';
 import { PROPERTY_TYPES, COMMERCIAL_TYPES, LOCATION_LINES } from '../../data/constants';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PipelinePage } from './PipelinePage';
 import { useExport } from '../../hooks/useExport';
 import { useToastContext } from '../../components/Toast';
 import { CopyPropertyModal } from '../../components/CopyPropertyModal';
+import { SelectionPresentationModal } from '../../components/SelectionPresentationModal';
 
 
 
@@ -73,6 +74,7 @@ export function ListPage() {
     const [selectedIds, setSelectedIds] = useState([]);
     const [collapsedStatuses, setCollapsedStatuses] = useState({});
     const [expandedSelectionClients, setExpandedSelectionClients] = useState({});
+    const [presentationGroup, setPresentationGroup] = useState(null);
 
     const toggleSelectionClient = (clientId) => {
         setExpandedSelectionClients(prev => ({
@@ -202,6 +204,7 @@ export function ListPage() {
                 if (!groups[cId]) {
                     const client = state.clients.find(c => c.id === cId);
                     groups[cId] = {
+                        client,
                         clientName: client?.full_name || 'Без клиента',
                         items: []
                     };
@@ -458,9 +461,37 @@ export function ListPage() {
                                                 {group.items.length}
                                             </span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 12 }}>
-                                            <span style={{ fontWeight: 400 }}>{isExpanded ? 'Свернуть' : 'Развернуть'}</span>
-                                            {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setPresentationGroup(group);
+                                                }}
+                                                style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: 5,
+                                                    padding: '5px 12px',
+                                                    borderRadius: 10,
+                                                    background: 'var(--primary, #0052FF)',
+                                                    color: '#ffffff',
+                                                    border: 'none',
+                                                    fontSize: 12,
+                                                    fontWeight: 600,
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',
+                                                    transition: 'transform 0.15s'
+                                                }}
+                                                title="Сформировать презентацию и PDF для клиента"
+                                            >
+                                                <Sparkles size={13} />
+                                                <span>Презентация</span>
+                                            </button>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)', fontSize: 12 }}>
+                                                <span style={{ fontWeight: 400 }}>{isExpanded ? 'Свернуть' : 'Развернуть'}</span>
+                                                {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                            </div>
                                         </div>
                                     </div>
                                     {isExpanded && (
@@ -1007,6 +1038,14 @@ export function ListPage() {
                 isOpen={Boolean(copyModalProp)}
                 onClose={() => setCopyModalProp(null)}
                 property={copyModalProp}
+            />
+
+            <SelectionPresentationModal
+                isOpen={Boolean(presentationGroup)}
+                onClose={() => setPresentationGroup(null)}
+                client={presentationGroup?.client || { full_name: presentationGroup?.clientName }}
+                items={presentationGroup?.items || []}
+                currentUser={user}
             />
         </div>
     );

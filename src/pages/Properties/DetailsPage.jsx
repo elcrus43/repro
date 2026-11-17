@@ -7,6 +7,7 @@ import { isDealTypeCompatible } from '../../utils/matching';
 import { getToken } from '../../lib/neon';
 import { aiFetch } from '../../lib/apiConfig';
 import { nanoid } from '../../utils/nanoid';
+import { PriceInput } from '../../components/PriceInput';
 import { 
     Pencil, Trash, Sparkles, Building2, MapPin,
     ChevronDown, ChevronUp, Home, Calendar, Layers, Maximize2, 
@@ -50,12 +51,10 @@ function InlinePriceEditor({ prop, onSave }) {
                 style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                 onClick={e => e.stopPropagation()}
             >
-                <input
+                <PriceInput
                     ref={inputRef}
-                    type="text"
-                    inputMode="numeric"
-                    value={value.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0')}
-                    onChange={e => setValue(e.target.value.replace(/\D/g, ''))}
+                    value={value}
+                    onChange={(num, formatted) => setValue(formatted)}
                     onBlur={commit}
                     onKeyDown={handleKey}
                     style={{

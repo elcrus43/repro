@@ -4,6 +4,7 @@ import { KIROV_DEVELOPERS, HOUSING_CLASSES, FINISHING_OPTIONS, saveDevelopment }
 import { KIROV_DISTRICTS } from '../../data/location';
 import { useToastContext } from '../../components/Toast';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
+import { PriceInput } from '../../components/PriceInput';
 
 export function DevelopmentFormModal({
   initialData = null,
@@ -242,29 +243,26 @@ export function DevelopmentFormModal({
           <div className="form-group-grid three-col">
             <div className="form-field">
               <label>Цена квартир от, ₽</label>
-              <input
-                type="number"
-                placeholder="3500000"
+              <PriceInput
+                placeholder="3 500 000"
                 value={formData.price_from}
-                onChange={(e) => handleChange('price_from', e.target.value)}
+                onChange={(val) => handleChange('price_from', val ? String(val) : '')}
               />
             </div>
             <div className="form-field">
               <label>Цена квартир до, ₽</label>
-              <input
-                type="number"
-                placeholder="9500000"
+              <PriceInput
+                placeholder="9 500 000"
                 value={formData.price_to}
-                onChange={(e) => handleChange('price_to', e.target.value)}
+                onChange={(val) => handleChange('price_to', val ? String(val) : '')}
               />
             </div>
             <div className="form-field">
               <label>Цена за м² от, ₽</label>
-              <input
-                type="number"
-                placeholder="105000"
+              <PriceInput
+                placeholder="105 000"
                 value={formData.price_sqm_from}
-                onChange={(e) => handleChange('price_sqm_from', e.target.value)}
+                onChange={(val) => handleChange('price_sqm_from', val ? String(val) : '')}
               />
             </div>
           </div>

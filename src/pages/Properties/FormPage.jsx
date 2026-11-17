@@ -17,6 +17,7 @@ import { decodeImportData } from '../../utils/importDecoder';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { formatPhone, stripPhone } from '../../utils/format';
 import { ExtensionInstallModal } from '../../components/ExtensionInstallModal';
+import { PriceInput } from '../../components/PriceInput';
 import { 
     ChevronLeft, MapPin, Home, Layers, DollarSign, FileText, 
     Camera, Check, Info, Sparkles, Building, Trash2, 
@@ -2090,12 +2091,10 @@ export function FormPage() {
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                                         <div className="form-group">
                                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Арендная плата в месяц (₽)</label>
-                                            <input 
-                                                type="number" 
-                                                className="form-input" 
+                                            <PriceInput 
                                                 value={form.rental_income || ''} 
-                                                onChange={e => setF('rental_income', Number(e.target.value))} 
-                                                placeholder="80000" 
+                                                onChange={val => setF('rental_income', val)} 
+                                                placeholder="80 000" 
                                                 style={{ borderRadius: 12 }} 
                                             />
                                         </div>
@@ -2198,32 +2197,29 @@ export function FormPage() {
                                     </span>
                                 )}
                             </label>
-                            <input
-                                className="form-input"
+                            <PriceInput
                                 style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', borderRadius: 14 }}
-                                value={form.price ? form.price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                                onChange={e => setF('price', Number(e.target.value.replace(/\D/g, '')))}
+                                value={form.price || ''}
+                                onChange={val => setF('price', val)}
                                 placeholder="0"
                             />
                         </div>
                         <div className="form-group">
                             <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Минимальная цена (₽)</label>
-                            <input
-                                className="form-input"
+                            <PriceInput
                                 style={{ color: 'var(--text-muted)', borderRadius: 14 }}
-                                value={form.price_min ? form.price_min.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                                onChange={e => setF('price_min', Number(e.target.value.replace(/\D/g, '')))}
+                                value={form.price_min || ''}
+                                onChange={val => setF('price_min', val)}
                                 placeholder="Торг"
                             />
                         </div>
                     </div>
                     <div className="form-group">
                         <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Ваша комиссия (₽)</label>
-                        <input
-                            className="form-input"
+                        <PriceInput
                             style={{ borderRadius: 14 }}
-                            value={form.commission ? form.commission.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : ''}
-                            onChange={e => setF('commission', Number(e.target.value.replace(/\D/g, '')) || 0)}
+                            value={form.commission || ''}
+                            onChange={val => setF('commission', val)}
                             placeholder="0"
                         />
                     </div>

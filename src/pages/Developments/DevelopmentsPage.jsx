@@ -34,6 +34,7 @@ import { DevelopmentDetailModal } from './DevelopmentDetailModal';
 import { DevelopmentFormModal } from './DevelopmentFormModal';
 import { LiveLotsFinder } from './LiveLotsFinder';
 import { GlobalSearch } from '../../components/GlobalSearch';
+import { PriceInput } from '../../components/PriceInput';
 import { formatNumber } from '../../utils/format';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -904,19 +905,17 @@ export default function DevelopmentsPage() {
           {/* Price Range */}
           <div className="dev-filter-price-box">
             <span className="price-prefix">Цена, ₽:</span>
-            <input
-              type="number"
+            <PriceInput
               placeholder="от 3 000 000"
               value={priceMin}
-              onChange={(e) => setPriceMin(e.target.value)}
+              onChange={(val) => setPriceMin(val ? String(val) : '')}
               className="price-input"
             />
             <span className="price-separator">-</span>
-            <input
-              type="number"
+            <PriceInput
               placeholder="до 15 000 000"
               value={priceMax}
-              onChange={(e) => setPriceMax(e.target.value)}
+              onChange={(val) => setPriceMax(val ? String(val) : '')}
               className="price-input"
             />
           </div>

@@ -22,6 +22,8 @@ import {
   Building2,
 } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
+import { PriceInput } from '../../components/PriceInput';
+import { SelectionPresentationModal } from '../../components/SelectionPresentationModal';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { KIROV_DISTRICTS } from '../../data/location';
@@ -249,6 +251,23 @@ export function LiveLotsFinder({
       return next;
     });
   };
+
+  const [isPresentationOpen, setIsPresentationOpen] = useState(false);
+
+  const selectedPresentationItems = useMemo(() => {
+    const uids = Array.from(selectedLotUids);
+    return uids.map(uid => {
+      const lot = mergedLots.find(l => (l._uid || l.unique_id || l.id) === uid);
+      if (!lot) return null;
+      return buildSelectionItemFromLot({
+        lot,
+        provider: lot.provider || 'ksm',
+        providerLabel: lot.providerLabel || 'КСМ',
+        client: activeClient,
+        currentUser: state.currentUser,
+      });
+    }).filter(Boolean);
+  }, [selectedLotUids, mergedLots, activeClient, state.currentUser]);
 
   const clearSelection = () => {
     setSelectedLotUids(new Set());
@@ -514,22 +533,18 @@ export function LiveLotsFinder({
         <div className="llf-filters-row-secondary">
           <div className="llf-range-group">
             <span className="llf-range-label">Бюджет, ₽</span>
-            <input
-              type="number"
+            <PriceInput
               className="llf-num-input llf-num-price"
               placeholder="от"
               value={filters.priceMin}
-              onChange={(e) => updateFilter('priceMin', e.target.value)}
-              min="0"
+              onChange={(val) => updateFilter('priceMin', val ? String(val) : '')}
             />
             <span className="llf-range-sep">-</span>
-            <input
-              type="number"
+            <PriceInput
               className="llf-num-input llf-num-price"
               placeholder="до"
               value={filters.priceMax}
-              onChange={(e) => updateFilter('priceMax', e.target.value)}
-              min="0"
+              onChange={(val) => updateFilter('priceMax', val ? String(val) : '')}
             />
           </div>
 
@@ -648,6 +663,31 @@ export function LiveLotsFinder({
               disabled={isBulkAdding}
             >
               Снять выбор
+            </button>
+            <button
+              type="button"
+              className="llf-btn-presentation"
+              onClick={() => setIsPresentationOpen(true)}
+              disabled={isBulkAdding}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                borderRadius: 10,
+                background: '#10b981',
+                color: '#ffffff',
+                border: 'none',
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                transition: 'transform 0.15s'
+              }}
+              title="Сформировать презентацию и PDF по выбранным лотам"
+            >
+              <Sparkles size={14} />
+              <span>Презентация ({selectedCount})</span>
             </button>
             <button
               type="button"
@@ -2181,6 +2221,15 @@ export function LiveLotsFinder({
           border-radius: 10px;
         }
       `}</style>
+      {isPresentationOpen && (
+        <SelectionPresentationModal
+          isOpen={isPresentationOpen}
+          onClose={() => setIsPresentationOpen(false)}
+          client={activeClient}
+          items={selectedPresentationItems}
+          currentUser={state?.currentUser}
+        />
+      )}
     </div>
   );
 }
