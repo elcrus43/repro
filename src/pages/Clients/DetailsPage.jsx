@@ -2895,7 +2895,9 @@ export function DetailsPage() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => navigate(`/properties/new?client_id=${id}`)}
+                                            onClick={() => navigate(`/properties/new?client=${id}&client_id=${id}`, {
+                                                state: { prefillProperty: { client_id: id, client_ids: [id], client_shares: { [id]: '1/1' } } }
+                                            })}
                                             className="card-clickable"
                                             style={{
                                                 display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -2929,8 +2931,8 @@ export function DetailsPage() {
                                 ) : (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                         {myProperties.map(p => {
-                                            const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый', sold: 'Продан', deal_closed: 'Сделка закрыта' };
-                                            const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981', sold: '#64748b', deal_closed: '#0f766e' };
+                                            const propStatusLabel = { active: 'В продаже', reserved: 'Резерв', new: 'Новый', sold: 'Продан', deal_closed: 'Сделка закрыта', agreement: 'АД', no_agreement: 'Без АД', meeting: 'Встреча', advertising: 'В рекламе' };
+                                            const propStatusColor = { active: 'var(--primary)', reserved: '#f59e0b', new: '#10b981', sold: '#64748b', deal_closed: '#0f766e', agreement: '#f59e0b', no_agreement: '#64748b', meeting: '#3b82f6', advertising: '#8b5cf6' };
                                             return (
                                                 <div key={p.id} className="card-clickable" onClick={() => navigate(`/properties/${p.id}`)}
                                                     style={{ padding: '12px 14px', background: 'var(--bg-light)', borderRadius: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -4175,7 +4177,9 @@ export function DetailsPage() {
                                         className="card-clickable"
                                         onClick={() => {
                                             setIsLinkPropertyModalOpen(false);
-                                            navigate(`/properties/new?client_id=${id}`);
+                                            navigate(`/properties/new?client=${id}&client_id=${id}`, {
+                                                state: { prefillProperty: { client_id: id, client_ids: [id], client_shares: { [id]: '1/1' } } }
+                                            });
                                         }}
                                         style={{
                                             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -4243,7 +4247,9 @@ export function DetailsPage() {
                                 type="button"
                                 onClick={() => {
                                     setIsLinkPropertyModalOpen(false);
-                                    navigate(`/properties/new?client_id=${id}`);
+                                    navigate(`/properties/new?client=${id}&client_id=${id}`, {
+                                        state: { prefillProperty: { client_id: id, client_ids: [id], client_shares: { [id]: '1/1' } } }
+                                    });
                                 }}
                                 style={{
                                     border: 'none', background: 'transparent',

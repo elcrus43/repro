@@ -198,6 +198,20 @@ export function FormPage() {
     const location = useLocation();
 
     const prefilledData = location.state?.prefillProperty;
+    const paramClientId = searchParams.get('client_id') || searchParams.get('client') || '';
+    const initialClientId = paramClientId || prefilledData?.client_id || '';
+    const initialClientIds = (() => {
+        let ids = prefilledData?.client_ids || [];
+        if (typeof ids === 'string') {
+            ids = ids.replace(/{|}/g, '').split(',').filter(Boolean);
+        }
+        if (ids.length > 0) return ids;
+        if (initialClientId) return [initialClientId];
+        return [];
+    })();
+    const initialClientShares = (prefilledData?.client_shares && Object.keys(prefilledData.client_shares).length > 0)
+        ? prefilledData.client_shares
+        : (initialClientIds.length === 1 ? { [initialClientIds[0]]: '1/1' } : {});
 
     const existing = id ? state.properties.find(p => p.id === id) : null;
     const initialForm = existing ? {
@@ -213,10 +227,8 @@ export function FormPage() {
         agent_id: existing.agent_id || '',
         client_shares: existing.client_shares || {}
     } : {
-        client_id: searchParams.get('client') || '',
         realtor_id: state.currentUser?.id,
         agent_id: '',
-        client_shares: {},
         property_type: 'apartment',
         deal_type: 'sale',
         market_type: 'secondary',
@@ -314,14 +326,9 @@ export function FormPage() {
         rental_income: '',
         commercial_notes: '',
         ...(prefilledData || {}),
-        client_ids: (() => {
-            if (!prefilledData) return searchParams.get('client') ? [searchParams.get('client')] : [];
-            let ids = prefilledData.client_ids || [];
-            if (typeof ids === 'string') {
-                ids = ids.replace(/{|}/g, '').split(',').filter(Boolean);
-            }
-            return ids;
-        })()
+        client_id: initialClientId,
+        client_ids: initialClientIds,
+        client_shares: initialClientShares
     };
 
     const [form, setForm] = useState(initialForm);
@@ -340,6 +347,20 @@ export function FormPage() {
             });
         }
     }, [existing, form.id]);
+
+    React.useEffect(() => {
+        if (!id && !existing) {
+            const cid = searchParams.get('client_id') || searchParams.get('client') || location.state?.prefillProperty?.client_id;
+            if (cid && (!form.client_ids || form.client_ids.length === 0)) {
+                setForm(prev => ({
+                    ...prev,
+                    client_id: cid,
+                    client_ids: [cid],
+                    client_shares: (prev.client_shares && Object.keys(prev.client_shares).length > 0) ? prev.client_shares : { [cid]: '1/1' }
+                }));
+            }
+        }
+    }, [searchParams, location.state, id, existing, form.client_ids]);
 
     const importParam = searchParams.get('import');
     const processedImportRef = useRef(null);
@@ -787,6 +808,7 @@ export function FormPage() {
                             <select className="form-select" value={form.status} onChange={e => setF('status', e.target.value)} style={{ borderRadius: 14 }}>
                                 <option value="meeting">Встреча</option>
                                 <option value="agreement">АД (агент. договор)</option>
+                                <option value="no_agreement">Без АД</option>
                                 <option value="advertising">В рекламе</option>
                                 <option value="selection">Подбор</option>
                                 <option value="deposit">Задаток</option>
@@ -832,7 +854,20 @@ export function FormPage() {
 
                             <MultiClientSelector 
                                 selectedIds={form.client_ids || []}
-                                onChange={ids => setF('client_ids', ids)}
+                                onChange={ids => {
+                                    setForm(prev => {
+                                        const newShares = { ...(prev.client_shares || {}) };
+                                        if (ids.length === 1 && !newShares[ids[0]]) {
+                                            newShares[ids[0]] = '1/1';
+                                        }
+                                        return {
+                                            ...prev,
+                                            client_ids: ids,
+                                            client_id: ids.length > 0 ? (ids.includes(prev.client_id) ? prev.client_id : ids[0]) : '',
+                                            client_shares: newShares
+                                        };
+                                    });
+                                }}
                                 clients={state.clients || []}
                                 placeholder="Выберите собственников объекта..."
                             />

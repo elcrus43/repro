@@ -30,7 +30,10 @@ export function MultiClientSelector({
 
     const hasExactMatch = filtered.some(c => (c.full_name || '').trim().toLowerCase() === search.trim().toLowerCase());
 
-    const selectedClients = (clients || []).filter(c => c && selectedIds.includes(c.id));
+    const selectedClients = (selectedIds || []).map(id => {
+        const found = (clients || []).find(c => c && c.id === id);
+        return found || { id, full_name: 'Клиент загружается...' };
+    });
 
     useEffect(() => {
         if (!isOpen) setSearch('');
