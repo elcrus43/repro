@@ -60,9 +60,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "7 этажей",
     "wall_material": "Кирпич, неоклассика",
     "images": [
-            "/images/developments/zhk-bulychev.jpg",
-            "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/8f31d1106e6632d285504ce729b30920e6e4a6b4.jpg"
-      ],
+      "/images/developments/zhk-bulychev.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/8f31d1106e6632d285504ce729b30920e6e4a6b4.jpg"
+    ],
     "description": "Первый в России умный дом высшего класса «А» с неоклассической архитектурой, приватным спа-комплексом, консьерж-сервисом и панорамными террасами в историческом центре Кирова.",
     "features": [
       "Класс «А» умный дом",
@@ -1324,6 +1324,62 @@ export const DEFAULT_DEVELOPMENTS = [
     "contact_phone": "+7 (922) 990-57-17"
   },
   {
+    "id": "zhk-murashinskiy-7",
+    "name": "Дом на Мурашинском 7",
+    "developer": "ПрофСтрой",
+    "district": "Октябрьский район",
+    "microdistrict": "ОЦМ",
+    "address": "г. Киров, Мурашинский проезд, д. 7",
+    "lat": 58.616364,
+    "lng": 49.608994,
+    "price_from": 6325000,
+    "price_to": 8520000,
+    "price_sqm_from": 147000,
+    "completion_date": "Сдан (II кв. 2026)",
+    "completion_year": 2026,
+    "is_completed": true,
+    "housing_class": "Комфорт",
+    "finishing": [
+      "rough",
+      "white_box"
+    ],
+    "floors": "13 этажей",
+    "wall_material": "Кирпич",
+    "images": [
+      "/images/developments/zhk-murashinskiy-7.jpg",
+      "https://regburokirov.ru/media/photo_nb/282_2928_458d00dcd0b015d4923afb3f75982e.jpg"
+    ],
+    "description": "Кирпичный жилой дом комфорт-класса в Октябрьском районе недалеко от парка Победы. 13 этажей, 77 квартир, тёплый чердак, два лифта, закрытая придомовая территория.",
+    "features": [
+      "Дом сдан",
+      "100% кирпич",
+      "Рядом парк Победы",
+      "Всего 77 квартир"
+    ],
+    "apartments": [
+      {
+        "type": "1k",
+        "name": "1-комнатная",
+        "area": "42.9 - 43.6 м²",
+        "price_from": 6325000,
+        "price_sqm": 147440,
+        "count": 5
+      },
+      {
+        "type": "2k",
+        "name": "2-комнатная",
+        "area": "54.6 м²",
+        "price_from": 8262000,
+        "price_sqm": 151320,
+        "count": 1
+      }
+    ],
+    "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек/объект/58185",
+    "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Мурашинский+проезд+7+Киров",
+    "builder_url": "https://unitflow.profstroy-services.ru/apartments",
+    "contact_phone": "+7 (8332) 77-50-50"
+  },
+  {
     "id": "zhk-zapovedny",
     "name": "ЖК Заповедный",
     "developer": "Стройсоюз",
@@ -1346,9 +1402,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "4-5 этажей",
     "wall_material": "Кирпич",
     "images": [
-            "/images/developments/zhk-zapovedny.png",
-            "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png"
-      ],
+      "/images/developments/zhk-zapovedny.png",
+      "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png"
+    ],
     "description": "Малоэтажный кирпичный квартал в зеленой зоне. В новой очереди действует программа с ремонтом 15 000 ₽/м² и сниженной ипотечной ставкой.",
     "features": [
       "Малоэтажная кирпичная застройка",
@@ -1623,9 +1679,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "11 этажей",
     "wall_material": "Кирпич",
     "images": [
-            "/images/developments/zhk-gorkogo-2a.jpg",
-            "https://gorkogo2a.ru/static/images/start-screen-bg.jpeg"
-      ],
+      "/images/developments/zhk-gorkogo-2a.jpg",
+      "https://gorkogo2a.ru/static/images/start-screen-bg.jpeg"
+    ],
     "description": "Кирпичный дом бизнес-класса в центральной части Кирова с подземным паркингом. В ноябре 2026 действуют скидки до 2.2 млн руб.",
     "features": [
       "Бизнес-класс",
@@ -1678,9 +1734,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "5-8 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-            "/images/developments/zhk-fusion-kino.jpg",
-            "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg"
-      ],
+      "/images/developments/zhk-fusion-kino.jpg",
+      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg"
+    ],
     "description": "Среднеэтажный пригородный проект рядом с Нововятским районом. Компактные студии и евро-планировки с выбором чистовой отделки.",
     "features": [
       "Доступный старт цены",
@@ -2148,8 +2204,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "12-16 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-            "/images/developments/zhk-krasina-6.jpg"
-      ],
+      "/images/developments/zhk-krasina-6.jpg"
+    ],
     "description": "Монолитно-кирпичный дом комфорт-класса на улице Красина. Планируемый ввод во II квартале 2028 года.",
     "features": [
       "Монолитно-кирпичная технология",

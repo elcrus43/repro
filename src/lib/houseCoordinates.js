@@ -157,6 +157,9 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-kapital', address: 'ул. Владимирская, 99', lat: 58.59485, lng: 49.666452 },
   { devId: 'zhk-vdohnovenie', address: 'ул. Энтузиастов, 17 корп. 1', lat: 58.583128, lng: 49.572581 },
   { devId: 'zhk-murashinskiy-7', address: 'Мурашинский проезд, 7', lat: 58.616364, lng: 49.608994 },
+  { devId: 'zhk-murashinskiy-7', address: 'Мурашинский проезд, д. 7', lat: 58.616364, lng: 49.608994 },
+  { devId: 'zhk-murashinskiy-7', address: 'г. Киров, Мурашинский проезд, д. 7', lat: 58.616364, lng: 49.608994 },
+  { devId: 'zhk-murashinskiy-7', address: 'Мурашинский, 7', lat: 58.616364, lng: 49.608994 },
   { devId: 'zhk-garmoniya', address: 'ул. Ленина, 106', lat: 58.591145, lng: 49.682926 },
   { devId: 'zhk-metropolis', address: 'ул. Воровского, 173 корп. 1', lat: 58.597355, lng: 49.582656 },
   // СМУ-5

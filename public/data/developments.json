@@ -1,8 +1,8 @@
 {
-  "updated_at": "2026-11-16T08:03:05.583Z",
+  "updated_at": "2026-11-17T08:30:05+03:00",
   "source": "reacrm-kirov-registry",
   "city": "Киров",
-  "count": 36,
+  "count": 37,
   "feeds_online": [
     "Кировспецмонтаж (КСМ)",
     "СМУ-5",
@@ -1294,6 +1294,62 @@
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Гармония+Киров",
       "builder_url": "https://profstroy-kirov.ru",
       "contact_phone": "+7 (922) 990-57-17"
+    },
+    {
+      "id": "zhk-murashinskiy-7",
+      "name": "Дом на Мурашинском 7",
+      "developer": "ПрофСтрой",
+      "district": "Октябрьский район",
+      "microdistrict": "ОЦМ",
+      "address": "г. Киров, Мурашинский проезд, д. 7",
+      "lat": 58.616364,
+      "lng": 49.608994,
+      "price_from": 6325000,
+      "price_to": 8520000,
+      "price_sqm_from": 147000,
+      "completion_date": "Сдан (II кв. 2026)",
+      "completion_year": 2026,
+      "is_completed": true,
+      "housing_class": "Комфорт",
+      "finishing": [
+        "rough",
+        "white_box"
+      ],
+      "floors": "13 этажей",
+      "wall_material": "Кирпич",
+      "images": [
+        "/images/developments/zhk-murashinskiy-7.jpg",
+        "https://regburokirov.ru/media/photo_nb/282_2928_458d00dcd0b015d4923afb3f75982e.jpg"
+      ],
+      "description": "Кирпичный жилой дом комфорт-класса в Октябрьском районе недалеко от парка Победы. 13 этажей, 77 квартир, тёплый чердак, два лифта, закрытая придомовая территория.",
+      "features": [
+        "Дом сдан",
+        "100% кирпич",
+        "Рядом парк Победы",
+        "Всего 77 квартир"
+      ],
+      "apartments": [
+        {
+          "type": "1k",
+          "name": "1-комнатная",
+          "area": "42.9 - 43.6 м²",
+          "price_from": 6325000,
+          "price_sqm": 147440,
+          "count": 5
+        },
+        {
+          "type": "2k",
+          "name": "2-комнатная",
+          "area": "54.6 м²",
+          "price_from": 8262000,
+          "price_sqm": 151320,
+          "count": 1
+        }
+      ],
+      "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек/объект/58185",
+      "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Мурашинский+проезд+7+Киров",
+      "builder_url": "https://unitflow.profstroy-services.ru/apartments",
+      "contact_phone": "+7 (8332) 77-50-50"
     },
     {
       "id": "zhk-zapovedny",
