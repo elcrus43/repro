@@ -35,9 +35,13 @@ import {
     CheckCircle2,
     Users,
     BookUser,
-    Search
+    Search,
+    Cake,
+    Sparkles
 } from 'lucide-react';
 import { saveClientToDevice } from '../../lib/contactsSync';
+import { BirthdayGreetingModal } from '../../components/BirthdayGreetingModal';
+import { getBirthdayInfo } from '../../utils/birthdayGreetingGenerator';
 import {
     DEFAULT_CONTRACT_DURATION_MONTHS,
     CONTRACT_DURATION_OPTIONS,
@@ -75,6 +79,7 @@ export function DetailsPage() {
         status: 'planned',
         feedback_comment: '',
     });
+    const [isBirthdayModalOpen, setIsBirthdayModalOpen] = useState(false);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingContractId, setEditingContractId] = useState(null);
     const [isSyncingContact, setIsSyncingContact] = useState(false);
@@ -94,6 +99,10 @@ export function DetailsPage() {
         comment: '',
         co_client_ids: []
     });
+
+    const clientBirthdayInfo = useMemo(() => {
+        return getBirthdayInfo(client?.birth_date || client?.passport_details?.birth_date);
+    }, [client?.birth_date, client?.passport_details?.birth_date]);
 
     const clientContracts = useMemo(() => {
         if (!client) return [];
@@ -1338,6 +1347,69 @@ export function DetailsPage() {
                                             Источник: <span style={{ fontWeight: 500, color: 'var(--text-secondary)' }}>{client.source}</span>
                                         </span>
                                     )}
+
+                                    {/* День рождения и генерация поздравления от Самолет Плюс Киров и агента */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                        <div
+                                            className="card-clickable"
+                                            onClick={() => setIsBirthdayModalOpen(true)}
+                                            title={clientBirthdayInfo ? `День рождения: ${clientBirthdayInfo.formattedDate}` : 'Указать день рождения'}
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 5,
+                                                padding: '2px 8px',
+                                                borderRadius: 7,
+                                                background: clientBirthdayInfo?.isToday
+                                                    ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                                                    : (clientBirthdayInfo?.isSoon ? '#fef3c7' : 'var(--bg-light)'),
+                                                border: clientBirthdayInfo?.isToday
+                                                    ? '1.5px solid #f59e0b'
+                                                    : (clientBirthdayInfo?.isSoon ? '1px solid #fde68a' : '1px solid var(--border-light)'),
+                                                fontSize: 11,
+                                                color: clientBirthdayInfo?.isToday ? '#92400e' : (clientBirthdayInfo?.isSoon ? '#d97706' : 'var(--text-secondary)'),
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <Cake size={12} color={clientBirthdayInfo?.isToday ? '#d97706' : (clientBirthdayInfo?.isSoon ? '#d97706' : 'var(--text-muted)')} />
+                                            {clientBirthdayInfo ? (
+                                                <span>
+                                                    {clientBirthdayInfo.dayMonth}
+                                                    {clientBirthdayInfo.ageFormatted ? ` (${clientBirthdayInfo.ageFormatted})` : ''}
+                                                    {clientBirthdayInfo.isToday ? ' • 🎉 Сегодня!' : (clientBirthdayInfo.isSoon ? ` • через ${clientBirthdayInfo.daysLeft} дн.` : '')}
+                                                </span>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-muted)' }}>ДР: не указан</span>
+                                            )}
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsBirthdayModalOpen(true)}
+                                            className="card-clickable"
+                                            title="Сгенерировать поздравление от Самолет Плюс Киров и агента"
+                                            style={{
+                                                height: 22,
+                                                padding: '0 8px',
+                                                borderRadius: 7,
+                                                background: clientBirthdayInfo?.isToday
+                                                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                                                    : 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.12) 100%)',
+                                                border: clientBirthdayInfo?.isToday ? 'none' : '1px solid rgba(245, 158, 11, 0.3)',
+                                                color: clientBirthdayInfo?.isToday ? '#fff' : '#b45309',
+                                                fontSize: 10.5,
+                                                fontWeight: 700,
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                cursor: 'pointer',
+                                                boxShadow: clientBirthdayInfo?.isToday ? '0 2px 6px rgba(245, 158, 11, 0.3)' : 'none'
+                                            }}
+                                        >
+                                            <Sparkles size={11} />
+                                            <span>Поздравить</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -4280,6 +4352,15 @@ export function DetailsPage() {
                 isOpen={isVerificationOpen}
                 onClose={() => setIsVerificationOpen(false)}
                 client={client}
+            />
+
+            {/* Модальное окно поздравления с днем рождения (Самолет Плюс Киров + агент) */}
+            <BirthdayGreetingModal
+                isOpen={isBirthdayModalOpen}
+                onClose={() => setIsBirthdayModalOpen(false)}
+                client={client}
+                currentUser={state.currentUser}
+                onUpdateClient={(updated) => dispatch({ type: 'UPDATE_CLIENT', client: updated })}
             />
         </div>
     );

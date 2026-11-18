@@ -104,7 +104,7 @@ export default async function handler(req, res) {
 
   try {
 
-    if (action === 'generateAd') {
+    if (action === 'generateAd' || action === 'generateBirthdayGreeting') {
       const { prompt } = req.body;
       if (!prompt) {
         return res.status(400).json({ error: 'Missing prompt parameter' });
