@@ -70,3 +70,8 @@ _Типы: INIT, BUILD, COMMIT, DISCOVER, FIX, DECISION, ISSUE, INGEST, TEST, VE
 - [TEST] src/components/BannerGenerator.test.jsx: 8/8 тестов успешно пройдены.
 - [BUILD] Сборка Vite прошла без ошибок (24.59s, 2176 модулей).
 - [DEPLOY] Успешный деплой в продакшен Vercel (https://reacrm.ru).
+- [FIX] src/components/BannerGenerator.jsx: 100% заполнение кадра фото-сеткой (без черных полос и пустот).
+- [FEATURE] Планировка размещается как равноправная ячейка в сетке (с авто-обрезкой полей и прозрачным фоном).
+- [FIX] Убрана буква «Я» и единичные символы под номером телефона.
+- [REFACTOR] Текст пересобран с нижней привязкой и глубоким градиентом для 100% читаемости на любых фото.
+- [DEPLOY] Успешный деплой на Vercel (https://reacrm.ru).
