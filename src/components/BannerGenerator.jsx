@@ -274,7 +274,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
     const [selectedImages, setSelectedImages] = React.useState(() => {
         if (property?.images && property.images.length > 1) {
-            return property.images.slice(0, Math.min(property.images.length, 3)).map((_, i) => i);
+            return property.images.slice(0, Math.min(property.images.length, 4)).map((_, i) => i);
         }
         return [0];
     });
@@ -388,41 +388,13 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
             const U = w / 1080;
 
-            /* ---- ASSEMBLE GRID ITEMS (PHOTOS + FLOORPLAN) ---- */
-            let processedFloorplan = null;
-            if (loadedLayoutImg) {
-                processedFloorplan = floorplanCacheRef.current.get(layoutImage);
-                if (!processedFloorplan) {
-                    processedFloorplan = cropFloorplanWhitespace(loadedLayoutImg);
-                    if (processedFloorplan) floorplanCacheRef.current.set(layoutImage, processedFloorplan);
-                }
-            }
-
-            // Order of items in grid:
-            // When floorplan is present and multiple photos: place floorplan at Top-Right (index 1)
-            // so it sits in the top half of the canvas, completely untouched by the bottom gradient!
-            const gridItems = [];
-            if (loadedLayoutImg) {
-                if (imgs.length >= 1) {
-                    gridItems.push({ type: 'photo', img: imgs[0] });
-                    gridItems.push({ type: 'floorplan', canvas: processedFloorplan || loadedLayoutImg });
-                    for (let i = 1; i < imgs.length; i++) {
-                        gridItems.push({ type: 'photo', img: imgs[i] });
-                    }
-                } else {
-                    gridItems.push({ type: 'floorplan', canvas: processedFloorplan || loadedLayoutImg });
-                }
-            } else {
-                imgs.forEach(img => gridItems.push({ type: 'photo', img }));
-            }
-
-            const totalItems = gridItems.length;
-
-            /* ---- 100% FULL FRAME GRID RECTS ---- */
+            /* ---- 1. GRID IS FILLED WITH PHOTOS ONLY (100% OF FRAME) ---- */
+            const photoCount = imgs.length;
             const rects = [];
-            if (totalItems <= 1) {
+
+            if (photoCount <= 1) {
                 rects.push({ x: 0, y: 0, w, h });
-            } else if (totalItems === 2) {
+            } else if (photoCount === 2) {
                 if (IS || isPortrait) {
                     const h1 = Math.round(h * 0.50);
                     rects.push({ x: 0, y: 0, w, h: h1 });
@@ -432,13 +404,13 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     rects.push({ x: 0, y: 0, w: w1, h });
                     rects.push({ x: w1, y: 0, w: w - w1, h });
                 }
-            } else if (totalItems === 3) {
+            } else if (photoCount === 3) {
                 if (IS || isPortrait) {
                     const hTop = Math.round(h * 0.50);
                     const wHalf = Math.round(w * 0.5);
-                    rects.push({ x: 0, y: 0, w: wHalf, h: hTop });
-                    rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hTop });
-                    rects.push({ x: 0, y: hTop, w, h: h - hTop });
+                    rects.push({ x: 0, y: 0, w, h: hTop });
+                    rects.push({ x: 0, y: hTop, w: wHalf, h: h - hTop });
+                    rects.push({ x: wHalf, y: hTop, w: w - wHalf, h: h - hTop });
                 } else {
                     const wLeft = Math.round(w * 0.50);
                     const hHalf = Math.round(h * 0.5);
@@ -446,19 +418,19 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     rects.push({ x: wLeft, y: 0, w: w - wLeft, h: hHalf });
                     rects.push({ x: 0, y: hHalf, w, h: h - hHalf });
                 }
-            } else if (totalItems === 4) {
+            } else if (photoCount === 4) {
                 const wHalf = Math.round(w * 0.5);
                 const hHalf = Math.round(h * 0.5);
-                rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });             // Cell 0: Top-Left
-                rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });     // Cell 1: Top-Right (Floorplan!)
-                rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });     // Cell 2: Bottom-Left
-                rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf }); // Cell 3: Bottom-Right
+                rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });
+                rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });
+                rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });
+                rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf });
             } else {
-                const cols = Math.ceil(Math.sqrt(totalItems));
-                const rows = Math.ceil(totalItems / cols);
+                const cols = Math.ceil(Math.sqrt(photoCount));
+                const rows = Math.ceil(photoCount / cols);
                 const cw = w / cols;
                 const rh = h / rows;
-                for (let i = 0; i < totalItems; i++) {
+                for (let i = 0; i < photoCount; i++) {
                     const ri = Math.floor(i / cols), ci = i % cols;
                     rects.push({ x: Math.round(ci * cw), y: Math.round(ri * rh), w: Math.round(cw), h: Math.round(rh) });
                 }
@@ -497,51 +469,14 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.restore();
             };
 
-            /* ---- DRAW FLOORPLAN CELL (100% CLEAR, CLEAN WHITE CARD, NO LABEL) ---- */
-            const drawFloorplanCell = (itemCanvas, cx, cy, cw, ch) => {
-                if (!itemCanvas || !cw || !ch) return;
-                ctx.save();
-                ctx.beginPath();
-                ctx.rect(cx, cy, cw, ch);
-                ctx.clip();
-
-                // High-contrast clean white background for architectural drawing
-                ctx.fillStyle = '#FFFFFF';
-                ctx.fillRect(cx, cy, cw, ch);
-
-                const pad = Math.round(24 * U);
-                const innerW = cw - pad * 2;
-                const innerH = ch - pad * 2;
-
-                if (innerW > 0 && innerH > 0) {
-                    const fw = itemCanvas.width || 1, fh = itemCanvas.height || 1;
-                    const fr = fw / fh;
-                    const cr = innerW / innerH;
-                    let dw, dh, dx, dy;
-                    if (fr > cr) {
-                        dw = innerW; dh = innerW / fr;
-                        dx = cx + pad; dy = cy + pad + (innerH - dh) / 2;
-                    } else {
-                        dh = innerH; dw = innerH * fr;
-                        dx = cx + pad + (innerW - dw) / 2; dy = cy + pad;
-                    }
-                    ctx.drawImage(itemCanvas, dx, dy, dw, dh);
-                }
-
-                // Note: user explicitly requested NO label / signature on floorplan
-                ctx.restore();
-            };
-
-            /* ---- 1. DRAW PHOTO CELLS ---- */
-            gridItems.forEach((item, idx) => {
-                if (item.type === 'photo') {
-                    const r = rects[idx % rects.length];
-                    drawPhotoCell(item.img, r.x, r.y, r.w, r.h);
-                }
+            // Draw all photos in the grid
+            imgs.forEach((img, idx) => {
+                const r = rects[idx % rects.length];
+                drawPhotoCell(img, r.x, r.y, r.w, r.h);
             });
 
-            /* ---- 2. DRAW CELL DIVIDERS ---- */
-            if (totalItems > 1) {
+            // Draw dividers between photo cells
+            if (photoCount > 1) {
                 ctx.save();
                 ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 15, 26, 0.85)';
                 ctx.lineWidth = Math.round(IS ? 8 : 6);
@@ -549,7 +484,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.restore();
             }
 
-            /* ---- 3. TOP GRADIENT (for badges) ---- */
+            /* ---- 2. TOP GRADIENT (for badges) ---- */
             const topGradH = Math.round((IS ? 190 : 150) * U);
             const topGrad = ctx.createLinearGradient(0, 0, 0, topGradH);
             topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
@@ -558,7 +493,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             ctx.fillStyle = topGrad;
             ctx.fillRect(0, 0, w, topGradH);
 
-            /* ---- 4. BOTTOM INFORMATION GRADIENT ---- */
+            /* ---- 3. BOTTOM INFORMATION GRADIENT ---- */
             const gradH = Math.round(h * (IS ? 0.46 : (isPortrait ? 0.42 : 0.40)));
             const gradY = h - gradH;
             const btmGrad = ctx.createLinearGradient(0, gradY, 0, h);
@@ -580,30 +515,79 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             ctx.fillStyle = btmGrad;
             ctx.fillRect(0, gradY, w, gradH);
 
-            /* ---- 5. DRAW FLOORPLAN CELL (AFTER GRADIENT SO IT IS NEVER COVERED) ---- */
-            gridItems.forEach((item, idx) => {
-                if (item.type === 'floorplan') {
-                    const r = rects[idx % rects.length];
-                    drawFloorplanCell(item.canvas, r.x, r.y, r.w, r.h);
+            /* ---- 4. FLOORPLAN OVER PHOTOS IN BOTTOM-RIGHT CORNER ---- */
+            const PAD = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
+            const bottomPad = Math.round((IS ? 60 : (isPortrait ? 48 : 38)) * U);
+
+            let boxSize = 0;
+            let boxX = w;
+
+            let processedFloorplan = null;
+            if (loadedLayoutImg) {
+                processedFloorplan = floorplanCacheRef.current.get(layoutImage);
+                if (!processedFloorplan) {
+                    processedFloorplan = cropFloorplanWhitespace(loadedLayoutImg);
+                    if (processedFloorplan) floorplanCacheRef.current.set(layoutImage, processedFloorplan);
                 }
-            });
+            }
 
-            /* ---- 6. TYPOGRAPHY CONSTANTS & DATA PREPARATION ---- */
-            const PAD = Math.round((IS ? 64 : (isPortrait ? 52 : 44)) * U);
-            const bottomPad = Math.round((IS ? 64 : (isPortrait ? 48 : 38)) * U);
-            const maxTW = w - PAD * 2;
+            if (loadedLayoutImg) {
+                boxSize = Math.round((IS ? 430 : (isPortrait ? 360 : 310)) * U);
+                boxX = w - PAD - boxSize;
+                const boxY = h - bottomPad - boxSize;
 
-            const fsCat     = Math.round((IS ? 28 : (isPortrait ? 24 : 22)) * U);
-            const fsPrice   = Math.round((IS ? 94 : (isPortrait ? 82 : 72)) * U);
-            const fsSqm     = Math.round((IS ? 38 : (isPortrait ? 34 : 30)) * U);
-            const fsAddr    = Math.round((IS ? 52 : (isPortrait ? 46 : 40)) * U);
-            const fsDetails = Math.round((IS ? 36 : (isPortrait ? 32 : 28)) * U);
-            const fsPhone   = Math.round((IS ? 46 : (isPortrait ? 40 : 36)) * U);
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+                ctx.shadowBlur = Math.round(24 * U);
+                ctx.shadowOffsetY = Math.round(6 * U);
+
+                // Clean white card background for 100% black CAD lines contrast
+                ctx.fillStyle = '#FFFFFF';
+                ctx.beginPath();
+                safeRoundRect(ctx, boxX, boxY, boxSize, boxSize, Math.round(18 * U));
+                ctx.fill();
+                ctx.restore();
+
+                const innerPad = Math.round(16 * U);
+                const innerW = boxSize - innerPad * 2;
+                const innerH = boxSize - innerPad * 2;
+
+                ctx.save();
+                ctx.beginPath();
+                safeRoundRect(ctx, boxX + innerPad, boxY + innerPad, innerW, innerH, Math.round(12 * U));
+                ctx.clip();
+
+                const itemCanvas = processedFloorplan || loadedLayoutImg;
+                const fw = itemCanvas.width || 1, fh = itemCanvas.height || 1;
+                const fr = fw / fh;
+                const cr = innerW / innerH;
+                let dw, dh, dx, dy;
+                if (fr > cr) {
+                    dw = innerW; dh = innerW / fr;
+                    dx = boxX + innerPad; dy = boxY + innerPad + (innerH - dh) / 2;
+                } else {
+                    dh = innerH; dw = innerH * fr;
+                    dx = boxX + innerPad + (innerW - dw) / 2; dy = boxY + innerPad;
+                }
+                ctx.drawImage(itemCanvas, dx, dy, dw, dh);
+                ctx.restore();
+            }
+
+            /* ---- 5. TEXT ON THE LEFT SIDE (NEVER OVERLAPS FLOORPLAN) ---- */
+            // Left column width is constrained so text stops safely before the floorplan
+            const maxTW = loadedLayoutImg ? (boxX - PAD - Math.round(24 * U)) : (w - PAD * 2);
+
+            const fsCat     = Math.round((IS ? 26 : (isPortrait ? 23 : 20)) * U);
+            const fsPrice   = Math.round((IS ? 84 : (isPortrait ? 74 : 66)) * U);
+            const fsSqm     = Math.round((IS ? 36 : (isPortrait ? 32 : 28)) * U);
+            const fsAddr    = Math.round((IS ? 46 : (isPortrait ? 40 : 36)) * U);
+            const fsDetails = Math.round((IS ? 32 : (isPortrait ? 28 : 25)) * U);
+            const fsPhone   = Math.round((IS ? 42 : (isPortrait ? 36 : 32)) * U);
 
             const catText = getCategoryText(property?.property_type, property?.rooms);
             const priceText = formatNumber(property?.price) + ' ₽';
             const m2 = property?.price && property?.area_total ? Math.round(property.price / property.area_total) : null;
-            const sqmText = m2 ? `(${formatNumber(m2)} ₽/м²)` : '';
+            const sqmText = m2 ? `${formatNumber(m2)} ₽/м²` : '';
 
             const rawAddr = (property?.address || property?.city || '').replace(/,?\s*кв\.?\s*\d+/i, '').trim();
             const loc = (locationText || '').trim();
@@ -636,15 +620,15 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             const showAgent = cleanAgent.length > 2 && cleanAgent.toLowerCase() !== 'я';
             const contactText = showAgent ? `${cleanAgent}  ·  ${activePhone}` : activePhone;
 
-            /* ---- BOTTOM-ANCHORED VERTICAL LAYOUT ---- */
+            /* Vertical layout calculation */
             const hCat = Math.round(fsCat * 1.25);
-            const gapAfterCat = Math.round(14 * U);
+            const gapAfterCat = Math.round(12 * U);
             const hPrice = Math.round(fsPrice * 0.95);
-            const gapAfterPrice = Math.round(18 * U);
+            const gapAfterPrice = Math.round(14 * U);
             const hAddr = addrLines.length * Math.round(fsAddr * 1.25);
-            const gapAfterAddr = Math.round(14 * U);
+            const gapAfterAddr = Math.round(12 * U);
             const hDetails = parts.length ? Math.round(fsDetails * 1.25) : 0;
-            const gapAfterDetails = parts.length ? Math.round(20 * U) : Math.round(8 * U);
+            const gapAfterDetails = parts.length ? Math.round(16 * U) : Math.round(8 * U);
             const hPhone = Math.round(fsPhone * 1.25);
 
             const totalTextH = hCat + gapAfterCat + hPrice + gapAfterPrice + hAddr + gapAfterAddr + hDetails + gapAfterDetails + hPhone;
@@ -655,20 +639,22 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
             /* Category */
             ctx.font = `700 ${fsCat}px 'Medeo Sans', system-ui, sans-serif`;
-            ctx.fillStyle = isLight ? '#64748B' : (accentColor === '#0052FF' ? '#60A5FA' : accentColor);
+            ctx.fillStyle = isLight ? '#64748B' : '#94A3B8';
             ctx.fillText(catText, PAD, curY + fsCat * 0.85);
             curY += hCat + gapAfterCat;
 
-            /* Price & Sqm */
+            /* PRICE (IN ACCENT COLOR) & SQM */
             ctx.font = `800 ${fsPrice}px 'Medeo Sans', system-ui, sans-serif`;
-            ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
+            ctx.fillStyle = accentColor; // Selected accent color
             ctx.fillText(priceText, PAD, curY + fsPrice * 0.85);
             const pw = ctx.measureText(priceText).width;
 
             if (sqmText) {
                 ctx.font = `400 ${fsSqm}px 'Medeo Sans', system-ui, sans-serif`;
                 ctx.fillStyle = isLight ? '#64748B' : '#94A3B8';
-                ctx.fillText(sqmText, PAD + pw + Math.round(24 * U), curY + fsPrice * 0.85);
+                if (!loadedLayoutImg || (pw + ctx.measureText(`(${sqmText})`).width + Math.round(16 * U) <= maxTW)) {
+                    ctx.fillText(`(${sqmText})`, PAD + pw + Math.round(16 * U), curY + fsPrice * 0.85);
+                }
             }
             curY += hPrice + gapAfterPrice;
 
@@ -694,13 +680,9 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
             ctx.fillText(contactText, PAD, curY + fsPhone * 0.85);
 
-            /* ---- 7. TOP BADGES (DEAL GOAL & STICKERS) ---- */
+            /* ---- 6. TOP BADGES (DEAL GOAL & STICKERS) IN TOP-RIGHT ---- */
             const badgePad = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
             let badgeBottom = badgePad;
-
-            // If floorplan is at Top-Right, place deal goal badge at Top-Left to avoid overlap!
-            const floorplanAtTopRight = loadedLayoutImg && totalItems >= 2;
-            const badgeAtLeft = floorplanAtTopRight;
 
             if (showDealGoal) {
                 const goalStr = (dealGoal === 'custom' ? customGoalText.trim() : dealGoal) || 'Продажа';
@@ -711,7 +693,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 const tw = ctx.measureText(badgeText).width;
                 const bPadX = Math.round((IS ? 28 : 22) * U);
                 const badgeW = tw + bPadX * 2;
-                const badgeX = badgeAtLeft ? badgePad : (w - badgePad - badgeW);
+                const badgeX = w - badgePad - badgeW;
                 const badgeY = badgePad;
 
                 ctx.save();
@@ -748,7 +730,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
                     ctx.font = `700 ${sf}px 'Medeo Sans', system-ui, sans-serif`;
                     const tw = ctx.measureText(txt.toUpperCase()).width + Math.round(40 * U);
-                    const sx = badgeAtLeft ? badgePad : (w - badgePad - tw);
+                    const sx = w - badgePad - tw;
 
                     ctx.save();
                     ctx.shadowColor = 'rgba(0,0,0,0.35)';
@@ -944,7 +926,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* PHOTOS */}
-                        <Collapsible label="Фотографии" open={openSections.photo} onToggle={() => toggleSection('photo')}>
+                        <Collapsible label="Фотографии (в сетку)" open={openSections.photo} onToggle={() => toggleSection('photo')}>
                             {propertyImages.length > 1 && (
                                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                                     {propertyImages.map((url, idx) => {
@@ -966,12 +948,12 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                 </div>
                             )}
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                                {selectedImages.length} фото {layoutImage ? '+ планировка в сетке' : ''} (100% заполнение)
+                                Выбрано {selectedImages.length} фото для 100% заполнения сетки
                             </div>
                         </Collapsible>
 
                         {/* LAYOUT / FLOORPLAN */}
-                        <Collapsible label="Планировка в сетку" open={openSections.layout} onToggle={() => toggleSection('layout')}>
+                        <Collapsible label="Планировка (поверх в углу)" open={openSections.layout} onToggle={() => toggleSection('layout')}>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                 <button
                                     type="button"
@@ -995,7 +977,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                 </label>
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.35 }}>
-                                Обрезаются пустые поля, выводится чётким чертежом в ячейку сетки.
+                                Размещается поверх фото в правом нижнем углу. Текст автоматически сдвинут влево и не перекрывается.
                             </div>
                         </Collapsible>
 
@@ -1075,7 +1057,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* COLORS */}
-                        <Collapsible label="Акцент" open={openSections.colors} onToggle={() => toggleSection('colors')}>
+                        <Collapsible label="Акцент (цвет цены)" open={openSections.colors} onToggle={() => toggleSection('colors')}>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 {TRENDING_COLORS.map(c => (
                                     <button
