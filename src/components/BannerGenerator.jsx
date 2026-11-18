@@ -29,16 +29,16 @@ const TRENDING_COLORS = [
 ];
 
 const DEAL_GOAL_OPTIONS = [
-    { key: 'sell', label: 'Продажа', emoji: '' },
-    { key: 'rent', label: 'Аренда', emoji: '' },
-    { key: 'daily', label: 'Посуточно', emoji: '' },
-    { key: 'exchange', label: 'Обмен', emoji: '' },
+    { key: 'sell', label: 'Продажа' },
+    { key: 'rent', label: 'Аренда' },
+    { key: 'daily', label: 'Посуточно' },
+    { key: 'exchange', label: 'Обмен' },
 ];
 
 const BANNER_FORMATS = {
-    story:   { w: 1080, h: 1920, label: 'Stories', hint: '9:16' },
-    portrait:{ w: 1080, h: 1350, label: 'Пост',    hint: '4:5'  },
-    post:    { w: 1080, h: 1080, label: 'Квадрат', hint: '1:1'  },
+    story:    { w: 1080, h: 1920, label: 'Stories', hint: '9:16' },
+    portrait: { w: 1080, h: 1350, label: 'Пост',    hint: '4:5'  },
+    post:     { w: 1080, h: 1080, label: 'Квадрат', hint: '1:1'  },
 };
 
 const DESIGN_THEMES = [
@@ -109,12 +109,106 @@ function getCategoryText(type, rooms) {
     return 'ОБЪЕКТ НЕДВИЖИМОСТИ';
 }
 
+/* Auto-crop whitespace and make background transparent for floorplans */
+function processFloorplanImage(img, isDark = true) {
+    if (!img || !img.width || !img.height) return null;
+    const maxDim = 1200;
+    let sw = img.width, sh = img.height;
+    if (sw > maxDim || sh > maxDim) {
+        if (sw > sh) { sh = Math.round(sh * maxDim / sw); sw = maxDim; }
+        else { sw = Math.round(sw * maxDim / sh); sh = maxDim; }
+    }
+    const off = document.createElement('canvas');
+    off.width = sw;
+    off.height = sh;
+    const octx = off.getContext('2d', { willReadFrequently: true });
+    if (!octx) return img;
+    octx.drawImage(img, 0, 0, sw, sh);
+
+    let imgData;
+    try {
+        imgData = octx.getImageData(0, 0, sw, sh);
+    } catch {
+        return img;
+    }
+    const data = imgData.data;
+
+    let minX = sw, minY = sh, maxX = 0, maxY = 0;
+    let found = false;
+
+    for (let y = 0; y < sh; y++) {
+        for (let x = 0; x < sw; x++) {
+            const idx = (y * sw + x) * 4;
+            const a = data[idx + 3];
+            if (a < 20) continue;
+            const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+            if (lum < 225) {
+                found = true;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            }
+        }
+    }
+
+    if (!found) {
+        minX = 0; minY = 0; maxX = sw - 1; maxY = sh - 1;
+    } else {
+        minX = Math.max(0, minX - 8);
+        minY = Math.max(0, minY - 8);
+        maxX = Math.min(sw - 1, maxX + 8);
+        maxY = Math.min(sh - 1, maxY + 8);
+    }
+
+    const cropW = maxX - minX + 1;
+    const cropH = maxY - minY + 1;
+
+    const cropCanvas = document.createElement('canvas');
+    cropCanvas.width = cropW;
+    cropCanvas.height = cropH;
+    const cctx = cropCanvas.getContext('2d');
+    if (!cctx) return img;
+
+    const croppedData = octx.getImageData(minX, minY, cropW, cropH);
+    const cdata = croppedData.data;
+
+    for (let i = 0; i < cdata.length; i += 4) {
+        const a = cdata[i + 3];
+        if (a < 20) {
+            cdata[i + 3] = 0;
+            continue;
+        }
+        const r = cdata[i], g = cdata[i + 1], b = cdata[i + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+
+        if (lum > 220) {
+            cdata[i + 3] = 0;
+        } else {
+            const lineAlpha = lum > 180 ? Math.round((1 - (lum - 180) / 40) * 255) : 255;
+            cdata[i + 3] = Math.min(a, lineAlpha);
+            if (isDark) {
+                cdata[i] = 255;
+                cdata[i + 1] = 255;
+                cdata[i + 2] = 255;
+            } else {
+                cdata[i] = 15;
+                cdata[i + 1] = 23;
+                cdata[i + 2] = 42;
+            }
+        }
+    }
+
+    cctx.putImageData(croppedData, 0, 0);
+    return cropCanvas;
+}
+
 /* ================================================================
    MAIN COMPONENT
    ================================================================ */
 
 export function BannerGenerator({ property = {}, currentUser, agent: propAgent, onClose, onOpenProfile }) {
-    // Safe context extraction (may be used outside AppProvider)
     let appContext = null;
     try {
         // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -128,10 +222,10 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
         ? state.clients.find(c => c.id === property.agent_id)
         : null);
 
-    /* ---- refs ---- */
     const canvasRef = React.useRef(null);
     const isMountedRef = React.useRef(true);
     const imageCacheRef = React.useRef(new Map());
+    const floorplanCacheRef = React.useRef(new Map());
 
     React.useEffect(() => {
         isMountedRef.current = true;
@@ -167,9 +261,12 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     }, [property?.microdistrict, property?.district, property?.residential_complex]);
 
     const defaultAgentName = React.useMemo(() => {
-        if (assignedAgent?.full_name) return assignedAgent.full_name.split(' ').slice(0, 2).join(' ');
-        if (currentUser?.full_name) return currentUser.full_name.split(' ').slice(0, 2).join(' ');
-        return '';
+        const name = assignedAgent?.full_name || currentUser?.full_name || '';
+        const clean = name.trim();
+        if (!clean || clean.length <= 1 || clean.toLowerCase() === 'я' || clean.toLowerCase() === 'admin') {
+            return '';
+        }
+        return clean.split(' ').slice(0, 2).join(' ');
     }, [assignedAgent, currentUser]);
 
     /* ---- state ---- */
@@ -179,7 +276,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
     const [format, setFormat]           = React.useState('story');
     const [designTheme, setDesignTheme] = React.useState('dark');
-    const [fitMode, setFitMode]         = React.useState('contain');
+    const [fitMode, setFitMode]         = React.useState('cover');
     const [accentColor, setAccentColor] = React.useState('#0052FF');
 
     const initialGoal = React.useMemo(() => getDealGoalLabel(property?.deal_type), [property?.deal_type]);
@@ -199,11 +296,10 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
     const [selectedImages, setSelectedImages] = React.useState(() => {
         if (property?.images && property.images.length > 1) {
-            return property.images.slice(0, Math.min(property.images.length, 4)).map((_, i) => i);
+            return property.images.slice(0, Math.min(property.images.length, 3)).map((_, i) => i);
         }
         return [0];
     });
-    const [gridLayout, setGridLayout] = React.useState('grid');
 
     const [availableLayouts, setAvailableLayouts] = React.useState(() => property?.floorplan_images || []);
     const [layoutImage, setLayoutImage] = React.useState(() =>
@@ -221,7 +317,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     // Collapsible sections
     const [openSections, setOpenSections] = React.useState({
         format: true, theme: true, goal: true, photo: true, agent: true,
-        layout: false, stickers: false, colors: false,
+        layout: true, stickers: false, colors: false,
     });
     const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -283,11 +379,8 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
         const IS = format === 'story';
         const isPortrait = format === 'portrait';
 
-        // Theme helpers
-        const isDark  = designTheme === 'dark';
         const isLight = designTheme === 'light';
-        const isBrand = designTheme === 'brand';
-        const isGlass = designTheme === 'glass';
+        const isDark  = !isLight;
 
         try {
             const hasUncached = selectedImages.some(
@@ -315,53 +408,74 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             });
             loadedImgs.sort((a, b) => selectedImages.indexOf(a.idx) - selectedImages.indexOf(b.idx));
             const imgs = loadedImgs.map(r => r.img).filter(Boolean);
-            if (!imgs.length) return;
+            if (!imgs.length && !loadedLayoutImg) return;
 
-            /* ---- SCALE UNITS ---- */
-            const U = w / 1080; // 1.0 at 1080px width
+            /* ---- SCALE FACTOR ---- */
+            const U = w / 1080;
 
-            const PAD = Math.round(60 * U);
-            const CORNER_R = Math.round(28 * U);
+            /* ---- ASSEMBLE GRID ITEMS (PHOTOS + FLOORPLAN) ---- */
+            const gridItems = imgs.map(img => ({ type: 'photo', img }));
 
-            /* ---- BACKGROUND ---- */
-            if (isLight) {
-                ctx.fillStyle = '#F8FAFC';
-            } else if (isBrand) {
-                // gradient background
-                const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
-                bgGrad.addColorStop(0, '#0F172A');
-                bgGrad.addColorStop(1, accentColor + 'CC');
-                ctx.fillStyle = bgGrad;
-            } else {
-                ctx.fillStyle = '#0D1117';
+            if (loadedLayoutImg) {
+                const cacheKey = `${layoutImage}_${isDark}`;
+                let processedCanvas = floorplanCacheRef.current.get(cacheKey);
+                if (!processedCanvas) {
+                    processedCanvas = processFloorplanImage(loadedLayoutImg, isDark);
+                    if (processedCanvas) floorplanCacheRef.current.set(cacheKey, processedCanvas);
+                }
+                gridItems.push({ type: 'floorplan', canvas: processedCanvas || loadedLayoutImg });
             }
-            ctx.fillRect(0, 0, w, h);
 
-            /* ---- PHOTO ZONE ---- */
-            // For dark/glass: photo fills upper portion; for light/brand: also upper portion
-            const photoRatio = IS ? 0.60 : (isPortrait ? 0.56 : 0.52);
-            let photoH = Math.round(h * photoRatio);
+            const totalItems = gridItems.length;
 
-            // Adapt height to single image ratio in contain mode
-            if (fitMode === 'contain' && imgs.length === 1 && imgs[0]?.width && imgs[0]?.height) {
-                const ir = imgs[0].width / imgs[0].height;
-                if (Number.isFinite(ir) && ir > 0) {
-                    const natural = Math.round(w / ir);
-                    const maxH = Math.round(h * (IS ? 0.65 : (isPortrait ? 0.60 : 0.56)));
-                    const minH = Math.round(h * 0.38);
-                    photoH = Math.min(maxH, Math.max(minH, natural));
+            /* ---- 100% FULL FRAME GRID CALCULATION ---- */
+            const rects = [];
+            if (totalItems <= 1) {
+                rects.push({ x: 0, y: 0, w, h });
+            } else if (totalItems === 2) {
+                if (IS || isPortrait) {
+                    const h1 = Math.round(h * 0.52);
+                    rects.push({ x: 0, y: 0, w, h: h1 });
+                    rects.push({ x: 0, y: h1, w, h: h - h1 });
+                } else {
+                    const w1 = Math.round(w * 0.5);
+                    rects.push({ x: 0, y: 0, w: w1, h });
+                    rects.push({ x: w1, y: 0, w: w - w1, h });
+                }
+            } else if (totalItems === 3) {
+                if (IS || isPortrait) {
+                    const hTop = Math.round(h * 0.50);
+                    const wHalf = Math.round(w * 0.5);
+                    rects.push({ x: 0, y: 0, w, h: hTop });
+                    rects.push({ x: 0, y: hTop, w: wHalf, h: h - hTop });
+                    rects.push({ x: wHalf, y: hTop, w: w - wHalf, h: h - hTop });
+                } else {
+                    const wLeft = Math.round(w * 0.52);
+                    const hHalf = Math.round(h * 0.5);
+                    rects.push({ x: 0, y: 0, w: wLeft, h });
+                    rects.push({ x: wLeft, y: 0, w: w - wLeft, h: hHalf });
+                    rects.push({ x: wLeft, y: hHalf, w: w - wLeft, h: h - hHalf });
+                }
+            } else if (totalItems === 4) {
+                const wHalf = Math.round(w * 0.5);
+                const hHalf = Math.round(h * 0.5);
+                rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });
+                rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });
+                rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });
+                rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf });
+            } else {
+                const cols = Math.ceil(Math.sqrt(totalItems));
+                const rows = Math.ceil(totalItems / cols);
+                const cw = w / cols;
+                const rh = h / rows;
+                for (let i = 0; i < totalItems; i++) {
+                    const ri = Math.floor(i / cols), ci = i % cols;
+                    rects.push({ x: Math.round(ci * cw), y: Math.round(ri * rh), w: Math.round(cw), h: Math.round(rh) });
                 }
             }
 
-            // Photo area bounds (with optional card margin)
-            const cardMargin = isLight ? Math.round(28 * U) : 0;
-            const photoX = cardMargin;
-            const photoY = cardMargin;
-            const photoW = w - cardMargin * 2;
-            const photoBH = photoH - cardMargin;
-
-            /* ---- DRAW PHOTO CELLS ---- */
-            const drawCell = (img, cx, cy, cw, ch) => {
+            /* ---- DRAW CELL HELPER ---- */
+            const drawPhotoCell = (img, cx, cy, cw, ch) => {
                 if (!img || !img.width || !img.height || !cw || !ch) return;
                 const ir = img.width / img.height;
                 const cr = cw / ch;
@@ -376,13 +490,12 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     else { dw = cw; dh = cw / ir; dx = cx; dy = cy - (dh - ch) / 2; }
                     ctx.drawImage(img, dx, dy, dw, dh);
                 } else {
-                    // Blurred background fill
                     let bgDw, bgDh, bgDx, bgDy;
                     if (ir > cr) { bgDh = ch; bgDw = ch * ir; bgDx = cx - (bgDw - cw) / 2; bgDy = cy; }
                     else { bgDw = cw; bgDh = cw / ir; bgDx = cx; bgDy = cy - (bgDh - ch) / 2; }
-                    ctx.globalAlpha = 0.18;
+                    ctx.globalAlpha = 0.22;
                     ctx.drawImage(img, bgDx, bgDy, bgDw, bgDh);
-                    ctx.fillStyle = isLight ? 'rgba(248,250,252,0.8)' : 'rgba(13,17,23,0.78)';
+                    ctx.fillStyle = isLight ? 'rgba(248,250,252,0.85)' : 'rgba(10,15,26,0.82)';
                     ctx.fillRect(cx, cy, cw, ch);
                     ctx.globalAlpha = 1;
 
@@ -394,155 +507,136 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.restore();
             };
 
-            // Build grid rects
-            const N = imgs.length;
-            const rects = [];
-            if (N <= 1) {
-                rects.push({ x: photoX, y: photoY, w: photoW, h: photoBH });
-            } else if (gridLayout === 'vertical') {
-                const cw = photoW / N;
-                for (let i = 0; i < N; i++) rects.push({ x: photoX + i * cw, y: photoY, w: cw, h: photoBH });
-            } else if (gridLayout === 'horizontal') {
-                const rh = photoBH / N;
-                for (let i = 0; i < N; i++) rects.push({ x: photoX, y: photoY + i * rh, w: photoW, h: rh });
-            } else if (gridLayout === 'main-stack') {
-                const split = 0.62;
-                if (IS || isPortrait) {
-                    rects.push({ x: photoX, y: photoY, w: photoW, h: Math.round(photoBH * split) });
-                    const sh = photoBH - Math.round(photoBH * split);
-                    const sw = photoW / (N - 1);
-                    for (let j = 0; j < N - 1; j++) {
-                        rects.push({ x: photoX + j * sw, y: photoY + Math.round(photoBH * split), w: sw, h: sh });
-                    }
-                } else {
-                    rects.push({ x: photoX, y: photoY, w: Math.round(photoW * split), h: photoBH });
-                    const sw = photoW - Math.round(photoW * split);
-                    const sh = photoBH / (N - 1);
-                    for (let j = 0; j < N - 1; j++) {
-                        rects.push({ x: photoX + Math.round(photoW * split), y: photoY + j * sh, w: sw, h: sh });
-                    }
-                }
-            } else {
-                // grid
-                const cols = Math.ceil(Math.sqrt(N));
-                const rows = Math.ceil(N / cols);
-                const cw = photoW / cols;
-                const rh = photoBH / rows;
-                for (let i = 0; i < N; i++) {
-                    const ri = Math.floor(i / cols), ci = i % cols;
-                    rects.push({ x: photoX + ci * cw, y: photoY + ri * rh, w: cw, h: rh });
-                }
-            }
-
-            // Clip & draw photo cells (card style: rounded corners)
-            if (isLight) {
+            const drawFloorplanCell = (itemCanvas, cx, cy, cw, ch) => {
+                if (!itemCanvas || !cw || !ch) return;
                 ctx.save();
                 ctx.beginPath();
-                safeRoundRect(ctx, photoX, photoY, photoW, photoBH, CORNER_R);
+                ctx.rect(cx, cy, cw, ch);
                 ctx.clip();
-            }
-            rects.forEach((r, i) => drawCell(imgs[i % imgs.length], r.x, r.y, r.w, r.h));
 
-            // Cell dividers
-            if (N > 1) {
+                // Distinct architectural background for floorplan cell
+                ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.94)' : 'rgba(15, 23, 42, 0.90)';
+                ctx.fillRect(cx, cy, cw, ch);
+
+                const pad = Math.round(28 * U);
+                const innerW = cw - pad * 2;
+                const innerH = ch - pad * 2;
+
+                if (innerW > 0 && innerH > 0) {
+                    const fw = itemCanvas.width || 1, fh = itemCanvas.height || 1;
+                    const fr = fw / fh;
+                    const cr = innerW / innerH;
+                    let dw, dh, dx, dy;
+                    if (fr > cr) {
+                        dw = innerW; dh = innerW / fr;
+                        dx = cx + pad; dy = cy + pad + (innerH - dh) / 2;
+                    } else {
+                        dh = innerH; dw = innerH * fr;
+                        dx = cx + pad + (innerW - dw) / 2; dy = cy + pad;
+                    }
+                    ctx.drawImage(itemCanvas, dx, dy, dw, dh);
+                }
+
+                // Sleek minimal badge in the floorplan cell
+                const fpBadgeText = 'ПЛАНИРОВКА';
+                const fpBadgeFont = Math.round(18 * U);
+                ctx.font = `700 ${fpBadgeFont}px 'Medeo Sans', sans-serif`;
+                const fpTw = ctx.measureText(fpBadgeText).width;
+                const fpPadX = Math.round(12 * U);
+                const fpPadY = Math.round(6 * U);
+                const fpBW = fpTw + fpPadX * 2;
+                const fpBH = fpBadgeFont + fpPadY * 2;
+                const fpBX = cx + Math.round(18 * U);
+                const fpBY = cy + Math.round(18 * U);
+
+                ctx.fillStyle = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.16)';
+                safeRoundRect(ctx, fpBX, fpBY, fpBW, fpBH, Math.round(8 * U));
+                ctx.fill();
+
+                ctx.fillStyle = isLight ? '#475569' : '#E2E8F0';
+                ctx.textAlign = 'center';
+                ctx.fillText(fpBadgeText, fpBX + fpBW / 2, fpBY + fpBH / 2 + fpBadgeFont * 0.35);
+                ctx.textAlign = 'left';
+
+                ctx.restore();
+            };
+
+            /* ---- DRAW ALL CELLS ---- */
+            gridItems.forEach((item, idx) => {
+                const r = rects[idx % rects.length];
+                if (item.type === 'floorplan') {
+                    drawFloorplanCell(item.canvas, r.x, r.y, r.w, r.h);
+                } else {
+                    drawPhotoCell(item.img, r.x, r.y, r.w, r.h);
+                }
+            });
+
+            /* ---- CELL DIVIDERS ---- */
+            if (totalItems > 1) {
                 ctx.save();
-                ctx.strokeStyle = isLight ? 'rgba(248,250,252,0.9)' : 'rgba(13,17,23,0.7)';
-                ctx.lineWidth = Math.round(6 * U);
+                ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 15, 26, 0.85)';
+                ctx.lineWidth = Math.round(IS ? 8 : 6);
                 rects.forEach(r => ctx.strokeRect(r.x, r.y, r.w, r.h));
                 ctx.restore();
             }
 
-            if (isLight) ctx.restore();
+            /* ---- TOP GRADIENT (for badges contrast) ---- */
+            const topGradH = Math.round((IS ? 200 : 160) * U);
+            const topGrad = ctx.createLinearGradient(0, 0, 0, topGradH);
+            topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.60)');
+            topGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.25)');
+            topGrad.addColorStop(1, 'rgba(0, 0, 0, 0.00)');
+            ctx.fillStyle = topGrad;
+            ctx.fillRect(0, 0, w, topGradH);
 
-            /* ---- GRADIENT OVERLAY (dark themes) ---- */
-            if (isDark || isBrand || isGlass) {
-                const overlayStart = IS ? 0.44 : (isPortrait ? 0.40 : 0.36);
-                const grad = ctx.createLinearGradient(0, h, 0, h * overlayStart);
-                if (isGlass) {
-                    grad.addColorStop(0, 'rgba(0,0,0,0.92)');
-                    grad.addColorStop(0.3, 'rgba(0,0,0,0.80)');
-                    grad.addColorStop(0.6, 'rgba(0,0,0,0.40)');
-                    grad.addColorStop(1, 'rgba(0,0,0,0)');
-                } else {
-                    grad.addColorStop(0, 'rgba(0,0,0,1.0)');
-                    grad.addColorStop(0.22, 'rgba(0,0,0,0.96)');
-                    grad.addColorStop(0.52, 'rgba(0,0,0,0.80)');
-                    grad.addColorStop(1, 'rgba(0,0,0,0)');
-                }
-                ctx.fillStyle = grad;
-                ctx.fillRect(0, h * overlayStart, w, h * (1 - overlayStart));
+            /* ---- BOTTOM INFORMATION GRADIENT (100% READABILITY) ---- */
+            const gradH = Math.round(h * (IS ? 0.46 : (isPortrait ? 0.42 : 0.40)));
+            const gradY = h - gradH;
+            const btmGrad = ctx.createLinearGradient(0, gradY, 0, h);
+
+            if (isLight) {
+                btmGrad.addColorStop(0.00, 'rgba(255, 255, 255, 0.00)');
+                btmGrad.addColorStop(0.20, 'rgba(255, 255, 255, 0.70)');
+                btmGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.92)');
+                btmGrad.addColorStop(0.75, 'rgba(255, 255, 255, 0.98)');
+                btmGrad.addColorStop(1.00, 'rgba(255, 255, 255, 1.00)');
+            } else {
+                btmGrad.addColorStop(0.00, 'rgba(8, 12, 22, 0.00)');
+                btmGrad.addColorStop(0.18, 'rgba(8, 12, 22, 0.58)');
+                btmGrad.addColorStop(0.42, 'rgba(8, 12, 22, 0.88)');
+                btmGrad.addColorStop(0.70, 'rgba(8, 12, 22, 0.97)');
+                btmGrad.addColorStop(1.00, 'rgba(8, 12, 22, 1.00)');
             }
 
-            /* ---- TEXT ZONE ---- */
-            // For dark themes text sits over the gradient (bottom portion of canvas)
-            // For light theme text sits below the photo card
+            ctx.fillStyle = btmGrad;
+            ctx.fillRect(0, gradY, w, gradH);
 
-            const textBgY = isDark || isBrand || isGlass ? Math.round(h * (IS ? 0.52 : (isPortrait ? 0.48 : 0.44))) : photoH + Math.round(16 * U);
-
-            // Colors by theme
-            const clrPrimary   = isLight ? '#0F172A' : '#FFFFFF';
-            const clrSecondary = isLight ? '#475569' : 'rgba(226,232,240,0.85)';
-            const clrMuted     = isLight ? '#94A3B8' : 'rgba(148,163,184,0.75)';
-            const clrAccent    = isBrand ? '#FFFFFF' : accentColor;
-            const clrCategory  = isLight ? '#94A3B8' : 'rgba(203,213,225,0.65)';
-
-            // Font sizes (scaled to canvas)
-            const fsCat     = Math.round(26 * U);
-            const fsPrice   = Math.round(IS ? 92 : (isPortrait ? 84 : 76) * U);
-            const fsSqm     = Math.round(IS ? 40 : (isPortrait ? 36 : 32) * U);
-            const fsAddr    = Math.round(IS ? 56 : (isPortrait ? 50 : 46) * U);
-            const fsDetails = Math.round(IS ? 36 : (isPortrait ? 32 : 28) * U);
-            const fsPhone   = Math.round(IS ? 48 : (isPortrait ? 42 : 38) * U);
-            const fsAgent   = Math.round(IS ? 32 : (isPortrait ? 28 : 24) * U);
-
-            // Max text width
+            /* ---- TYPOGRAPHY CONSTANTS & DATA PREPARATION ---- */
+            const PAD = Math.round((IS ? 64 : (isPortrait ? 52 : 44)) * U);
+            const bottomPad = Math.round((IS ? 64 : (isPortrait ? 48 : 38)) * U);
             const maxTW = w - PAD * 2;
 
-            // ---- Category label ----
+            const fsCat     = Math.round((IS ? 28 : (isPortrait ? 24 : 22)) * U);
+            const fsPrice   = Math.round((IS ? 94 : (isPortrait ? 82 : 72)) * U);
+            const fsSqm     = Math.round((IS ? 38 : (isPortrait ? 34 : 30)) * U);
+            const fsAddr    = Math.round((IS ? 52 : (isPortrait ? 46 : 40)) * U);
+            const fsDetails = Math.round((IS ? 36 : (isPortrait ? 32 : 28)) * U);
+            const fsPhone   = Math.round((IS ? 46 : (isPortrait ? 40 : 36)) * U);
+
+            const catText = getCategoryText(property?.property_type, property?.rooms);
+            const priceText = formatNumber(property?.price) + ' ₽';
+            const m2 = property?.price && property?.area_total ? Math.round(property.price / property.area_total) : null;
+            const sqmText = m2 ? `(${formatNumber(m2)} ₽/м²)` : '';
+
             const rawAddr = (property?.address || property?.city || '').replace(/,?\s*кв\.?\s*\d+/i, '').trim();
             const loc = (locationText || '').trim();
             const addr = loc
                 ? (rawAddr && !rawAddr.toLowerCase().includes(loc.toLowerCase()) ? `${loc}, ${rawAddr}` : (rawAddr || loc))
                 : rawAddr;
 
-            const catText = getCategoryText(property?.property_type, property?.rooms);
+            ctx.font = `700 ${fsAddr}px 'Medeo Sans', system-ui, sans-serif`;
+            const addrLines = getWrappedLines(ctx, addr, maxTW);
 
-            let curY = textBgY;
-
-            ctx.font = `400 ${fsCat}px 'Medeo Sans', system-ui, sans-serif`;
-            ctx.fillStyle = clrCategory;
-            ctx.fillText(catText, PAD, curY);
-            curY += Math.round(fsCat * 1.2);
-
-            // ---- Price ----
-            curY += Math.round(16 * U);
-            const priceText = formatNumber(property?.price) + ' \u20BD';
-            ctx.font = `700 ${fsPrice}px 'Medeo Sans', system-ui, sans-serif`;
-            ctx.fillStyle = clrAccent;
-            ctx.fillText(priceText, PAD, curY);
-            const priceW = ctx.measureText(priceText).width;
-
-            if (property?.price && property?.area_total) {
-                const m2 = Math.round(property.price / property.area_total);
-                ctx.font = `300 ${fsSqm}px 'Medeo Sans', system-ui, sans-serif`;
-                ctx.fillStyle = clrMuted;
-                ctx.fillText(`${formatNumber(m2)} \u20BD/\u043C\u00B2`, PAD + priceW + Math.round(28 * U), curY);
-            }
-            curY += Math.round(fsPrice * 0.22);
-
-            // ---- Address ----
-            curY += Math.round(18 * U);
-            if (addr) {
-                ctx.font = `700 ${fsAddr}px 'Medeo Sans', system-ui, sans-serif`;
-                ctx.fillStyle = clrPrimary;
-                const addrLines = getWrappedLines(ctx, addr, maxTW);
-                for (const line of addrLines) {
-                    ctx.fillText(line, PAD, curY);
-                    curY += Math.round(fsAddr * 1.22);
-                }
-            }
-
-            // ---- Details (rooms, area, floor) ----
             const parts = [];
             const type = property?.property_type;
             const rooms = property?.rooms;
@@ -553,110 +647,104 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             } else if (type === 'room') {
                 parts.push('Комната');
             }
-            if (property?.area_total) parts.push(`${property.area_total} \u043C\u00B2`);
+            if (property?.area_total) parts.push(`${property.area_total} м²`);
             if (['apartment', 'room', 'commercial'].includes(type) && property?.floor) {
-                parts.push(`${property.floor}/${property.floors_total || '?'} \u044D\u0442.`);
+                parts.push(`${property.floor}/${property.floors_total || '?'} эт.`);
             } else if (type === 'house' && property?.floors_total) {
-                parts.push(`${property.floors_total} \u044D\u0442.`);
+                parts.push(`${property.floors_total} эт.`);
             }
 
-            if (parts.length) {
-                curY += Math.round(8 * U);
-                ctx.font = `300 ${fsDetails}px 'Medeo Sans', system-ui, sans-serif`;
-                ctx.fillStyle = clrSecondary;
-                ctx.fillText(parts.join('  \u00B7  '), PAD, curY);
-                curY += Math.round(fsDetails * 1.3);
-            }
-
-            // ---- Divider ----
-            curY += Math.round(14 * U);
-            ctx.save();
-            ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.12)';
-            ctx.lineWidth = Math.round(1.5 * U);
-            ctx.beginPath();
-            ctx.moveTo(PAD, curY);
-            ctx.lineTo(PAD + maxTW * 0.35, curY);
-            ctx.stroke();
-            ctx.restore();
-            curY += Math.round(18 * U);
-
-            // ---- Phone & Agent Name ----
             const activePhone = phone?.trim() ? (formatPhone(phone) || phone) : '+7 (999) 000-00-00';
+            const cleanAgent = (agentName || '').trim();
+            const showAgent = cleanAgent.length > 2 && cleanAgent.toLowerCase() !== 'я';
+            const contactText = showAgent ? `${cleanAgent}  ·  ${activePhone}` : activePhone;
+
+            /* ---- CALCULATE BOTTOM-ANCHORED VERTICAL LAYOUT ---- */
+            const hCat = Math.round(fsCat * 1.25);
+            const gapAfterCat = Math.round(14 * U);
+            const hPrice = Math.round(fsPrice * 0.95);
+            const gapAfterPrice = Math.round(18 * U);
+            const hAddr = addrLines.length * Math.round(fsAddr * 1.25);
+            const gapAfterAddr = Math.round(14 * U);
+            const hDetails = parts.length ? Math.round(fsDetails * 1.25) : 0;
+            const gapAfterDetails = parts.length ? Math.round(20 * U) : Math.round(8 * U);
+            const hPhone = Math.round(fsPhone * 1.25);
+
+            const totalTextH = hCat + gapAfterCat + hPrice + gapAfterPrice + hAddr + gapAfterAddr + hDetails + gapAfterDetails + hPhone;
+
+            let curY = h - bottomPad - totalTextH;
+            const minSafeY = gradY + Math.round(gradH * 0.22);
+            if (curY < minSafeY) curY = minSafeY;
+
+            /* ---- RENDER CATEGORY ---- */
+            ctx.font = `700 ${fsCat}px 'Medeo Sans', system-ui, sans-serif`;
+            ctx.fillStyle = isLight ? '#64748B' : (accentColor === '#0052FF' ? '#60A5FA' : accentColor);
+            ctx.fillText(catText, PAD, curY + fsCat * 0.85);
+            curY += hCat + gapAfterCat;
+
+            /* ---- RENDER PRICE & SQM ---- */
+            ctx.font = `800 ${fsPrice}px 'Medeo Sans', system-ui, sans-serif`;
+            ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
+            ctx.fillText(priceText, PAD, curY + fsPrice * 0.85);
+            const pw = ctx.measureText(priceText).width;
+
+            if (sqmText) {
+                ctx.font = `400 ${fsSqm}px 'Medeo Sans', system-ui, sans-serif`;
+                ctx.fillStyle = isLight ? '#64748B' : '#94A3B8';
+                ctx.fillText(sqmText, PAD + pw + Math.round(24 * U), curY + fsPrice * 0.85);
+            }
+            curY += hPrice + gapAfterPrice;
+
+            /* ---- RENDER ADDRESS ---- */
+            ctx.font = `700 ${fsAddr}px 'Medeo Sans', system-ui, sans-serif`;
+            ctx.fillStyle = isLight ? '#1E293B' : '#F8FAFC';
+            for (const line of addrLines) {
+                ctx.fillText(line, PAD, curY + fsAddr * 0.85);
+                curY += Math.round(fsAddr * 1.25);
+            }
+            curY += gapAfterAddr;
+
+            /* ---- RENDER SPECIFICATIONS ---- */
+            if (parts.length) {
+                ctx.font = `500 ${fsDetails}px 'Medeo Sans', system-ui, sans-serif`;
+                ctx.fillStyle = isLight ? '#475569' : '#CBD5E1';
+                ctx.fillText(parts.join('  ·  '), PAD, curY + fsDetails * 0.85);
+                curY += hDetails + gapAfterDetails;
+            }
+
+            /* ---- RENDER CONTACT / PHONE (NEVER RENDER 'Я') ---- */
             ctx.font = `700 ${fsPhone}px 'Medeo Sans', system-ui, sans-serif`;
-            ctx.fillStyle = clrPrimary;
-            ctx.fillText(activePhone, PAD, curY);
-            curY += Math.round(fsPhone * 1.3);
+            ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
+            ctx.fillText(contactText, PAD, curY + fsPhone * 0.85);
 
-            if (agentName.trim()) {
-                ctx.font = `300 ${fsAgent}px 'Medeo Sans', system-ui, sans-serif`;
-                ctx.fillStyle = clrMuted;
-                ctx.fillText(agentName.trim(), PAD, curY);
-            }
-
-            /* ---- FLOORPLAN BADGE ---- */
-            if (loadedLayoutImg) {
-                const boxSize = Math.round((IS ? 480 : (isPortrait ? 400 : 350)) * U);
-                // Position: bottom-right of photo zone, with padding
-                const bPad = Math.round(32 * U);
-                const boxX = w - bPad - boxSize;
-                const boxY = photoH - boxSize - Math.round((IS ? 36 : 24) * U);
-
-                // White card shadow
-                ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.30)';
-                ctx.shadowBlur = Math.round(32 * U);
-                ctx.shadowOffsetY = Math.round(8 * U);
-                ctx.fillStyle = '#ffffff';
-                ctx.beginPath();
-                safeRoundRect(ctx, boxX, boxY, boxSize, boxSize, Math.round(20 * U));
-                ctx.fill();
-                ctx.restore();
-
-                const p = Math.round(18 * U);
-                ctx.save();
-                ctx.beginPath();
-                safeRoundRect(ctx, boxX + p, boxY + p, boxSize - p * 2, boxSize - p * 2, Math.round(12 * U));
-                ctx.clip();
-                const iw = loadedLayoutImg.width, ih = loadedLayoutImg.height;
-                const ir = (iw && ih) ? iw / ih : 1;
-                const inner = boxSize - p * 2;
-                let dw, dh, dx, dy;
-                if (ir > 1) { dw = inner; dh = inner / ir; dx = boxX + p; dy = boxY + p + (inner - dh) / 2; }
-                else { dh = inner; dw = inner * ir; dx = boxX + p + (inner - dw) / 2; dy = boxY + p; }
-                ctx.drawImage(loadedLayoutImg, dx, dy, dw, dh);
-                ctx.restore();
-            }
-
-            /* ---- DEAL GOAL BADGE (top-right) ---- */
-            const badgePad = Math.round((IS ? 64 : (isPortrait ? 54 : 48)) * U);
-            let dealBadgeBottom = badgePad + Math.round(20 * U);
+            /* ---- TOP BADGES (DEAL GOAL & STICKERS) ---- */
+            const badgePad = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
+            let badgeBottom = badgePad;
 
             if (showDealGoal) {
                 const goalStr = (dealGoal === 'custom' ? customGoalText.trim() : dealGoal) || 'Продажа';
                 const badgeText = goalStr.toUpperCase();
-                const badgeH = Math.round((IS ? 68 : (isPortrait ? 58 : 52)) * U);
-                const bFont = Math.round((IS ? 28 : (isPortrait ? 24 : 22)) * U);
+                const badgeH = Math.round((IS ? 64 : (isPortrait ? 56 : 48)) * U);
+                const bFont = Math.round((IS ? 26 : (isPortrait ? 23 : 20)) * U);
                 ctx.font = `800 ${bFont}px 'Medeo Sans', system-ui, sans-serif`;
                 const tw = ctx.measureText(badgeText).width;
-                const bPadX = Math.round((IS ? 32 : 26) * U);
+                const bPadX = Math.round((IS ? 28 : 22) * U);
                 const badgeW = tw + bPadX * 2;
                 const badgeX = w - badgePad - badgeW;
                 const badgeY = badgePad;
 
-                // Shadow
                 ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.4)';
-                ctx.shadowBlur = Math.round(20 * U);
+                ctx.shadowColor = 'rgba(0,0,0,0.35)';
+                ctx.shadowBlur = Math.round(16 * U);
                 ctx.shadowOffsetY = Math.round(4 * U);
 
-                // Fill
                 const goalColor = goalStr === 'Аренда' ? '#10b981'
                     : goalStr === 'Посуточно' ? '#f97316'
                     : goalStr === 'Обмен' ? '#8b5cf6'
                     : accentColor;
 
                 ctx.beginPath();
-                safeRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, Math.round(14 * U));
+                safeRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, Math.round(12 * U));
                 ctx.fillStyle = goalColor;
                 ctx.fill();
                 ctx.restore();
@@ -664,35 +752,34 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.fillStyle = '#ffffff';
                 ctx.font = `800 ${bFont}px 'Medeo Sans', system-ui, sans-serif`;
                 ctx.textAlign = 'center';
-                ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + bFont * 0.36);
+                ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + bFont * 0.35);
                 ctx.textAlign = 'left';
 
-                dealBadgeBottom = badgeY + badgeH + Math.round(12 * U);
+                badgeBottom = badgeY + badgeH + Math.round(12 * U);
             }
 
-            /* ---- STICKERS ---- */
             if (stickers.length) {
-                const sh = Math.round((IS ? 62 : (isPortrait ? 54 : 46)) * U);
-                const sf = Math.round((IS ? 26 : (isPortrait ? 23 : 20)) * U);
-                let sy = showDealGoal ? dealBadgeBottom : (badgePad + Math.round(20 * U));
+                const sh = Math.round((IS ? 58 : (isPortrait ? 50 : 44)) * U);
+                const sf = Math.round((IS ? 24 : (isPortrait ? 21 : 18)) * U);
+                let sy = showDealGoal ? badgeBottom : badgePad;
+
                 stickers.forEach(s => {
                     const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
                     ctx.font = `700 ${sf}px 'Medeo Sans', system-ui, sans-serif`;
-                    const tw = ctx.measureText(txt.toUpperCase()).width + Math.round(44 * U);
+                    const tw = ctx.measureText(txt.toUpperCase()).width + Math.round(40 * U);
                     const sx = w - badgePad - tw;
 
                     ctx.save();
-                    ctx.shadowColor = 'rgba(0,0,0,0.3)';
+                    ctx.shadowColor = 'rgba(0,0,0,0.35)';
                     ctx.shadowBlur = Math.round(14 * U);
                     ctx.shadowOffsetY = Math.round(3 * U);
-                    ctx.fillStyle = s === 'Срочно' ? '#EF4444' : (isLight ? '#0F172A' : 'rgba(255,255,255,0.12)');
+                    ctx.fillStyle = s === 'Срочно' ? '#EF4444' : 'rgba(15, 23, 42, 0.75)';
                     ctx.beginPath();
                     safeRoundRect(ctx, sx, sy, tw, sh, Math.round(10 * U));
                     ctx.fill();
 
-                    // Outline for glass stickers
-                    if (!isLight && s !== 'Срочно') {
-                        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                    if (s !== 'Срочно') {
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
                         ctx.lineWidth = Math.round(1.5 * U);
                         ctx.stroke();
                     }
@@ -701,9 +788,9 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     ctx.fillStyle = '#FFFFFF';
                     ctx.font = `700 ${sf}px 'Medeo Sans', system-ui, sans-serif`;
                     ctx.textAlign = 'center';
-                    ctx.fillText(txt.toUpperCase(), sx + tw / 2, sy + sh / 2 + sf * 0.37);
+                    ctx.fillText(txt.toUpperCase(), sx + tw / 2, sy + sh / 2 + sf * 0.35);
                     ctx.textAlign = 'left';
-                    sy += sh + Math.round(12 * U);
+                    sy += sh + Math.round(10 * U);
                 });
             }
 
@@ -716,8 +803,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     }, [
         format, designTheme, fitMode, accentColor,
         dealGoal, showDealGoal, customGoalText,
-        selectedImages, gridLayout,
-        stickers, customStickerText,
+        selectedImages, stickers, customStickerText,
         property?.address, property?.city, property?.property_type,
         property?.rooms, property?.area_total, property?.price,
         property?.floor, property?.floors_total,
@@ -788,7 +874,6 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             onClick={e => { if (e.target === e.currentTarget && typeof onClose === 'function') onClose(); }}
             style={S.overlay}
         >
-            {/* Close button */}
             <button
                 type="button"
                 onClick={e => { e.stopPropagation(); if (typeof onClose === 'function') onClose(); }}
@@ -802,7 +887,6 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
                 {/* ======== LEFT PANEL ======== */}
                 <div style={S.panel}>
-                    {/* Header */}
                     <div style={S.panelHeader}>
                         <span style={S.panelTitle}>Создание баннера</span>
                     </div>
@@ -810,7 +894,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     <div style={S.panelBody}>
 
                         {/* FORMAT */}
-                        <Collapsible label="Формат" icon="F" open={openSections.format} onToggle={() => toggleSection('format')}>
+                        <Collapsible label="Формат" open={openSections.format} onToggle={() => toggleSection('format')}>
                             <div style={S.formatGrid}>
                                 {Object.entries(BANNER_FORMATS).map(([key, fmt]) => (
                                     <FormatCard
@@ -827,7 +911,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* THEME */}
-                        <Collapsible label="Тема" icon="T" open={openSections.theme} onToggle={() => toggleSection('theme')}>
+                        <Collapsible label="Тема" open={openSections.theme} onToggle={() => toggleSection('theme')}>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                 {DESIGN_THEMES.map(t => (
                                     <PillBtn
@@ -842,7 +926,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             </div>
                             <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
                                 <span style={S.subLabel}>Фото:</span>
-                                {[['contain', 'Целиком'], ['cover', 'Заполнить']].map(([m, l]) => (
+                                {[['cover', 'Заполнить'], ['contain', 'Целиком']].map(([m, l]) => (
                                     <PillBtn key={m} active={fitMode === m} color={AC} onClick={() => setFitMode(m)}>
                                         {l}
                                     </PillBtn>
@@ -851,7 +935,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* DEAL GOAL */}
-                        <Collapsible label="Цель сделки" icon="C" open={openSections.goal} onToggle={() => toggleSection('goal')}>
+                        <Collapsible label="Цель сделки" open={openSections.goal} onToggle={() => toggleSection('goal')}>
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                                 {DEAL_GOAL_OPTIONS.map(g => (
                                     <PillBtn
@@ -879,9 +963,9 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* PHOTOS */}
-                        <Collapsible label="Фотографии" icon="F" open={openSections.photo} onToggle={() => toggleSection('photo')}>
+                        <Collapsible label="Фотографии" open={openSections.photo} onToggle={() => toggleSection('photo')}>
                             {propertyImages.length > 1 && (
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
                                     {propertyImages.map((url, idx) => {
                                         const sel = selectedImages.includes(idx);
                                         return (
@@ -889,7 +973,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                                 key={idx}
                                                 onClick={() => setSelectedImages(prev => {
                                                     if (prev.includes(idx)) return prev.length === 1 ? prev : prev.filter(i => i !== idx);
-                                                    return prev.length >= 9 ? prev : [...prev, idx];
+                                                    return prev.length >= 8 ? prev : [...prev, idx];
                                                 })}
                                                 style={{ ...S.thumb, border: `2px solid ${sel ? AC : 'transparent'}`, opacity: sel ? 1 : 0.4 }}
                                             >
@@ -900,21 +984,42 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                     })}
                                 </div>
                             )}
-
-                            {selectedImages.length >= 2 && (
-                                <>
-                                    <div style={S.subLabel}>Сетка:</div>
-                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                                        {[['grid', 'Сетка'], ['main-stack', 'Главное'], ['vertical', 'Колонки'], ['horizontal', 'Строки']].map(([l, t]) => (
-                                            <PillBtn key={l} active={gridLayout === l} color={AC} onClick={() => setGridLayout(l)}>{t}</PillBtn>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                                {selectedImages.length} фото {layoutImage ? '+ планировка в сетке' : ''} (100% заполнение)
+                            </div>
                         </Collapsible>
 
-                        {/* AGENT */}
-                        <Collapsible label="Агент" icon="A" open={openSections.agent} onToggle={() => toggleSection('agent')}>
+                        {/* LAYOUT / FLOORPLAN */}
+                        <Collapsible label="Планировка в сетку" open={openSections.layout} onToggle={() => toggleSection('layout')}>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setLayoutImage(null)}
+                                    style={{ ...S.thumb, border: `2px solid ${layoutImage === null ? AC : 'var(--border)'}`, color: 'var(--text-muted)', fontSize: 9, fontWeight: 700 }}
+                                >
+                                    БЕЗ
+                                </button>
+                                {availableLayouts.map((url, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => setLayoutImage(url)}
+                                        style={{ ...S.thumb, border: `2px solid ${layoutImage === url ? AC : 'transparent'}`, opacity: layoutImage === url ? 1 : 0.5 }}
+                                    >
+                                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
+                                ))}
+                                <label style={{ ...S.thumb, border: '2px dashed var(--border)', fontSize: 20, color: 'var(--text-muted)' }}>
+                                    +
+                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLayoutUpload} />
+                                </label>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.35 }}>
+                                Обрезается по контуру и выводится на прозрачном фоне ячейкой сетки.
+                            </div>
+                        </Collapsible>
+
+                        {/* CONTACTS */}
+                        <Collapsible label="Контакты" open={openSections.agent} onToggle={() => toggleSection('agent')}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                 <div>
                                     <div style={S.subLabel}>Телефон</div>
@@ -936,7 +1041,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                     />
                                 </div>
                                 <div>
-                                    <div style={S.subLabel}>Имя агента</div>
+                                    <div style={S.subLabel}>Имя агента (необязательно)</div>
                                     <input
                                         type="text"
                                         value={agentName}
@@ -959,34 +1064,8 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             </div>
                         </Collapsible>
 
-                        {/* LAYOUT */}
-                        <Collapsible label="Планировка" icon="P" open={openSections.layout} onToggle={() => toggleSection('layout')}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setLayoutImage(null)}
-                                    style={{ ...S.thumb, border: `2px solid ${layoutImage === null ? AC : 'var(--border)'}`, color: 'var(--text-muted)', fontSize: 9, fontWeight: 700 }}
-                                >
-                                    НЕТ
-                                </button>
-                                {availableLayouts.map((url, idx) => (
-                                    <div
-                                        key={idx}
-                                        onClick={() => setLayoutImage(url)}
-                                        style={{ ...S.thumb, border: `2px solid ${layoutImage === url ? AC : 'transparent'}`, opacity: layoutImage === url ? 1 : 0.5 }}
-                                    >
-                                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                ))}
-                                <label style={{ ...S.thumb, border: '2px dashed var(--border)', fontSize: 20, color: 'var(--text-muted)' }}>
-                                    +
-                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLayoutUpload} />
-                                </label>
-                            </div>
-                        </Collapsible>
-
                         {/* STICKERS */}
-                        <Collapsible label="Стикеры" icon="S" open={openSections.stickers} onToggle={() => toggleSection('stickers')}>
+                        <Collapsible label="Стикеры" open={openSections.stickers} onToggle={() => toggleSection('stickers')}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                                 {AVAILABLE_STICKERS.map(s => {
                                     const on = stickers.includes(s);
@@ -1015,7 +1094,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* COLORS */}
-                        <Collapsible label="Акцент" icon="C" open={openSections.colors} onToggle={() => toggleSection('colors')}>
+                        <Collapsible label="Акцент" open={openSections.colors} onToggle={() => toggleSection('colors')}>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                 {TRENDING_COLORS.map(c => (
                                     <button
