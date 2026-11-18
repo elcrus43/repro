@@ -182,6 +182,181 @@ function cropFloorplanWhitespace(img) {
     return cropped;
 }
 
+function hexToRgb(hex) {
+    if (!hex) return { r: 0, g: 82, b: 255 };
+    const c = hex.replace('#', '');
+    const num = parseInt(c.length === 3 ? c.split('').map(x => x + x).join('') : c, 16);
+    if (Number.isNaN(num)) return { r: 0, g: 82, b: 255 };
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+}
+
+/**
+ * Адаптивный расчет сетки: пропорции каждой ячейки вычисляются по пропорциям
+ * оригинальных фотографий, исключая нежелательную обрезку важных деталей.
+ */
+function computeAdaptivePhotoGrid(imgs, w, h, IS, isPortrait, gridMode = 'adaptive') {
+    const photoCount = imgs.length;
+    const rects = [];
+    if (photoCount <= 1) {
+        return [{ x: 0, y: 0, w, h }];
+    }
+
+    if (gridMode === 'classic') {
+        if (photoCount === 2) {
+            if (IS || isPortrait) {
+                const h1 = Math.round(h * 0.50);
+                rects.push({ x: 0, y: 0, w, h: h1 });
+                rects.push({ x: 0, y: h1, w, h: h - h1 });
+            } else {
+                const w1 = Math.round(w * 0.5);
+                rects.push({ x: 0, y: 0, w: w1, h });
+                rects.push({ x: w1, y: 0, w: w - w1, h });
+            }
+        } else if (photoCount === 3) {
+            if (IS || isPortrait) {
+                const hTop = Math.round(h * 0.50);
+                const wHalf = Math.round(w * 0.5);
+                rects.push({ x: 0, y: 0, w, h: hTop });
+                rects.push({ x: 0, y: hTop, w: wHalf, h: h - hTop });
+                rects.push({ x: wHalf, y: hTop, w: w - wHalf, h: h - hTop });
+            } else {
+                const wLeft = Math.round(w * 0.50);
+                const hHalf = Math.round(h * 0.5);
+                rects.push({ x: 0, y: 0, w: wLeft, h: hHalf });
+                rects.push({ x: wLeft, y: 0, w: w - wLeft, h: hHalf });
+                rects.push({ x: 0, y: hHalf, w, h: h - hHalf });
+            }
+        } else if (photoCount === 4) {
+            const wHalf = Math.round(w * 0.5);
+            const hHalf = Math.round(h * 0.5);
+            rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });
+            rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });
+            rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });
+            rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf });
+        } else {
+            const cols = Math.ceil(Math.sqrt(photoCount));
+            const rows = Math.ceil(photoCount / cols);
+            const cw = w / cols;
+            const rh = h / rows;
+            for (let i = 0; i < photoCount; i++) {
+                const ri = Math.floor(i / cols), ci = i % cols;
+                rects.push({ x: Math.round(ci * cw), y: Math.round(ri * rh), w: Math.round(cw), h: Math.round(rh) });
+            }
+        }
+        return rects;
+    }
+
+    // Режим "Адаптивная" - подстройка под реальные пропорции фото
+    const ratios = imgs.map(img => {
+        const iw = img.naturalWidth || img.width || 1;
+        const ih = img.naturalHeight || img.height || 1;
+        return iw / ih;
+    });
+
+    if (photoCount === 2) {
+        const [r0, r1] = ratios;
+        if (IS || isPortrait) {
+            const h0Weight = 1 / r0;
+            const h1Weight = 1 / r1;
+            const split = Math.min(0.68, Math.max(0.32, h0Weight / (h0Weight + h1Weight)));
+            const h0 = Math.round(h * split);
+            rects.push({ x: 0, y: 0, w, h: h0 });
+            rects.push({ x: 0, y: h0, w, h: h - h0 });
+        } else {
+            if (r0 < 0.95 && r1 < 0.95) {
+                const w0 = Math.round(w * Math.min(0.68, Math.max(0.32, r0 / (r0 + r1))));
+                rects.push({ x: 0, y: 0, w: w0, h });
+                rects.push({ x: w0, y: 0, w: w - w0, h });
+            } else {
+                const h0Weight = 1 / r0;
+                const h1Weight = 1 / r1;
+                const split = Math.min(0.68, Math.max(0.32, h0Weight / (h0Weight + h1Weight)));
+                const h0 = Math.round(h * split);
+                rects.push({ x: 0, y: 0, w, h: h0 });
+                rects.push({ x: 0, y: h0, w, h: h - h0 });
+            }
+        }
+    } else if (photoCount === 3) {
+        const [r0, r1, r2] = ratios;
+        if (IS || isPortrait) {
+            const topWeight = 1 / r0;
+            const btmWeight = 1 / (r1 + r2);
+            const splitY = Math.min(0.65, Math.max(0.35, topWeight / (topWeight + btmWeight)));
+            const hTop = Math.round(h * splitY);
+            const hBottom = h - hTop;
+
+            const splitX = Math.min(0.70, Math.max(0.30, r1 / (r1 + r2)));
+            const w1 = Math.round(w * splitX);
+            const w2 = w - w1;
+
+            rects.push({ x: 0, y: 0, w, h: hTop });
+            rects.push({ x: 0, y: hTop, w: w1, h: hBottom });
+            rects.push({ x: w1, y: hTop, w: w2, h: hBottom });
+        } else {
+            if (r0 < 0.95) {
+                const leftWeight = r0;
+                const rightWeight = 1 / ((1 / r1) + (1 / r2));
+                const splitX = Math.min(0.65, Math.max(0.35, leftWeight / (leftWeight + rightWeight)));
+                const wLeft = Math.round(w * splitX);
+                const wRight = w - wLeft;
+
+                const splitY = Math.min(0.70, Math.max(0.30, (1 / r1) / ((1 / r1) + (1 / r2))));
+                const h1 = Math.round(h * splitY);
+                const h2 = h - h1;
+
+                rects.push({ x: 0, y: 0, w: wLeft, h });
+                rects.push({ x: wLeft, y: 0, w: wRight, h: h1 });
+                rects.push({ x: wLeft, y: h1, w: wRight, h: h2 });
+            } else {
+                const topWeight = 1 / r0;
+                const btmWeight = 1 / (r1 + r2);
+                const splitY = Math.min(0.65, Math.max(0.35, topWeight / (topWeight + btmWeight)));
+                const hTop = Math.round(h * splitY);
+                const hBottom = h - hTop;
+
+                const splitX = Math.min(0.70, Math.max(0.30, r1 / (r1 + r2)));
+                const w1 = Math.round(w * splitX);
+                const w2 = w - w1;
+
+                rects.push({ x: 0, y: 0, w, h: hTop });
+                rects.push({ x: 0, y: hTop, w: w1, h: hBottom });
+                rects.push({ x: w1, y: hTop, w: w2, h: hBottom });
+            }
+        }
+    } else if (photoCount === 4) {
+        const [r0, r1, r2, r3] = ratios;
+        const topWeight = 1 / (r0 + r1);
+        const btmWeight = 1 / (r2 + r3);
+        const splitY = Math.min(0.65, Math.max(0.35, topWeight / (topWeight + btmWeight)));
+        const hTop = Math.round(h * splitY);
+        const hBottom = h - hTop;
+
+        const splitTop = Math.min(0.70, Math.max(0.30, r0 / (r0 + r1)));
+        const w0 = Math.round(w * splitTop);
+        const w1 = w - w0;
+
+        const splitBtm = Math.min(0.70, Math.max(0.30, r2 / (r2 + r3)));
+        const w2 = Math.round(w * splitBtm);
+        const w3 = w - w2;
+
+        rects.push({ x: 0, y: 0, w: w0, h: hTop });
+        rects.push({ x: w0, y: 0, w: w1, h: hTop });
+        rects.push({ x: 0, y: hTop, w: w2, h: hBottom });
+        rects.push({ x: w2, y: hTop, w: w3, h: hBottom });
+    } else {
+        const cols = Math.ceil(Math.sqrt(photoCount));
+        const rows = Math.ceil(photoCount / cols);
+        const cw = w / cols;
+        const rh = h / rows;
+        for (let i = 0; i < photoCount; i++) {
+            const ri = Math.floor(i / cols), ci = i % cols;
+            rects.push({ x: Math.round(ci * cw), y: Math.round(ri * rh), w: Math.round(cw), h: Math.round(rh) });
+        }
+    }
+
+    return rects;
+}
+
 /* ================================================================
    MAIN COMPONENT
    ================================================================ */
@@ -255,6 +430,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     const [format, setFormat]           = React.useState('story');
     const [designTheme, setDesignTheme] = React.useState('dark');
     const [fitMode, setFitMode]         = React.useState('cover');
+    const [gridMode, setGridMode]       = React.useState('adaptive');
     const [accentColor, setAccentColor] = React.useState('#0052FF');
 
     const initialGoal = React.useMemo(() => getDealGoalLabel(property?.deal_type), [property?.deal_type]);
@@ -357,6 +533,8 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
         const IS = format === 'story';
         const isPortrait = format === 'portrait';
         const isLight = designTheme === 'light';
+        const isGlass = designTheme === 'glass';
+        const isBrand = designTheme === 'brand';
 
         try {
             const hasUncached = selectedImages.some(
@@ -388,53 +566,9 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
             const U = w / 1080;
 
-            /* ---- 1. GRID IS FILLED WITH PHOTOS ONLY (100% OF FRAME) ---- */
+            /* ---- 1. GRID IS FILLED WITH PHOTOS (ADAPTIVE OR CLASSIC) ---- */
             const photoCount = imgs.length;
-            const rects = [];
-
-            if (photoCount <= 1) {
-                rects.push({ x: 0, y: 0, w, h });
-            } else if (photoCount === 2) {
-                if (IS || isPortrait) {
-                    const h1 = Math.round(h * 0.50);
-                    rects.push({ x: 0, y: 0, w, h: h1 });
-                    rects.push({ x: 0, y: h1, w, h: h - h1 });
-                } else {
-                    const w1 = Math.round(w * 0.5);
-                    rects.push({ x: 0, y: 0, w: w1, h });
-                    rects.push({ x: w1, y: 0, w: w - w1, h });
-                }
-            } else if (photoCount === 3) {
-                if (IS || isPortrait) {
-                    const hTop = Math.round(h * 0.50);
-                    const wHalf = Math.round(w * 0.5);
-                    rects.push({ x: 0, y: 0, w, h: hTop });
-                    rects.push({ x: 0, y: hTop, w: wHalf, h: h - hTop });
-                    rects.push({ x: wHalf, y: hTop, w: w - wHalf, h: h - hTop });
-                } else {
-                    const wLeft = Math.round(w * 0.50);
-                    const hHalf = Math.round(h * 0.5);
-                    rects.push({ x: 0, y: 0, w: wLeft, h: hHalf });
-                    rects.push({ x: wLeft, y: 0, w: w - wLeft, h: hHalf });
-                    rects.push({ x: 0, y: hHalf, w, h: h - hHalf });
-                }
-            } else if (photoCount === 4) {
-                const wHalf = Math.round(w * 0.5);
-                const hHalf = Math.round(h * 0.5);
-                rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });
-                rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });
-                rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });
-                rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf });
-            } else {
-                const cols = Math.ceil(Math.sqrt(photoCount));
-                const rows = Math.ceil(photoCount / cols);
-                const cw = w / cols;
-                const rh = h / rows;
-                for (let i = 0; i < photoCount; i++) {
-                    const ri = Math.floor(i / cols), ci = i % cols;
-                    rects.push({ x: Math.round(ci * cw), y: Math.round(ri * rh), w: Math.round(cw), h: Math.round(rh) });
-                }
-            }
+            const rects = computeAdaptivePhotoGrid(imgs, w, h, IS, isPortrait, gridMode);
 
             /* ---- DRAW PHOTO CELL ---- */
             const drawPhotoCell = (img, cx, cy, cw, ch) => {
@@ -478,7 +612,9 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             // Draw dividers between photo cells
             if (photoCount > 1) {
                 ctx.save();
-                ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 15, 26, 0.85)';
+                ctx.strokeStyle = isLight
+                    ? 'rgba(255, 255, 255, 0.95)'
+                    : (isGlass ? 'rgba(255, 255, 255, 0.35)' : 'rgba(10, 15, 26, 0.85)');
                 ctx.lineWidth = Math.round(IS ? 8 : 6);
                 rects.forEach(r => ctx.strokeRect(r.x, r.y, r.w, r.h));
                 ctx.restore();
@@ -487,8 +623,8 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             /* ---- 2. TOP GRADIENT (for badges) ---- */
             const topGradH = Math.round((IS ? 190 : 150) * U);
             const topGrad = ctx.createLinearGradient(0, 0, 0, topGradH);
-            topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
-            topGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.20)');
+            topGrad.addColorStop(0, isGlass ? 'rgba(0, 0, 0, 0.38)' : 'rgba(0, 0, 0, 0.55)');
+            topGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.18)');
             topGrad.addColorStop(1, 'rgba(0, 0, 0, 0.00)');
             ctx.fillStyle = topGrad;
             ctx.fillRect(0, 0, w, topGradH);
@@ -504,6 +640,18 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 btmGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.92)');
                 btmGrad.addColorStop(0.75, 'rgba(255, 255, 255, 0.98)');
                 btmGrad.addColorStop(1.00, 'rgba(255, 255, 255, 1.00)');
+            } else if (isBrand) {
+                const rgb = hexToRgb(accentColor || '#0052FF');
+                btmGrad.addColorStop(0.00, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.00)`);
+                btmGrad.addColorStop(0.25, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38)`);
+                btmGrad.addColorStop(0.60, 'rgba(8, 12, 24, 0.88)');
+                btmGrad.addColorStop(1.00, 'rgba(8, 12, 24, 0.96)');
+            } else if (isGlass) {
+                // In glass theme, bottom photos remain visible through soft translucent shading
+                btmGrad.addColorStop(0.00, 'rgba(0, 0, 0, 0.00)');
+                btmGrad.addColorStop(0.35, 'rgba(0, 0, 0, 0.16)');
+                btmGrad.addColorStop(0.70, 'rgba(0, 0, 0, 0.35)');
+                btmGrad.addColorStop(1.00, 'rgba(0, 0, 0, 0.48)');
             } else {
                 btmGrad.addColorStop(0.00, 'rgba(8, 12, 22, 0.00)');
                 btmGrad.addColorStop(0.18, 'rgba(8, 12, 22, 0.58)');
@@ -542,10 +690,16 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.shadowOffsetY = Math.round(6 * U);
 
                 // Clean white card background for 100% black CAD lines contrast
-                ctx.fillStyle = '#FFFFFF';
+                ctx.fillStyle = isGlass ? 'rgba(255, 255, 255, 0.95)' : '#FFFFFF';
                 ctx.beginPath();
                 safeRoundRect(ctx, boxX, boxY, boxSize, boxSize, Math.round(18 * U));
                 ctx.fill();
+
+                if (isGlass) {
+                    ctx.lineWidth = Math.round(1.5 * U) || 1;
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+                    ctx.stroke();
+                }
                 ctx.restore();
 
                 const innerPad = Math.round(16 * U);
@@ -636,6 +790,45 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             let curY = h - bottomPad - totalTextH;
             const minSafeY = gradY + Math.round(gradH * 0.22);
             if (curY < minSafeY) curY = minSafeY;
+
+            /* FROSTED GLASS PLATE (WHEN THEME IS GLASS) */
+            if (isGlass) {
+                const gPadX = Math.round(20 * U);
+                const gPadY = Math.round(18 * U);
+                const glassX = PAD - gPadX;
+                const glassY = curY - gPadY;
+                const glassW = maxTW + gPadX * 2;
+                const glassH = totalTextH + gPadY * 2;
+                const glassR = Math.round(20 * U);
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+                ctx.shadowBlur = Math.round(24 * U);
+                ctx.shadowOffsetY = Math.round(6 * U);
+
+                // Frosted glass background
+                ctx.fillStyle = 'rgba(12, 18, 32, 0.72)';
+                ctx.beginPath();
+                safeRoundRect(ctx, glassX, glassY, glassW, glassH, glassR);
+                ctx.fill();
+
+                // Specular border
+                ctx.lineWidth = Math.round(1.5 * U) || 1;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.32)';
+                ctx.stroke();
+
+                // Top gloss highlight
+                const glossH = Math.round(28 * U);
+                const glassGloss = ctx.createLinearGradient(glassX, glassY, glassX, glassY + glossH);
+                glassGloss.addColorStop(0, 'rgba(255, 255, 255, 0.22)');
+                glassGloss.addColorStop(1, 'rgba(255, 255, 255, 0.00)');
+                ctx.fillStyle = glassGloss;
+                ctx.beginPath();
+                safeRoundRect(ctx, glassX, glassY, glassW, glossH, [glassR, glassR, 0, 0]);
+                ctx.fill();
+
+                ctx.restore();
+            }
 
             /* Category */
             ctx.font = `700 ${fsCat}px 'Medeo Sans', system-ui, sans-serif`;
@@ -764,7 +957,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             if (isMountedRef.current) setLoading(false);
         }
     }, [
-        format, designTheme, fitMode, accentColor,
+        format, designTheme, fitMode, gridMode, accentColor,
         dealGoal, showDealGoal, customGoalText,
         selectedImages, stickers, customStickerText,
         property?.address, property?.city, property?.property_type,
@@ -887,7 +1080,18 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                     </PillBtn>
                                 ))}
                             </div>
-                            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap' }}>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                                <span style={S.subLabel}>Сетка:</span>
+                                {[
+                                    ['adaptive', 'Адаптивная'],
+                                    ['classic', 'Симметричная']
+                                ].map(([m, l]) => (
+                                    <PillBtn key={m} active={gridMode === m} color={AC} onClick={() => setGridMode(m)}>
+                                        {l}
+                                    </PillBtn>
+                                ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                                 <span style={S.subLabel}>Фото:</span>
                                 {[['cover', 'Заполнить'], ['contain', 'Целиком']].map(([m, l]) => (
                                     <PillBtn key={m} active={fitMode === m} color={AC} onClick={() => setFitMode(m)}>
