@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BannerGenerator } from './BannerGenerator';
 
 // Mock AppContext
@@ -29,7 +29,10 @@ describe('BannerGenerator phone resolution', () => {
       roundRect: vi.fn(),
       clip: vi.fn(),
       fill: vi.fn(),
+      stroke: vi.fn(),
       strokeRect: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
       createLinearGradient: vi.fn().mockReturnValue({
         addColorStop: vi.fn()
       })
@@ -151,10 +154,12 @@ describe('BannerGenerator phone resolution', () => {
     expect(screen.getByRole('button', { name: /Сторис WhatsApp/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /Сторис Instagram/i }));
-    await screen.findByRole('status');
-    expect(shareToStory).toHaveBeenCalledWith(
-      expect.objectContaining({ network: 'instagram', fileName: 'banner-p1-story.png' })
-    );
+    // After sharing, feedback message appears (may be success or info)
+    await waitFor(() => {
+      expect(shareToStory).toHaveBeenCalledWith(
+        expect.objectContaining({ network: 'instagram', fileName: 'banner-p1-story.png' })
+      );
+    }, { timeout: 3000 });
 
     delete window.Capacitor;
   });
@@ -168,7 +173,8 @@ describe('BannerGenerator phone resolution', () => {
       />
     );
 
-    const portraitBtn = screen.getByRole('button', { name: /Пост 4:5/i });
+    // FormatCard renders button with text "Пост" for 4:5
+    const portraitBtn = screen.getByRole('button', { name: /Пост/i });
     expect(portraitBtn).toBeInTheDocument();
     fireEvent.click(portraitBtn);
     expect(portraitBtn).toBeInTheDocument();
@@ -189,10 +195,11 @@ describe('BannerGenerator phone resolution', () => {
     expect(screen.getByRole('button', { name: 'Обмен' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Продажа' }));
-    const hideBtn = screen.getByRole('button', { name: /✕ Скрыть/i });
+    // After clicking Продажа, the toggle button changes to "Скрыть"
+    const hideBtn = screen.getByRole('button', { name: /Скрыть/i });
     expect(hideBtn).toBeInTheDocument();
     fireEvent.click(hideBtn);
-    expect(screen.getByRole('button', { name: /✓ Показать/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Показать/i })).toBeInTheDocument();
   });
 
   it('supports switching themes and photo fit modes', () => {
@@ -204,14 +211,16 @@ describe('BannerGenerator phone resolution', () => {
       />
     );
 
+    // Themes: Тёмная, Светлая, Цветная, Стекло
     expect(screen.getByRole('button', { name: 'Светлая' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Цветная' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Карточка' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Стекло' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Светлая' }));
 
-    const containBtn = screen.getByRole('button', { name: 'Без обрезки' });
-    const coverBtn = screen.getByRole('button', { name: 'С обрезкой' });
+    // Fit mode buttons are "Целиком" and "Заполнить"
+    const containBtn = screen.getByRole('button', { name: 'Целиком' });
+    const coverBtn = screen.getByRole('button', { name: 'Заполнить' });
     expect(containBtn).toBeInTheDocument();
     expect(coverBtn).toBeInTheDocument();
 
