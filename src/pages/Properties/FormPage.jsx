@@ -74,59 +74,71 @@ function compressImage(file, maxW = 1200, maxH = 1200) {
     });
 }
 
-/* ─── Современный переключатель ──────────────────────────────── */
+/* --- Современный переключатель-пилюля --- */
 function ToggleChip({ label, value, onChange, icon }) {
     return (
         <button
             type="button"
             onClick={() => onChange(!value)}
             style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '10px 16px', borderRadius: 14, fontSize: 13,
-                border: 'none',
-                background: 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 10,
+                fontSize: 12.5,
+                fontWeight: value ? 600 : 400,
+                border: value ? '1px solid var(--primary)' : '1px solid var(--border)',
+                background: value ? 'var(--primary-light)' : 'var(--bg-light)',
                 color: value ? 'var(--primary)' : 'var(--text-secondary)',
-                cursor: 'pointer', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontWeight: 300,
-                transition: 'color 0.15s',
-                textDecoration: value ? 'underline' : 'none',
-                textUnderlineOffset: '3px',
+                cursor: 'pointer',
+                fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
+                transition: 'all 0.15s ease',
+                userSelect: 'none',
             }}
         >
-            {icon && <span style={{ opacity: value ? 1 : 0.5 }}>{icon}</span>}
-            {label}
-            {value && <Check size={14} strokeWidth={3} />}
+            {icon && <span style={{ display: 'inline-flex', alignItems: 'center', color: value ? 'var(--primary)' : 'var(--text-muted)' }}>{icon}</span>}
+            <span>{label}</span>
+            {value && <Check size={13} strokeWidth={2.6} style={{ color: 'var(--primary)', flexShrink: 0 }} />}
         </button>
     );
 }
 
-/* ─── Группа выбора (Chips) ─────────────────────────────────── */
+/* --- Группа выбора (Pill Group / Segmented Control) --- */
 function ChipGroup({ options, value, onChange }) {
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
-            {options.map(opt => (
-                <button
-                    key={opt.val}
-                    type="button"
-                    onClick={() => onChange(opt.val)}
-                    style={{
-                        padding: '10px 18px', borderRadius: 14, fontSize: 13,
-                        border: 'none',
-                        background: 'transparent',
-                        color: value === opt.val ? 'var(--primary)' : 'var(--text-secondary)',
-                        cursor: 'pointer', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontWeight: 300,
-                        transition: 'color 0.15s',
-                        textDecoration: value === opt.val ? 'underline' : 'none',
-                        textUnderlineOffset: '3px',
-                    }}
-                >
-                    {opt.label}
-                </button>
-            ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+            {options.map(opt => {
+                const isSelected = value === opt.val;
+                return (
+                    <button
+                        key={opt.val}
+                        type="button"
+                        onClick={() => onChange(opt.val)}
+                        style={{
+                            padding: '6px 12px',
+                            borderRadius: 10,
+                            fontSize: 12,
+                            fontWeight: isSelected ? 600 : 400,
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+                            background: isSelected ? 'var(--primary)' : 'var(--bg-light)',
+                            color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                            boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.22)' : 'none',
+                            cursor: 'pointer',
+                            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
+                            transition: 'all 0.15s ease',
+                            userSelect: 'none',
+                        }}
+                    >
+                        {opt.label}
+                    </button>
+                );
+            })}
         </div>
     );
 }
 
-/* ─── Группа множественного выбора (Multi-Chips) ─────────────── */
+/* --- Группа множественного выбора (Multi-Chips) --- */
 function MultiChipGroup({ options, value = [], onChange }) {
     const currentValues = Array.isArray(value) ? value : (value ? [value] : []);
     const toggle = (val) => {
@@ -138,28 +150,33 @@ function MultiChipGroup({ options, value = [], onChange }) {
     };
 
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
             {options.map(opt => {
-                const selected = currentValues.includes(opt.val);
+                const isSelected = currentValues.includes(opt.val);
                 return (
                     <button
                         key={opt.val}
                         type="button"
                         onClick={() => toggle(opt.val)}
                         style={{
-                            padding: '10px 18px', borderRadius: 14, fontSize: 13,
-                            border: 'none',
-                            background: 'transparent',
-                            color: selected ? 'var(--primary)' : 'var(--text-secondary)',
-                            cursor: 'pointer', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontWeight: 300,
-                            transition: 'color 0.15s',
-                            textDecoration: selected ? 'underline' : 'none',
-                            textUnderlineOffset: '3px',
-                            display: 'inline-flex', alignItems: 'center', gap: 6
+                            padding: '6px 12px',
+                            borderRadius: 10,
+                            fontSize: 12,
+                            fontWeight: isSelected ? 600 : 400,
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+                            background: isSelected ? 'var(--primary-light)' : 'var(--bg-light)',
+                            color: isSelected ? 'var(--primary)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
+                            transition: 'all 0.15s ease',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            userSelect: 'none',
                         }}
                     >
-                        {opt.label}
-                        {selected && <Check size={14} strokeWidth={3} />}
+                        <span>{opt.label}</span>
+                        {isSelected && <Check size={13} strokeWidth={2.6} />}
                     </button>
                 );
             })}
@@ -167,22 +184,51 @@ function MultiChipGroup({ options, value = [], onChange }) {
     );
 }
 
-/* ─── Карточка секции (Premium Open Design) ───────────────────── */
-function FormCard({ title, icon, children, description }) {
+/* --- Компактная карточка секции --- */
+function FormCard({ title, icon, action, children, description, style = {} }) {
     return (
         <div className="card fade-in" style={{ 
-            padding: '28px 24px', marginBottom: 24,
-            boxShadow: '0 8px 30px rgba(0,0,0,0.03)', borderRadius: 32,
-            background: 'var(--surface)', border: '1px solid rgba(255,255,255,0.8)'
+            padding: '16px 18px',
+            marginBottom: 14,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+            borderRadius: 18,
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 12,
+            ...style
         }}>
-            <div style={{ marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    {icon && <div style={{ color: 'var(--primary)', display: 'flex', alignItems: 'center' }}>{icon}</div>}
-                    <div className="font-oswald" style={{ fontSize: 15, fontWeight: 300, color: 'var(--text)', letterSpacing: '0.01em', textTransform: 'uppercase' }}>{title}</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                    {icon && (
+                        <div style={{ 
+                            width: 28, height: 28, borderRadius: 8,
+                            background: 'var(--primary-light)', color: 'var(--primary)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            flexShrink: 0
+                        }}>
+                            {React.cloneElement(icon, { size: 16 })}
+                        </div>
+                    )}
+                    <div style={{ 
+                        fontSize: 13, 
+                        fontWeight: 600, 
+                        color: 'var(--text)', 
+                        letterSpacing: '0.02em',
+                        textTransform: 'uppercase'
+                    }}>
+                        {title}
+                    </div>
                 </div>
-                {description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, paddingLeft: icon ? 32 : 0 }}>{description}</div>}
+                {action}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {description && (
+                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: -6 }}>
+                    {description}
+                </div>
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {children}
             </div>
         </div>
@@ -334,7 +380,6 @@ export function FormPage() {
     const [form, setForm] = useState(initialForm);
     const oldPriceRef = React.useRef(existing?.price ?? null);
     const [importUrl, setImportUrl] = useState('');
-    const [importing, setImporting] = useState(false);
     
     React.useEffect(() => {
         if (existing && !form.id) {
@@ -440,7 +485,7 @@ export function FormPage() {
         setShowExtensionModal(true);
         const urlLower = importUrl.toLowerCase();
         if (urlLower.includes('avito.ru') || urlLower.includes('cian.ru')) {
-            toast.info('Для Авито и Циан используйте расширение Chrome — прямые ссылки блокируются защитой сайтов');
+            toast.info('Для Авито и Циан используйте расширение Chrome - прямые ссылки блокируются защитой сайтов');
         } else {
             toast.info('Импорт объявлений выполняется через официальное расширение Chrome');
         }
@@ -691,94 +736,114 @@ export function FormPage() {
             <div style={{
                 position: 'sticky', top: 0, zIndex: 100,
                 background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)',
-                padding: '20px 24px', borderBottom: '1px solid var(--topbar-border)',
+                padding: '12px 18px', borderBottom: '1px solid var(--topbar-border)',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+                boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
+                gap: 12
             }}>
-                <button onClick={() => navigate(-1)} className="card-clickable" style={{
-                    width: 44, height: 44, borderRadius: 14, border: 'none',
-                    background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                    color: 'var(--text)'
-                }}>
-                    <ChevronLeft size={22} />
+                <button 
+                    type="button"
+                    onClick={() => navigate(-1)} 
+                    className="card-clickable" 
+                    title="Назад"
+                    style={{
+                        width: 38, height: 38, borderRadius: 12, border: '1px solid var(--border)',
+                        background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
+                        color: 'var(--text)'
+                    }}
+                >
+                    <ChevronLeft size={20} />
                 </button>
-                <div className="font-oswald" style={{ fontWeight: 300, fontSize: 17, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                    {id ? 'Редактирование' : (location.state?.isCopy ? 'Копия объекта' : 'Новый объект')}
+
+                <div style={{ textAlign: 'center', minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, textTransform: 'uppercase', letterSpacing: '0.02em', color: 'var(--text)' }}>
+                        {id ? 'Редактирование' : (location.state?.isCopy ? 'Копия объекта' : 'Новый объект')}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginTop: 1 }}>
+                        {PROPERTY_TYPES[form.property_type] || 'Объект'} • {form.deal_type === 'rent' ? 'Аренда' : form.deal_type === 'hire' ? 'Найм' : form.deal_type === 'buy' ? 'Покупка' : 'Продажа'}
+                    </div>
                 </div>
-                <div style={{ width: 44 }}></div>
+
+                {/* Быстрое сохранение прямо в шапке */}
+                <button
+                    type="button"
+                    onClick={handleSubmit}
+                    className="btn btn-primary card-clickable"
+                    style={{
+                        height: 38,
+                        padding: '0 14px',
+                        borderRadius: 12,
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        boxShadow: '0 2px 8px rgba(0,82,255,0.25)',
+                        flexShrink: 0
+                    }}
+                >
+                    <Check size={15} strokeWidth={2.6} />
+                    <span>{id ? 'Сохранить' : 'Создать'}</span>
+                </button>
             </div>
 
-             <form onSubmit={handleSubmit} className="page-form" style={{ padding: '20px', width: '100%', margin: '0 auto' }}>
+             <form onSubmit={handleSubmit} className="page-form" style={{ padding: '14px 16px', width: '100%', margin: '0 auto' }}>
                 
                 <div className="form-cards-layout">
-                    {/* ── ЛЕВАЯ КОЛОНКА (Тип, Адрес, Параметры) ── */}
+                    {/* --- ЛЕВАЯ КОЛОНКА (Тип, Адрес, Параметры) --- */}
                     <div className="form-col-main">
-                {/* Импорт по ссылке */}
+                {/* Компактный импорт по ссылке */}
                 <FormCard 
-                    title="Импорт по ссылке (Авито / ЦИАН)" 
-                    icon={<Sparkles size={22} />} 
-                    description="Импортируйте объект со всеми фото и параметрами в 1 клик через расширение Chrome"
+                    title="Импорт (Авито / ЦИАН)" 
+                    icon={<Sparkles size={16} />} 
+                    action={
+                        <button
+                            type="button"
+                            onClick={() => setShowExtensionModal(true)}
+                            style={{
+                                padding: '4px 10px',
+                                fontSize: 11.5,
+                                fontWeight: 500,
+                                borderRadius: 8,
+                                background: 'var(--primary-light)',
+                                color: 'var(--primary)',
+                                border: '1px solid rgba(0, 82, 255, 0.18)',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4
+                            }}
+                        >
+                            <Info size={12} />
+                            <span>Расширение Chrome</span>
+                        </button>
+                    }
                 >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        <div style={{
-                            background: 'rgba(37, 99, 235, 0.06)',
-                            border: '1px solid rgba(37, 99, 235, 0.18)',
-                            borderRadius: 14,
-                            padding: '12px 16px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            flexWrap: 'wrap',
-                            gap: 10
-                        }}>
-                            <div style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <Info size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                                <span>Сайты Авито и ЦИАН защищены от роботов — импорт работает через <strong>расширение Chrome</strong></span>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() => setShowExtensionModal(true)}
-                                style={{
-                                    padding: '7px 14px',
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    borderRadius: 10,
-                                    background: 'var(--primary)',
-                                    color: '#fff',
-                                    border: 'none',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                Инструкция по расширению
-                            </button>
-                        </div>
-
-                        <div style={{ display: 'flex', gap: 10 }}>
-                            <input
-                                type="text"
-                                className="form-input"
-                                style={{ flex: 1, borderRadius: 14 }}
-                                value={importUrl}
-                                onChange={e => setImportUrl(e.target.value)}
-                                placeholder="https://www.avito.ru/... или https://www.cian.ru/..."
-                            />
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={handleUrlImport}
-                                style={{ borderRadius: 14, height: 46, padding: '0 20px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
-                            >
-                                <Sparkles size={16} /> Импорт
-                            </button>
-                        </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                            type="text"
+                            className="form-input"
+                            style={{ flex: 1, borderRadius: 12, height: 40, fontSize: 13 }}
+                            value={importUrl}
+                            onChange={e => setImportUrl(e.target.value)}
+                            placeholder="Вставьте ссылку на Авито или ЦИАН..."
+                        />
+                        <button
+                            type="button"
+                            className="btn btn-primary"
+                            onClick={handleUrlImport}
+                            style={{ borderRadius: 12, height: 40, padding: '0 16px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+                        >
+                            <Sparkles size={14} /> Импорт
+                        </button>
                     </div>
                 </FormCard>
 
                 {/* Основное */}
-                <FormCard title="Основные данные" icon={<Zap size={22} />}>
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Цель сделки</label>
+                <FormCard title="Основные данные" icon={<Zap size={16} />}>
+                    <div className="form-group" style={{ marginBottom: 2 }}>
+                        <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Цель сделки</label>
                         <ChipGroup
                             options={[
                                 { val: 'sale', label: 'Продажа' },
@@ -790,22 +855,22 @@ export function FormPage() {
                             onChange={val => setF('deal_type', val)}
                         />
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Тип недвижимости</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Тип недвижимости</label>
                             <select className="form-select" value={form.property_type} onChange={e => {
                                 const val = e.target.value;
                                 setF('property_type', val);
                                 if (val === 'house' && (!form.floors_total || form.floors_total === 9)) {
                                     setF('floors_total', 2);
                                 }
-                            }} style={{ borderRadius: 14 }}>
+                            }} style={{ borderRadius: 12, height: 40, fontSize: 13 }}>
                                 {Object.entries(PROPERTY_TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                             </select>
                         </div>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Статус объекта</label>
-                            <select className="form-select" value={form.status} onChange={e => setF('status', e.target.value)} style={{ borderRadius: 14 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Статус объекта</label>
+                            <select className="form-select" value={form.status} onChange={e => setF('status', e.target.value)} style={{ borderRadius: 12, height: 40, fontSize: 13 }}>
                                 <option value="meeting">Встреча</option>
                                 <option value="agreement">АД (агент. договор)</option>
                                 <option value="no_agreement">Без АД</option>
@@ -819,13 +884,16 @@ export function FormPage() {
                     </div>
                 </FormCard>
 
-                {/* Владельцы (Позиция №2) */}
-                <FormCard title="Владельцы и Агент" icon={<Users size={20} />} description="Собственники объекта, доли владения и ответственный агент">
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                        {/* ── Блок 1: Собственники ── */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {/* Владельцы и Агент */}
+                <FormCard 
+                    title="Собственники и Агент" 
+                    icon={<Users size={16} />}
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {/* --- Блок 1: Собственники --- */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <label className="form-label" style={{ fontWeight: 400, fontSize: 13, margin: 0, color: 'var(--text)' }}>
+                                <label className="form-label" style={{ fontWeight: 500, fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
                                     Собственники
                                 </label>
                                 <button
@@ -834,21 +902,20 @@ export function FormPage() {
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: 5,
-                                        padding: '5px 12px',
-                                        borderRadius: 8,
+                                        gap: 4,
+                                        padding: '3px 8px',
+                                        borderRadius: 6,
                                         border: '1px solid rgba(0, 82, 255, 0.15)',
                                         background: 'rgba(0, 82, 255, 0.06)',
                                         color: 'var(--primary)',
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                         fontWeight: 500,
                                         cursor: 'pointer',
-                                        transition: 'all 0.15s ease'
                                     }}
                                     title="Создать нового собственника"
                                 >
-                                    <UserPlus size={13} />
-                                    <span>+ Создать собственника</span>
+                                    <UserPlus size={12} />
+                                    <span>+ Собственник</span>
                                 </button>
                             </div>
 
@@ -872,22 +939,22 @@ export function FormPage() {
                                 placeholder="Выберите собственников объекта..."
                             />
 
-                            {/* Доли в праве собственности (отображаются аккуратным блоком) */}
+                            {/* Доли в праве собственности */}
                             {form.client_ids && form.client_ids.length > 0 && (
                                 <div style={{ 
                                     display: 'flex', 
                                     flexDirection: 'column', 
-                                    gap: 10, 
-                                    marginTop: 4, 
-                                    padding: '12px 14px', 
+                                    gap: 8, 
+                                    marginTop: 2, 
+                                    padding: '10px 12px', 
                                     background: 'var(--bg-light)', 
-                                    borderRadius: 16,
+                                    borderRadius: 12,
                                     border: '1px solid var(--border-light)'
                                 }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                            <PieChart size={13} style={{ color: 'var(--primary)' }} />
-                                            <span>Доли в праве собственности</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                            <PieChart size={12} style={{ color: 'var(--primary)' }} />
+                                            <span>Доли владения</span>
                                         </div>
                                         {form.client_ids.length === 1 && !form.client_shares?.[form.client_ids[0]] && (
                                             <button
@@ -934,7 +1001,7 @@ export function FormPage() {
                                         )}
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                                         {form.client_ids.map(clientId => {
                                             const client = state.clients.find(c => c.id === clientId);
                                             if (!client) return null;
@@ -946,25 +1013,25 @@ export function FormPage() {
                                                         display: 'flex', 
                                                         alignItems: 'center', 
                                                         justifyContent: 'space-between',
-                                                        gap: 12,
-                                                        padding: '8px 12px',
+                                                        gap: 8,
+                                                        padding: '6px 10px',
                                                         background: 'var(--surface)',
-                                                        borderRadius: 12,
-                                                        border: '1px solid rgba(0,0,0,0.04)'
+                                                        borderRadius: 10,
+                                                        border: '1px solid var(--border-light)'
                                                     }}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: 1 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
                                                         <div style={{
-                                                            width: 28, height: 28, borderRadius: '50%',
+                                                            width: 24, height: 24, borderRadius: '50%',
                                                             background: 'rgba(0, 82, 255, 0.08)',
                                                             color: 'var(--primary)',
                                                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                            fontSize: 11, fontWeight: 600, flexShrink: 0
+                                                            fontSize: 10, fontWeight: 600, flexShrink: 0
                                                         }}>
                                                             {initials}
                                                         </div>
                                                         <div style={{ minWidth: 0, flex: 1 }}>
-                                                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                 {client.full_name}
                                                             </div>
                                                             {client.phone && (
@@ -978,13 +1045,13 @@ export function FormPage() {
                                                     <input 
                                                         type="text" 
                                                         style={{ 
-                                                            width: 110, 
-                                                            height: 32, 
-                                                            borderRadius: 8, 
+                                                            width: 90, 
+                                                            height: 28, 
+                                                            borderRadius: 6, 
                                                             fontSize: 12, 
                                                             fontWeight: 500,
                                                             textAlign: 'center',
-                                                            padding: '0 8px', 
+                                                            padding: '0 6px', 
                                                             border: '1px solid var(--border)',
                                                             background: 'var(--bg-light)',
                                                             color: 'var(--text)',
@@ -1008,12 +1075,12 @@ export function FormPage() {
                         </div>
 
                         {/* Разделитель */}
-                        <div style={{ height: 1, background: 'var(--border-light)', margin: '2px 0' }} />
+                        <div style={{ height: 1, background: 'var(--border-light)', margin: '0' }} />
 
-                        {/* ── Блок 2: Агент объекта ── */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {/* --- Блок 2: Агент объекта --- */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <label className="form-label" style={{ fontWeight: 400, fontSize: 13, margin: 0, color: 'var(--text)' }}>
+                                <label className="form-label" style={{ fontWeight: 500, fontSize: 12, margin: 0, color: 'var(--text-secondary)' }}>
                                     Агент объекта
                                 </label>
                                 <button
@@ -1022,21 +1089,20 @@ export function FormPage() {
                                     style={{
                                         display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: 5,
-                                        padding: '5px 12px',
-                                        borderRadius: 8,
+                                        gap: 4,
+                                        padding: '3px 8px',
+                                        borderRadius: 6,
                                         border: '1px solid rgba(0, 82, 255, 0.15)',
                                         background: 'rgba(0, 82, 255, 0.06)',
                                         color: 'var(--primary)',
-                                        fontSize: 12,
+                                        fontSize: 11.5,
                                         fontWeight: 500,
                                         cursor: 'pointer',
-                                        transition: 'all 0.15s ease'
                                     }}
                                     title="Создать нового агента"
                                 >
-                                    <UserPlus size={13} />
-                                    <span>+ Создать агента</span>
+                                    <UserPlus size={12} />
+                                    <span>+ Агент</span>
                                 </button>
                             </div>
 
@@ -1044,7 +1110,7 @@ export function FormPage() {
                                 className="form-select" 
                                 value={form.agent_id || ''} 
                                 onChange={e => setF('agent_id', e.target.value || null)} 
-                                style={{ borderRadius: 12, height: 42, padding: '0 12px', width: '100%', fontSize: 13 }}
+                                style={{ borderRadius: 12, height: 40, padding: '0 10px', width: '100%', fontSize: 13 }}
                             >
                                 <option value="">Без привязанного агента</option>
                                 {(() => {
@@ -1067,120 +1133,134 @@ export function FormPage() {
                 </FormCard>
 
                 {/* Локация */}
-                <FormCard title="Локация" icon={<MapPin size={22} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Город</label>
-                            <select className="form-select" value={form.city} onChange={e => setF('city', e.target.value)} style={{ borderRadius: 14 }}>
+                <FormCard title="Локация" icon={<MapPin size={16} />}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Город</label>
+                            <select className="form-select" value={form.city} onChange={e => setF('city', e.target.value)} style={{ borderRadius: 12, height: 40, fontSize: 13 }}>
                                 {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
 
                         {form.city === 'Киров' ? (
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Район города</label>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Район города</label>
                                 <select 
                                     className="form-select" 
                                     value={form.district || ''} 
                                     onChange={e => setF('district', e.target.value)} 
-                                    style={{ borderRadius: 14 }}
+                                    style={{ borderRadius: 12, height: 40, fontSize: 13 }}
                                 >
-                                    <option value="">— Любой район / не выбран —</option>
+                                    <option value="">- Любой район / не выбран -</option>
                                     {KIROV_DISTRICTS.map(d => (
                                         <option key={d.name} value={d.name}>{d.name}</option>
                                     ))}
                                 </select>
                             </div>
                         ) : (
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Район / Округ</label>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Район / Округ</label>
                                 <input
                                     type="text"
                                     className="form-input"
                                     value={form.district || ''}
                                     onChange={e => setF('district', e.target.value)}
                                     placeholder="Например: Центральный"
-                                    style={{ borderRadius: 14 }}
+                                    style={{ borderRadius: 12, height: 40, fontSize: 13 }}
                                 />
                             </div>
                         )}
                     </div>
                     
-                    <div className="form-group">
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 0 }}>Микрорайон</label>
-                            <button
-                                type="button"
-                                className="card-clickable"
-                                onClick={() => setShowAddMicro(v => !v)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: 'var(--primary)',
-                                    fontSize: 12,
-                                    cursor: 'pointer',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    padding: '2px 6px',
-                                    borderRadius: 6,
-                                    fontWeight: 500
-                                }}
-                            >
-                                {showAddMicro ? '✕ Отмена' : '+ Добавить свой вариант'}
-                            </button>
-                        </div>
-
-                        {showAddMicro && (
-                            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, background: 'var(--bg-light)', padding: '8px 12px', borderRadius: 14 }}>
-                                <input
-                                    type="text"
-                                    className="form-input"
-                                    placeholder="Название нового микрорайона..."
-                                    value={newMicroName}
-                                    onChange={e => setNewMicroName(e.target.value)}
-                                    onKeyDown={e => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleSaveCustomMicro();
-                                        }
-                                    }}
-                                    style={{ borderRadius: 10, flex: 1, height: 38 }}
-                                    autoFocus
-                                />
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 0 }}>Микрорайон</label>
                                 <button
                                     type="button"
-                                    className="btn btn-primary card-clickable"
-                                    onClick={handleSaveCustomMicro}
-                                    style={{ height: 38, padding: '0 16px', borderRadius: 10, fontSize: 12, whiteSpace: 'nowrap' }}
+                                    className="card-clickable"
+                                    onClick={() => setShowAddMicro(v => !v)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        color: 'var(--primary)',
+                                        fontSize: 11,
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 2,
+                                        padding: 0,
+                                        fontWeight: 500
+                                    }}
                                 >
-                                    Сохранить
+                                    {showAddMicro ? '✕ Отмена' : '+ Свой'}
                                 </button>
                             </div>
-                        )}
 
-                        <select 
-                            className="form-select" 
-                            value={form.microdistrict || ''} 
-                            onChange={e => {
-                                if (e.target.value === '__NEW__') {
-                                    setShowAddMicro(true);
-                                } else {
-                                    setF('microdistrict', e.target.value);
-                                }
-                            }} 
-                            style={{ borderRadius: 14 }}
-                        >
-                            <option value="">— Выбрать микрорайон —</option>
-                            {availableMicrodistricts.map(m => (
-                                <option key={m} value={m}>{m}</option>
-                            ))}
-                            <option value="__NEW__">+ Свой вариант (добавить в базу)...</option>
-                        </select>
+                            <select 
+                                className="form-select" 
+                                value={form.microdistrict || ''} 
+                                onChange={e => {
+                                    if (e.target.value === '__NEW__') {
+                                        setShowAddMicro(true);
+                                    } else {
+                                        setF('microdistrict', e.target.value);
+                                    }
+                                }} 
+                                style={{ borderRadius: 12, height: 40, fontSize: 13 }}
+                            >
+                                <option value="">- Не выбран -</option>
+                                {availableMicrodistricts.map(m => (
+                                    <option key={m} value={m}>{m}</option>
+                                ))}
+                                <option value="__NEW__">+ Свой вариант (добавить в базу)...</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                                {form.property_type === 'house' ? 'Посёлок / КП' : 'Жилой комплекс / ЖК'}
+                            </label>
+                            <input 
+                                className="form-input" 
+                                value={form.residential_complex || ''} 
+                                onChange={e => setF('residential_complex', e.target.value)} 
+                                placeholder={form.property_type === 'house' ? 'Название КП' : 'Название ЖК'} 
+                                style={{ borderRadius: 12, height: 40, fontSize: 13 }} 
+                            />
+                        </div>
                     </div>
 
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Адрес</label>
+                    {showAddMicro && (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', background: 'var(--bg-light)', padding: '8px 10px', borderRadius: 12 }}>
+                            <input
+                                type="text"
+                                className="form-input"
+                                placeholder="Название нового микрорайона..."
+                                value={newMicroName}
+                                onChange={e => setNewMicroName(e.target.value)}
+                                onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleSaveCustomMicro();
+                                    }
+                                }}
+                                style={{ borderRadius: 8, flex: 1, height: 34, fontSize: 12 }}
+                                autoFocus
+                            />
+                            <button
+                                type="button"
+                                className="btn btn-primary card-clickable"
+                                onClick={handleSaveCustomMicro}
+                                style={{ height: 34, padding: '0 12px', borderRadius: 8, fontSize: 12, whiteSpace: 'nowrap' }}
+                            >
+                                Сохранить
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Адрес</label>
                         <AddressAutocomplete
                             value={form.address}
                             onChange={val => setForm(f => ({ ...f, address: val, latitude: null, longitude: null }))}
@@ -1188,33 +1268,22 @@ export function FormPage() {
                             placeholder="ул. Ленина, д. 1, кв. 10"
                             onSelect={suggestion => {
                                 const d = suggestion.data;
-                                // Автозаполняем связанные поля из ответа DaData
                                 const updates = {
                                     latitude: d.geo_lat ? Number(d.geo_lat) : null,
                                     longitude: d.geo_lon ? Number(d.geo_lon) : null,
                                 };
-
-                                // Город
                                 if (d.city && form.city === 'Другой') {
                                     updates.city = d.city;
                                 }
-
-                                // Район (только для Кирова)
                                 if (d.city_district_with_type && !form.district) {
                                     updates.district = d.city_district_with_type;
                                 }
-
-                                // Этаж и кол-во этажей — из house_flat_count (DaData иногда возвращает)
                                 if (d.floors_count && !form.floors_total) {
                                     updates.floors_total = Number(d.floors_count);
                                 }
-
-                                // Кадастровый номер квартиры
                                 if (d.flat_cadnum && !form.cadastral_number) {
                                     updates.cadastral_number = d.flat_cadnum;
                                 }
-
-                                // Применяем все обновления разом
                                 setForm(f => ({ ...f, ...updates }));
                             }}
                         />
@@ -1229,17 +1298,17 @@ export function FormPage() {
                                         onClick={handleParseHouse}
                                         disabled={parsing || (!form.address && !form.city)}
                                         style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-                                            width: '100%', padding: '14px 0', borderRadius: 16, fontSize: 14,
-                                            border: '2px dashed var(--primary)',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                                            height: 36, borderRadius: 10, fontSize: 12,
+                                            border: '1px dashed var(--primary)',
                                             background: 'var(--primary-light)', color: 'var(--primary)',
                                             cursor: parsing ? 'wait' : 'pointer',
-                                            fontFamily: 'inherit', fontWeight: 300,
-                                            transition: 'all 0.2s',
+                                            fontWeight: 500,
+                                            transition: 'all 0.15s ease',
                                             opacity: (!form.address && !form.city) ? 0.5 : 1
                                         }}
                                     >
-                                        {parsing ? '⌛ Загрузка данных...' : <><Sparkles size={18} /> Найти данные о доме</>}
+                                        {parsing ? '⌛ Загрузка...' : <><Sparkles size={14} /> Данные о доме (МинЖКХ)</>}
                                     </button>
                                     <button
                                         type="button"
@@ -1250,61 +1319,48 @@ export function FormPage() {
                                         }}
                                         disabled={!form.address && !form.city}
                                         style={{
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                                            padding: '14px 16px', borderRadius: 16, fontSize: 13,
-                                            border: '2px dashed var(--border-light)',
-                                            background: 'var(--bg-card)', color: 'var(--text-secondary)',
-                                            cursor: 'pointer', fontFamily: 'inherit', fontWeight: 300,
-                                            transition: 'all 0.2s', whiteSpace: 'nowrap',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
+                                            height: 36, padding: '0 12px', borderRadius: 10, fontSize: 12,
+                                            border: '1px solid var(--border)',
+                                            background: 'var(--bg-light)', color: 'var(--text-secondary)',
+                                            cursor: 'pointer', fontWeight: 500,
+                                            transition: 'all 0.15s ease', whiteSpace: 'nowrap',
                                             opacity: (!form.address && !form.city) ? 0.5 : 1
                                         }}
                                     >
-                                        🏠 МинЖКХ
+                                        dom.mingkh.ru
                                     </button>
                                 </div>
                             )}
                             {parsedFields && form.property_type !== 'house' && (
                                 <div style={{
                                     background: parsedFields.length > 0 ? 'var(--success-light)' : 'var(--warning-light)',
-                                    border: `1px solid ${parsedFields.length > 0 ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
-                                    borderRadius: 16, padding: '14px',
+                                    border: `1px solid ${parsedFields.length > 0 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                                    borderRadius: 12, padding: '10px 12px',
                                 }}>
-                                    <div style={{ fontSize: 12, fontWeight: 300, color: parsedFields.length > 0 ? 'var(--success)' : 'var(--warning)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {parsedFields.length > 0 ? <Check size={14} /> : <Info size={14} />}
+                                    <div style={{ fontSize: 11.5, fontWeight: 500, color: parsedFields.length > 0 ? 'var(--success)' : 'var(--warning)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {parsedFields.length > 0 ? <Check size={13} /> : <Info size={13} />}
                                         {parsedFields.length > 0 ? `Найдено ${parsedFields.length} характеристик:` : 'Данные не найдены'}
                                     </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
                                         {parsedFields.map(({ label, value }) => (
-                                            <span key={label} style={{ fontSize: 11, padding: '4px 10px', borderRadius: 10, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontWeight: 300 }}>
-                                                {label}: <span style={{ color: 'var(--primary)' }}>{value}</span>
+                                            <span key={label} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border-light)', fontWeight: 400 }}>
+                                                {label}: <strong style={{ color: 'var(--primary)' }}>{value}</strong>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
                             )}
-
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>
-                                    {form.property_type === 'house' ? 'Коттеджный посёлок / КП' : 'Жилой комплекс / ЖК'}
-                                </label>
-                                <input 
-                                    className="form-input" 
-                                    value={form.residential_complex || ''} 
-                                    onChange={e => setF('residential_complex', e.target.value)} 
-                                    placeholder={form.property_type === 'house' ? 'Название КП / посёлка' : 'Название ЖК'} 
-                                    style={{ borderRadius: 14 }} 
-                                />
-                            </div>
                         </>
                     )}
                 </FormCard>
 
-                {/* Параметры объекта (для квартир, комнат, коммерции, домов) */}
+                {/* Параметры объекта */}
                 {form.property_type !== 'garden' && (
-                <FormCard title="Параметры объекта" icon={<Ruler size={22} />}>
+                <FormCard title="Параметры объекта" icon={<Ruler size={16} />}>
                     {form.property_type === 'commercial' ? (
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Планировка помещения</label>
+                        <div className="form-group" style={{ marginBottom: 2 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Планировка помещения</label>
                             <ChipGroup 
                                 options={Object.entries(COMMERCIAL_LAYOUTS).map(([val, label]) => ({ val, label }))}
                                 value={form.commercial_layout || 'open_space'}
@@ -1312,8 +1368,8 @@ export function FormPage() {
                             />
                         </div>
                     ) : (
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Количество комнат</label>
+                        <div className="form-group" style={{ marginBottom: 2 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Количество комнат</label>
                             <ChipGroup 
                                  options={[
                                      ...(form.property_type === 'house' ? [] : [{ val: 0, label: 'Студия' }]),
@@ -1331,9 +1387,9 @@ export function FormPage() {
                     )}
 
                     {form.property_type === 'commercial' ? (
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая площадь (м²)</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Общая площадь (м²)</label>
                                 <input 
                                     type="number" 
                                     step="any"
@@ -1341,11 +1397,11 @@ export function FormPage() {
                                     value={form.area_total || ''} 
                                     onChange={e => setF('area_total', e.target.value === '' ? '' : parseFloat(e.target.value))} 
                                     placeholder="120"
-                                    style={{ borderRadius: 12 }} 
+                                    style={{ borderRadius: 10, height: 38, fontSize: 13 }} 
                                 />
                             </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Полезная / торговая (м²)</label>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Полезная / торговая (м²)</label>
                                 <input 
                                     type="number" 
                                     step="any"
@@ -1353,34 +1409,34 @@ export function FormPage() {
                                     value={form.area_living || ''} 
                                     onChange={e => setF('area_living', e.target.value === '' ? '' : parseFloat(e.target.value))} 
                                     placeholder="95"
-                                    style={{ borderRadius: 12 }} 
+                                    style={{ borderRadius: 10, height: 38, fontSize: 13 }} 
                                 />
                             </div>
                         </div>
                     ) : (
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Общая м²</label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Общая м²</label>
                                 <input type="number" step="any" className="form-input" value={form.area_total || ''} onChange={e => {
                                     const val = e.target.value === '' ? '' : parseFloat(e.target.value);
                                     setF('area_total', val);
                                     if (form.property_type === 'house') setF('house_area', val);
-                                }} style={{ borderRadius: 12 }} />
+                                }} style={{ borderRadius: 10, height: 38, fontSize: 13 }} />
                             </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Жилая м²</label>
-                                <input type="number" step="any" className="form-input" value={form.area_living || ''} onChange={e => setF('area_living', e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ borderRadius: 12 }} />
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Жилая м²</label>
+                                <input type="number" step="any" className="form-input" value={form.area_living || ''} onChange={e => setF('area_living', e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ borderRadius: 10, height: 38, fontSize: 13 }} />
                             </div>
-                            <div className="form-group">
-                                <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Кухня м²</label>
-                                <input type="number" step="any" className="form-input" value={form.area_kitchen || ''} onChange={e => setF('area_kitchen', e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ borderRadius: 12 }} />
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Кухня м²</label>
+                                <input type="number" step="any" className="form-input" value={form.area_kitchen || ''} onChange={e => setF('area_kitchen', e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ borderRadius: 10, height: 38, fontSize: 13 }} />
                             </div>
                         </div>
                     )}
 
                      {form.property_type === 'house' ? (
-                         <div className="form-group">
-                             <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Этажей в доме</label>
+                         <div className="form-group" style={{ marginBottom: 0 }}>
+                             <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Этажей в доме</label>
                              <input 
                                  type="number" 
                                  className="form-input" 
@@ -1391,24 +1447,24 @@ export function FormPage() {
                                      setF('house_floors', val);
                                  }} 
                                  placeholder="2" 
-                                 style={{ borderRadius: 12 }} 
+                                 style={{ borderRadius: 10, height: 38, fontSize: 13 }} 
                              />
                          </div>
                      ) : (
-                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                             <div className="form-group">
-                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Этаж</label>
-                                 <input type="number" className="form-input" value={form.floor || ''} onChange={e => setF('floor', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                             <div className="form-group" style={{ marginBottom: 0 }}>
+                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Этаж</label>
+                                 <input type="number" className="form-input" value={form.floor || ''} onChange={e => setF('floor', Number(e.target.value))} style={{ borderRadius: 10, height: 38, fontSize: 13 }} />
                              </div>
-                             <div className="form-group">
-                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Всего этажей</label>
-                                 <input type="number" className="form-input" value={form.floors_total || ''} onChange={e => setF('floors_total', Number(e.target.value))} style={{ borderRadius: 12 }} />
+                             <div className="form-group" style={{ marginBottom: 0 }}>
+                                 <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Всего этажей</label>
+                                 <input type="number" className="form-input" value={form.floors_total || ''} onChange={e => setF('floors_total', Number(e.target.value))} style={{ borderRadius: 10, height: 38, fontSize: 13 }} />
                              </div>
                          </div>
                      )}
  
-                     <div className="form-group">
-                         <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Ремонт</label>
+                     <div className="form-group" style={{ marginBottom: 0 }}>
+                         <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Ремонт</label>
                          <ChipGroup 
                              options={Object.entries(RENOVATION_LABELS).map(([val, label]) => ({ val, label }))}
                              value={form.renovation}
@@ -1418,26 +1474,25 @@ export function FormPage() {
                 </FormCard>
                 )}
 
-                 {/* ── О САДЕ (только для garden) ── */}
+                 {/* --- О САДЕ (только для garden) --- */}
                  {form.property_type === 'garden' && (
-                     <FormCard title="О саде / участке" icon={<Home size={22} />} description="Характеристики садового участка, построек и коммуникаций">
+                     <FormCard title="О саде / участке" icon={<Home size={16} />}>
 
                          {/* Участок */}
                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                              <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Участок</div>
-                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                 <div className="form-group">
+                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Площадь (соток)</label>
                                      <input type="number" step="any" className="form-input" value={form.land_area || ''} onChange={e => {
                                          const val = e.target.value === '' ? '' : parseFloat(e.target.value);
                                          setF('land_area', val);
-                                         // Если нет area_total, можно синхронизировать или оставить сотки
-                                     }} placeholder="6" style={{ borderRadius: 12 }} />
+                                     }} placeholder="6" style={{ borderRadius: 10, height: 38 }} />
                                  </div>
-                                 <div className="form-group">
+                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Категория</label>
-                                     <select className="form-select" value={form.land_category || ''} onChange={e => setF('land_category', e.target.value)} style={{ borderRadius: 12 }}>
-                                         <option value="">— Не указана —</option>
+                                     <select className="form-select" value={form.land_category || ''} onChange={e => setF('land_category', e.target.value)} style={{ borderRadius: 10, height: 38 }}>
+                                         <option value="">- Не указана -</option>
                                          <option value="snt">СНТ</option>
                                          <option value="dnt">ДНТ</option>
                                          <option value="izhs">ИЖС</option>
@@ -1446,25 +1501,25 @@ export function FormPage() {
                                      </select>
                                  </div>
                              </div>
-                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                 <div className="form-group">
+                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Название СНТ/ДНТ</label>
-                                     <input className="form-input" value={form.snt_name || ''} onChange={e => setF('snt_name', e.target.value)} placeholder="Шинник-7" style={{ borderRadius: 12 }} />
+                                     <input className="form-input" value={form.snt_name || ''} onChange={e => setF('snt_name', e.target.value)} placeholder="Шинник-7" style={{ borderRadius: 10, height: 38 }} />
                                  </div>
-                                 <div className="form-group">
+                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>№ участка</label>
-                                     <input className="form-input" value={form.snt_number || ''} onChange={e => setF('snt_number', e.target.value)} placeholder="42" style={{ borderRadius: 12 }} />
+                                     <input className="form-input" value={form.snt_number || ''} onChange={e => setF('snt_number', e.target.value)} placeholder="42" style={{ borderRadius: 10, height: 38 }} />
                                  </div>
                              </div>
-                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                                 <div className="form-group">
+                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Расстояние до города (км)</label>
-                                     <input type="number" className="form-input" value={form.distance_to_city || ''} onChange={e => setF('distance_to_city', Number(e.target.value))} placeholder="10" style={{ borderRadius: 12 }} />
+                                     <input type="number" className="form-input" value={form.distance_to_city || ''} onChange={e => setF('distance_to_city', Number(e.target.value))} placeholder="10" style={{ borderRadius: 10, height: 38 }} />
                                  </div>
-                                 <div className="form-group">
+                                 <div className="form-group" style={{ marginBottom: 0 }}>
                                      <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Подъезд</label>
-                                     <select className="form-select" value={form.road_access || ''} onChange={e => setF('road_access', e.target.value)} style={{ borderRadius: 12 }}>
-                                         <option value="">— Не указан —</option>
+                                     <select className="form-select" value={form.road_access || ''} onChange={e => setF('road_access', e.target.value)} style={{ borderRadius: 10, height: 38 }}>
+                                         <option value="">- Не указан -</option>
                                          <option value="asphalt">Асфальт</option>
                                          <option value="gravel">Гравий/щебень</option>
                                          <option value="dirt">Грунтовка</option>
@@ -1669,9 +1724,9 @@ export function FormPage() {
                      </FormCard>
                  )}
 
-                {/* ── ХАРАКТЕРИСТИКИ ДОМА (для домов) ── */}
+                {/* --- ХАРАКТЕРИСТИКИ ДОМА (для домов) --- */}
                 {form.property_type === 'house' && (
-                    <FormCard title="Характеристики дома" icon={<Home size={22} />} description="Конструктив дома, земельный участок, коммуникации и постройки">
+                    <FormCard title="Характеристики дома" icon={<Home size={16} />}>
                         {/* 1. Конструктив дома */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                             <div className="font-oswald" style={{ fontSize: 12, fontWeight: 300, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
@@ -1794,7 +1849,7 @@ export function FormPage() {
                                         onChange={e => setF('land_category', e.target.value)} 
                                         style={{ borderRadius: 12 }}
                                     >
-                                        <option value="">— Не указана —</option>
+                                        <option value="">- Не указана -</option>
                                         {Object.entries(LAND_CATEGORIES).map(([val, label]) => (
                                             <option key={val} value={val}>{label}</option>
                                         ))}
@@ -1822,7 +1877,7 @@ export function FormPage() {
                                         onChange={e => setF('road_access', e.target.value)} 
                                         style={{ borderRadius: 12 }}
                                     >
-                                        <option value="">— Не указан —</option>
+                                        <option value="">- Не указан -</option>
                                         {Object.entries(ROAD_ACCESS).map(([val, label]) => (
                                             <option key={val} value={val}>{label}</option>
                                         ))}
@@ -1947,12 +2002,11 @@ export function FormPage() {
                     </FormCard>
                 )}
 
-                {/* ── ХАРАКТЕРИСТИКИ КОММЕРЧЕСКОГО ПОМЕЩЕНИЯ (для коммерции) ── */}
+                {/* --- ХАРАКТЕРИСТИКИ КОММЕРЧЕСКОГО ПОМЕЩЕНИЯ (для коммерции) --- */}
                 {form.property_type === 'commercial' && (
                     <FormCard 
-                        title="Характеристики коммерческого помещения" 
-                        icon={<Briefcase size={22} />} 
-                        description="Назначение, вход, витрины, мощности и параметры арендного бизнеса"
+                        title="Характеристики коммерции" 
+                        icon={<Briefcase size={16} />}
                     >
                         {/* 1. Назначение и размещение */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -2085,7 +2139,7 @@ export function FormPage() {
                                         onChange={e => setF('building_type', e.target.value)} 
                                         style={{ borderRadius: 12 }}
                                     >
-                                        <option value="">— Не указан —</option>
+                                        <option value="">- Не указан -</option>
                                         {Object.entries(BUILDING_TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                                     </select>
                                 </div>
@@ -2140,7 +2194,7 @@ export function FormPage() {
                                                 padding: '0 12px', background: 'var(--surface)', borderRadius: 12,
                                                 fontSize: 14, fontWeight: 500, color: 'var(--primary)'
                                             }}>
-                                                {form.rental_income ? `${(Number(form.rental_income) * 12).toLocaleString('ru-RU')} ₽ / год` : '—'}
+                                                {form.rental_income ? `${(Number(form.rental_income) * 12).toLocaleString('ru-RU')} ₽ / год` : '-'}
                                             </div>
                                         </div>
                                     </div>
@@ -2175,25 +2229,25 @@ export function FormPage() {
                     </FormCard>
                 )}
 
-                {/* ── ХАРАКТЕРИСТИКИ ДОМА (для квартир, комнат) ── */}
+                {/* --- ХАРАКТЕРИСТИКИ ДОМА (для квартир, комнат) --- */}
                 {form.property_type !== 'garden' && form.property_type !== 'house' && form.property_type !== 'commercial' && (
-                <FormCard title="Характеристики дома" icon={<Building size={22} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Год постройки</label>
-                            <input type="number" className="form-input" value={form.build_year || ''} onChange={e => setF('build_year', Number(e.target.value))} placeholder="2000" style={{ borderRadius: 12 }} />
+                <FormCard title="Характеристики дома" icon={<Building size={16} />}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Год постройки</label>
+                            <input type="number" className="form-input" value={form.build_year || ''} onChange={e => setF('build_year', Number(e.target.value))} placeholder="2000" style={{ borderRadius: 10, height: 38, fontSize: 13 }} />
                         </div>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontSize: 12, fontWeight: 300 }}>Тип дома</label>
-                            <select className="form-select" value={form.building_type || ''} onChange={e => setF('building_type', e.target.value)} style={{ borderRadius: 12 }}>
-                                <option value="">— Не указан —</option>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>Тип дома</label>
+                            <select className="form-select" value={form.building_type || ''} onChange={e => setF('building_type', e.target.value)} style={{ borderRadius: 10, height: 38, fontSize: 13 }}>
+                                <option value="">- Не указан -</option>
                                 {Object.entries(BUILDING_TYPES).map(([val, label]) => <option key={val} value={val}>{label}</option>)}
                             </select>
                         </div>
                     </div>
 
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Лифт</label>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Лифт</label>
                         <ChipGroup 
                             options={[
                                 { val: 'none', label: 'Нет' },
@@ -2209,113 +2263,126 @@ export function FormPage() {
                         />
                     </div>
 
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                        <ToggleChip label="Мусоропровод" value={form.has_garbage_chute} onChange={v => setF('has_garbage_chute', v)} icon={<Trash2 size={14} />} />
-                        <ToggleChip label="Мебель" value={form.furniture} onChange={v => setF('furniture', v)} icon={<Zap size={14} />} />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 2 }}>
+                        <ToggleChip label="Мусоропровод" value={form.has_garbage_chute} onChange={v => setF('has_garbage_chute', v)} icon={<Trash2 size={13} />} />
+                        <ToggleChip label="Мебель" value={form.furniture} onChange={v => setF('furniture', v)} icon={<Zap size={13} />} />
                     </div>
                 </FormCard>
                 )}
 
                     </div>
 
-                    {/* ── ПРАВАЯ КОЛОНКА (Условия, Владельцы, Фото) ── */}
+                    {/* --- ПРАВАЯ КОЛОНКА (Условия, Владельцы, Фото) --- */}
                     <div className="form-col-side">
                 {/* Цена */}
-                <FormCard title="Цена и комиссия" icon={<DollarSign size={22} />}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: 12, display: 'flex', justifyContent: 'space-between' }}>
-                                <span>Цена (₽)</span>
-                                {form.price > 0 && form.area_total > 0 && (
-                                    <span style={{ color: 'var(--primary)', fontWeight: 800 }}>
-                                        {Math.round(form.price / form.area_total).toLocaleString()} ₽/м²
-                                    </span>
-                                )}
-                            </label>
+                <FormCard 
+                    title="Цена и комиссия" 
+                    icon={<DollarSign size={16} />}
+                    action={
+                        form.price > 0 && form.area_total > 0 && (
+                            <span style={{ 
+                                color: 'var(--primary)', 
+                                fontWeight: 700, 
+                                fontSize: 12,
+                                background: 'var(--primary-light)',
+                                padding: '3px 8px',
+                                borderRadius: 8
+                            }}>
+                                {Math.round(form.price / form.area_total).toLocaleString()} ₽/м²
+                            </span>
+                        )
+                    }
+                >
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600, fontSize: 12, color: 'var(--text)', marginBottom: 4 }}>
+                            Цена объекта (₽)
+                        </label>
+                        <PriceInput
+                            style={{ fontSize: 17, fontWeight: 700, color: 'var(--primary)', borderRadius: 12, height: 42 }}
+                            value={form.price || ''}
+                            onChange={val => setF('price', val)}
+                            placeholder="0"
+                        />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Мин. цена (торг)</label>
                             <PriceInput
-                                style={{ fontSize: 16, fontWeight: 800, color: 'var(--primary)', borderRadius: 14 }}
-                                value={form.price || ''}
-                                onChange={val => setF('price', val)}
-                                placeholder="0"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Минимальная цена (₽)</label>
-                            <PriceInput
-                                style={{ color: 'var(--text-muted)', borderRadius: 14 }}
+                                style={{ color: 'var(--text-muted)', borderRadius: 10, height: 38, fontSize: 13 }}
                                 value={form.price_min || ''}
                                 onChange={val => setF('price_min', val)}
                                 placeholder="Торг"
                             />
                         </div>
-                    </div>
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 700, fontSize: 13 }}>Ваша комиссия (₽)</label>
-                        <PriceInput
-                            style={{ borderRadius: 14 }}
-                            value={form.commission || ''}
-                            onChange={val => setF('commission', val)}
-                            placeholder="0"
-                        />
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Комиссия (₽)</label>
+                            <PriceInput
+                                style={{ borderRadius: 10, height: 38, fontSize: 13 }}
+                                value={form.commission || ''}
+                                onChange={val => setF('commission', val)}
+                                placeholder="0"
+                            />
+                        </div>
                     </div>
                 </FormCard>
 
                 {/* Условия сделки */}
-                <FormCard title="Условия сделки" icon={<Briefcase size={22} />}>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                <FormCard title="Условия сделки" icon={<Briefcase size={16} />}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         <ToggleChip label="Ипотека" value={form.mortgage} onChange={v => { setF('mortgage', v); setF('mortgage_available', v); }} />
                         <ToggleChip label="Маткапитал" value={form.matcapital_available} onChange={v => setF('matcapital_available', v)} />
                         <ToggleChip label="Сертификат" value={form.certificate_available} onChange={v => setF('certificate_available', v)} />
                         <ToggleChip label="Обременение" value={form.encumbrance} onChange={v => setF('encumbrance', v)} />
                         <ToggleChip label="Несоверш. собств." value={form.minor_owners} onChange={v => setF('minor_owners', v)} />
                         <ToggleChip label="Документы готовы" value={form.docs_ready} onChange={v => setF('docs_ready', v)} />
-                        <ToggleChip label="🔄 Альтернатива" value={form.seeking_alternative} onChange={v => setF('seeking_alternative', v)} />
+                        <ToggleChip label="Альтернатива" value={form.seeking_alternative} onChange={v => setF('seeking_alternative', v)} />
                     </div>
-                    <div className="form-group">
-                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Заметки риэлтора</label>
-                        <textarea className="form-textarea" rows={3} value={form.notes ?? ''} onChange={e => setF('notes', e.target.value)} placeholder="Нюансы сделки..." style={{ borderRadius: 16, resize: 'none' }} />
+                    <div className="form-group" style={{ marginBottom: 0, marginTop: 4 }}>
+                        <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Заметки риэлтора</label>
+                        <textarea className="form-textarea" rows={2} value={form.notes ?? ''} onChange={e => setF('notes', e.target.value)} placeholder="Нюансы сделки, контакты..." style={{ borderRadius: 12, resize: 'none', fontSize: 12.5 }} />
                     </div>
-                    <div className="form-group" style={{ marginTop: 12 }}>
-                        <label className="form-label" style={{ fontWeight: 600, fontSize: 13, display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <Package size={15} style={{ color: 'var(--primary)' }} />
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 500, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Package size={13} style={{ color: 'var(--primary)' }} />
                             <span>Список имущества</span>
                         </label>
                         <textarea
                             className="form-textarea"
-                            rows={3}
+                            rows={2}
                             value={form.movable_property ?? ''}
                             onChange={e => setF('movable_property', e.target.value)}
-                            placeholder="Кухонный гарнитур, газовая плита, встроенная мебель, кондиционер, стиральная машина..."
-                            style={{ borderRadius: 16, resize: 'vertical' }}
+                            placeholder="Мебель, техника (для Акта приёма-передачи)..."
+                            style={{ borderRadius: 12, resize: 'vertical', fontSize: 12.5 }}
                         />
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                            Перечень мебели, техники и оборудования для автоматической подстановки в Акт приема-передачи.
-                        </div>
                     </div>
                 </FormCard>
 
                 {/* Фотографии */}
-                <FormCard title="Фотографии" icon={<Camera size={22} />} description="Первое фото будет обложкой">
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                <FormCard 
+                    title="Фотографии" 
+                    icon={<Camera size={16} />}
+                    action={<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(form.images || []).length} фото</span>}
+                >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
                         {(form.images || []).map((url, index) => (
-                            <div key={index} className="fade-in" style={{ position: 'relative', paddingTop: '100%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                            <div key={index} className="fade-in" style={{ position: 'relative', paddingTop: '100%', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                                 <img src={url} alt={`Фото ${index + 1}`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
                                 <button
                                     type="button"
                                     onClick={() => handleRemoveImage(index)}
                                     style={{
-                                        position: 'absolute', top: 6, right: 6,
-                                        width: 24, height: 24, borderRadius: '50%',
+                                        position: 'absolute', top: 4, right: 4,
+                                        width: 22, height: 22, borderRadius: '50%',
                                         background: 'rgba(220,38,38,0.9)', color: 'white',
                                         border: 'none', cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 14, backdropFilter: 'blur(4px)'
+                                        fontSize: 12, backdropFilter: 'blur(4px)'
                                     }}
                                 >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={12} />
                                 </button>
                                 {index === 0 && (
-                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,82,255,0.8)', color: 'white', fontSize: 10, fontWeight: 500, textAlign: 'center', padding: '2px 0' }}>
+                                    <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,82,255,0.85)', color: 'white', fontSize: 9, fontWeight: 600, textAlign: 'center', padding: '1px 0', letterSpacing: '0.04em' }}>
                                         ОБЛОЖКА
                                     </div>
                                 )}
@@ -2323,8 +2390,8 @@ export function FormPage() {
                         ))}
                         <label
                             style={{
-                                position: 'relative', paddingTop: '100%', borderRadius: 16,
-                                border: '2px dashed var(--border)',
+                                position: 'relative', paddingTop: '100%', borderRadius: 12,
+                                border: '1.5px dashed var(--border)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: uploading ? 'wait' : 'pointer',
                                 background: 'var(--bg-light)', transition: 'all 0.2s'
@@ -2332,7 +2399,7 @@ export function FormPage() {
                             className="upload-label-hover"
                         >
                             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                {uploading ? <div className="spinner" style={{ width: 20, height: 20 }}></div> : <><Upload size={20} /><span style={{ fontSize: 10, fontWeight: 300, marginTop: 4 }}>ДОБАВИТЬ</span></>}
+                                {uploading ? <div className="spinner" style={{ width: 18, height: 18 }}></div> : <><Upload size={18} /><span style={{ fontSize: 9.5, fontWeight: 500, marginTop: 3 }}>+ ФОТО</span></>}
                             </div>
                             <input
                                 ref={fileInputRef}
@@ -2348,31 +2415,35 @@ export function FormPage() {
                 </FormCard>
 
                 {/* Планировка */}
-                <FormCard title="Планировка" icon={<Layers size={22} />} description="Фото планировки квартиры или дома">
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                <FormCard 
+                    title="Планировка" 
+                    icon={<Layers size={16} />}
+                    action={<span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{(form.floorplan_images || []).length} фото</span>}
+                >
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                         {(form.floorplan_images || []).map((url, index) => (
-                            <div key={index} className="fade-in" style={{ position: 'relative', paddingTop: '100%', borderRadius: 16, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                            <div key={index} className="fade-in" style={{ position: 'relative', paddingTop: '100%', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' }}>
                                 <img src={url} alt={`Планировка ${index + 1}`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'contain', background: 'var(--bg-light)' }} />
                                 <button
                                     type="button"
                                     onClick={() => handleRemoveFloorplan(index)}
                                     style={{
-                                        position: 'absolute', top: 6, right: 6,
-                                        width: 24, height: 24, borderRadius: '50%',
+                                        position: 'absolute', top: 4, right: 4,
+                                        width: 22, height: 22, borderRadius: '50%',
                                         background: 'rgba(220,38,38,0.9)', color: 'white',
                                         border: 'none', cursor: 'pointer',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        fontSize: 14, backdropFilter: 'blur(4px)'
+                                        fontSize: 12, backdropFilter: 'blur(4px)'
                                     }}
                                 >
-                                    <Trash2 size={14} />
+                                    <Trash2 size={12} />
                                 </button>
                             </div>
                         ))}
                         <label
                             style={{
-                                position: 'relative', paddingTop: '100%', borderRadius: 16,
-                                border: '2px dashed var(--border)',
+                                position: 'relative', paddingTop: '100%', borderRadius: 12,
+                                border: '1.5px dashed var(--border)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 cursor: uploadingFloorplan ? 'wait' : 'pointer',
                                 background: 'var(--bg-light)', transition: 'all 0.2s'
@@ -2380,7 +2451,7 @@ export function FormPage() {
                             className="upload-label-hover"
                         >
                             <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                {uploadingFloorplan ? <div className="spinner" style={{ width: 20, height: 20 }}></div> : <><Upload size={20} /><span style={{ fontSize: 10, fontWeight: 300, marginTop: 4 }}>ДОБАВИТЬ</span></>}
+                                {uploadingFloorplan ? <div className="spinner" style={{ width: 18, height: 18 }}></div> : <><Upload size={18} /><span style={{ fontSize: 9.5, fontWeight: 500, marginTop: 3 }}>+ СХЕМА</span></>}
                             </div>
                             <input
                                 ref={floorplanInputRef}
@@ -2398,14 +2469,14 @@ export function FormPage() {
                     </div>
                 </div>
 
-                <div className="form-submit-container">
-                    <button type="submit" className="form-submit-btn btn-primary card-clickable">
+                <div className="form-submit-container" style={{ marginTop: 14, marginBottom: 28 }}>
+                    <button type="submit" className="form-submit-btn btn-primary card-clickable" style={{ height: 48, borderRadius: 14, fontSize: 14, fontWeight: 600 }}>
                         {id ? 'Сохранить изменения' : 'Опубликовать объект'}
                     </button>
                 </div>
             </form>
 
-            {/* Quick Agent Modal — Premium Open Design */}
+            {/* Quick Agent Modal - Premium Open Design */}
             {showQuickAgentForm && (() => {
                 const agentDups = findDuplicateClients(state.clients, quickAgent);
                 const matches = [...agentDups.phoneMatches, ...agentDups.nameMatches];
