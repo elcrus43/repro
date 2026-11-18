@@ -62,3 +62,11 @@ _Типы: INIT, BUILD, COMMIT, DISCOVER, FIX, DECISION, ISSUE, INGEST, TEST, VE
 - [ISSUE] npm run lint даёт ~270 ошибок в файлах, которых я не касался (vite.config.js, src/utils/logger.js и др.) - шум от соседних WIP-правок, мои файлы чисты.
 - [ISSUE] api/security-alerts.js содержит Telegram-токен и chat_id литералом в коде (fallback) - секрет уже в истории git, нужна ротация токена и перенос только в env.
 - [ISSUE] .notes/log.md: записи от 2026-11-12 сохранены с U+FFFD (текст потерян при записи через PowerShell в кодовой странице OEM) - нарушен п.1 Конституции про UTF-8, писать в файлы надо node-скриптом с явным 'utf8'.
+
+## 2026-11-18
+- [REFACTOR] src/components/BannerGenerator.jsx: полный редизайн генератора баннеров.
+- [FEATURE] Добавлены форматы Stories (9:16), Пост (4:5) и Квадрат (1:1), темы Dark, Light, Brand, Glass.
+- [FEATURE] Добавлена плашка цели сделки (Продажа, Аренда, Посуточно, Обмен, Свой текст), поле имени агента, быстрый выбор контактов/локации.
+- [TEST] src/components/BannerGenerator.test.jsx: 8/8 тестов успешно пройдены.
+- [BUILD] Сборка Vite прошла без ошибок (24.59s, 2176 модулей).
+- [DEPLOY] Успешный деплой в продакшен Vercel (https://reacrm.ru).
