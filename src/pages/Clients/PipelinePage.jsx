@@ -56,6 +56,15 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
   const [showRefusedList, setShowRefusedList] = useState(false);
   const [quickMenuClientId, setQuickMenuClientId] = useState(null);
   const [activeModalAction, setActiveModalAction] = useState(null);
+  const [inlineNoteClientId, setInlineNoteClientId] = useState(null);
+  const [inlineNoteText, setInlineNoteText] = useState('');
+  const [addClientModalColumn, setAddClientModalColumn] = useState(null);
+  const [quickClientForm, setQuickClientForm] = useState({
+    full_name: '',
+    phone: '',
+    client_type: 'buyer',
+    notes: ''
+  });
   const [actionForm, setActionForm] = useState({
     date: '',
     comment: '',
@@ -317,6 +326,117 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     setActionForm({ date: '', comment: '', property_id: '', call_status: 'completed' });
   };
 
+  const getDefaultClientType = useCallback((segment) => {
+    if (segment === 'seller') return 'seller';
+    if (segment === 'legal_entity') return 'legal_entity';
+    if (segment === 'rent') return 'tenant';
+    return 'buyer';
+  }, []);
+
+  const handleOpenAddClientModal = (column) => {
+    setAddClientModalColumn(column);
+    setQuickClientForm({
+      full_name: '',
+      phone: '',
+      client_type: getDefaultClientType(activeSegment),
+      notes: ''
+    });
+  };
+
+  const handleSaveQuickClient = (e) => {
+    e.preventDefault();
+    if (!addClientModalColumn) return;
+    const name = quickClientForm.full_name.trim();
+    if (!name) {
+      toast.error('Укажите ФИО клиента');
+      return;
+    }
+
+    const newId = nanoid();
+    const dateLabel = new Date().toLocaleDateString('ru-RU');
+    const initialNotes = quickClientForm.notes?.trim()
+      ? `[${dateLabel}]: ${quickClientForm.notes.trim()}`
+      : '';
+
+    const newClient = {
+      id: newId,
+      full_name: name,
+      phone: quickClientForm.phone?.trim() || '',
+      email: '',
+      client_types: [quickClientForm.client_type || 'buyer'],
+      status: addClientModalColumn.statusValue || 'new',
+      pipeline_stage: addClientModalColumn.id,
+      notes: initialNotes,
+      realtor_id: state.currentUser?.id || null,
+      has_agency_contract: addClientModalColumn.id === 'active',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      additional_contacts: [],
+      source: 'Воронка'
+    };
+
+    dispatch({ type: 'ADD_CLIENT', client: newClient });
+
+    if (quickClientForm.notes?.trim()) {
+      dispatch({
+        type: 'ADD_SHOWING',
+        showing: {
+          id: nanoid(),
+          realtor_id: state.currentUser?.id || null,
+          client_id: newId,
+          client_ids: [newId],
+          property_id: null,
+          showing_date: new Date().toISOString(),
+          status: 'completed',
+          event_type: 'comment',
+          feedback_comment: quickClientForm.notes.trim(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      });
+    }
+
+    toast.success(`Клиент "${name}" добавлен в «${addClientModalColumn.label}»`);
+    setAddClientModalColumn(null);
+    setQuickClientForm({ full_name: '', phone: '', client_type: 'buyer', notes: '' });
+  };
+
+  const handleSaveInlineNote = (client) => {
+    const text = inlineNoteText.trim();
+    if (!text) return;
+    const currentNotes = client.notes || '';
+    const dateLabel = new Date().toLocaleDateString('ru-RU');
+    const updatedNotes = currentNotes ? `${currentNotes}\n[${dateLabel}]: ${text}` : `[${dateLabel}]: ${text}`;
+
+    const newShowing = {
+      id: nanoid(),
+      realtor_id: state.currentUser?.id || client.realtor_id || null,
+      client_id: client.id,
+      client_ids: [client.id],
+      property_id: null,
+      showing_date: new Date().toISOString(),
+      status: 'completed',
+      event_type: 'comment',
+      feedback_comment: text,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    dispatch({ type: 'ADD_SHOWING', showing: newShowing });
+
+    dispatch({
+      type: 'UPDATE_CLIENT',
+      client: {
+        ...client,
+        notes: updatedNotes,
+        updated_at: new Date().toISOString()
+      }
+    });
+
+    toast.success('Заметка сохранена');
+    setInlineNoteClientId(null);
+    setInlineNoteText('');
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* ── СЕГМЕНТЫ ВОРОНКИ ── */}
@@ -369,18 +489,81 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
       </div>
 
       {/* ── КАНБАН ДОСКА ВОРОНКИ (ВИДИМЫЕ ЭТАПЫ: ЛИДЫ, НА КОНТРОЛЕ, В РАБОТЕ) ── */}
-      <div className="pipeline-scrollbar" style={{
-        overflowX: 'auto',
-        scrollbarWidth: 'none',
-        display: 'flex',
-        gap: 12,
-        padding: '4px 0 16px',
-        width: '100%',
-        boxSizing: 'border-box',
-        minHeight: 460,
-      }}>
+      <div className="client-pipeline-board">
         <style>{`
-          .pipeline-scrollbar::-webkit-scrollbar { display: none; }
+          .client-pipeline-board {
+            overflow-x: auto;
+            scrollbar-width: none;
+            display: flex;
+            gap: 14px;
+            padding: 4px 0 16px;
+            width: 100%;
+            box-sizing: border-box;
+            min-height: 480px;
+          }
+          .client-pipeline-board::-webkit-scrollbar { display: none; }
+
+          .client-pipeline-col {
+            min-width: 270px;
+            max-width: 340px;
+            flex: 1 0 270px;
+            background: var(--bg-light);
+            border-radius: 20px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-sizing: border-box;
+          }
+
+          .client-pipeline-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 14px;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+            position: relative;
+            box-sizing: border-box;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+          }
+
+          .client-card-name {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--text);
+            line-height: 1.3;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            flex: 1;
+          }
+
+          @media (min-width: 960px) {
+            .client-pipeline-board {
+              gap: 16px;
+            }
+            .client-pipeline-col {
+              min-width: 320px;
+              max-width: 520px;
+              flex: 1 1 320px;
+              padding: 16px;
+              gap: 12px;
+              border-radius: 22px;
+            }
+            .client-pipeline-card {
+              padding: 16px 16px !important;
+              border-radius: 18px !important;
+              gap: 11px !important;
+            }
+            .client-card-name {
+              font-size: 14.5px !important;
+              line-height: 1.35 !important;
+            }
+          }
         `}</style>
 
         {visibleColumns.map(column => {
@@ -390,17 +573,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
               key={column.id}
               onDragOver={handleDragOver}
               onDrop={(e) => handleDrop(e, column.id)}
-              style={{
-                minWidth: 260,
-                maxWidth: 320,
-                flex: '1 0 260px',
-                background: 'var(--bg-light)',
-                borderRadius: 20,
-                padding: 14,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
+              className="client-pipeline-col"
             >
               {/* Column Header */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '2px 4px', marginBottom: 6 }}>
@@ -422,6 +595,29 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                   }}>
                     {cards.length}
                   </span>
+                  <button
+                    type="button"
+                    className="card-clickable"
+                    onClick={() => handleOpenAddClientModal(column)}
+                    title={`Добавить клиента на этап «${column.label}»`}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 7,
+                      border: `1px solid ${column.border}`,
+                      background: column.badgeBg,
+                      color: column.color,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0,
+                      flexShrink: 0,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <Plus size={15} strokeWidth={2.5} />
+                  </button>
                 </div>
                 {column.subLabel && (
                   <div style={{ fontSize: 11, color: 'var(--text-secondary)', paddingLeft: 18 }}>
@@ -475,21 +671,12 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                     key={client.id}
                     draggable
                     onDragStart={(e) => e.dataTransfer.setData('clientId', client.id)}
-                    className="card-clickable"
+                    className="card-clickable client-pipeline-card"
                     onClick={() => navigate(`/clients/${client.id}`)}
                     style={{
-                      background: 'var(--surface)',
-                      borderRadius: 16,
-                      padding: 14,
                       boxShadow: isMenuOpen ? '0 12px 32px rgba(0,0,0,0.14)' : '0 4px 16px rgba(0,0,0,0.05)',
                       cursor: 'grab',
                       border: isMenuOpen ? '1px solid var(--primary)' : '1px solid var(--border-light)',
-                      userSelect: 'none',
-                      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 8,
-                      position: 'relative',
                       zIndex: isMenuOpen ? 120 : 1
                     }}
                     onMouseEnter={e => {
@@ -504,13 +691,14 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                     {/* Top Row: Full Name + Quick Actions Button */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 6 }}>
-                        <div style={{
-                          fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                          lineHeight: 1.3,
-                          overflow: 'hidden', textOverflow: 'ellipsis',
-                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                          flex: 1
-                        }}>
+                        <div
+                          className="client-card-name"
+                          style={{
+                            overflow: 'hidden', textOverflow: 'ellipsis',
+                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                            flex: 1
+                          }}
+                        >
                           {client.full_name}
                         </div>
 
@@ -812,7 +1000,165 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                       )}
                     </div>
 
-                    {/* Bottom Row: Source & Realtor (if relevant) */}
+                    {/* Notes / Comments Section */}
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        background: client.notes ? 'var(--bg-light)' : 'transparent',
+                        border: client.notes ? '1px solid var(--border-light)' : '1px dashed var(--border)',
+                        borderRadius: 12,
+                        padding: client.notes ? '8px 10px' : '4px 6px',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      {inlineNoteClientId === client.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          <textarea
+                            autoFocus
+                            rows={2}
+                            placeholder="Текст заметки / комментария..."
+                            value={inlineNoteText}
+                            onChange={(e) => setInlineNoteText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                handleSaveInlineNote(client);
+                              }
+                            }}
+                            style={{
+                              width: '100%',
+                              boxSizing: 'border-box',
+                              padding: '6px 8px',
+                              borderRadius: 8,
+                              border: '1px solid var(--primary)',
+                              background: 'var(--surface)',
+                              color: 'var(--text)',
+                              fontSize: 12,
+                              fontFamily: 'inherit',
+                              resize: 'vertical'
+                            }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setInlineNoteClientId(null);
+                                setInlineNoteText('');
+                              }}
+                              style={{
+                                padding: '3px 8px',
+                                fontSize: 11,
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: 'transparent',
+                                color: 'var(--text-secondary)',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Отмена
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveInlineNote(client)}
+                              disabled={!inlineNoteText.trim()}
+                              style={{
+                                padding: '3px 10px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                borderRadius: 6,
+                                border: 'none',
+                                background: 'var(--primary)',
+                                color: '#ffffff',
+                                cursor: inlineNoteText.trim() ? 'pointer' : 'default',
+                                opacity: inlineNoteText.trim() ? 1 : 0.5
+                              }}
+                            >
+                              Сохранить
+                            </button>
+                          </div>
+                        </div>
+                      ) : client.notes ? (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                              <MessageSquare size={11} color="var(--primary)" />
+                              <span>Заметка</span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setInlineNoteClientId(client.id);
+                                setInlineNoteText('');
+                              }}
+                              title="Добавить еще одну заметку"
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--primary)',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                padding: 0
+                              }}
+                            >
+                              <Plus size={11} strokeWidth={2.5} />
+                              <span>Добавить</span>
+                            </button>
+                          </div>
+                          <div style={{
+                            fontSize: 12,
+                            color: 'var(--text-secondary)',
+                            lineHeight: 1.4,
+                            maxHeight: 72,
+                            overflowY: 'auto',
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                            paddingRight: 2
+                          }}>
+                            {client.notes}
+                          </div>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInlineNoteClientId(client.id);
+                            setInlineNoteText('');
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 5,
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--text-muted)',
+                            fontSize: 11,
+                            padding: '3px 6px',
+                            cursor: 'pointer',
+                            width: '100%',
+                            borderRadius: 6,
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--primary)';
+                            e.currentTarget.style.background = 'rgba(0, 82, 255, 0.04)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          <MessageSquare size={11} />
+                          <span>+ Заметка / комментарий</span>
+                        </button>
+                      )}
+                    </div>
                     {(client.source || (scope === 'all' && assignedRealtor)) && (
                       <div style={{
                         display: 'flex',
@@ -1374,6 +1720,218 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                   }}
                 >
                   Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── МОДАЛЬНОЕ ОКНО БЫСТРОГО ДОБАВЛЕНИЯ КЛИЕНТА НА ЭТАП ВОРОНКИ ── */}
+      {addClientModalColumn && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 16
+          }}
+          onClick={() => setAddClientModalColumn(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--surface)',
+              borderRadius: 22,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+              border: '1px solid var(--border)',
+              width: '100%',
+              maxWidth: 460,
+              padding: 24,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 38, height: 38, borderRadius: 12,
+                  background: addClientModalColumn.badgeBg,
+                  color: addClientModalColumn.color,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <User size={20} />
+                </div>
+                <div>
+                  <div className="font-oswald" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>
+                    Новый клиент
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                      Этап:
+                    </span>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700,
+                      color: addClientModalColumn.color,
+                      background: addClientModalColumn.badgeBg,
+                      borderRadius: 6,
+                      padding: '1px 7px'
+                    }}>
+                      {addClientModalColumn.label}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAddClientModalColumn(null)}
+                style={{
+                  background: 'transparent', border: 'none',
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                  padding: 4, borderRadius: 6
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Form Fields */}
+            <form onSubmit={handleSaveQuickClient} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                  ФИО клиента *
+                </label>
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  placeholder="Иванов Иван Иванович"
+                  value={quickClientForm.full_name}
+                  onChange={e => setQuickClientForm(prev => ({ ...prev, full_name: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                    borderRadius: 10, border: '1px solid var(--border)',
+                    background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                    Телефон
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="+7 (999) 000-00-00"
+                    value={quickClientForm.phone}
+                    onChange={e => setQuickClientForm(prev => ({ ...prev, phone: e.target.value }))}
+                    style={{
+                      width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                      borderRadius: 10, border: '1px solid var(--border)',
+                      background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                    Тип клиента
+                  </label>
+                  <select
+                    value={quickClientForm.client_type}
+                    onChange={e => setQuickClientForm(prev => ({ ...prev, client_type: e.target.value }))}
+                    style={{
+                      width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                      borderRadius: 10, border: '1px solid var(--border)',
+                      background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13
+                    }}
+                  >
+                    <option value="buyer">Покупатель</option>
+                    <option value="seller">Продавец</option>
+                    <option value="legal_entity">Юр. лицо</option>
+                    <option value="landlord">Наймодатель</option>
+                    <option value="tenant">Наниматель</option>
+                    <option value="lessor">Арендодатель</option>
+                    <option value="lessee">Арендатор</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                  Заметка / пожелания клиента
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Что ищет, бюджет, район или данные объекта..."
+                  value={quickClientForm.notes}
+                  onChange={e => setQuickClientForm(prev => ({ ...prev, notes: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box', padding: '10px 12px',
+                    borderRadius: 10, border: '1px solid var(--border)',
+                    background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13,
+                    resize: 'vertical', fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const col = addClientModalColumn;
+                    const type = quickClientForm.client_type;
+                    setAddClientModalColumn(null);
+                    navigate(`/clients/new?status=${col.statusValue}&pipeline_stage=${col.id}&type=${type}`);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--primary)',
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  Открыть полную форму &rarr;
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => setAddClientModalColumn(null)}
+                  style={{
+                    flex: 1, padding: '10px 16px', borderRadius: 10,
+                    border: '1px solid var(--border)', background: 'var(--bg-light)',
+                    color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: 'pointer'
+                  }}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={!quickClientForm.full_name.trim()}
+                  style={{
+                    flex: 1, padding: '10px 16px', borderRadius: 10,
+                    border: 'none', background: 'var(--primary)',
+                    color: '#ffffff', fontSize: 13, fontWeight: 600,
+                    cursor: quickClientForm.full_name.trim() ? 'pointer' : 'default',
+                    opacity: quickClientForm.full_name.trim() ? 1 : 0.6,
+                    boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)'
+                  }}
+                >
+                  Добавить
                 </button>
               </div>
             </form>

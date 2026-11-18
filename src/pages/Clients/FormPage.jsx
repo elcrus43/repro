@@ -59,6 +59,10 @@ export function FormPage() {
         ? formatPhones(existing.phones) 
         : (existing?.phone ? [formatPhone(existing.phone, true)] : ['']);
 
+    const paramStatus = searchParams.get('status') || prefill?.status || 'new';
+    const paramStage = searchParams.get('pipeline_stage') || prefill?.pipeline_stage || null;
+    const paramType = searchParams.get('type') || searchParams.get('client_type') || prefill?.client_type;
+
     const initialForm = existing ? {
         ...existing,
         inn: existing.inn || existing.company_details?.inn || existing.passport_details?.inn || '',
@@ -76,11 +80,15 @@ export function FormPage() {
     } : {
         ...defaultClient,
         realtor_id: state.currentUser?.id,
+        status: paramStatus,
+        pipeline_stage: paramStage,
+        client_types: paramType ? [paramType] : ['buyer'],
+        has_agency_contract: paramStatus === 'active' || paramStage === 'active',
         // Apply EGRN prefill if navigated from EgrnScanModal
         ...(prefill ? {
             full_name: prefill.full_name || '',
             inn: prefill.inn || '',
-            client_types: prefill.client_types || ['buyer'],
+            client_types: prefill.client_types || (paramType ? [paramType] : ['buyer']),
             passport_details: { ...defaultClient.passport_details, ...(prefill.passport_details || {}) },
             notes: prefill.source_note || '',
         } : {}),
