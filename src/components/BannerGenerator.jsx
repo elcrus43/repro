@@ -109,14 +109,14 @@ function getCategoryText(type, rooms) {
     return 'ОБЪЕКТ НЕДВИЖИМОСТИ';
 }
 
-/* Auto-crop whitespace and make background transparent for floorplans */
-function processFloorplanImage(img, isDark = true) {
-    if (!img || !img.width || !img.height) return null;
+/* Auto-crop empty whitespace margins around floorplan drawings */
+function cropFloorplanWhitespace(img) {
+    if (!img || !img.width || !img.height) return img;
     const maxDim = 1200;
     let sw = img.width, sh = img.height;
     if (sw > maxDim || sh > maxDim) {
         if (sw > sh) { sh = Math.round(sh * maxDim / sw); sw = maxDim; }
-        else { sw = Math.round(sw * maxDim / sh); sh = maxDim; }
+        else { sw = Math.round(sw * maxDim / sh); sw = maxDim; }
     }
     const off = document.createElement('canvas');
     off.width = sw;
@@ -125,13 +125,24 @@ function processFloorplanImage(img, isDark = true) {
     if (!octx) return img;
     octx.drawImage(img, 0, 0, sw, sh);
 
-    let imgData;
+    let data;
     try {
-        imgData = octx.getImageData(0, 0, sw, sh);
+        data = octx.getImageData(0, 0, sw, sh).data;
     } catch {
         return img;
     }
-    const data = imgData.data;
+
+    const corners = [
+        0,
+        (sw - 1) * 4,
+        ((sh - 1) * sw) * 4,
+        ((sh - 1) * sw + (sw - 1)) * 4,
+    ];
+    let avgBgLum = 0;
+    corners.forEach(idx => {
+        avgBgLum += (0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2]);
+    });
+    avgBgLum = avgBgLum / 4;
 
     let minX = sw, minY = sh, maxX = 0, maxY = 0;
     let found = false;
@@ -140,10 +151,9 @@ function processFloorplanImage(img, isDark = true) {
         for (let x = 0; x < sw; x++) {
             const idx = (y * sw + x) * 4;
             const a = data[idx + 3];
-            if (a < 20) continue;
-            const r = data[idx], g = data[idx + 1], b = data[idx + 2];
-            const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-            if (lum < 225) {
+            if (a < 30) continue;
+            const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+            if (Math.abs(lum - avgBgLum) > 20 || lum < 210) {
                 found = true;
                 if (x < minX) minX = x;
                 if (x > maxX) maxX = x;
@@ -153,55 +163,23 @@ function processFloorplanImage(img, isDark = true) {
         }
     }
 
-    if (!found) {
-        minX = 0; minY = 0; maxX = sw - 1; maxY = sh - 1;
-    } else {
-        minX = Math.max(0, minX - 8);
-        minY = Math.max(0, minY - 8);
-        maxX = Math.min(sw - 1, maxX + 8);
-        maxY = Math.min(sh - 1, maxY + 8);
-    }
+    if (!found || maxX <= minX || maxY <= minY) return img;
 
-    const cropW = maxX - minX + 1;
-    const cropH = maxY - minY + 1;
+    minX = Math.max(0, minX - 12);
+    minY = Math.max(0, minY - 12);
+    maxX = Math.min(sw - 1, maxX + 12);
+    maxY = Math.min(sh - 1, maxY + 12);
 
-    const cropCanvas = document.createElement('canvas');
-    cropCanvas.width = cropW;
-    cropCanvas.height = cropH;
-    const cctx = cropCanvas.getContext('2d');
+    const cw = maxX - minX + 1;
+    const ch = maxY - minY + 1;
+
+    const cropped = document.createElement('canvas');
+    cropped.width = cw;
+    cropped.height = ch;
+    const cctx = cropped.getContext('2d');
     if (!cctx) return img;
-
-    const croppedData = octx.getImageData(minX, minY, cropW, cropH);
-    const cdata = croppedData.data;
-
-    for (let i = 0; i < cdata.length; i += 4) {
-        const a = cdata[i + 3];
-        if (a < 20) {
-            cdata[i + 3] = 0;
-            continue;
-        }
-        const r = cdata[i], g = cdata[i + 1], b = cdata[i + 2];
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-
-        if (lum > 220) {
-            cdata[i + 3] = 0;
-        } else {
-            const lineAlpha = lum > 180 ? Math.round((1 - (lum - 180) / 40) * 255) : 255;
-            cdata[i + 3] = Math.min(a, lineAlpha);
-            if (isDark) {
-                cdata[i] = 255;
-                cdata[i + 1] = 255;
-                cdata[i + 2] = 255;
-            } else {
-                cdata[i] = 15;
-                cdata[i + 1] = 23;
-                cdata[i + 2] = 42;
-            }
-        }
-    }
-
-    cctx.putImageData(croppedData, 0, 0);
-    return cropCanvas;
+    cctx.drawImage(off, minX, minY, cw, ch, 0, 0, cw, ch);
+    return cropped;
 }
 
 /* ================================================================
@@ -340,13 +318,13 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
         return () => { active = false; };
     }, [showSocialPanel, tokenStatus, connectedSocials]);
 
-    /* ---- image loading ---- */
-    const loadImageSafe = React.useCallback((src, isFloorplan = false) => {
+    /* ---- image loading (CORS enabled for all) ---- */
+    const loadImageSafe = React.useCallback((src) => {
         if (!src) return Promise.resolve(null);
         if (imageCacheRef.current.has(src)) return Promise.resolve(imageCacheRef.current.get(src));
         return new Promise(resolve => {
             const img = new Image();
-            if (!isFloorplan && !src.startsWith('data:') && !src.startsWith('blob:')) {
+            if (!src.startsWith('data:') && !src.startsWith('blob:')) {
                 img.crossOrigin = 'anonymous';
             }
             img.onload = () => { imageCacheRef.current.set(src, img); resolve(img); };
@@ -378,9 +356,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
         const IS = format === 'story';
         const isPortrait = format === 'portrait';
-
         const isLight = designTheme === 'light';
-        const isDark  = !isLight;
 
         try {
             const hasUncached = selectedImages.some(
@@ -390,10 +366,10 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
             const promises = selectedImages.map(idx => {
                 const src = propertyImages[idx % propertyImages.length];
-                return loadImageSafe(src, false).then(img => ({ img, idx }));
+                return loadImageSafe(src).then(img => ({ img, idx }));
             });
             if (layoutImage) {
-                promises.push(loadImageSafe(layoutImage, true).then(img => ({ img, idx: -1 })));
+                promises.push(loadImageSafe(layoutImage).then(img => ({ img, idx: -1 })));
             }
 
             const results = await Promise.all(promises);
@@ -410,31 +386,45 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             const imgs = loadedImgs.map(r => r.img).filter(Boolean);
             if (!imgs.length && !loadedLayoutImg) return;
 
-            /* ---- SCALE FACTOR ---- */
             const U = w / 1080;
 
             /* ---- ASSEMBLE GRID ITEMS (PHOTOS + FLOORPLAN) ---- */
-            const gridItems = imgs.map(img => ({ type: 'photo', img }));
-
+            let processedFloorplan = null;
             if (loadedLayoutImg) {
-                const cacheKey = `${layoutImage}_${isDark}`;
-                let processedCanvas = floorplanCacheRef.current.get(cacheKey);
-                if (!processedCanvas) {
-                    processedCanvas = processFloorplanImage(loadedLayoutImg, isDark);
-                    if (processedCanvas) floorplanCacheRef.current.set(cacheKey, processedCanvas);
+                processedFloorplan = floorplanCacheRef.current.get(layoutImage);
+                if (!processedFloorplan) {
+                    processedFloorplan = cropFloorplanWhitespace(loadedLayoutImg);
+                    if (processedFloorplan) floorplanCacheRef.current.set(layoutImage, processedFloorplan);
                 }
-                gridItems.push({ type: 'floorplan', canvas: processedCanvas || loadedLayoutImg });
+            }
+
+            // Order of items in grid:
+            // When floorplan is present and multiple photos: place floorplan at Top-Right (index 1)
+            // so it sits in the top half of the canvas, completely untouched by the bottom gradient!
+            const gridItems = [];
+            if (loadedLayoutImg) {
+                if (imgs.length >= 1) {
+                    gridItems.push({ type: 'photo', img: imgs[0] });
+                    gridItems.push({ type: 'floorplan', canvas: processedFloorplan || loadedLayoutImg });
+                    for (let i = 1; i < imgs.length; i++) {
+                        gridItems.push({ type: 'photo', img: imgs[i] });
+                    }
+                } else {
+                    gridItems.push({ type: 'floorplan', canvas: processedFloorplan || loadedLayoutImg });
+                }
+            } else {
+                imgs.forEach(img => gridItems.push({ type: 'photo', img }));
             }
 
             const totalItems = gridItems.length;
 
-            /* ---- 100% FULL FRAME GRID CALCULATION ---- */
+            /* ---- 100% FULL FRAME GRID RECTS ---- */
             const rects = [];
             if (totalItems <= 1) {
                 rects.push({ x: 0, y: 0, w, h });
             } else if (totalItems === 2) {
                 if (IS || isPortrait) {
-                    const h1 = Math.round(h * 0.52);
+                    const h1 = Math.round(h * 0.50);
                     rects.push({ x: 0, y: 0, w, h: h1 });
                     rects.push({ x: 0, y: h1, w, h: h - h1 });
                 } else {
@@ -446,23 +436,23 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 if (IS || isPortrait) {
                     const hTop = Math.round(h * 0.50);
                     const wHalf = Math.round(w * 0.5);
-                    rects.push({ x: 0, y: 0, w, h: hTop });
-                    rects.push({ x: 0, y: hTop, w: wHalf, h: h - hTop });
-                    rects.push({ x: wHalf, y: hTop, w: w - wHalf, h: h - hTop });
+                    rects.push({ x: 0, y: 0, w: wHalf, h: hTop });
+                    rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hTop });
+                    rects.push({ x: 0, y: hTop, w, h: h - hTop });
                 } else {
-                    const wLeft = Math.round(w * 0.52);
+                    const wLeft = Math.round(w * 0.50);
                     const hHalf = Math.round(h * 0.5);
-                    rects.push({ x: 0, y: 0, w: wLeft, h });
+                    rects.push({ x: 0, y: 0, w: wLeft, h: hHalf });
                     rects.push({ x: wLeft, y: 0, w: w - wLeft, h: hHalf });
-                    rects.push({ x: wLeft, y: hHalf, w: w - wLeft, h: h - hHalf });
+                    rects.push({ x: 0, y: hHalf, w, h: h - hHalf });
                 }
             } else if (totalItems === 4) {
                 const wHalf = Math.round(w * 0.5);
                 const hHalf = Math.round(h * 0.5);
-                rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });
-                rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });
-                rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });
-                rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf });
+                rects.push({ x: 0, y: 0, w: wHalf, h: hHalf });             // Cell 0: Top-Left
+                rects.push({ x: wHalf, y: 0, w: w - wHalf, h: hHalf });     // Cell 1: Top-Right (Floorplan!)
+                rects.push({ x: 0, y: hHalf, w: wHalf, h: h - hHalf });     // Cell 2: Bottom-Left
+                rects.push({ x: wHalf, y: hHalf, w: w - wHalf, h: h - hHalf }); // Cell 3: Bottom-Right
             } else {
                 const cols = Math.ceil(Math.sqrt(totalItems));
                 const rows = Math.ceil(totalItems / cols);
@@ -474,7 +464,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 }
             }
 
-            /* ---- DRAW CELL HELPER ---- */
+            /* ---- DRAW PHOTO CELL ---- */
             const drawPhotoCell = (img, cx, cy, cw, ch) => {
                 if (!img || !img.width || !img.height || !cw || !ch) return;
                 const ir = img.width / img.height;
@@ -507,6 +497,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.restore();
             };
 
+            /* ---- DRAW FLOORPLAN CELL (100% CLEAR, CLEAN WHITE CARD, NO LABEL) ---- */
             const drawFloorplanCell = (itemCanvas, cx, cy, cw, ch) => {
                 if (!itemCanvas || !cw || !ch) return;
                 ctx.save();
@@ -514,11 +505,11 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.rect(cx, cy, cw, ch);
                 ctx.clip();
 
-                // Distinct architectural background for floorplan cell
-                ctx.fillStyle = isLight ? 'rgba(255, 255, 255, 0.94)' : 'rgba(15, 23, 42, 0.90)';
+                // High-contrast clean white background for architectural drawing
+                ctx.fillStyle = '#FFFFFF';
                 ctx.fillRect(cx, cy, cw, ch);
 
-                const pad = Math.round(28 * U);
+                const pad = Math.round(24 * U);
                 const innerW = cw - pad * 2;
                 const innerH = ch - pad * 2;
 
@@ -537,41 +528,19 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     ctx.drawImage(itemCanvas, dx, dy, dw, dh);
                 }
 
-                // Sleek minimal badge in the floorplan cell
-                const fpBadgeText = 'ПЛАНИРОВКА';
-                const fpBadgeFont = Math.round(18 * U);
-                ctx.font = `700 ${fpBadgeFont}px 'Medeo Sans', sans-serif`;
-                const fpTw = ctx.measureText(fpBadgeText).width;
-                const fpPadX = Math.round(12 * U);
-                const fpPadY = Math.round(6 * U);
-                const fpBW = fpTw + fpPadX * 2;
-                const fpBH = fpBadgeFont + fpPadY * 2;
-                const fpBX = cx + Math.round(18 * U);
-                const fpBY = cy + Math.round(18 * U);
-
-                ctx.fillStyle = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.16)';
-                safeRoundRect(ctx, fpBX, fpBY, fpBW, fpBH, Math.round(8 * U));
-                ctx.fill();
-
-                ctx.fillStyle = isLight ? '#475569' : '#E2E8F0';
-                ctx.textAlign = 'center';
-                ctx.fillText(fpBadgeText, fpBX + fpBW / 2, fpBY + fpBH / 2 + fpBadgeFont * 0.35);
-                ctx.textAlign = 'left';
-
+                // Note: user explicitly requested NO label / signature on floorplan
                 ctx.restore();
             };
 
-            /* ---- DRAW ALL CELLS ---- */
+            /* ---- 1. DRAW PHOTO CELLS ---- */
             gridItems.forEach((item, idx) => {
-                const r = rects[idx % rects.length];
-                if (item.type === 'floorplan') {
-                    drawFloorplanCell(item.canvas, r.x, r.y, r.w, r.h);
-                } else {
+                if (item.type === 'photo') {
+                    const r = rects[idx % rects.length];
                     drawPhotoCell(item.img, r.x, r.y, r.w, r.h);
                 }
             });
 
-            /* ---- CELL DIVIDERS ---- */
+            /* ---- 2. DRAW CELL DIVIDERS ---- */
             if (totalItems > 1) {
                 ctx.save();
                 ctx.strokeStyle = isLight ? 'rgba(255, 255, 255, 0.95)' : 'rgba(10, 15, 26, 0.85)';
@@ -580,16 +549,16 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.restore();
             }
 
-            /* ---- TOP GRADIENT (for badges contrast) ---- */
-            const topGradH = Math.round((IS ? 200 : 160) * U);
+            /* ---- 3. TOP GRADIENT (for badges) ---- */
+            const topGradH = Math.round((IS ? 190 : 150) * U);
             const topGrad = ctx.createLinearGradient(0, 0, 0, topGradH);
-            topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.60)');
-            topGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.25)');
+            topGrad.addColorStop(0, 'rgba(0, 0, 0, 0.55)');
+            topGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.20)');
             topGrad.addColorStop(1, 'rgba(0, 0, 0, 0.00)');
             ctx.fillStyle = topGrad;
             ctx.fillRect(0, 0, w, topGradH);
 
-            /* ---- BOTTOM INFORMATION GRADIENT (100% READABILITY) ---- */
+            /* ---- 4. BOTTOM INFORMATION GRADIENT ---- */
             const gradH = Math.round(h * (IS ? 0.46 : (isPortrait ? 0.42 : 0.40)));
             const gradY = h - gradH;
             const btmGrad = ctx.createLinearGradient(0, gradY, 0, h);
@@ -611,7 +580,15 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             ctx.fillStyle = btmGrad;
             ctx.fillRect(0, gradY, w, gradH);
 
-            /* ---- TYPOGRAPHY CONSTANTS & DATA PREPARATION ---- */
+            /* ---- 5. DRAW FLOORPLAN CELL (AFTER GRADIENT SO IT IS NEVER COVERED) ---- */
+            gridItems.forEach((item, idx) => {
+                if (item.type === 'floorplan') {
+                    const r = rects[idx % rects.length];
+                    drawFloorplanCell(item.canvas, r.x, r.y, r.w, r.h);
+                }
+            });
+
+            /* ---- 6. TYPOGRAPHY CONSTANTS & DATA PREPARATION ---- */
             const PAD = Math.round((IS ? 64 : (isPortrait ? 52 : 44)) * U);
             const bottomPad = Math.round((IS ? 64 : (isPortrait ? 48 : 38)) * U);
             const maxTW = w - PAD * 2;
@@ -659,7 +636,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             const showAgent = cleanAgent.length > 2 && cleanAgent.toLowerCase() !== 'я';
             const contactText = showAgent ? `${cleanAgent}  ·  ${activePhone}` : activePhone;
 
-            /* ---- CALCULATE BOTTOM-ANCHORED VERTICAL LAYOUT ---- */
+            /* ---- BOTTOM-ANCHORED VERTICAL LAYOUT ---- */
             const hCat = Math.round(fsCat * 1.25);
             const gapAfterCat = Math.round(14 * U);
             const hPrice = Math.round(fsPrice * 0.95);
@@ -676,13 +653,13 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             const minSafeY = gradY + Math.round(gradH * 0.22);
             if (curY < minSafeY) curY = minSafeY;
 
-            /* ---- RENDER CATEGORY ---- */
+            /* Category */
             ctx.font = `700 ${fsCat}px 'Medeo Sans', system-ui, sans-serif`;
             ctx.fillStyle = isLight ? '#64748B' : (accentColor === '#0052FF' ? '#60A5FA' : accentColor);
             ctx.fillText(catText, PAD, curY + fsCat * 0.85);
             curY += hCat + gapAfterCat;
 
-            /* ---- RENDER PRICE & SQM ---- */
+            /* Price & Sqm */
             ctx.font = `800 ${fsPrice}px 'Medeo Sans', system-ui, sans-serif`;
             ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
             ctx.fillText(priceText, PAD, curY + fsPrice * 0.85);
@@ -695,7 +672,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             }
             curY += hPrice + gapAfterPrice;
 
-            /* ---- RENDER ADDRESS ---- */
+            /* Address */
             ctx.font = `700 ${fsAddr}px 'Medeo Sans', system-ui, sans-serif`;
             ctx.fillStyle = isLight ? '#1E293B' : '#F8FAFC';
             for (const line of addrLines) {
@@ -704,7 +681,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             }
             curY += gapAfterAddr;
 
-            /* ---- RENDER SPECIFICATIONS ---- */
+            /* Specifications */
             if (parts.length) {
                 ctx.font = `500 ${fsDetails}px 'Medeo Sans', system-ui, sans-serif`;
                 ctx.fillStyle = isLight ? '#475569' : '#CBD5E1';
@@ -712,14 +689,18 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 curY += hDetails + gapAfterDetails;
             }
 
-            /* ---- RENDER CONTACT / PHONE (NEVER RENDER 'Я') ---- */
+            /* Contact Phone (NO "Я") */
             ctx.font = `700 ${fsPhone}px 'Medeo Sans', system-ui, sans-serif`;
             ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
             ctx.fillText(contactText, PAD, curY + fsPhone * 0.85);
 
-            /* ---- TOP BADGES (DEAL GOAL & STICKERS) ---- */
+            /* ---- 7. TOP BADGES (DEAL GOAL & STICKERS) ---- */
             const badgePad = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
             let badgeBottom = badgePad;
+
+            // If floorplan is at Top-Right, place deal goal badge at Top-Left to avoid overlap!
+            const floorplanAtTopRight = loadedLayoutImg && totalItems >= 2;
+            const badgeAtLeft = floorplanAtTopRight;
 
             if (showDealGoal) {
                 const goalStr = (dealGoal === 'custom' ? customGoalText.trim() : dealGoal) || 'Продажа';
@@ -730,7 +711,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 const tw = ctx.measureText(badgeText).width;
                 const bPadX = Math.round((IS ? 28 : 22) * U);
                 const badgeW = tw + bPadX * 2;
-                const badgeX = w - badgePad - badgeW;
+                const badgeX = badgeAtLeft ? badgePad : (w - badgePad - badgeW);
                 const badgeY = badgePad;
 
                 ctx.save();
@@ -767,7 +748,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
                     ctx.font = `700 ${sf}px 'Medeo Sans', system-ui, sans-serif`;
                     const tw = ctx.measureText(txt.toUpperCase()).width + Math.round(40 * U);
-                    const sx = w - badgePad - tw;
+                    const sx = badgeAtLeft ? badgePad : (w - badgePad - tw);
 
                     ctx.save();
                     ctx.shadowColor = 'rgba(0,0,0,0.35)';
@@ -1014,7 +995,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                 </label>
                             </div>
                             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.35 }}>
-                                Обрезается по контуру и выводится на прозрачном фоне ячейкой сетки.
+                                Обрезаются пустые поля, выводится чётким чертежом в ячейку сетки.
                             </div>
                         </Collapsible>
 
