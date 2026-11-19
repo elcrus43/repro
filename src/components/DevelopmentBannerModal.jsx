@@ -54,6 +54,7 @@ const DESIGN_THEMES = [
 ];
 
 const COMPOSITION_MODES = [
+  { key: 'grid_hero',   label: 'Сетка + План', hint: 'Сетка из фото ЖК + карточка планировки поверх' },
   { key: 'plan_hero',   label: 'План + Фасад', hint: 'Фокус на планировке + мини-фото ЖК' },
   { key: 'facade_hero', label: 'Фасад + План', hint: 'Фото ЖК на фоне + карточка плана' },
   { key: 'plan_only',   label: 'Только план',  hint: 'Максимум чертежа планировки' },
@@ -103,6 +104,34 @@ function safeRoundRect(ctx, x, y, w, h, r = 0) {
   ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
+}
+
+function drawImageCover(ctx, img, cx, cy, cw, ch, r = 0) {
+  if (!img || !img.width || !img.height || cw <= 0 || ch <= 0) return;
+  const ir = img.width / img.height;
+  const cr = cw / ch;
+  let dw, dh, dx, dy;
+  if (ir > cr) {
+    dh = ch;
+    dw = ch * ir;
+    dx = cx + (cw - dw) / 2;
+    dy = cy;
+  } else {
+    dw = cw;
+    dh = cw / ir;
+    dx = cx;
+    dy = cy + (ch - dh) / 2;
+  }
+  ctx.save();
+  ctx.beginPath();
+  safeRoundRect(ctx, cx, cy, cw, ch, r);
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, dw, dh);
+
+  // Subtle contrast scrim so floating card and text pop out cleanly
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.16)';
+  ctx.fillRect(cx, cy, cw, ch);
+  ctx.restore();
 }
 
 function hexToRgb(hex) {
@@ -354,20 +383,77 @@ export function DevelopmentBannerModal({
     setCustomPlanUrl(null);
   };
 
-  const facadeImageUrl = useMemo(() => {
-    return (
-      development.image ||
-      (Array.isArray(development.images) && development.images[0]) ||
-      layout.dev?.image ||
-      (Array.isArray(layout.dev?.images) && layout.dev?.images[0]) ||
-      null
-    );
+  const allDevImages = useMemo(() => {
+    const list = [];
+    if (Array.isArray(development.images)) {
+      development.images.forEach((img) => {
+        if (img && !list.includes(img)) list.push(img);
+      });
+    } else if (development.image) {
+      list.push(development.image);
+    }
+    if (Array.isArray(layout.dev?.images)) {
+      layout.dev.images.forEach((img) => {
+        if (img && !list.includes(img)) list.push(img);
+      });
+    } else if (layout.dev?.image && !list.includes(layout.dev.image)) {
+      list.push(layout.dev.image);
+    }
+    return list;
   }, [development, layout.dev]);
+
+  const [customDevImages, setCustomDevImages]       = React.useState([]);
+  const combinedDevImages = useMemo(() => {
+    return Array.from(new Set([...customDevImages, ...allDevImages]));
+  }, [customDevImages, allDevImages]);
+
+  const [selectedGridImages, setSelectedGridImages] = React.useState(() => {
+    return allDevImages.slice(0, 4);
+  });
+
+  useEffect(() => {
+    if (selectedGridImages.length === 0 && combinedDevImages.length > 0) {
+      setSelectedGridImages(combinedDevImages.slice(0, 4));
+    }
+  }, [combinedDevImages, selectedGridImages.length]);
+
+  const toggleGridImage = (imgUrl) => {
+    setSelectedGridImages((prev) => {
+      if (prev.includes(imgUrl)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter((u) => u !== imgUrl);
+      }
+      if (prev.length >= 4) {
+        return [...prev.slice(0, 3), imgUrl];
+      }
+      return [...prev, imgUrl];
+    });
+  };
+
+  const devImageFileInputRef = useRef(null);
+
+  const handleDevImageUpload = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const newUrls = files.map((f) => URL.createObjectURL(f));
+    setCustomDevImages((prev) => [...newUrls, ...prev]);
+    setSelectedGridImages((prev) => {
+      const merged = Array.from(new Set([...newUrls, ...prev]));
+      return merged.slice(0, 4);
+    });
+    if (devImageFileInputRef.current) {
+      devImageFileInputRef.current.value = '';
+    }
+  };
+
+  const facadeImageUrl = useMemo(() => {
+    return selectedGridImages[0] || combinedDevImages[0] || null;
+  }, [selectedGridImages, combinedDevImages]);
 
   /* ---- State ---- */
   const [format, setFormat]                   = React.useState('story');
   const [designTheme, setDesignTheme]         = React.useState('dark');
-  const [composition, setComposition]         = React.useState('plan_hero');
+  const [composition, setComposition]         = React.useState('grid_hero');
   const [accentColor, setAccentColor]         = React.useState('#0052FF');
 
   const [devTitle, setDevTitle]               = React.useState(complexName);
@@ -424,6 +510,7 @@ export function DevelopmentBannerModal({
     theme: true,
     composition: true,
     plan: true,
+    photos: true,
     data: true,
     mortgage: true,
     advantages: true,
@@ -506,10 +593,12 @@ export function DevelopmentBannerModal({
     setIsGenerating(true);
 
     try {
-      const [loadedPlan, loadedFacade] = await Promise.all([
+      const [loadedPlan, loadedFacade, ...loadedGrid] = await Promise.all([
         planImageUrl ? loadImageSafe(planImageUrl) : Promise.resolve(null),
         facadeImageUrl ? loadImageSafe(facadeImageUrl) : Promise.resolve(null),
+        ...selectedGridImages.map((src) => (src ? loadImageSafe(src) : Promise.resolve(null))),
       ]);
+      const validGridImages = loadedGrid.filter(Boolean);
 
       if (!isMountedRef.current) return;
 
@@ -639,7 +728,122 @@ export function DevelopmentBannerModal({
       const visualAreaH = h - bottomAreaH - visualAreaTop;
       const visualAreaW = w - PAD * 2;
 
-      if (composition === 'plan_hero' || composition === 'plan_only') {
+      if (composition === 'grid_hero') {
+        // Grid Hero: Collage / Grid of complex photos + floating CAD layout card on top
+        const gap = Math.round(10 * U);
+        const gridRadius = Math.round(20 * U);
+        const k = validGridImages.length;
+
+        if (k > 0) {
+          if (k === 1) {
+            drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, visualAreaW, visualAreaH, gridRadius);
+          } else if (k === 2) {
+            if (IS) {
+              const cellH = Math.round((visualAreaH - gap) / 2);
+              drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, visualAreaW, cellH, gridRadius);
+              drawImageCover(ctx, validGridImages[1], PAD, visualAreaTop + cellH + gap, visualAreaW, cellH, gridRadius);
+            } else {
+              const cellW = Math.round((visualAreaW - gap) / 2);
+              drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, cellW, visualAreaH, gridRadius);
+              drawImageCover(ctx, validGridImages[1], PAD + cellW + gap, visualAreaTop, cellW, visualAreaH, gridRadius);
+            }
+          } else if (k === 3) {
+            const topH = Math.round(visualAreaH * 0.52);
+            const btmH = visualAreaH - topH - gap;
+            const btmW = Math.round((visualAreaW - gap) / 2);
+            drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, visualAreaW, topH, gridRadius);
+            drawImageCover(ctx, validGridImages[1], PAD, visualAreaTop + topH + gap, btmW, btmH, gridRadius);
+            drawImageCover(ctx, validGridImages[2], PAD + btmW + gap, visualAreaTop + topH + gap, btmW, btmH, gridRadius);
+          } else {
+            const cellW = Math.round((visualAreaW - gap) / 2);
+            const cellH = Math.round((visualAreaH - gap) / 2);
+            drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, cellW, cellH, gridRadius);
+            drawImageCover(ctx, validGridImages[1], PAD + cellW + gap, visualAreaTop, cellW, cellH, gridRadius);
+            drawImageCover(ctx, validGridImages[2], PAD, visualAreaTop + cellH + gap, cellW, cellH, gridRadius);
+            drawImageCover(ctx, validGridImages[3], PAD + cellW + gap, visualAreaTop + cellH + gap, cellW, cellH, gridRadius);
+          }
+        }
+
+        // --- FLOATING FLOOR PLAN CARD ON TOP ---
+        const cardW = Math.round(IS ? visualAreaW * 0.88 : visualAreaW * 0.74);
+        const cardH = Math.round(IS ? visualAreaH * 0.62 : visualAreaH * 0.76);
+        const cardX = PAD + Math.round((visualAreaW - cardW) / 2);
+        const cardY = visualAreaTop + Math.round((visualAreaH - cardH) / 2);
+
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
+        ctx.shadowBlur = Math.round(34 * U);
+        ctx.shadowOffsetY = Math.round(12 * U);
+
+        ctx.fillStyle = isGlass ? 'rgba(255, 255, 255, 0.96)' : '#FFFFFF';
+        ctx.beginPath();
+        safeRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(22 * U));
+        ctx.fill();
+
+        ctx.strokeStyle = isGlass ? 'rgba(255, 255, 255, 0.95)' : 'rgba(226, 232, 240, 0.9)';
+        ctx.lineWidth = Math.round(2 * U);
+        ctx.stroke();
+        ctx.restore();
+
+        // Top Chip on Floorplan Card
+        const chipText = 'ПЛАНИРОВКА КВАРТИРЫ';
+        ctx.save();
+        ctx.font = `700 ${Math.round(14 * U)}px system-ui, sans-serif`;
+        const ctw = ctx.measureText(chipText).width + Math.round(24 * U);
+        const chipH = Math.round(28 * U);
+        const chipX = cardX + Math.round(14 * U);
+        const chipY = cardY + Math.round(14 * U);
+
+        ctx.fillStyle = isLight ? 'rgba(0, 82, 255, 0.12)' : 'rgba(15, 23, 42, 0.85)';
+        ctx.beginPath();
+        safeRoundRect(ctx, chipX, chipY, ctw, chipH, chipH / 2);
+        ctx.fill();
+
+        ctx.fillStyle = isLight ? accentColor : '#60A5FA';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(chipText, chipX + Math.round(12 * U), chipY + chipH / 2);
+        ctx.restore();
+
+        // Draw CAD Floorplan inside card
+        if (cleanPlan) {
+          const innerPad = Math.round(18 * U);
+          const innerTop = chipY + chipH + Math.round(8 * U);
+          const innerX = cardX + innerPad;
+          const innerY = innerTop;
+          const innerW = cardW - innerPad * 2;
+          const innerH = cardY + cardH - innerTop - innerPad;
+
+          const pr = (cleanPlan.width || 1) / (cleanPlan.height || 1);
+          const cr = innerW / innerH;
+          let dw, dh, dx, dy;
+          if (pr > cr) {
+            dw = innerW;
+            dh = innerW / pr;
+            dx = innerX;
+            dy = innerY + (innerH - dh) / 2;
+          } else {
+            dh = innerH;
+            dw = innerH * pr;
+            dx = innerX + (innerW - dw) / 2;
+            dy = innerY;
+          }
+
+          ctx.save();
+          ctx.beginPath();
+          safeRoundRect(ctx, innerX, innerY, innerW, innerH, Math.round(14 * U));
+          ctx.clip();
+          ctx.drawImage(cleanPlan, dx, dy, dw, dh);
+          ctx.restore();
+        } else {
+          ctx.save();
+          ctx.fillStyle = '#64748B';
+          ctx.font = `500 ${Math.round(26 * U)}px system-ui, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('Планировка квартиры', cardX + cardW / 2, cardY + cardH / 2);
+          ctx.restore();
+        }
+      } else if (composition === 'plan_hero' || composition === 'plan_only') {
         // Plan Hero: Big white contrast card with the CAD floorplan
         const planCardPad = Math.round(20 * U);
         const planCardX = PAD;
@@ -990,6 +1194,7 @@ export function DevelopmentBannerModal({
     selectedAdvantages,
     planImageUrl,
     facadeImageUrl,
+    selectedGridImages,
     loadImageSafe,
   ]);
 
@@ -1372,6 +1577,66 @@ export function DevelopmentBannerModal({
                       accept="image/*"
                       style={{ display: 'none' }}
                       onChange={handlePlanUpload}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Development Photos Grid Section */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('photos')}
+              >
+                <div className="dev-banner-sec-title-wrap">
+                  <span className="dev-banner-sec-title">Фотографии ЖК (сетка)</span>
+                  <span className="dev-photo-count-pill">{selectedGridImages.length} из 4</span>
+                </div>
+                {openSections.photos ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.photos && (
+                <div className="dev-banner-sec-content">
+                  <p className="dev-sec-hint">
+                    Выберите от 1 до 4 фото для формирования сетки ЖК на баннере (нажмите на фото для выбора):
+                  </p>
+
+                  <div className="dev-photos-picker-grid">
+                    {combinedDevImages.map((imgUrl, idx) => {
+                      const isSel = selectedGridImages.includes(imgUrl);
+                      const selOrder = selectedGridImages.indexOf(imgUrl) + 1;
+                      return (
+                        <div
+                          key={imgUrl + idx}
+                          className={`dev-photo-card ${isSel ? 'selected' : ''}`}
+                          onClick={() => toggleGridImage(imgUrl)}
+                          title={isSel ? 'Нажмите, чтобы исключить из сетки' : 'Нажмите, чтобы добавить в сетку'}
+                        >
+                          <img src={imgUrl} alt={`Фото ЖК ${idx + 1}`} className="dev-photo-card-img" />
+                          <div className={`dev-photo-order-badge ${isSel ? 'active' : ''}`}>
+                            {isSel ? selOrder : '+'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="dev-photo-actions-row">
+                    <button
+                      type="button"
+                      className="btn-plan-action primary"
+                      onClick={() => devImageFileInputRef.current?.click()}
+                    >
+                      <Upload size={14} />
+                      <span>+ Добавить еще фото ЖК</span>
+                    </button>
+                    <input
+                      ref={devImageFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      style={{ display: 'none' }}
+                      onChange={handleDevImageUpload}
                     />
                   </div>
                 </div>
@@ -2028,14 +2293,22 @@ export function DevelopmentBannerModal({
         }
 
         /* Theme & Composition */
-        .dev-theme-tabs, .dev-composition-tabs {
+        .dev-theme-tabs {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
           gap: 6px;
         }
 
         .dev-composition-tabs {
-          grid-template-columns: repeat(3, 1fr);
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 6px;
+        }
+
+        @media (max-width: 600px) {
+          .dev-composition-tabs {
+            grid-template-columns: repeat(2, 1fr);
+          }
         }
 
         .btn-theme-tab, .btn-comp-tab {
@@ -2390,6 +2663,96 @@ export function DevelopmentBannerModal({
 
         .btn-plan-action.secondary:hover {
           background: #cbd5e1;
+        }
+
+        /* Photos Section & Grid Picker */
+        .dev-banner-sec-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .dev-photo-count-pill {
+          font-size: 11px;
+          font-weight: 700;
+          color: #0052ff;
+          background: rgba(0, 82, 255, 0.1);
+          padding: 2px 7px;
+          border-radius: 999px;
+        }
+
+        .dark .dev-photo-count-pill {
+          color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+        }
+
+        .dev-photos-picker-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .dev-photo-card {
+          position: relative;
+          aspect-ratio: 4 / 3;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 2px solid transparent;
+          background: #0f172a;
+          cursor: pointer;
+          transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .dev-photo-card:hover {
+          transform: translateY(-2px);
+        }
+
+        .dev-photo-card.selected {
+          border-color: #0052ff;
+          box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.25);
+        }
+
+        .dark .dev-photo-card.selected {
+          border-color: #60a5fa;
+          box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
+        }
+
+        .dev-photo-card-img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+
+        .dev-photo-order-badge {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: rgba(15, 23, 42, 0.7);
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          backdrop-filter: blur(4px);
+          transition: all 0.15s;
+        }
+
+        .dev-photo-order-badge.active {
+          background: #0052ff;
+          color: #ffffff;
+          box-shadow: 0 2px 4px rgba(0, 82, 255, 0.4);
+        }
+
+        .dev-photo-actions-row {
+          display: flex;
+          gap: 8px;
+          margin-top: 10px;
         }
 
         /* Toggles Box */

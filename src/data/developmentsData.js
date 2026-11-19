@@ -61,7 +61,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич, неоклассика",
     "images": [
       "/images/developments/zhk-bulychev.jpg",
-      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/74d49dd475c6b09c3d66e56c268f58d661be02ac.jpg"
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/74d49dd475c6b09c3d66e56c268f58d661be02ac.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/8adcc3a123fba1b59edd563bf8b7cd156b757d4e.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/ffc5c71c6abc1e2c9bbc17112bff4d31ac2da238.jpg"
     ],
     "description": "Первый в России умный дом высшего класса «А» с неоклассической архитектурой, приватным спа-комплексом, консьерж-сервисом и панорамными террасами в историческом центре Кирова.",
     "features": [
@@ -116,7 +118,10 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "4-8 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/dc0c0fa25924d954636b8a3d0be716b451c553d3.png"
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/g/dc0c0fa25924d954636b8a3d0be716b451c553d3.png",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/a671f9897579c8f3a2faa251adb65f70f755bd26.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/be0b0b51c6ec9ebb35bc169f5c9a27a35c9bf3fb.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/1b09d62c330faf0416c72284c95cea2916023a7f.jpg"
     ],
     "description": "Европейский среднеэтажный квартал комфорт-класса на Юго-Западе Кирова. Собственная школа №26, детские сады, прогулочные бульвары, дворы без машин и сервис «Мажордом».",
     "features": [
@@ -179,7 +184,10 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "6-10 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/i/d5c0a92478210dd6bf820d600d5ef1144743d1b8.jpg"
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/i/d5c0a92478210dd6bf820d600d5ef1144743d1b8.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/f363ca90b3f0aaae7e376b6af7134c69a18ca627.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/5b1a423d54cabb12a3558d7c521a80e3c99bd84d.jpg",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/e2984c1cf0d97d36bed2e85d68f4d485f254445e.jpg"
     ],
     "description": "Современный жилой квартал комфорт-класса с концепцией двор-парк, эргономичными планировками и развитой спортивной инфраструктурой.",
     "features": [
@@ -242,7 +250,10 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "5-9 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/i/cc44bf54bf82b38408b4c6b5455ae859f02cc023.png"
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/p/i/cc44bf54bf82b38408b4c6b5455ae859f02cc023.png",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/bf5b66f51fa2e539f9676488857a6e5aa8e71af4.png",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/a5fa419153c97e3a264b0fc1b5e015a5ef4d9839.png",
+      "https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/323394035515879dffd379abd779a1334bf9cd77.jpg"
     ],
     "description": "Инновационный жилой квартал с собственной парковой зоной, интеллектуальными системами доступа и современной архитектурой.",
     "features": [
@@ -305,7 +316,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "17 этажей",
     "wall_material": "Панель нового стандарта с утеплением",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg"
+      "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg"
     ],
     "description": "Старт продаж ноября 2026 г. Односекционный 17-этажный дом комфорт-класса в микрорайоне Чистые Пруды: колясочные на 1 этаже, двор без машин, школа и садик рядом.",
     "features": [
@@ -368,7 +381,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "16-18 этажей",
     "wall_material": "Панель, кирпич",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg"
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
+      "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg"
     ],
     "description": "Крупнейший современный микрорайон Кирова с новой транспортной развязкой, школой №25, детскими садами и прудами. Действует семейная ипотека с ПВ от 20 000 руб.",
     "features": [
@@ -432,7 +447,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "12-17 этажей",
     "wall_material": "Монолит, панель",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg"
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg"
     ],
     "description": "Парк-квартал рядом с Зубаревским лесом в развивающемся микрорайоне Урванцево. Семейные планировки, скидки до 10% для семейного формата.",
     "features": [
@@ -494,7 +511,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "14-18 этажей",
     "wall_material": "Монолит-кирпич, панель",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg"
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-16/16ef3defe98560d28d20cdce8b8a48b2.jpg"
     ],
     "description": "Комплексная застройка рядом с природным массивом в Чистых Прудах. Кладовые помещения, льготная ипотека с минимальным ПВ и скидки на отделку.",
     "features": [
@@ -548,7 +567,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "до 18 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg"
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg"
     ],
     "description": "Квартал бизнес-класса в центральной части Кирова с подземным паркингом и закрытой территорией. Школы и садики в нескольких минутах ходьбы.",
     "features": [
@@ -611,7 +632,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "10-18 этажей",
     "wall_material": "Монолит, панель",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-16/16ef3defe98560d28d20cdce8b8a48b2.jpg"
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-16/16ef3defe98560d28d20cdce8b8a48b2.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg"
     ],
     "description": "Жилой квартал с видом на реку Вятку и собственным детским садом на территории. Доступна ипотека без удорожания с ПВ от 20 000 руб.",
     "features": [
@@ -673,7 +696,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "17 этажей",
     "wall_material": "Панель",
     "images": [
-      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2026-09-21/427505601eb286c4749592b08e27919e.jpg"
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2026-09-21/427505601eb286c4749592b08e27919e.jpg",
+      "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
+      "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg"
     ],
     "description": "Современный жилой квартал в микрорайоне Озерки от застройщика Кировспецмонтаж. Продуманные планировки от студий до трехкомнатных квартир, благоустроенные дворы, детские площадки и развитая инфраструктура района.",
     "features": [
@@ -736,7 +761,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "9-17 этажей",
     "wall_material": "Панель ССК, монолит",
     "images": [
-      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg"
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg"
     ],
     "description": "Жилой комплекс в скандинавской эстетике рядом с новой школой на 1500 мест. Доступны приватные секции по 2-3 квартиры на этаже, студии и просторные евро-3.",
     "features": [
@@ -806,7 +833,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "16-17 этажей",
     "wall_material": "Монолит-панель ССК",
     "images": [
-      "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png"
+      "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg"
     ],
     "description": "Современный жилой комплекс вдоль Московской улицы с удобным выездом в центр. Возможна покупка с частичным ПВ 10% и меблировкой в ипотеку.",
     "features": [
@@ -868,7 +897,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "14-17 этажей",
     "wall_material": "Панель ССК",
     "images": [
-      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg"
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg"
     ],
     "description": "Популярный квартал комфорт-класса на Юго-Западе с поэтапным вводом секций и доступным порогом входа.",
     "features": [
@@ -930,7 +961,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "17 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg"
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png"
     ],
     "description": "Жилой комплекс бизнес-класса в ближнем центре Кирова. Стильная архитектура, закрытый двор и быстрая выдача ключей в 2027 году.",
     "features": [
@@ -992,7 +1025,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "16 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg"
+      "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg"
     ],
     "description": "Видовые квартиры семейного формата с панорамой на реку Вятку (площади 41.1 - 69.1 м²). Семейная ипотека 5% при ПВ от 20.1%.",
     "features": [
@@ -1046,7 +1081,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "10-16 этажей",
     "wall_material": "Панель ССК",
     "images": [
-      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg"
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg",
+      "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg",
+      "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg"
     ],
     "description": "Доступные квартиры в Нововятском районе с возможностью покупки с частичным ПВ 10% и в рассрочку.",
     "features": [
@@ -1108,7 +1145,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "25 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://static.tildacdn.com/tila6435-3634-4463-a164-316235663362/download_4.jpg"
+      "https://static.tildacdn.com/tila6435-3634-4463-a164-316235663362/download_4.jpg",
+      "https://static.tildacdn.com/tila6237-6239-4133-a261-343936373232/download_3.jpg",
+      "https://static.tildacdn.com/tila3065-6639-4435-b564-316238623037/download_1.jpg"
     ],
     "description": "Масштабный жилой квартал: 25-этажная секция I этапа, общий стилобат с благоустройством на кровле, двухуровневый закрытый паркинг и траншевая ипотека.",
     "features": [
@@ -1178,7 +1217,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "14-17 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-      "https://static.tildacdn.com/tila6237-6239-4133-a261-343936373232/download_3.jpg"
+      "https://static.tildacdn.com/tila6237-6239-4133-a261-343936373232/download_3.jpg",
+      "https://static.tildacdn.com/tila6435-3634-4463-a164-316235663362/download_4.jpg",
+      "https://static.tildacdn.com/tila3961-3437-4030-b564-613030663662/_ChatGPT_9__2026__09.png"
     ],
     "description": "Современный комплекс в районе Европейских улочек с субсидированными ставками по семейной ипотеке и скидками через кабинет агента до 6.5%.",
     "features": [
@@ -1239,7 +1280,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "8-10 этажей",
     "wall_material": "Керамический кирпич",
     "images": [
-      "https://static.tildacdn.com/tila3961-3437-4030-b564-613030663662/_ChatGPT_9__2026__09.png"
+      "https://static.tildacdn.com/tila3961-3437-4030-b564-613030663662/_ChatGPT_9__2026__09.png",
+      "https://static.tildacdn.com/tila6435-3634-4463-a164-316235663362/download_4.jpg",
+      "https://static.tildacdn.com/tila3065-6639-4435-b564-316238623037/download_1.jpg"
     ],
     "description": "Клубный дом бизнес-класса в историческом центре Кирова. Камерная атмосфера, высокие потолки, подземный паркинг и закрытый двор.",
     "features": [
@@ -1292,7 +1335,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "7-10 этажей",
     "wall_material": "Светлый кирпич",
     "images": [
-      "https://static.tildacdn.com/tila3065-6639-4435-b564-316238623037/download_1.jpg"
+      "https://static.tildacdn.com/tila3065-6639-4435-b564-316238623037/download_1.jpg",
+      "https://static.tildacdn.com/tila6237-6239-4133-a261-343936373232/download_3.jpg",
+      "https://static.tildacdn.com/tila6435-3634-4463-a164-316235663362/download_4.jpg"
     ],
     "description": "Дом высокой степени готовности в историческом центре на ул. Ленина, 106. Светлый кирпичный фасад, большие окна, малоэтажная секция.",
     "features": [
@@ -1347,7 +1392,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "/images/developments/zhk-murashinskiy-7.jpg",
-      "https://regburokirov.ru/media/photo_nb/282_2928_458d00dcd0b015d4923afb3f75982e.jpg"
+      "https://regburokirov.ru/media/photo_nb/282_2928_458d00dcd0b015d4923afb3f75982e.jpg",
+      "https://static.tildacdn.com/tila6435-3634-4463-a164-316235663362/download_4.jpg"
     ],
     "description": "Кирпичный жилой дом комфорт-класса в Октябрьском районе недалеко от парка Победы. 13 этажей, 77 квартир, тёплый чердак, два лифта, закрытая придомовая территория.",
     "features": [
@@ -1403,7 +1449,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "/images/developments/zhk-zapovedny.png",
-      "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png"
+      "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png",
+      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg"
     ],
     "description": "Малоэтажный кирпичный квартал в зеленой зоне. В новой очереди действует программа с ремонтом 15 000 ₽/м² и сниженной ипотечной ставкой.",
     "features": [
@@ -1465,7 +1512,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "8-14 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg",
+      "/images/developments/zhk-zapovedny.png",
+      "https://stroy-soyuz.ru/upload/iblock/161/wmk1jwiyfgbbbk13kd5wmgcqrvk5rcdu.jpg"
     ],
     "description": "Новая очередь престижного жилого комплекса в центральной части Кирова рядом с парковой зоной и инфраструктурой.",
     "features": [
@@ -1519,7 +1568,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "4 этажа",
     "wall_material": "Кирпич",
     "images": [
-      "https://stroy-soyuz.ru/upload/iblock/161/wmk1jwiyfgbbbk13kd5wmgcqrvk5rcdu.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/161/wmk1jwiyfgbbbk13kd5wmgcqrvk5rcdu.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/5d5/vxwl8zau5uas806jzu922qhucdl15kdl.jpg"
     ],
     "description": "Малоэтажные 4-этажные кирпичные дома с дворами без машин, окруженные природой. Продуманные семейные планировки.",
     "features": [
@@ -1573,7 +1624,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "5-7 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://stroy-soyuz.ru/upload/iblock/5d5/vxwl8zau5uas806jzu922qhucdl15kdl.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/5d5/vxwl8zau5uas806jzu922qhucdl15kdl.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/cef/yrb07os5t4crdbvsxu70hr1kmvm7bflj.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg"
     ],
     "description": "Приватный клубный дом в историческом центре города. Высокий уровень приватности, семейная ипотека 6% при ПВ 50%.",
     "features": [
@@ -1626,7 +1679,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "4-6 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://stroy-soyuz.ru/upload/iblock/cef/yrb07os5t4crdbvsxu70hr1kmvm7bflj.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/cef/yrb07os5t4crdbvsxu70hr1kmvm7bflj.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/5d5/vxwl8zau5uas806jzu922qhucdl15kdl.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png"
     ],
     "description": "Камерная резиденция в историческом центре (корпус на Успенской, 29 - всего 8 квартир). Закрытый двор, дизайнерское лобби, угловые окна.",
     "features": [
@@ -1680,7 +1735,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "/images/developments/zhk-gorkogo-2a.jpg",
-      "https://gorkogo2a.ru/static/images/start-screen-bg.jpeg"
+      "https://gorkogo2a.ru/static/images/start-screen-bg.jpeg",
+      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg"
     ],
     "description": "Кирпичный дом бизнес-класса в центральной части Кирова с подземным паркингом. В ноябре 2026 действуют скидки до 2.2 млн руб.",
     "features": [
@@ -1735,7 +1791,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич, монолит",
     "images": [
       "/images/developments/zhk-fusion-kino.jpg",
-      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg"
+      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg",
+      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1200:1200/plain/s3://idalite-media/media/images/b6887fedb1774ab6843843d591b7e2b7.jpg"
     ],
     "description": "Среднеэтажный пригородный проект рядом с Нововятским районом. Компактные студии и евро-планировки с выбором чистовой отделки.",
     "features": [
@@ -1797,7 +1854,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "5-8 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1200:1200/plain/s3://idalite-media/media/images/b6887fedb1774ab6843843d591b7e2b7.jpg"
+      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1200:1200/plain/s3://idalite-media/media/images/b6887fedb1774ab6843843d591b7e2b7.jpg",
+      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg",
+      "/images/developments/zhk-fusion-kino.jpg"
     ],
     "description": "Старт продаж 03.11.2026: 6 кварталов из 14 домов в эстетике минимализма. Школа на 1100 мест, детсад на 140 мест, спортивный бульвар 2.1 км и 3 варианта отделки.",
     "features": [
@@ -1858,7 +1917,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "10-14 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png"
+      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png",
+      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg",
+      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg"
     ],
     "description": "Малоквартирный дом бизнес-класса в центре Кирова. Доступны евро-3 площадью 65.89 м² по спеццене 180 тыс. ₽/м².",
     "features": [
@@ -1919,7 +1980,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "17 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg"
+      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg",
+      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png",
+      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg"
     ],
     "description": "17-этажный кирпичный дом комфорт-класса в Зональном районе с видовыми квартирами. Действует акция со скидкой 1 млн руб. на видовые квартиры.",
     "features": [
@@ -1980,7 +2043,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "8-10 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg"
+      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg",
+      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg",
+      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png"
     ],
     "description": "Клубный кирпичный дом бизнес-класса в тихом районе с высокой степенью готовности (сдача в IV кв. 2026 г.).",
     "features": [
@@ -2034,7 +2099,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "8-16 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://altai-stroi.org/upload/iblock/d03/ce1q0yk45y5sxgdea6v2mbypcjq2qkbo.jpg"
+      "https://altai-stroi.org/upload/iblock/d03/ce1q0yk45y5sxgdea6v2mbypcjq2qkbo.jpg",
+      "https://altai-stroi.org/upload/iblock/c7b/6zfil22f37crs9d0p4mvog1j253xnolj.jpg",
+      "https://altai-stroi.org/upload/iblock/115/2dpk73u5kqm063pstvqi9n1y62ek32l1.jpg"
     ],
     "description": "Жилой комплекс переменной этажности с подземным паркингом и закрытой территорией в ближнем центре. Первый этап готовится к вводу.",
     "features": [
@@ -2096,7 +2163,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "14-17 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://altai-stroi.org/upload/iblock/c7b/6zfil22f37crs9d0p4mvog1j253xnolj.jpg"
+      "https://altai-stroi.org/upload/iblock/c7b/6zfil22f37crs9d0p4mvog1j253xnolj.jpg",
+      "https://altai-stroi.org/upload/iblock/d03/ce1q0yk45y5sxgdea6v2mbypcjq2qkbo.jpg",
+      "https://altai-stroi.org/upload/iblock/115/2dpk73u5kqm063pstvqi9n1y62ek32l1.jpg"
     ],
     "description": "Современный многоквартирный комплекс на улице Гороховской с удобным выездом в центр и к ж/д вокзалу.",
     "features": [
@@ -2150,7 +2219,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "12-16 этажей",
     "wall_material": "Кирпич, монолит",
     "images": [
-      "https://altai-stroi.org/upload/iblock/115/2dpk73u5kqm063pstvqi9n1y62ek32l1.jpg"
+      "https://altai-stroi.org/upload/iblock/115/2dpk73u5kqm063pstvqi9n1y62ek32l1.jpg",
+      "https://altai-stroi.org/upload/iblock/c7b/6zfil22f37crs9d0p4mvog1j253xnolj.jpg",
+      "https://altai-stroi.org/upload/iblock/d03/ce1q0yk45y5sxgdea6v2mbypcjq2qkbo.jpg"
     ],
     "description": "Новый жилой дом от застройщика СМТ (ГК Алтай-Строй) с выбором квартир в чистовой и черновой отделке, рассрочкой и ипотечными программами.",
     "features": [
@@ -2204,7 +2275,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "12-16 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "/images/developments/zhk-krasina-6.jpg"
+      "/images/developments/zhk-krasina-6.jpg",
+      "https://regburokirov.ru/media/photo_nb/282_2928_458d00dcd0b015d4923afb3f75982e.jpg",
+      "/images/developments/zhk-murashinskiy-7.jpg"
     ],
     "description": "Монолитно-кирпичный дом комфорт-класса на улице Красина. Планируемый ввод во II квартале 2028 года.",
     "features": [

@@ -235,6 +235,45 @@ describe('DevelopmentBannerModal Component', () => {
     expect(screen.getByText(/Чертеж прикреплен/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Заменить чертеж/i })).toBeInTheDocument();
   });
+
+  it('renders grid_hero composition mode and photos section with multiple images', () => {
+    const devWithImages = {
+      ...sampleDev,
+      images: [
+        'https://example.com/img1.jpg',
+        'https://example.com/img2.jpg',
+        'https://example.com/img3.jpg',
+      ],
+    };
+
+    render(
+      <DevelopmentBannerModal
+        development={devWithImages}
+        layout={sampleLayout}
+        onClose={() => {}}
+      />
+    );
+
+    // Composition button "Сетка + План" exists and is active by default
+    const gridHeroBtn = screen.getByRole('button', { name: /Сетка \+ План/i });
+    expect(gridHeroBtn).toBeInTheDocument();
+    expect(gridHeroBtn).toHaveClass('active');
+
+    // Photos section title and counter
+    expect(screen.getByText(/Фотографии ЖК \(сетка\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/3 из 4/i)).toBeInTheDocument();
+
+    // Check toggles for price 'от' and address
+    const priceFromCheckbox = screen.getByRole('checkbox', { name: /Приставка «от» к стоимости/i });
+    expect(priceFromCheckbox).toBeInTheDocument();
+
+    const addressCheckbox = screen.getByRole('checkbox', { name: /Показать адрес на баннере/i });
+    expect(addressCheckbox).toBeInTheDocument();
+    expect(addressCheckbox).toBeChecked();
+
+    fireEvent.click(addressCheckbox);
+    expect(addressCheckbox).not.toBeChecked();
+  });
 });
 
 describe('buildDevelopmentBannerCaption helper', () => {
