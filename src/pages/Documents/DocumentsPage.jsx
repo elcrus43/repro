@@ -11,6 +11,7 @@ import { generateAndDownloadDocx, getDocumentTemplates, DOCUMENT_CATEGORIES, num
 import { createEmptyClientDraft, extractClientDraft, countMissingClientDraftFields, mergeClientWithDraft, applyDraftAndContractToClient } from '../../utils/contractTerms';
 import { recordDealDocument } from '../../utils/dealDocuments';
 import { formatPhone, stripPhone, parsePgArray, formatUnitCode, formatPassportInput, parsePassportInput, formatPassportDisplay } from '../../utils/format';
+import { fetchFmsUnitByCode } from '../../utils/dadata';
 import { YUSS_BUY_1_LOGO_BASE64 } from '../../assets/templates/yuss_buy_1_logo.base64';
 import { buildSlotValues, injectDataIntoTemplateHtml, sanitizeTemplateForSaving, toShortName } from './templateUtils';
 import { GlobalSearch } from '../../components/GlobalSearch';
@@ -830,7 +831,7 @@ export function DocumentsPage() {
         setIsSavedToCrm(false);
     }, [activeClient?.id, state.clients]);
 
-    const handleDraftPatch = (updater) => {
+    const handleDraftPatch = useCallback((updater) => {
         if (focusedPrincipalClient) {
             const cid = focusedPrincipalClient.id;
             setPrincipalDrafts(prev => {
@@ -845,11 +846,54 @@ export function DocumentsPage() {
             });
         }
         setIsSavedToCrm(false);
+    }, [focusedPrincipalClient, state.clients]);
+
+    const handleDraftChange = useCallback((field, val) => {
+        handleDraftPatch({ [field]: val });
+    }, [handleDraftPatch]);
+
+    /* ── Подгрузка подразделения МВД/ФМС через DaData по коду подразделения ── */
+    const [fmsLoading, setFmsLoading] = useState(false);
+    const [fmsSuggestions, setFmsSuggestions] = useState([]);
+    const fmsTimerRef = useRef(null);
+
+    const runFmsLookup = useCallback(async (code) => {
+        const digits = String(code || '').replace(/\D/g, '');
+        if (digits.length !== 6) {
+            setFmsSuggestions([]);
+            return;
+        }
+        setFmsLoading(true);
+        try {
+            const list = await fetchFmsUnitByCode(code);
+            setFmsSuggestions(list);
+            if (list.length > 0) {
+                handleDraftChange('passport_issued_by', list[0].value);
+            }
+        } catch (err) {
+            console.warn('[DocumentsPage FMS lookup]', err);
+        } finally {
+            setFmsLoading(false);
+        }
+    }, [handleDraftChange]);
+
+    const handleUnitCodeInput = (raw) => {
+        const formatted = formatUnitCode(raw);
+        handleDraftChange('passport_unit_code', formatted);
+        const digits = formatted.replace(/\D/g, '');
+        if (digits.length === 6) {
+            clearTimeout(fmsTimerRef.current);
+            fmsTimerRef.current = setTimeout(() => {
+                runFmsLookup(formatted);
+            }, 200);
+        } else {
+            setFmsSuggestions([]);
+        }
     };
 
-    const handleDraftChange = (field, val) => {
-        handleDraftPatch({ [field]: val });
-    };
+    useEffect(() => {
+        setFmsSuggestions([]);
+    }, [focusedPrincipalIndex, activeClient?.id]);
 
     /* ── Обогащенные клиенты для живого предпросмотра ───────────────────────── */
     const enrichedPrincipals = useMemo(() => {
@@ -2647,7 +2691,11 @@ export function DocumentsPage() {
                                         <div>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10.5 }}>
                                                 <span style={{ color: 'var(--text-secondary)' }}>Код подразделения</span>
-                                                {!clientDraft.passport_unit_code?.trim() ? (
+                                                {fmsLoading ? (
+                                                    <span style={{ color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 600 }}>
+                                                        <Loader2 size={10} className="animate-spin" /> DaData...
+                                                    </span>
+                                                ) : !clientDraft.passport_unit_code?.trim() ? (
                                                     <span style={{ color: '#d97706', fontWeight: 600 }}>● Заполнить</span>
                                                 ) : (
                                                     <span style={{ color: '#10b981' }}>✓</span>
@@ -2657,14 +2705,34 @@ export function DocumentsPage() {
                                                 id="doc-input-unit-code"
                                                 className="doc-input-sm"
                                                 value={clientDraft.passport_unit_code}
-                                                onChange={e => handleDraftChange('passport_unit_code', formatUnitCode(e.target.value))}
+                                                onChange={e => handleUnitCodeInput(e.target.value)}
                                                 placeholder="___-___"
                                                 maxLength={7}
                                                 style={{ border: !clientDraft.passport_unit_code?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
                                             />
                                         </div>
                                         <div style={{ gridColumn: '1 / -1' }}>
-                                            <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Кем выдан</div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2, fontSize: 10.5 }}>
+                                                <span style={{ color: 'var(--text-secondary)' }}>Кем выдан</span>
+                                                {clientDraft.passport_unit_code?.replace(/\D/g, '').length === 6 && !clientDraft.passport_issued_by?.trim() && !fmsLoading && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => runFmsLookup(clientDraft.passport_unit_code)}
+                                                        style={{
+                                                            border: 'none',
+                                                            background: 'none',
+                                                            color: '#0284c7',
+                                                            fontSize: 10,
+                                                            fontWeight: 600,
+                                                            cursor: 'pointer',
+                                                            padding: 0,
+                                                            textDecoration: 'underline'
+                                                        }}
+                                                    >
+                                                        Найти в DaData
+                                                    </button>
+                                                )}
+                                            </div>
                                             <input
                                                 id="doc-input-issued-by"
                                                 className="doc-input-sm"
@@ -2673,6 +2741,46 @@ export function DocumentsPage() {
                                                 placeholder="Отделом УФМС России..."
                                                 style={{ border: !clientDraft.passport_issued_by?.trim() ? '1px solid #f59e0b' : '1px solid var(--border)' }}
                                             />
+                                            {fmsSuggestions.length > 1 && (
+                                                <div style={{ marginTop: 4, padding: '4px 6px', background: 'var(--bg-light)', borderRadius: 6, border: '1px solid var(--border-light)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3, fontSize: 9.5, color: 'var(--text-secondary)' }}>
+                                                        <span>Варианты подразделения DaData ({fmsSuggestions.length}):</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFmsSuggestions([])}
+                                                            style={{ border: 'none', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 10, padding: 0 }}
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                        {fmsSuggestions.map((s, idx) => {
+                                                            const isCur = clientDraft.passport_issued_by === s.value;
+                                                            return (
+                                                                <button
+                                                                    key={idx}
+                                                                    type="button"
+                                                                    onClick={() => handleDraftChange('passport_issued_by', s.value)}
+                                                                    style={{
+                                                                        textAlign: 'left',
+                                                                        padding: '3px 6px',
+                                                                        borderRadius: 4,
+                                                                        fontSize: 10,
+                                                                        lineHeight: 1.3,
+                                                                        cursor: 'pointer',
+                                                                        border: isCur ? '1px solid #10b981' : '1px solid var(--border)',
+                                                                        background: isCur ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg)',
+                                                                        color: isCur ? '#059669' : 'var(--text-primary)',
+                                                                        fontWeight: isCur ? 600 : 400
+                                                                    }}
+                                                                >
+                                                                    {isCur ? '✓ ' : ''}{s.value}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                         <div style={{ gridColumn: '1 / -1' }}>
                                             <div style={{ fontSize: 10.5, color: 'var(--text-secondary)', marginBottom: 2 }}>Адрес регистрации (DaData / ФИАС)</div>

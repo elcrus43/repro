@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { authService } from '../../lib/auth';
 import { formatPhone, formatPassportDisplay, parsePassportInput, formatPassportInput, formatUnitCode } from '../../utils/format';
+import { fetchFmsUnitByCode } from '../../utils/dadata';
 import { DownloadCloud, Moon, Sun, ArrowRight, LogOut, Pencil, UserCheck, UserX, Calendar, Lock, RefreshCw, Shield, MapPin, Building2, User as UserIcon, FileText } from 'lucide-react';
 import {
     isCalendarConfigured,
@@ -47,6 +48,44 @@ export function ProfilePage() {
 
     const [showPassport, setShowPassport] = React.useState(false);
     const setPassport = (field, value) => setEditData(prev => ({ ...prev, passport_details: { ...prev.passport_details, [field]: value } }));
+
+    const [profileFmsLoading, setProfileFmsLoading] = React.useState(false);
+    const [profileFmsSuggestions, setProfileFmsSuggestions] = React.useState([]);
+    const profileFmsTimerRef = React.useRef(null);
+
+    const handleProfileUnitCodeChange = (raw) => {
+        const formatted = formatUnitCode(raw);
+        setPassport('unit_code', formatted);
+        setProfileFmsSuggestions([]);
+        const digits = formatted.replace(/\D/g, '');
+        if (digits.length === 6) {
+            clearTimeout(profileFmsTimerRef.current);
+            profileFmsTimerRef.current = setTimeout(async () => {
+                setProfileFmsLoading(true);
+                try {
+                    const list = await fetchFmsUnitByCode(formatted);
+                    setProfileFmsSuggestions(list);
+                    if (list.length > 0) {
+                        setEditData(prev => {
+                            const cur = prev.passport_details?.issued_by?.trim();
+                            return {
+                                ...prev,
+                                passport_details: {
+                                    ...(prev.passport_details || {}),
+                                    issued_by: cur || list[0].value,
+                                },
+                            };
+                        });
+                        toast.success(`Подразделение найдено: ${list[0].value}`);
+                    }
+                } catch (err) {
+                    console.warn('[Profile FMS lookup]', err);
+                } finally {
+                    setProfileFmsLoading(false);
+                }
+            }, 250);
+        }
+    };
 
     const isAdmin = user?.role === 'admin';
 
@@ -436,6 +475,34 @@ export function ProfilePage() {
                                 onChange={e => setPassport('issued_by', e.target.value)}
                                 placeholder="Кем выдан паспорт"
                             />
+                            {profileFmsSuggestions.length > 1 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '4px 6px', background: 'var(--bg-light)', borderRadius: 8 }}>
+                                    <span style={{ fontSize: 9.5, color: 'var(--text-secondary)' }}>Варианты подразделения DaData ({profileFmsSuggestions.length}):</span>
+                                    {profileFmsSuggestions.map((s, idx) => {
+                                        const isCur = editData.passport_details?.issued_by === s.value;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setPassport('issued_by', s.value)}
+                                                style={{
+                                                    textAlign: 'left',
+                                                    padding: '3px 6px',
+                                                    borderRadius: 4,
+                                                    fontSize: 10,
+                                                    cursor: 'pointer',
+                                                    border: isCur ? '1px solid #10b981' : '1px solid var(--border)',
+                                                    background: isCur ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg)',
+                                                    color: isCur ? '#059669' : 'var(--text-primary)',
+                                                    fontWeight: isCur ? 600 : 400
+                                                }}
+                                            >
+                                                {isCur ? '✓ ' : ''}{s.value}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                                 <div>
@@ -449,12 +516,17 @@ export function ProfilePage() {
                                     />
                                 </div>
                                 <div>
-                                    <label style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 2, display: 'block' }}>Код подразделения</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                                        <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block' }}>Код подразделения</label>
+                                        {profileFmsLoading && (
+                                            <span style={{ fontSize: 10, color: '#0284c7' }}>DaData...</span>
+                                        )}
+                                    </div>
                                     <input
                                         className="form-input"
                                         style={{ borderRadius: 12, height: 42, background: 'var(--bg-light)', border: 'none', width: '100%' }}
                                         value={editData.passport_details?.unit_code || ''}
-                                        onChange={e => setPassport('unit_code', formatUnitCode(e.target.value))}
+                                        onChange={e => handleProfileUnitCodeChange(e.target.value)}
                                         placeholder="___-___"
                                         maxLength={7}
                                     />

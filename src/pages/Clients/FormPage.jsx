@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams, useLocation } from 'react-rout
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone, stripPhone, formatPassportDisplay, parsePassportInput, formatPassportInput } from '../../utils/format';
+import { fetchFmsUnitByCode } from '../../utils/dadata';
 import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
@@ -171,11 +172,48 @@ export function FormPage() {
         setPassport('snils', masked);
     }
 
+    // ── DaData подразделения ФМС/МВД по коду ─────────────────────────────
+    const [fmsLoading, setFmsLoading] = useState(false);
+    const [fmsSuggestions, setFmsSuggestions] = useState([]);
+    const fmsTimerRef = useRef(null);
+
+    const fetchFmsByCode = useCallback(async (code) => {
+        setFmsLoading(true);
+        try {
+            const list = await fetchFmsUnitByCode(code);
+            setFmsSuggestions(list);
+            if (list.length > 0) {
+                setForm(f => {
+                    const currentIssuedBy = f.passport_details?.issued_by?.trim();
+                    return {
+                        ...f,
+                        passport_details: {
+                            ...(f.passport_details || {}),
+                            issued_by: currentIssuedBy || list[0].value,
+                        }
+                    };
+                });
+                toast.success(`Подразделение найдено: ${list[0].value}`);
+            } else {
+                toast.info('Подразделение не найдено в справочнике DaData');
+            }
+        } catch (err) {
+            console.warn('[FMS lookup]', err);
+        } finally {
+            setFmsLoading(false);
+        }
+    }, [toast]);
+
     // Маска кода подразделения: XXX-XXX
     function handleUnitCodeChange(raw) {
         const digits = raw.replace(/\D/g, '').slice(0, 6);
         const masked = digits.length <= 3 ? digits : digits.slice(0, 3) + '-' + digits.slice(3);
         setPassport('unit_code', masked);
+        setFmsSuggestions([]);
+        if (digits.length === 6) {
+            clearTimeout(fmsTimerRef.current);
+            fmsTimerRef.current = setTimeout(() => fetchFmsByCode(masked), 250);
+        }
     }
 
     // ── Банковские реквизиты ──────────────────────────────────────────────
@@ -1326,7 +1364,14 @@ export function FormPage() {
                                 {/* Строка 2: Код подразд. · Дата рождения */}
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                                     <div className="form-group" style={{ marginBottom: 0 }}>
-                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Код подразделения</label>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                            <label className="form-label" style={{ fontSize: 11, marginBottom: 0 }}>Код подразделения</label>
+                                            {fmsLoading && (
+                                                <span style={{ fontSize: 10, color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                                    <Loader2 size={10} className="animate-spin" /> DaData...
+                                                </span>
+                                            )}
+                                        </div>
                                         <input
                                             className="form-input"
                                             style={{ height: 44, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 14, letterSpacing: '0.05em' }}
@@ -1363,9 +1408,20 @@ export function FormPage() {
                                     </div>
                                 </div>
 
-                                {/* Кем выдан — полная строка */}
+                                {/* Кем выдан - полная строка */}
                                 <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label" style={{ fontSize: 11, marginBottom: 4 }}>Кем выдан</label>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                                        <label className="form-label" style={{ fontSize: 11, marginBottom: 0 }}>Кем выдан</label>
+                                        {form.passport_details?.unit_code?.replace(/\D/g, '').length === 6 && !form.passport_details?.issued_by?.trim() && !fmsLoading && (
+                                            <button
+                                                type="button"
+                                                onClick={() => fetchFmsByCode(form.passport_details.unit_code)}
+                                                style={{ border: 'none', background: 'none', color: '#0284c7', fontSize: 11, fontWeight: 600, cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                            >
+                                                Найти в DaData
+                                            </button>
+                                        )}
+                                    </div>
                                     <textarea
                                         className="form-textarea"
                                         style={{ minHeight: 64, borderRadius: 12, background: 'var(--bg-light)', border: 'none', fontSize: 13, padding: '10px 14px', resize: 'none' }}
@@ -1374,6 +1430,46 @@ export function FormPage() {
                                         placeholder="ГУ МВД России по г. Москве..."
                                         rows={2}
                                     />
+                                    {fmsSuggestions.length > 1 && (
+                                        <div style={{ marginTop: 6, padding: '6px 8px', background: 'var(--bg-light)', borderRadius: 8, border: '1px solid var(--border-light)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, fontSize: 10, color: 'var(--text-secondary)' }}>
+                                                <span>Варианты подразделения DaData ({fmsSuggestions.length}):</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setFmsSuggestions([])}
+                                                    style={{ border: 'none', background: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: 10, padding: 0 }}
+                                                >
+                                                    ✕
+                                                </button>
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                {fmsSuggestions.map((s, idx) => {
+                                                    const isCur = form.passport_details?.issued_by === s.value;
+                                                    return (
+                                                        <button
+                                                            key={idx}
+                                                            type="button"
+                                                            onClick={() => setPassport('issued_by', s.value)}
+                                                            style={{
+                                                                textAlign: 'left',
+                                                                padding: '4px 8px',
+                                                                borderRadius: 6,
+                                                                fontSize: 11,
+                                                                lineHeight: 1.3,
+                                                                cursor: 'pointer',
+                                                                border: isCur ? '1px solid #10b981' : '1px solid var(--border)',
+                                                                background: isCur ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg)',
+                                                                color: isCur ? '#059669' : 'var(--text-primary)',
+                                                                fontWeight: isCur ? 600 : 400
+                                                            }}
+                                                        >
+                                                            {isCur ? '✓ ' : ''}{s.value}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Адрес регистрации — подсказки DaData / КЛАДР / ФИАС */}
