@@ -20,7 +20,7 @@ export function buildSlotValues(data, template) {
 
     function f(val, fb = '') {
         if (val === null || val === undefined || val === '') return fb;
-        return String(val);
+        return String(val).trim();
     }
     function fDate(d) {
         if (!d) return '';
@@ -31,7 +31,7 @@ export function buildSlotValues(data, template) {
     function fPrice(p) {
         if (!p && p !== 0) return '';
         const n = Number(String(p).replace(/\D/g, ''));
-        return isNaN(n) ? String(p) : n.toLocaleString('ru-RU') + ' ₽';
+        return isNaN(n) ? String(p).trim() : n.toLocaleString('ru-RU') + ' ₽';
     }
 
     const realtorName = f(realtor?.full_name);

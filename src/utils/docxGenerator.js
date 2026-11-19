@@ -630,7 +630,7 @@ function buildAgencyPrincipalsPreambleDocx(principalsList, data, opts = {}) {
         ? {
             seriesFallback: '____________',
             numberFallback: '____________',
-            issuedByFallback: '_____________________________________________________________________ ______________________',
+            issuedByFallback: '___________________________________________________________________________________________',
             issueDateFallback: '_________ года',
             regAddressFallback: '___________________________________________________________________________________________________________________',
             allowGlobalLegalOverride: !isMulti,
@@ -646,7 +646,7 @@ function buildAgencyPrincipalsPreambleDocx(principalsList, data, opts = {}) {
         const endingText = isLast
             ? (isMulti
                 ? ', именуемые в дальнейшем совместно '
-                : (variant === 'rent_landlord' ? ' именуемый(-ая,-ые) в дальнейшем ' : ', именуемый(-ая) в дальнейшем '))
+                : (variant === 'rent_landlord' ? ', именуемый(-ая,-ые) в дальнейшем ' : ', именуемый(-ая) в дальнейшем '))
             : ',';
 
         if (info.isLegal) {
@@ -666,63 +666,64 @@ function buildAgencyPrincipalsPreambleDocx(principalsList, data, opts = {}) {
                 runs.push(arialRun(isMulti ? ', именуемые в дальнейшем совместно ' : ', именуемое в дальнейшем '));
                 runs.push(arialBold('«Принципал»'));
                 runs.push(arialRun(', с одной стороны,'));
+                if (opts.agentRuns) {
+                    runs.push(...opts.agentRuns);
+                }
             } else {
                 runs.push(arialRun(','));
             }
-            paragraphs.push(arialPara(runs, { indent: true, afterPt: isLast ? 6 : 4 }));
+            paragraphs.push(arialPara(runs, { indent: true, afterPt: isLast ? 8 : 4 }));
             return;
         }
 
         if (variant === 'rent_landlord') {
-            const prefix = isFirst ? 'Мы, Гр. ' : 'и Гр. ';
-            paragraphs.push(arialPara([
+            const prefix = isFirst ? (isMulti ? 'Мы, Гр. ' : 'Гр. ') : 'и Гр. ';
+            const runs = [
                 arialRun(prefix),
                 arialBold(info.fullName),
                 arialRun(`, дата рождения: ${info.birthDate}, паспорт РФ серия `),
                 arialBold(info.series),
                 arialRun(' номер '),
                 arialBold(info.number),
-                arialRun(` выдан ${info.issueDate} года ${info.issuedBy} зарегистрированный(-ая) по адресу: ${info.regAddress}${isLast ? '' : ','}`),
-            ], { indent: true, afterPt: 3 }));
-
+                arialRun(`, выдан ${info.issueDate} года ${info.issuedBy}, зарегистрированный(-ая) по адресу: ${info.regAddress}`),
+            ];
             if (isLast) {
-                paragraphs.push(arialPara([
-                    arialRun(isMulti ? 'именуемые в дальнейшем совместно ' : 'именуемый(-ая,-ые) в дальнейшем '),
-                    arialBold('«Принципал»'),
-                    arialRun(', с одной стороны,'),
-                ], { indent: true, afterPt: 6 }));
+                runs.push(arialRun(isMulti ? ', именуемые в дальнейшем совместно ' : ', именуемый(-ая,-ые) в дальнейшем '));
+                runs.push(arialBold('«Принципал»'));
+                runs.push(arialRun(', с одной стороны,'));
+                if (opts.agentRuns) {
+                    runs.push(...opts.agentRuns);
+                }
+            } else {
+                runs.push(arialRun(','));
             }
+            paragraphs.push(arialPara(runs, { indent: true, afterPt: isLast ? 8 : 4 }));
             return;
         }
 
-        const prefix = isFirst ? 'Мы, ' : 'и ';
-        paragraphs.push(arialPara([
+        const prefix = isFirst ? (isMulti ? 'Мы, ' : 'Гр. ') : 'и Гр. ';
+        const runs = [
             arialRun(prefix),
             arialBold(info.fullName),
-            arialRun(','),
-        ], { indent: true, afterPt: 3 }));
-        paragraphs.push(arialPara([
-            arialRun(`дата рождения: ${info.birthDate}, паспорт серия `),
+            arialRun(`, дата рождения: ${info.birthDate}, паспорт серия `),
             arialBold(info.series),
             arialRun(' номер '),
             arialBold(info.number),
-            arialRun(` выдан ${info.issuedBy} дата выдачи: ${info.issueDate},`),
-        ], { indent: true, afterPt: 3 }));
-        paragraphs.push(arialPara([
-            arialRun(`зарегистрированный(-ая) по адресу: ${info.regAddress},`),
-        ], { indent: true, afterPt: 3 }));
-
+            arialRun(`, выдан ${info.issuedBy}, дата выдачи: ${info.issueDate}`),
+            ...(info.unitCode ? [arialRun(`, код подразделения: ${info.unitCode}`)] : []),
+            arialRun(`, зарегистрированный(-ая) по адресу: ${info.regAddress}, телефон: ${info.phone}`),
+        ];
         if (isLast) {
-            paragraphs.push(arialPara([
-                arialRun(`телефон: ${info.phone}${endingText}`),
-                arialBold('«Принципал»'),
-                arialRun(', с одной стороны,'),
-            ], { indent: true, afterPt: 6 }));
+            runs.push(arialRun(isMulti ? ', именуемые в дальнейшем совместно ' : ', именуемый(-ая) в дальнейшем '));
+            runs.push(arialBold('«Принципал»'));
+            runs.push(arialRun(', с одной стороны,'));
+            if (opts.agentRuns) {
+                runs.push(...opts.agentRuns);
+            }
         } else {
-            paragraphs.push(arialPara([
-                arialRun(`телефон: ${info.phone},`),
-            ], { indent: true, afterPt: 4 }));
+            runs.push(arialRun(','));
         }
+        paragraphs.push(arialPara(runs, { indent: true, afterPt: isLast ? 8 : 4 }));
     });
 
     return paragraphs;
@@ -832,6 +833,43 @@ function getAgencyCopiesClauseText(principalsList) {
     return '6.6. Договор составлен в двух экземплярах, по одному экземпляру каждой из сторон.';
 }
 
+export function buildCityDateDocxTable(cityText = 'Город Киров, Кировская область', dateText = '', { afterPt = 8, font = 'Arial', size = null } = {}) {
+    const isTimes = font === 'Times New Roman';
+    const finalSize = size !== null ? size : (isTimes ? FONT_SIZE : ARIAL_SIZE);
+    const run1 = new TextRun({ text: cityText, font, size: finalSize });
+    const run2 = new TextRun({ text: dateText, font, size: finalSize });
+
+    return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        borders: {
+            top: { style: BorderStyle.NONE },
+            bottom: { style: BorderStyle.NONE },
+            left: { style: BorderStyle.NONE },
+            right: { style: BorderStyle.NONE },
+            insideHorizontal: { style: BorderStyle.NONE },
+            insideVertical: { style: BorderStyle.NONE },
+        },
+        rows: [
+            new TableRow({
+                children: [
+                    new TableCell({
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        children: [new Paragraph({ children: [run1], spacing: { after: Math.round(afterPt * 20) } })],
+                    }),
+                    new TableCell({
+                        width: { size: 50, type: WidthType.PERCENTAGE },
+                        children: [new Paragraph({
+                            alignment: AlignmentType.RIGHT,
+                            children: [run2],
+                            spacing: { after: Math.round(afterPt * 20) },
+                        })],
+                    }),
+                ],
+            }),
+        ],
+    });
+}
+
 export function buildYussBuy1Contract(data) {
     const principals = resolvePrincipals(data, false);
     const deal = data.deal;
@@ -845,22 +883,19 @@ export function buildYussBuy1Contract(data) {
     const contractEndDate = rawEndDate ? fmtDate(rawEndDate) : '__________________________г.';
     const todayStr = fmtDate(deal?.deal_date || new Date().toISOString());
 
+    const agentRuns = [
+        arialRun(' и '),
+        arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
+        arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974, именуемая в дальнейшем '),
+        arialBold('«Агент»'),
+        arialRun(', с другой стороны, именуемые в дальнейшем совместно «Стороны», заключили Агентский договор о следующем:'),
+    ];
+
     const bodyChildren = [
         arialPara([arialBold('Агентский договор')], { alignment: AlignmentType.CENTER, afterPt: 6 }),
-        arialPara([
-            arialRun('Город Киров, Кировская область                                                        '),
-            arialRun(`«${todayStr}»`),
-        ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
+        buildCityDateDocxTable('Город Киров, Кировская область', `«${todayStr}»`, { afterPt: 8, font: ARIAL_FONT, size: ARIAL_SIZE }),
 
-        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'standard' }),
-
-        arialPara([
-            arialRun('и '),
-            arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
-            arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974, именуемая в дальнейшем '),
-            arialBold('«Агент»'),
-            arialRun(', с другой стороны, именуемые в дальнейшем совместно «Стороны», заключили Агентский договор о следующем:'),
-        ], { indent: true, afterPt: 8 }),
+        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'standard', agentRuns }),
 
         arialPara([arialBold('1. Предмет договора')], { afterPt: 4, beforePt: 4 }),
         arialPara([
@@ -1028,24 +1063,21 @@ export function buildAgencySale1Contract(data) {
         ],
     });
 
+    const agentRuns = [
+        arialRun(' и '),
+        arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
+        arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974, именуемая в дальнейшем '),
+        arialBold('«Агент»'),
+        arialRun(', с другой стороны, именуемые в дальнейшем совместно '),
+        arialBold('«Стороны»'),
+        arialRun(', заключили Агентский договор о следующем:'),
+    ];
+
     const bodyChildren = [
         arialPara([arialBold('Агентский договор')], { alignment: AlignmentType.CENTER, afterPt: 6 }),
-        arialPara([
-            arialRun('Город Киров, Кировская область                                                        '),
-            arialRun(`«${todayStr}»`),
-        ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
+        buildCityDateDocxTable('Город Киров, Кировская область', `«${todayStr}»`, { afterPt: 8, font: ARIAL_FONT, size: ARIAL_SIZE }),
 
-        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'standard' }),
-
-        arialPara([
-            arialRun('и '),
-            arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
-            arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974., именуемая в дальнейшем '),
-            arialBold('«Агент»'),
-            arialRun(', с другой стороны, именуемые в дальнейшем совместно '),
-            arialBold('«Стороны»'),
-            arialRun(', заключили Агентский договор о следующем:'),
-        ], { indent: true, afterPt: 6 }),
+        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'standard', agentRuns }),
 
         arialPara([arialBold('1. Предмет договора')], { afterPt: 4, beforePt: 4 }),
         arialPara([
@@ -1063,7 +1095,7 @@ export function buildAgencySale1Contract(data) {
             arialRun('1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость объекта недвижимости путем заключения дополнительного соглашения к Агентскому договору.'),
         ], { indent: true, afterPt: 3 }),
         arialPara([
-            arialRun('1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено. не заложено, не обещано.'),
+            arialRun('1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено, не заложено, не обещано.'),
         ], { indent: true, afterPt: 6 }),
 
         arialPara([arialBold('2. Обязанности сторон')], { afterPt: 4, beforePt: 4 }),
@@ -1228,24 +1260,21 @@ export function buildAgencyRentLandlord1Contract(data) {
         ],
     });
 
+    const agentRuns = [
+        arialRun(' и '),
+        arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
+        arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974, именуемая в дальнейшем '),
+        arialBold('«Агент»'),
+        arialRun(', с другой стороны, именуемые в дальнейшем совместно '),
+        arialBold('«Стороны»'),
+        arialRun(', заключили Агентский договор о следующем:'),
+    ];
+
     const bodyChildren = [
         arialPara([arialBold('Агентский договор')], { alignment: AlignmentType.CENTER, afterPt: 6 }),
-        arialPara([
-            arialRun('Город Киров, Кировская область                                                        '),
-            arialRun(`«${todayStr}»`),
-        ], { alignment: AlignmentType.LEFT, afterPt: 10 }),
+        buildCityDateDocxTable('Город Киров, Кировская область', `«${todayStr}»`, { afterPt: 8, font: ARIAL_FONT, size: ARIAL_SIZE }),
 
-        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'rent_landlord' }),
-
-        arialPara([
-            arialRun('и '),
-            arialBold('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
-            arialRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974., именуемая в дальнейшем '),
-            arialBold('«Агент»'),
-            arialRun(', с другой стороны, именуемые в дальнейшем совместно '),
-            arialBold('«Стороны»'),
-            arialRun(', заключили Агентский договор о следующем:'),
-        ], { indent: true, afterPt: 6 }),
+        ...buildAgencyPrincipalsPreambleDocx(principals, data, { variant: 'rent_landlord', agentRuns }),
 
         arialPara([arialBold('1. Предмет договора')], { afterPt: 4, beforePt: 4 }),
         arialPara([
@@ -1263,7 +1292,7 @@ export function buildAgencyRentLandlord1Contract(data) {
             arialRun('1.1.2. При увеличении / снижении / отсутствии предложения на рынке недвижимости стороны вправе изменить стоимость, указанную в п. 1.1.1 настоящего договора.'),
         ], { indent: true, afterPt: 3 }),
         arialPara([
-            arialRun('1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено. не заложено, не обещано, в найм и аренду не передано.'),
+            arialRun('1.2. Принципал гарантирует, что до заключения договора недвижимое имущество никому не отчуждено, не заложено, не обещано, в найм и аренду не передано.'),
         ], { indent: true, afterPt: 6 }),
 
         arialPara([arialBold('2. Обязанности сторон')], { afterPt: 4, beforePt: 4 }),
@@ -1377,10 +1406,7 @@ function buildSaleContract(data) {
 
     return [
         para([boldRun('ДОГОВОР КУПЛИ-ПРОДАЖИ НЕДВИЖИМОСТИ')], { alignment: AlignmentType.CENTER }),
-        para([
-            normalRun('г. Москва                                                                 '),
-            normalRun(`«${dealDate}»`),
-        ], { alignment: AlignmentType.LEFT }),
+        buildCityDateDocxTable('г. Москва', `«${dealDate}»`, { afterPt: 6, font: FONT, size: FONT_SIZE }),
         para(''),
         para([
             normalRun('Мы, нижеподписавшиеся:'),
@@ -1447,10 +1473,7 @@ function buildRentContract(data) {
 
     return [
         para([boldRun('ДОГОВОР АРЕНДЫ ЖИЛОГО ПОМЕЩЕНИЯ')], { alignment: AlignmentType.CENTER }),
-        para([
-            normalRun('г. Москва                                                                 '),
-            normalRun(`«${dealDate}»`),
-        ], { alignment: AlignmentType.LEFT }),
+        buildCityDateDocxTable('г. Москва', `«${dealDate}»`, { afterPt: 6, font: FONT, size: FONT_SIZE }),
         para(''),
         para([
             normalRun('Гр. '),
@@ -1720,15 +1743,7 @@ export function buildServicesRent3PartyContract(data) {
 
     return [
         para([boldRun('ДОГОВОР ОКАЗАНИЯ УСЛУГ')], { alignment: AlignmentType.CENTER, afterPt: 10 }),
-        new Paragraph({
-            children: [
-                normalRun('Город Киров, Кировская область'),
-                normalRun('                                                                                        '),
-                normalRun(`«${dealDate}»`),
-            ],
-            alignment: AlignmentType.LEFT,
-            spacing: { after: 200 },
-        }),
+        buildCityDateDocxTable('Город Киров, Кировская область', `«${dealDate}»`, { afterPt: 10, font: FONT, size: FONT_SIZE }),
         para([
             boldRun('Индивидуальный предприниматель Муравьева Юлия Анатольевна'),
             normalRun(', ИНН 434560366213, ОГРН 323784700414782, адрес фактического местонахождения: 610000, Кировская область, г. Киров, ул. Ленина, д. 89, помещение 4; р/сч 40802810400005970330 в АО «Тинькофф Банк», БИК 044525974, к/сч 30101810145250000974, с одной стороны, именуемая в дальнейшем '),
@@ -1742,7 +1757,7 @@ export function buildServicesRent3PartyContract(data) {
             boldRun(realtorSeries),
             normalRun(' номер '),
             boldRun(realtorNumber),
-            normalRun(`, выдан ${realtorIssuedBy} дата выдачи: ${realtorIssueDate}, зарегистрированный(-ая) по адресу: ${realtorRegAddress}, телефон: ${realtorPhone}, ${realtorInn}, ${isRealtorSelfEmployed ? 'действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), ' : ''}со второй стороны, именуемый(-ая) в дальнейшем `),
+            normalRun(`, выдан ${realtorIssuedBy}, дата выдачи: ${realtorIssueDate}, зарегистрированный(-ая) по адресу: ${realtorRegAddress}, телефон: ${realtorPhone}, ${realtorInn}, ${isRealtorSelfEmployed ? 'действующий(-ая) в качестве плательщика налога на профессиональный доход (самозанятый), ' : ''}со второй стороны, именуемый(-ая) в дальнейшем `),
             boldRun('«Исполнитель 2»'),
             normalRun(','),
         ], { indent: true, afterPt: 6 }),
@@ -1762,7 +1777,7 @@ export function buildServicesRent3PartyContract(data) {
                 boldRun(customerSeries),
                 normalRun(' номер '),
                 boldRun(customerNumber),
-                normalRun(` выдан ${customerIssuedBy} дата выдачи: ${customerIssueDate}, зарегистрированный (-ая) по адресу: ${customerRegAddress}, дата рождения: ${customerBirth}, телефон: ${customerPhone}, адрес эл. почты: ${customerEmail}, далее по тексту `),
+                normalRun(`, выдан ${customerIssuedBy}, дата выдачи: ${customerIssueDate}, зарегистрированный(-ая) по адресу: ${customerRegAddress}, дата рождения: ${customerBirth}, телефон: ${customerPhone}, адрес эл. почты: ${customerEmail}, далее по тексту `),
                 boldRun('«Заказчик»'),
                 normalRun(', с третьей стороны, вместе именуемые «Стороны», а по отдельности «Сторона», заключили настоящий договор (далее договор) о нижеследующем:'),
             ], { indent: true, afterPt: 10 }),
@@ -1851,15 +1866,7 @@ export function buildServicesRent3PartyContract(data) {
         // АКТ ВЫПОЛНЕННЫХ РАБОТ
         para([boldRun('АКТ ВЫПОЛНЕННЫХ РАБОТ')], { alignment: AlignmentType.CENTER, afterPt: 4, beforePt: 18 }),
         para([normalRun(`К ДОГОВОРУ № ${contractNumber} от «${dealDate}»`)], { alignment: AlignmentType.CENTER, afterPt: 10 }),
-        new Paragraph({
-            children: [
-                normalRun('г. Киров'),
-                normalRun('                                                                                                                    '),
-                normalRun(`«${actDate}»`),
-            ],
-            alignment: AlignmentType.LEFT,
-            spacing: { after: 160 },
-        }),
+        buildCityDateDocxTable('г. Киров', `«${actDate}»`, { afterPt: 8, font: FONT, size: FONT_SIZE }),
         para(`1. Мы, нижеподписавшиеся, составили настоящий акт по факту завершения услуг по Договору об оказании услуг. Исполнители выполнили в полном объеме свои обязательства согласно Договору об оказании услуг № ${contractNumber} от «${dealDate}».`, { indent: true, afterPt: 4 }),
         para('2. Заказчик считает услуги полностью выполненными и претензий к сроку выполнения, полноте и качеству услуг не имеет.', { indent: true, afterPt: 4 }),
         para('3. Настоящий акт является основанием для оплаты Заказчиком вознаграждения Исполнителю 1 и Исполнителю 2.', { indent: true, afterPt: 16 }),
@@ -1998,48 +2005,20 @@ export function buildKeyHandoverAct(data) {
             alignment: AlignmentType.CENTER,
             spacing: { after: 200 },
         }),
-        new Table({
-            width: { size: 100, type: WidthType.PERCENTAGE },
-            borders: {
-                top: { style: BorderStyle.NONE },
-                bottom: { style: BorderStyle.NONE },
-                left: { style: BorderStyle.NONE },
-                right: { style: BorderStyle.NONE },
-                insideHorizontal: { style: BorderStyle.NONE },
-                insideVertical: { style: BorderStyle.NONE },
-            },
-            rows: [
-                new TableRow({
-                    children: [
-                        new TableCell({
-                            width: { size: 50, type: WidthType.PERCENTAGE },
-                            children: [new Paragraph({ children: [arialRun(city, { size: 22 })], spacing: { after: 160 } })],
-                        }),
-                        new TableCell({
-                            width: { size: 50, type: WidthType.PERCENTAGE },
-                            children: [new Paragraph({
-                                alignment: AlignmentType.RIGHT,
-                                children: [arialRun(actDateFormatted, { size: 22 })],
-                                spacing: { after: 160 }
-                            })],
-                        }),
-                    ],
-                }),
-            ],
-        }),
+        buildCityDateDocxTable(city, actDateFormatted, { afterPt: 8, font: ARIAL_FONT, size: 22 }),
         arialPara([
             arialRun('Гр. '),
             arialBold(receiverName),
-            arialRun(',\n'),
+            arialRun(', '),
             arialRun(receiverBirth !== '________' ? `${receiverBirth} года рождения, ` : '________ года рождения, '),
             arialRun('паспорт '),
             arialRun(receiverSeries),
             arialRun(' '),
             arialRun(receiverNumber),
-            arialRun(' выдан '),
+            arialRun(', выдан '),
             arialRun(receiverIssuedBy),
             arialRun(receiverIssueDate !== '________' ? ` ${receiverIssueDate} г.` : ' ____________________ г.'),
-            arialRun('\nкод подразделения '),
+            arialRun(', код подразделения '),
             arialRun(receiverUnitCode),
             arialRun(', зарегистрирован по адресу: '),
             arialRun(receiverRegAddress),
@@ -2052,16 +2031,16 @@ export function buildKeyHandoverAct(data) {
         arialPara([
             arialRun('Гр. '),
             arialBold(transferrerName),
-            arialRun(',\n'),
+            arialRun(', '),
             arialRun(transferrerBirth !== '________' ? `${transferrerBirth} года рождения, ` : '________ года рождения, '),
             arialRun('паспорт '),
             arialRun(transferrerSeries),
             arialRun(' '),
             arialRun(transferrerNumber),
-            arialRun(' выдан '),
+            arialRun(', выдан '),
             arialRun(transferrerIssuedBy),
             arialRun(transferrerIssueDate !== '________' ? ` ${transferrerIssueDate} г.` : ' ____________________ г.'),
-            arialRun('\nкод подразделения '),
+            arialRun(', код подразделения '),
             arialRun(transferrerUnitCode),
             arialRun(', зарегистрирован по адресу: '),
             arialRun(transferrerRegAddress),
@@ -2192,19 +2171,20 @@ export function collectDocxBlocksFromDom(domElement, isAgencyContract = false) {
     const fontSize = isAgencyContract ? 20 : 24;
 
     function extractRuns(parent, defaultFont, defaultSize) {
-        const runs = [];
+        const rawRuns = [];
         function walk(node, isBold = false, isItalic = false, isUnderline = false) {
             if (node.nodeType === 3 /* Node.TEXT_NODE */) {
-                const txt = node.textContent;
+                let txt = node.textContent || '';
+                txt = txt.replace(/[\r\n\t]+/g, ' ').replace(/ +/g, ' ');
                 if (txt) {
-                    runs.push(new TextRun({
+                    rawRuns.push({
                         text: txt,
                         font: defaultFont,
                         size: defaultSize,
                         bold: isBold,
                         italics: isItalic,
                         underline: isUnderline ? {} : undefined,
-                    }));
+                    });
                 }
                 return;
             }
@@ -2221,7 +2201,24 @@ export function collectDocxBlocksFromDom(domElement, isAgencyContract = false) {
         for (const child of parent.childNodes) {
             walk(child);
         }
-        return runs;
+
+        for (let idx = 0; idx < rawRuns.length; idx++) {
+            rawRuns[idx].text = rawRuns[idx].text.replace(/ +([,.:;?!])/g, '$1');
+            if (idx < rawRuns.length - 1) {
+                const nextText = rawRuns[idx + 1].text.trimStart();
+                if (/^[,.:;?!]/.test(nextText)) {
+                    rawRuns[idx].text = rawRuns[idx].text.trimEnd();
+                }
+            }
+        }
+        if (rawRuns.length > 0) {
+            rawRuns[0].text = rawRuns[0].text.trimStart();
+            rawRuns[rawRuns.length - 1].text = rawRuns[rawRuns.length - 1].text.trimEnd();
+        }
+
+        return rawRuns
+            .filter(r => r.text.length > 0)
+            .map(r => new TextRun(r));
     }
 
     function processBlock(el) {
