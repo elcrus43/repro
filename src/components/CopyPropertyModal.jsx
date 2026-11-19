@@ -20,6 +20,7 @@ const STATUS_OPTIONS = [
     { id: 'meeting', label: 'Встреча' },
     { id: 'advertising', label: 'В рекламе' },
     { id: 'agreement', label: 'АД' },
+    { id: 'no_agreement', label: 'Без АД' },
     { id: 'selection', label: 'Подбор' },
 ];
 

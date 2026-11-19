@@ -37,6 +37,7 @@ export const PROPERTY_TYPES = {
 export const STATUS_LABELS = {
     meeting: 'Встреча',
     agreement: 'АД',
+    no_agreement: 'Без АД',
     advertising: 'В рекламе',
     selection: 'Подбор',
     deposit: 'Задаток',
@@ -51,6 +52,7 @@ export const STATUS_LABELS = {
 export const STATUS_COLORS = {
     meeting: 'primary',
     agreement: 'warning-alt',
+    no_agreement: 'secondary',
     advertising: 'success',
     selection: 'info',
     deposit: 'warning',

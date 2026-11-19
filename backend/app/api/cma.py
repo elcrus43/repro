@@ -5,6 +5,7 @@ from pydantic import BaseModel
 import logging
 from ..core.database import get_db
 from ..services.estimation_service import EstimationService, EstimationInput
+from ..services.search_service import SearchService
 from ..core.rate_limiter import limiter, ESTIMATION_RATE_LIMIT
 
 logger = logging.getLogger(__name__)
@@ -164,3 +165,132 @@ async def run_cma(
     except Exception as e:
         logger.error(f"CMA Error: {e}", exc_info=True)
         raise HTTPException(status_code=422, detail=str(e))
+
+
+# ── Client property search endpoint ──────────────────────────────────────────
+
+class ClientSearchParams(BaseModel):
+    city: str = "Киров"
+    districts: Optional[List[str]] = None
+    rooms: Optional[List[int]] = None          # [1, 2] or [] for any
+    budget_max: Optional[int] = None
+    budget_min: Optional[int] = None
+    area_min: Optional[float] = None
+    area_max: Optional[float] = None
+    property_types: Optional[List[str]] = None  # ["apartment", "house", ...]
+    deal_type: str = "SALE"
+    mortgage: Optional[bool] = None
+
+
+class ClientSearchResultItem(BaseModel):
+    source: str                    # avito | cian | domclick | yandex | m2
+    source_id: str
+    source_url: str
+    title: Optional[str]
+    price: int
+    address: Optional[str]
+    district: Optional[str]
+    rooms: Optional[int]
+    total_area: Optional[float]
+    floor: Optional[int]
+    total_floors: Optional[int]
+    building_type: Optional[str]
+    image_url: Optional[str]
+    deal_type: str
+
+
+class ClientSearchResponse(BaseModel):
+    results: List[ClientSearchResultItem]
+    total: int
+    sources: dict                  # e.g. {"avito": 5, "cian": 3, ...}
+
+
+@router.post("/search", response_model=ClientSearchResponse)
+async def search_for_client(
+    req: ClientSearchParams,
+    db: Session = Depends(get_db),
+):
+    """Search Avito, CIAN, DomClick and other sources for listings
+    matching a client's purchase request criteria. Returns direct links."""
+
+    # Build search params for SearchService
+    rooms_for_search = None
+    if req.rooms and len(req.rooms) > 0:
+        # If a single room count requested — pass it directly; otherwise search
+        # the most common (first) value. Parsers support single-room queries.
+        rooms_for_search = req.rooms[0]
+
+    area_mid = None
+    if req.area_min and req.area_max:
+        area_mid = (req.area_min + req.area_max) / 2
+    elif req.area_min:
+        area_mid = req.area_min * 1.3
+    elif req.area_max:
+        area_mid = req.area_max * 0.8
+
+    district_str = req.districts[0] if req.districts and len(req.districts) > 0 else None
+
+    parser_params = {
+        "city": req.city,
+        "district": district_str,
+        "rooms": rooms_for_search,
+        "total_area": area_mid or 50.0,
+        "deal_type": req.deal_type,
+        "budget_max": req.budget_max,
+        "budget_min": req.budget_min,
+    }
+
+    try:
+        service = SearchService(db)
+        analogs = await service.search_all(parser_params)
+    except Exception as e:
+        logger.error(f"ClientSearch error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Ошибка поиска: {e}")
+
+    # Apply local budget filter
+    filtered = []
+    for a in analogs:
+        price = int(a.price) if a.price else 0
+        if req.budget_max and price > req.budget_max:
+            continue
+        if req.budget_min and price < req.budget_min:
+            continue
+        filtered.append(a)
+
+    # Apply rooms filter (if multiple room values requested)
+    if req.rooms and len(req.rooms) > 1:
+        filtered = [a for a in filtered if a.rooms is None or a.rooms in req.rooms]
+
+    # Build sources breakdown
+    sources_count: dict = {}
+    for a in filtered:
+        sources_count[a.source] = sources_count.get(a.source, 0) + 1
+
+    # Map to response schema
+    result_items = []
+    for a in filtered:
+        raw = a.raw_data or {}
+        result_items.append(
+            ClientSearchResultItem(
+                source=a.source,
+                source_id=str(a.source_id),
+                source_url=a.source_url,
+                title=a.title,
+                price=int(a.price),
+                address=a.address,
+                district=a.district,
+                rooms=a.rooms,
+                total_area=float(a.total_area) if a.total_area else None,
+                floor=a.floor,
+                total_floors=a.total_floors,
+                building_type=a.building_type,
+                image_url=raw.get("image_url") or raw.get("photo_url"),
+                deal_type=a.deal_type or req.deal_type,
+            )
+        )
+
+    return ClientSearchResponse(
+        results=result_items,
+        total=len(result_items),
+        sources=sources_count,
+    )

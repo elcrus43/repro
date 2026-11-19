@@ -1270,13 +1270,14 @@ export function DetailsPage() {
                     {/* Quick Stage Switcher — sleek modern segmented pills */}
                     {(() => {
                         const STAGES = [
-                            { id: 'meeting',     label: 'Встреча',    color: '#3b82f6' },
-                            { id: 'agreement',   label: 'АД',         color: '#f59e0b' },
-                            { id: 'advertising', label: 'Реклама',   color: '#8b5cf6' },
-                            { id: 'selection',   label: 'Подбор',     color: '#06b6d4' },
-                            { id: 'deposit',     label: 'Задаток',   color: '#10b981' },
-                            { id: 'deal',        label: 'Сделка',     color: '#22c55e' },
-                            { id: 'sold',        label: 'Продан',     color: '#16a34a' },
+                            { id: 'meeting',      label: 'Встреча',    color: '#3b82f6' },
+                            { id: 'agreement',    label: 'АД',         color: '#f59e0b' },
+                            { id: 'no_agreement', label: 'Без АД',     color: '#64748b' },
+                            { id: 'advertising',  label: 'Реклама',   color: '#8b5cf6' },
+                            { id: 'selection',    label: 'Подбор',     color: '#06b6d4' },
+                            { id: 'deposit',      label: 'Задаток',   color: '#10b981' },
+                            { id: 'deal',         label: 'Сделка',     color: '#22c55e' },
+                            { id: 'sold',         label: 'Продан',     color: '#16a34a' },
                         ];
                         const cur = prop.status;
                         return (
