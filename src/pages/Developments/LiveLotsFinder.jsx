@@ -24,6 +24,7 @@ import {
 import { formatNumber } from '../../utils/format';
 import { PriceInput } from '../../components/PriceInput';
 import { SelectionPresentationModal } from '../../components/SelectionPresentationModal';
+import { DevelopmentBannerModal } from '../../components/DevelopmentBannerModal';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { KIROV_DISTRICTS } from '../../data/location';
@@ -112,6 +113,7 @@ export function LiveLotsFinder({
   const [addedLotUids, setAddedLotUids] = useState({});
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [previewPlanLot, setPreviewPlanLot] = useState(null);
+  const [bannerTarget, setBannerTarget] = useState(null);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 
   const clientRequestMap = useMemo(() => {
@@ -855,6 +857,19 @@ export function LiveLotsFinder({
                     </span>
                   </button>
 
+                  <button
+                    type="button"
+                    className="llf-btn-banner"
+                    onClick={() => setBannerTarget({
+                      dev: group.dev || { name: group.devName, address: group.address },
+                      layout: group,
+                    })}
+                    title="Создать рекламный баннер этой планировки"
+                  >
+                    <Sparkles size={14} />
+                    <span>Баннер</span>
+                  </button>
+
                   {group.count === 1 ? (
                     <div className="llf-single-lot-actions">
                       {group.representativeLot.lot_url && (
@@ -931,6 +946,22 @@ export function LiveLotsFinder({
                           </div>
 
                           <div className="llf-floor-actions">
+                            <button
+                              type="button"
+                              className="llf-btn-banner compact"
+                              onClick={() => setBannerTarget({
+                                dev: group.dev || { name: group.devName, address: group.address },
+                                layout: {
+                                  ...lot,
+                                  planImage: lot.plan_image || group.planImage,
+                                  roomsLabel: group.roomsLabel,
+                                },
+                              })}
+                              title="Создать рекламный баннер квартиры"
+                            >
+                              <Sparkles size={12} />
+                              <span>Баннер</span>
+                            </button>
                             {lot.lot_url && (
                               <a
                                 href={lot.lot_url}
@@ -1036,6 +1067,22 @@ export function LiveLotsFinder({
                 </div>
 
                 <div className="llf-flat-actions">
+                  <button
+                    type="button"
+                    className="llf-btn-banner"
+                    onClick={() => setBannerTarget({
+                      dev: lot._dev || { name: lot._devName, address: lot.address },
+                      layout: {
+                        ...lot,
+                        planImage: lot.plan_image,
+                        roomsLabel: lot.title,
+                      },
+                    })}
+                    title="Создать рекламный баннер квартиры"
+                  >
+                    <Sparkles size={13} />
+                    <span>Баннер</span>
+                  </button>
                   {onFocusHouseOnMap && (
                     <button
                       type="button"
@@ -1112,14 +1159,31 @@ export function LiveLotsFinder({
                   </div>
                 )}
               </div>
-              <button
-                type="button"
-                className="llf-lightbox-close"
-                onClick={() => setPreviewPlanLot(null)}
-                aria-label="Закрыть планировку"
-              >
-                <X size={18} />
-              </button>
+              <div className="llf-lightbox-actions">
+                <button
+                  type="button"
+                  className="llf-btn-lightbox-banner"
+                  onClick={() => {
+                    setBannerTarget({
+                      dev: previewPlanLot._dev || { name: previewPlanLot._devName, address: previewPlanLot.address },
+                      layout: previewPlanLot,
+                    });
+                    setPreviewPlanLot(null);
+                  }}
+                  title="Создать баннер планировки"
+                >
+                  <Sparkles size={14} />
+                  <span>Создать баннер</span>
+                </button>
+                <button
+                  type="button"
+                  className="llf-lightbox-close"
+                  onClick={() => setPreviewPlanLot(null)}
+                  aria-label="Закрыть планировку"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
             <img
               src={previewPlanLot.plan_image}
@@ -2220,6 +2284,60 @@ export function LiveLotsFinder({
           background: #ffffff;
           border-radius: 10px;
         }
+        .llf-btn-banner {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px 11px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #0052ff;
+          background: rgba(0, 82, 255, 0.08);
+          border: 1px solid rgba(0, 82, 255, 0.22);
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .llf-btn-banner:hover {
+          background: #0052ff;
+          color: #ffffff;
+        }
+        .dark .llf-btn-banner {
+          color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .dark .llf-btn-banner:hover {
+          background: #3b82f6;
+          color: #ffffff;
+        }
+        .llf-btn-banner.compact {
+          padding: 4px 8px;
+          font-size: 11px;
+        }
+        .llf-lightbox-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .llf-btn-lightbox-banner {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          background: #0052ff;
+          border: none;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .llf-btn-lightbox-banner:hover {
+          background: #0045d8;
+        }
       `}</style>
       {isPresentationOpen && (
         <SelectionPresentationModal
@@ -2228,6 +2346,14 @@ export function LiveLotsFinder({
           client={activeClient}
           items={selectedPresentationItems}
           currentUser={state?.currentUser}
+        />
+      )}
+      {bannerTarget && (
+        <DevelopmentBannerModal
+          development={bannerTarget.dev}
+          layout={bannerTarget.layout}
+          currentUser={state?.currentUser}
+          onClose={() => setBannerTarget(null)}
         />
       )}
     </div>

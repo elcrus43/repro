@@ -37,6 +37,7 @@ import { getProfstroySlugForDevelopment } from '../../lib/profstroyLots';
 import { getSmu5SlugForDevelopment } from '../../lib/smu5Lots';
 import { getZheleznoSlugForDevelopment } from '../../lib/zheleznoLots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
+import { DevelopmentBannerModal } from '../../components/DevelopmentBannerModal';
 
 const KSM_ROOM_FILTERS = [
   { id: 'all', label: 'Все' },
@@ -76,6 +77,7 @@ export function DevelopmentDetailModal({
   const [isKsmSyncing, setIsKsmSyncing] = useState(false);
   const [addedKsmLots, setAddedKsmLots] = useState({});
   const [previewPlanLot, setPreviewPlanLot] = useState(null);
+  const [bannerTarget, setBannerTarget] = useState(null);
 
   const ksmSlug = getKsmSlugForDevelopment(dev);
   const ksskSlug = getKsskSlugForDevelopment(dev);
@@ -663,6 +665,15 @@ export function DevelopmentDetailModal({
                               </div>
 
                               <div className="ksm-lot-actions">
+                                <button
+                                  type="button"
+                                  className="btn-ksm-banner"
+                                  onClick={() => setBannerTarget({ dev, layout: group })}
+                                  title="Создать рекламный баннер этой планировки"
+                                >
+                                  <Sparkles size={13} />
+                                  <span>Баннер</span>
+                                </button>
                                 {group.count === 1 ? (
                                   <>
                                     {repLot.lot_url && (
@@ -724,6 +735,22 @@ export function DevelopmentDetailModal({
                                         )}
                                       </div>
                                       <div className="ksm-lot-actions">
+                                        <button
+                                          type="button"
+                                          className="btn-ksm-banner compact"
+                                          onClick={() => setBannerTarget({
+                                            dev,
+                                            layout: {
+                                              ...lot,
+                                              planImage: lot.plan_image || group.planImage,
+                                              roomsLabel: group.roomsLabel,
+                                            },
+                                          })}
+                                          title="Создать рекламный баннер квартиры"
+                                        >
+                                          <Sparkles size={12} />
+                                          <span>Баннер</span>
+                                        </button>
                                         {lot.lot_url && (
                                           <a
                                             href={lot.lot_url}
@@ -938,23 +965,34 @@ export function DevelopmentDetailModal({
                             </span>
                           </td>
                           <td className="text-right">
-                            <button
-                              type="button"
-                              className={`btn-add-table-sel ${isAdded ? 'added' : ''}`}
-                              onClick={() => handleAddAptToSelection(apt)}
-                            >
-                              {isAdded ? (
-                                <>
-                                  <Check size={14} />
-                                  <span>Добавлено</span>
-                                </>
-                              ) : (
-                                <>
-                                  <PlusCircle size={14} />
-                                  <span>В подборку</span>
-                                </>
-                              )}
-                            </button>
+                            <div className="dev-table-actions-cell">
+                              <button
+                                type="button"
+                                className="btn-table-banner"
+                                onClick={() => setBannerTarget({ dev, layout: apt })}
+                                title="Создать баннер планировки"
+                              >
+                                <Sparkles size={13} />
+                                <span>Баннер</span>
+                              </button>
+                              <button
+                                type="button"
+                                className={`btn-add-table-sel ${isAdded ? 'added' : ''}`}
+                                onClick={() => handleAddAptToSelection(apt)}
+                              >
+                                {isAdded ? (
+                                  <>
+                                    <Check size={14} />
+                                    <span>Добавлено</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <PlusCircle size={14} />
+                                    <span>В подборку</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1003,14 +1041,28 @@ export function DevelopmentDetailModal({
                 {previewPlanLot.title}
                 {previewPlanLot.flat_number ? ` - кв. № ${previewPlanLot.flat_number}` : ''}
               </strong>
-              <button
-                type="button"
-                className="dev-modal-close-btn"
-                onClick={() => setPreviewPlanLot(null)}
-                aria-label="Закрыть планировку"
-              >
-                <X size={18} />
-              </button>
+              <div className="ksm-lightbox-actions">
+                <button
+                  type="button"
+                  className="btn-lightbox-banner"
+                  onClick={() => {
+                    setBannerTarget({ dev, layout: previewPlanLot });
+                    setPreviewPlanLot(null);
+                  }}
+                  title="Создать баннер планировки"
+                >
+                  <Sparkles size={14} />
+                  <span>Создать баннер</span>
+                </button>
+                <button
+                  type="button"
+                  className="dev-modal-close-btn"
+                  onClick={() => setPreviewPlanLot(null)}
+                  aria-label="Закрыть планировку"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
             <img
               src={previewPlanLot.plan_image}
@@ -2066,7 +2118,104 @@ export function DevelopmentDetailModal({
           font-weight: 400;
           color: var(--text-muted, #94a3b8);
         }
+        .btn-ksm-banner {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #0052ff;
+          background: rgba(0, 82, 255, 0.08);
+          border: 1px solid rgba(0, 82, 255, 0.2);
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .btn-ksm-banner:hover {
+          background: #0052ff;
+          color: #ffffff;
+        }
+        .dark .btn-ksm-banner {
+          color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .dark .btn-ksm-banner:hover {
+          background: #3b82f6;
+          color: #ffffff;
+        }
+        .btn-ksm-banner.compact {
+          padding: 4px 8px;
+          font-size: 11px;
+        }
+        .dev-table-actions-cell {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 6px;
+        }
+        .btn-table-banner {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 5px 9px;
+          border-radius: 7px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #0052ff;
+          background: rgba(0, 82, 255, 0.08);
+          border: 1px solid rgba(0, 82, 255, 0.2);
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .btn-table-banner:hover {
+          background: #0052ff;
+          color: #ffffff;
+        }
+        .dark .btn-table-banner {
+          color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .dark .btn-table-banner:hover {
+          background: #3b82f6;
+          color: #ffffff;
+        }
+        .ksm-lightbox-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .btn-lightbox-banner {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #ffffff;
+          background: #0052ff;
+          border: none;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .btn-lightbox-banner:hover {
+          background: #0045d8;
+        }
       `}</style>
+
+      {bannerTarget && (
+        <DevelopmentBannerModal
+          development={bannerTarget.dev}
+          layout={bannerTarget.layout}
+          currentUser={state?.currentUser}
+          onClose={() => setBannerTarget(null)}
+        />
+      )}
     </div>
   );
 }

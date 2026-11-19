@@ -186,6 +186,57 @@ export function buildBannerCaption(property = {}, phone = '', locationText = '')
     return parts.join('\n');
 }
 
+/**
+ * Генерирует продающий текст поста для новостройки (конкретной планировки).
+ * СТРОГО: НЕ содержит имя застройщика, акцент на ЖК, планировку, преимущества и контакты риелтора.
+ */
+export function buildDevelopmentBannerCaption({ dev = {}, layout = {}, phone = '', agentName = '', stickers = [] } = {}) {
+    const parts = [];
+    const devName = dev.name || 'Новостройка';
+    const roomTitle = layout.roomsLabel || layout.name || layout.title || 'Квартира';
+    const area = layout.area ? `${layout.area} м²` : '';
+    const mainHeading = `🔥 ${roomTitle}${area ? ` · ${area}` : ''} в ${devName}`;
+    parts.push(mainHeading);
+
+    const price = layout.minPrice || layout.price_from || layout.price;
+    if (price) {
+        const sqm = layout.minPriceSqm || layout.price_sqm || (layout.area && parseFloat(layout.area) > 0 ? Math.round(price / parseFloat(layout.area)) : null);
+        const sqmText = sqm ? ` (${formatNumber(sqm)} ₽/м²)` : '';
+        parts.push(`💰 Цена: от ${formatNumber(price)} ₽${sqmText}`);
+    }
+
+    if (dev.completion_date) {
+        parts.push(`📅 Срок сдачи: ${dev.completion_date}`);
+    }
+    if (layout.finishing || dev.finishing) {
+        parts.push(`🛠 Отделка: ${layout.finishing || dev.finishing}`);
+    }
+
+    const addr = dev.district ? `${dev.district}${dev.address ? `, ${dev.address}` : ''}` : (dev.address || '');
+    if (addr) {
+        parts.push(`📍 Локация: ${addr}`);
+    }
+
+    if (Array.isArray(stickers) && stickers.length > 0) {
+        parts.push('\n✨ Преимущества и особенности:');
+        stickers.forEach(s => {
+            if (s) parts.push(` • ${s}`);
+        });
+    }
+
+    parts.push('\n🎁 Услуги риелтора для покупателя: 0 ₽ (без комиссии)');
+    parts.push('🏦 Помощь в одобрении выгодной ипотеки и полное сопровождение сделки.');
+
+    if (agentName) {
+        parts.push(`👤 Ваш эксперт: ${agentName}`);
+    }
+    if (phone) {
+        parts.push(`📞 Телефон: ${phone}`);
+    }
+
+    return parts.join('\n');
+}
+
 export function dataUrlToFile(dataUrl, fileName = 'banner.png') {
     const parts = String(dataUrl || '').split(',');
     const header = parts[0] || '';
