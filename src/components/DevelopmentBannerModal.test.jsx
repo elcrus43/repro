@@ -180,6 +180,61 @@ describe('DevelopmentBannerModal Component', () => {
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it('provides showAddress toggle checkbox', () => {
+    render(
+      <DevelopmentBannerModal
+        development={sampleDev}
+        layout={sampleLayout}
+        onClose={() => {}}
+      />
+    );
+
+    const addrCheckbox = screen.getByLabelText(/Показать адрес на баннере/i);
+    expect(addrCheckbox).toBeInTheDocument();
+    expect(addrCheckbox.checked).toBe(true);
+
+    fireEvent.click(addrCheckbox);
+    expect(addrCheckbox.checked).toBe(false);
+  });
+
+  it('provides showPriceFrom toggle and defaults to false for a specific apartment', () => {
+    // Specific flat with flat_number
+    const singleAptLayout = {
+      ...sampleLayout,
+      flat_number: '84',
+      count: 1,
+    };
+
+    render(
+      <DevelopmentBannerModal
+        development={sampleDev}
+        layout={singleAptLayout}
+        onClose={() => {}}
+      />
+    );
+
+    const priceFromCheckbox = screen.getByLabelText(/Приставка «от» к стоимости/i);
+    expect(priceFromCheckbox).toBeInTheDocument();
+    // Default for specific apartment is false (exact price)
+    expect(priceFromCheckbox.checked).toBe(false);
+
+    fireEvent.click(priceFromCheckbox);
+    expect(priceFromCheckbox.checked).toBe(true);
+  });
+
+  it('shows floorplan upload section and status', () => {
+    render(
+      <DevelopmentBannerModal
+        development={sampleDev}
+        layout={sampleLayout}
+        onClose={() => {}}
+      />
+    );
+
+    expect(screen.getByText(/Чертеж прикреплен/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Заменить чертеж/i })).toBeInTheDocument();
+  });
 });
 
 describe('buildDevelopmentBannerCaption helper', () => {
@@ -200,5 +255,18 @@ describe('buildDevelopmentBannerCaption helper', () => {
     // STRICTLY NO DEVELOPER
     expect(caption).not.toContain('Железно');
     expect(caption).not.toContain('Застройщик');
+  });
+
+  it('respects showPriceFrom=false and showAddress=false in caption', () => {
+    const caption = buildDevelopmentBannerCaption({
+      dev: { name: 'Дом на Чистопрудненской, 11А', address: 'ул. Чистопрудненская, 11А' },
+      layout: { roomsLabel: '1-комнатная', area: 31.8, price: 4770000, price_sqm: 150000 },
+      showPriceFrom: false,
+      showAddress: false,
+    });
+
+    expect(caption).toContain('Цена: 4 770 000 ₽');
+    expect(caption).not.toContain('Цена: от');
+    expect(caption).not.toContain('Локация:');
   });
 });

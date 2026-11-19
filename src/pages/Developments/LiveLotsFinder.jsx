@@ -20,11 +20,13 @@ import {
   RotateCcw,
   ZoomIn,
   Building2,
+  BarChart3,
 } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
 import { PriceInput } from '../../components/PriceInput';
 import { SelectionPresentationModal } from '../../components/SelectionPresentationModal';
 import { DevelopmentBannerModal } from '../../components/DevelopmentBannerModal';
+import { LotsStatisticsModal } from '../../components/LotsStatisticsModal';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { KIROV_DISTRICTS } from '../../data/location';
@@ -114,6 +116,7 @@ export function LiveLotsFinder({
   const [isBulkAdding, setIsBulkAdding] = useState(false);
   const [previewPlanLot, setPreviewPlanLot] = useState(null);
   const [bannerTarget, setBannerTarget] = useState(null);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
 
   const clientRequestMap = useMemo(() => {
@@ -446,6 +449,16 @@ export function LiveLotsFinder({
               <span>{isSyncingAny ? 'Синхронизация...' : 'Обновить лоты'}</span>
             </button>
           )}
+
+          <button
+            type="button"
+            className="llf-btn-stats"
+            onClick={() => setIsStatsModalOpen(true)}
+            title="Статистика добавленных и выбывших квартир застройщиков"
+          >
+            <BarChart3 size={15} />
+            <span>Статистика</span>
+          </button>
         </div>
       </div>
 
@@ -2338,6 +2351,34 @@ export function LiveLotsFinder({
         .llf-btn-lightbox-banner:hover {
           background: #0045d8;
         }
+        .llf-btn-stats {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 12px;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 700;
+          color: #0052ff;
+          background: rgba(0, 82, 255, 0.08);
+          border: 1px solid rgba(0, 82, 255, 0.22);
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .llf-btn-stats:hover {
+          background: #0052ff;
+          color: #ffffff;
+        }
+        .dark .llf-btn-stats {
+          color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .dark .llf-btn-stats:hover {
+          background: #3b82f6;
+          color: #ffffff;
+        }
       `}</style>
       {isPresentationOpen && (
         <SelectionPresentationModal
@@ -2354,6 +2395,13 @@ export function LiveLotsFinder({
           layout={bannerTarget.layout}
           currentUser={state?.currentUser}
           onClose={() => setBannerTarget(null)}
+        />
+      )}
+      {isStatsModalOpen && (
+        <LotsStatisticsModal
+          isOpen={isStatsModalOpen}
+          onClose={() => setIsStatsModalOpen(false)}
+          onRefreshSync={onSyncAll}
         />
       )}
     </div>

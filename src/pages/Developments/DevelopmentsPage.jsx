@@ -16,7 +16,8 @@ import {
   ChevronDown,
   Sparkles,
   ExternalLink,
-  Layers
+  Layers,
+  BarChart3
 } from 'lucide-react';
 import { 
   getStoredDevelopments, 
@@ -33,6 +34,8 @@ import { DevelopmentCard } from './DevelopmentCard';
 import { DevelopmentDetailModal } from './DevelopmentDetailModal';
 import { DevelopmentFormModal } from './DevelopmentFormModal';
 import { LiveLotsFinder } from './LiveLotsFinder';
+import { LotsStatisticsModal } from '../../components/LotsStatisticsModal';
+import { recordLotsSyncDiff } from '../../lib/lotsStatistics';
 import { GlobalSearch } from '../../components/GlobalSearch';
 import { PriceInput } from '../../components/PriceInput';
 import { formatNumber } from '../../utils/format';
@@ -263,6 +266,7 @@ export default function DevelopmentsPage() {
   const [selectedDevId, setSelectedDevId] = useState(null);
   const [detailModalDev, setDetailModalDev] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isStatsModalOpen, setIsStatsModalOpen] = useState(false);
 
   // Live Lots state (KSM & KSSK & KINO & AVITEK & ALTAI & STROYSOYUZ & PROFSTROY)
   const [liveState, setLiveState] = useState({
@@ -359,6 +363,15 @@ export default function DevelopmentsPage() {
     const nextLots = Array.isArray(result?.lots) ? result.lots : [];
     setLiveState((prev) => {
       const prevProviderState = prev[providerId];
+      const prevLots = prevProviderState?.lots?.filter((l) => l.project_slug === slug) || [];
+      recordLotsSyncDiff({
+        provider: providerId,
+        projectSlug: slug,
+        projectName: result?.projectName || provider?.names[slug] || slug,
+        previousLots: prevLots,
+        nextLots,
+        timestamp: result?.syncedAt || new Date().toISOString(),
+      });
       const nextMeta = {
         projectSlug: slug,
         projectName: result?.projectName || provider.names[slug] || slug,
@@ -1155,6 +1168,15 @@ export default function DevelopmentsPage() {
               >
                 <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
                 <span>Каталог</span>
+              </button>
+              <button
+                type="button"
+                className="btn-lots-stats"
+                onClick={() => setIsStatsModalOpen(true)}
+                title="Статистика добавленных и выбывших квартир по застройщикам и проектам"
+              >
+                <BarChart3 size={13} />
+                <span>Статистика</span>
               </button>
               <span className="dev-found-count">Найдено: <strong>{filteredDevelopments.length}</strong> ЖК</span>
               {viewMode === 'grid' && (
@@ -2132,7 +2154,43 @@ export default function DevelopmentsPage() {
           font-weight: 600;
           cursor: pointer;
         }
+        .btn-lots-stats {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 4px 10px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          color: #0052ff;
+          background: rgba(0, 82, 255, 0.08);
+          border: 1px solid rgba(0, 82, 255, 0.22);
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .btn-lots-stats:hover {
+          background: #0052ff;
+          color: #ffffff;
+        }
+        .dark .btn-lots-stats {
+          color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+          border-color: rgba(96, 165, 250, 0.3);
+        }
+        .dark .btn-lots-stats:hover {
+          background: #3b82f6;
+          color: #ffffff;
+        }
       `}</style>
+
+      {isStatsModalOpen && (
+        <LotsStatisticsModal
+          isOpen={isStatsModalOpen}
+          onClose={() => setIsStatsModalOpen(false)}
+          onRefreshSync={handleSyncAllProviders}
+        />
+      )}
     </div>
   );
 }

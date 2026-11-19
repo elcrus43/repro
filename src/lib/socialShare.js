@@ -190,7 +190,15 @@ export function buildBannerCaption(property = {}, phone = '', locationText = '')
  * Генерирует продающий текст поста для новостройки (конкретной планировки).
  * СТРОГО: НЕ содержит имя застройщика, акцент на ЖК, планировку, преимущества и контакты риелтора.
  */
-export function buildDevelopmentBannerCaption({ dev = {}, layout = {}, phone = '', agentName = '', stickers = [] } = {}) {
+export function buildDevelopmentBannerCaption({
+    dev = {},
+    layout = {},
+    phone = '',
+    agentName = '',
+    stickers = [],
+    showPriceFrom = true,
+    showAddress = true,
+} = {}) {
     const parts = [];
     const devName = dev.name || 'Новостройка';
     const roomTitle = layout.roomsLabel || layout.name || layout.title || 'Квартира';
@@ -201,8 +209,9 @@ export function buildDevelopmentBannerCaption({ dev = {}, layout = {}, phone = '
     const price = layout.minPrice || layout.price_from || layout.price;
     if (price) {
         const sqm = layout.minPriceSqm || layout.price_sqm || (layout.area && parseFloat(layout.area) > 0 ? Math.round(price / parseFloat(layout.area)) : null);
-        const sqmText = sqm ? ` (${formatNumber(sqm)} ₽/м²)` : '';
-        parts.push(`💰 Цена: от ${formatNumber(price)} ₽${sqmText}`);
+        const sqmText = sqm ? ` (${showPriceFrom ? 'от ' : ''}${formatNumber(sqm)} ₽/м²)` : '';
+        const pricePrefix = showPriceFrom ? 'от ' : '';
+        parts.push(`💰 Цена: ${pricePrefix}${formatNumber(price)} ₽${sqmText}`);
     }
 
     if (dev.completion_date) {
@@ -212,9 +221,11 @@ export function buildDevelopmentBannerCaption({ dev = {}, layout = {}, phone = '
         parts.push(`🛠 Отделка: ${layout.finishing || dev.finishing}`);
     }
 
-    const addr = dev.district ? `${dev.district}${dev.address ? `, ${dev.address}` : ''}` : (dev.address || '');
-    if (addr) {
-        parts.push(`📍 Локация: ${addr}`);
+    if (showAddress) {
+        const addr = dev.district ? `${dev.district}${dev.address ? `, ${dev.address}` : ''}` : (dev.address || '');
+        if (addr) {
+            parts.push(`📍 Локация: ${addr}`);
+        }
     }
 
     if (Array.isArray(stickers) && stickers.length > 0) {

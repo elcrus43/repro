@@ -218,6 +218,19 @@ export function createLotsRepository(providerKey, projectsMap) {
             error_message TEXT
           )
         `);
+        await sql.query(`
+          CREATE TABLE IF NOT EXISTS lots_daily_stats (
+            id TEXT PRIMARY KEY,
+            date DATE NOT NULL,
+            provider TEXT NOT NULL,
+            project_slug TEXT NOT NULL,
+            project_name TEXT NOT NULL,
+            added_count INTEGER DEFAULT 0,
+            removed_count INTEGER DEFAULT 0,
+            current_count INTEGER DEFAULT 0,
+            updated_at TIMESTAMPTZ DEFAULT NOW()
+          )
+        `);
       })().catch((err) => {
         tablesReadyPromise = null;
         throw err;
@@ -228,6 +241,40 @@ export function createLotsRepository(providerKey, projectsMap) {
 
   async function saveProjectLots(sql, { projectSlug, projectName, totalCount, lots }) {
     await ensureTables(sql);
+
+    // Calculate daily diff between existing lots and incoming lots
+    try {
+      const existingLotsRes = await sql.query(
+        `SELECT id, flat_number, rooms_label, area, floor, price, price_sqm FROM ${lotsTable} WHERE project_slug = $1`,
+        [projectSlug]
+      );
+      const existingRows = Array.isArray(existingLotsRes) ? existingLotsRes : existingLotsRes?.rows || [];
+      const existingMap = new Map();
+      existingRows.forEach((r) => existingMap.set(String(r.id), r));
+
+      const incomingIds = new Set(lots.map((l) => String(l.id)));
+      const addedLots = lots.filter((l) => !existingMap.has(String(l.id)));
+      const removedLots = existingRows.filter((r) => !incomingIds.has(String(r.id)));
+
+      if (existingRows.length > 0) {
+        const today = new Date().toISOString().slice(0, 10);
+        const statId = `${today}_${providerKey}_${projectSlug}`;
+        await sql.query(
+          `INSERT INTO lots_daily_stats (
+             id, date, provider, project_slug, project_name, added_count, removed_count, current_count, updated_at
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+           ON CONFLICT (id) DO UPDATE SET
+             project_name = EXCLUDED.project_name,
+             added_count = lots_daily_stats.added_count + EXCLUDED.added_count,
+             removed_count = lots_daily_stats.removed_count + EXCLUDED.removed_count,
+             current_count = EXCLUDED.current_count,
+             updated_at = NOW()`,
+          [statId, today, providerKey, projectSlug, projectName, addedLots.length, removedLots.length, lots.length]
+        );
+      }
+    } catch {
+      // Non-blocking
+    }
 
     if (lots.length > 0) {
       await sql.query(

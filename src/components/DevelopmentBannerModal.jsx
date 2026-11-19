@@ -18,9 +18,15 @@ import {
   ChevronUp,
   CheckSquare,
   Square,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
 import { useApp } from '../context/AppContext';
+import { buildApiUrl } from '../lib/apiConfig';
 import {
   getConnectedSocialNetworks,
   getSocialTokenStatus,
@@ -299,23 +305,64 @@ export function DevelopmentBannerModal({
     return clean.split(' ').slice(0, 2).join(' ');
   }, [effectiveUser, state]);
 
-  const planImageUrl = useMemo(() => {
-    return (
+  const defaultPlanImageUrl = useMemo(() => {
+    const candidate =
       layout.planImage ||
       layout.plan_image ||
+      layout.planUrl ||
+      layout.plan_url ||
       layout.image ||
+      layout.imageUrl ||
+      layout.image_url ||
+      layout.plan ||
+      layout.layout_image ||
+      layout.schema_image ||
       layout.representativeLot?.plan_image ||
-      null
-    );
-  }, [layout]);
+      layout.representativeLot?.planImage ||
+      layout.representativeLot?.image ||
+      null;
+
+    if (!candidate) return null;
+    const trimmed = String(candidate).trim();
+    if (trimmed.startsWith('//')) return `https:${trimmed}`;
+    if (trimmed.startsWith('/') && !trimmed.startsWith('/api/')) {
+      const devDomain =
+        development.builder_url ||
+        (development.developer?.toLowerCase().includes('ксм') ? 'https://ksm-kirov.ru' : null);
+      if (devDomain) {
+        return `${devDomain.replace(/\/$/, '')}${trimmed}`;
+      }
+    }
+    return trimmed;
+  }, [layout, development]);
+
+  const [customPlanUrl, setCustomPlanUrl]     = React.useState(null);
+  const planImageUrl                          = customPlanUrl || defaultPlanImageUrl;
+  const planFileInputRef                      = useRef(null);
+
+  const handlePlanUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setCustomPlanUrl(url);
+    if (planFileInputRef.current) {
+      planFileInputRef.current.value = '';
+    }
+  };
+
+  const handleResetPlan = () => {
+    setCustomPlanUrl(null);
+  };
 
   const facadeImageUrl = useMemo(() => {
     return (
       development.image ||
       (Array.isArray(development.images) && development.images[0]) ||
+      layout.dev?.image ||
+      (Array.isArray(layout.dev?.images) && layout.dev?.images[0]) ||
       null
     );
-  }, [development]);
+  }, [development, layout.dev]);
 
   /* ---- State ---- */
   const [format, setFormat]                   = React.useState('story');
@@ -332,6 +379,16 @@ export function DevelopmentBannerModal({
   const [phone, setPhone]                     = React.useState(defaultPhone);
   const [agentName, setAgentName]             = React.useState(defaultAgentName);
   const [agencySubtitle, setAgencySubtitle]   = React.useState('Эксперт по новостройкам');
+
+  const [showAddress, setShowAddress]         = React.useState(true);
+
+  const initialShowPriceFrom = useMemo(() => {
+    if (layout.flat_number || layout.flatNumber) return false;
+    if (layout.count === 1) return false;
+    if (layout.id && !layout.count && !layout.minPrice) return false;
+    return true;
+  }, [layout]);
+  const [showPriceFrom, setShowPriceFrom]     = React.useState(initialShowPriceFrom);
 
   const [showMortgage, setShowMortgage]       = React.useState(true);
   const [mortgageRate, setMortgageRate]       = React.useState(6);
@@ -366,6 +423,7 @@ export function DevelopmentBannerModal({
     format: true,
     theme: true,
     composition: true,
+    plan: true,
     data: true,
     mortgage: true,
     advantages: true,
@@ -377,22 +435,52 @@ export function DevelopmentBannerModal({
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  /* ---- Image Loader with CORS Safe Handling ---- */
-  const loadImageSafe = React.useCallback((src) => {
-    if (!src) return Promise.resolve(null);
-    if (imageCacheRef.current.has(src)) return Promise.resolve(imageCacheRef.current.get(src));
-    return new Promise((resolve) => {
-      const img = new Image();
-      if (!src.startsWith('data:') && !src.startsWith('blob:')) {
-        img.crossOrigin = 'anonymous';
-      }
-      img.onload = () => {
+  /* ---- Image Loader with CORS Safe Handling & Proxy Fallback ---- */
+  const loadImageSafe = React.useCallback(async (src) => {
+    if (!src) return null;
+    if (imageCacheRef.current.has(src)) return imageCacheRef.current.get(src);
+
+    const loadDirect = (url, withCors = true) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        if (withCors && !url.startsWith('data:') && !url.startsWith('blob:')) {
+          img.crossOrigin = 'anonymous';
+        }
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = url;
+      });
+    };
+
+    // 1. Direct load with crossOrigin='anonymous'
+    try {
+      const img = await loadDirect(src, true);
+      imageCacheRef.current.set(src, img);
+      return img;
+    } catch {
+      // Direct anonymous CORS load failed
+    }
+
+    // 2. Proxied load via /api/image-proxy for external http/https
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      try {
+        const proxyUrl = buildApiUrl(`/api/image-proxy?url=${encodeURIComponent(src)}`);
+        const img = await loadDirect(proxyUrl, true);
         imageCacheRef.current.set(src, img);
-        resolve(img);
-      };
-      img.onerror = () => resolve(null);
-      img.src = src;
-    });
+        return img;
+      } catch {
+        // Proxy failed
+      }
+    }
+
+    // 3. Fallback direct without crossOrigin so it still draws on canvas
+    try {
+      const img = await loadDirect(src, false);
+      imageCacheRef.current.set(src, img);
+      return img;
+    } catch {
+      return null;
+    }
   }, []);
 
   /* ================================================================
@@ -532,8 +620,8 @@ export function DevelopmentBannerModal({
 
       curY += Math.round((IS ? 62 : 52) * U);
 
-      // Location / Address line
-      if (locationText) {
+      // Location / Address line (Only if showAddress is enabled)
+      if (showAddress && locationText) {
         ctx.save();
         ctx.font = `500 ${Math.round((IS ? 28 : 24) * U)}px system-ui, -apple-system, sans-serif`;
         ctx.fillStyle = isLight ? '#475569' : '#94A3B8';
@@ -737,9 +825,10 @@ export function DevelopmentBannerModal({
 
       infoY += Math.round((IS ? 52 : 44) * U);
 
-      // Price from + Price per sqm
+      // Price from / Price exact + Price per sqm
       ctx.save();
-      const priceText = priceVal ? `от ${formatNumber(priceVal)} ₽` : 'Цена по запросу';
+      const pricePrefix = showPriceFrom ? 'от ' : '';
+      const priceText = priceVal ? `${pricePrefix}${formatNumber(priceVal)} ₽` : 'Цена по запросу';
       ctx.font = `900 ${Math.round((IS ? 72 : (isPortrait ? 60 : 52)) * U)}px system-ui, -apple-system, sans-serif`;
       ctx.fillStyle = isLight ? '#0052FF' : '#38BDF8';
       ctx.textBaseline = 'top';
@@ -749,7 +838,7 @@ export function DevelopmentBannerModal({
         const pw = ctx.measureText(priceText).width;
         ctx.font = `600 ${Math.round((IS ? 32 : (isPortrait ? 26 : 24)) * U)}px system-ui, sans-serif`;
         ctx.fillStyle = isLight ? '#64748B' : '#94A3B8';
-        ctx.fillText(`от ${formatNumber(priceSqmVal)} ₽/м²`, PAD + pw + Math.round(24 * U), infoY + Math.round((IS ? 34 : 24) * U));
+        ctx.fillText(` ${pricePrefix}${formatNumber(priceSqmVal)} ₽/м²`, PAD + pw + Math.round(24 * U), infoY + Math.round((IS ? 34 : 24) * U));
       }
       ctx.restore();
 
@@ -759,7 +848,7 @@ export function DevelopmentBannerModal({
       if (showMortgage && mortgagePayment > 0) {
         ctx.save();
         const mortH = Math.round((IS ? 64 : 54) * U);
-        const mortText = `Семейная ипотека 6% - платеж от ${formatNumber(mortgagePayment)} ₽/мес`;
+        const mortText = `Семейная ипотека ${mortgageRate}% - платеж ${showPriceFrom ? 'от ' : ''}${formatNumber(mortgagePayment)} ₽/мес`;
         ctx.font = `700 ${Math.round((IS ? 26 : 22) * U)}px system-ui, -apple-system, sans-serif`;
         const mw = ctx.measureText(mortText).width + Math.round(48 * U);
 
@@ -890,10 +979,13 @@ export function DevelopmentBannerModal({
     priceVal,
     priceSqmVal,
     locationText,
+    showAddress,
+    showPriceFrom,
     phone,
     agentName,
     agencySubtitle,
     showMortgage,
+    mortgageRate,
     mortgagePayment,
     selectedAdvantages,
     planImageUrl,
@@ -912,9 +1004,14 @@ export function DevelopmentBannerModal({
   const handleDownload = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const url = canvas.toDataURL('image/png');
-    const safeTitle = (devTitle || 'novostroyka').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
-    triggerDownload(url, `banner_${safeTitle}_${format}.png`);
+    try {
+      const url = canvas.toDataURL('image/png');
+      const safeTitle = (devTitle || 'novostroyka').replace(/[^a-zA-Zа-яА-Я0-9_-]/g, '_');
+      triggerDownload(url, `banner_${safeTitle}_${format}.png`);
+    } catch (err) {
+      console.warn('Canvas export tainted or failed:', err);
+      alert('Не удалось экспортировать изображение из-за ограничений безопасности браузера на внешний файл. Загрузите файл планировки с вашего устройства через кнопку «Загрузить свой чертеж».');
+    }
   };
 
   const handleCopyImage = async () => {
@@ -930,7 +1027,6 @@ export function DevelopmentBannerModal({
           return;
         }
       }
-      // Fallback
       handleDownload();
     } catch {
       handleDownload();
@@ -939,11 +1035,24 @@ export function DevelopmentBannerModal({
 
   const handleCopyPostText = () => {
     const caption = buildDevelopmentBannerCaption({
-      dev: { name: devTitle, address: locationText },
-      layout: { roomsLabel: roomTitle, area: areaText, minPrice: priceVal, minPriceSqm: priceSqmVal },
+      dev: {
+        name: devTitle,
+        address: locationText,
+        completion_date: development.completion_date,
+        finishing: development.finishing,
+      },
+      layout: {
+        roomsLabel: roomTitle,
+        area: areaText,
+        minPrice: priceVal,
+        minPriceSqm: priceSqmVal,
+        finishing: layout.finishing,
+      },
       phone,
       agentName,
       stickers: selectedAdvantages,
+      showPriceFrom,
+      showAddress,
     });
     navigator.clipboard.writeText(caption);
     setCopyPostFeedback(true);
@@ -953,23 +1062,40 @@ export function DevelopmentBannerModal({
   const handleShareSocial = async (networkId) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL('image/png');
-    const file = dataUrlToFile(dataUrl, `banner_${devTitle}_${format}.png`);
-    const caption = buildDevelopmentBannerCaption({
-      dev: { name: devTitle, address: locationText },
-      layout: { roomsLabel: roomTitle, area: areaText, minPrice: priceVal, minPriceSqm: priceSqmVal },
-      phone,
-      agentName,
-      stickers: selectedAdvantages,
-    });
+    try {
+      const dataUrl = canvas.toDataURL('image/png');
+      const file = dataUrlToFile(dataUrl, `banner_${devTitle}_${format}.png`);
+      const caption = buildDevelopmentBannerCaption({
+        dev: {
+          name: devTitle,
+          address: locationText,
+          completion_date: development.completion_date,
+          finishing: development.finishing,
+        },
+        layout: {
+          roomsLabel: roomTitle,
+          area: areaText,
+          minPrice: priceVal,
+          minPriceSqm: priceSqmVal,
+          finishing: layout.finishing,
+        },
+        phone,
+        agentName,
+        stickers: selectedAdvantages,
+        showPriceFrom,
+        showAddress,
+      });
 
-    const netObj = { id: networkId, account: { publishMode: 'share' } };
-    await shareBannerToSocial({
-      network: netObj,
-      canvasDataUrl: dataUrl,
-      file,
-      caption,
-    });
+      const netObj = { id: networkId, account: { publishMode: 'share' } };
+      await shareBannerToSocial({
+        network: netObj,
+        canvasDataUrl: dataUrl,
+        file,
+        caption,
+      });
+    } catch (err) {
+      console.warn('Share error:', err);
+    }
   };
 
   const toggleAdvantage = (adv) => {
@@ -1181,13 +1307,84 @@ export function DevelopmentBannerModal({
               )}
             </div>
 
+            {/* Floorplan CAD Image Section */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('plan')}
+              >
+                <span className="dev-banner-sec-title">Чертеж планировки</span>
+                {openSections.plan ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.plan && (
+                <div className="dev-banner-sec-content">
+                  <div className="dev-plan-status-row">
+                    <div className="dev-plan-thumb-wrap">
+                      {planImageUrl ? (
+                        <img
+                          src={planImageUrl}
+                          alt="Чертеж"
+                          className="dev-plan-thumb-img"
+                        />
+                      ) : (
+                        <div className="dev-plan-thumb-placeholder">
+                          <ImageIcon size={20} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="dev-plan-status-info">
+                      <strong className="dev-plan-status-title">
+                        {planImageUrl ? 'Чертеж прикреплен' : 'Чертеж не загружен'}
+                      </strong>
+                      <span className="dev-plan-status-sub">
+                        {customPlanUrl
+                          ? 'Загружен локальный файл'
+                          : planImageUrl
+                          ? 'Взят из каталога новостройки'
+                          : 'Отображается плейсхолдер'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="dev-plan-actions-row">
+                    <button
+                      type="button"
+                      className="btn-plan-action primary"
+                      onClick={() => planFileInputRef.current?.click()}
+                    >
+                      <Upload size={14} />
+                      <span>{planImageUrl ? 'Заменить чертеж' : 'Загрузить чертеж'}</span>
+                    </button>
+                    {customPlanUrl && (
+                      <button
+                        type="button"
+                        className="btn-plan-action secondary"
+                        onClick={handleResetPlan}
+                        title="Вернуть исходную планировку из каталога"
+                      >
+                        <RotateCcw size={13} />
+                        <span>Сбросить</span>
+                      </button>
+                    )}
+                    <input
+                      ref={planFileInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handlePlanUpload}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Layout Specs & Pricing */}
             <div className="dev-banner-section">
               <div
                 className="dev-banner-sec-head"
                 onClick={() => toggleSection('data')}
               >
-                <span className="dev-banner-sec-title">Параметры планировки</span>
+                <span className="dev-banner-sec-title">Параметры и стоимость</span>
                 {openSections.data ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </div>
               {openSections.data && (
@@ -1257,6 +1454,27 @@ export function DevelopmentBannerModal({
                         onChange={(e) => setLocationText(e.target.value)}
                         placeholder="ЮЗР, ул. Воровского"
                       />
+                    </label>
+                  </div>
+
+                  {/* Toggle checkboxes for price 'от' and address */}
+                  <div className="dev-toggles-box">
+                    <label className="dev-checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={showPriceFrom}
+                        onChange={(e) => setShowPriceFrom(e.target.checked)}
+                      />
+                      <span>Приставка «от» к стоимости (для групп квартир)</span>
+                    </label>
+
+                    <label className="dev-checkbox-row">
+                      <input
+                        type="checkbox"
+                        checked={showAddress}
+                        onChange={(e) => setShowAddress(e.target.checked)}
+                      />
+                      <span>Показать адрес на баннере</span>
                     </label>
                   </div>
                 </div>
@@ -2055,6 +2273,142 @@ export function DevelopmentBannerModal({
         }
 
         /* Note Box */
+        /* Plan upload and status styles */
+        .dev-plan-status-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 8px 10px;
+          border-radius: 10px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+        }
+
+        .dark .dev-plan-status-row {
+          background: #0f172a;
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dev-plan-thumb-wrap {
+          width: 52px;
+          height: 52px;
+          border-radius: 8px;
+          background: #f1f5f9;
+          border: 1px solid #cbd5e1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          overflow: hidden;
+          flex-shrink: 0;
+        }
+
+        .dark .dev-plan-thumb-wrap {
+          background: #1e293b;
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .dev-plan-thumb-img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          background: #ffffff;
+        }
+
+        .dev-plan-thumb-placeholder {
+          color: #94a3b8;
+        }
+
+        .dev-plan-status-info {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .dev-plan-status-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .dark .dev-plan-status-title {
+          color: #f1f5f9;
+        }
+
+        .dev-plan-status-sub {
+          font-size: 11px;
+          color: #64748b;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .dark .dev-plan-status-sub {
+          color: #94a3b8;
+        }
+
+        .dev-plan-actions-row {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+        }
+
+        .btn-plan-action {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          padding: 8px 12px;
+          border-radius: 8px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s;
+          border: none;
+        }
+
+        .btn-plan-action.primary {
+          background: #0052ff;
+          color: #ffffff;
+          flex: 1;
+        }
+
+        .btn-plan-action.primary:hover {
+          background: #0045d8;
+        }
+
+        .btn-plan-action.secondary {
+          background: #e2e8f0;
+          color: #334155;
+        }
+
+        .dark .btn-plan-action.secondary {
+          background: #334155;
+          color: #f1f5f9;
+        }
+
+        .btn-plan-action.secondary:hover {
+          background: #cbd5e1;
+        }
+
+        /* Toggles Box */
+        .dev-toggles-box {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 10px 12px;
+          border-radius: 8px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          margin-top: 4px;
+        }
+
+        .dark .dev-toggles-box {
+          background: #0f172a;
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+
         .dev-banner-note-box {
           display: flex;
           align-items: flex-start;
