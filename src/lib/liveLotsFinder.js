@@ -20,6 +20,7 @@ export const ROOM_FILTER_OPTIONS = [
   { id: '2k', label: '2к', short: '2к' },
   { id: '3k', label: '3к', short: '3к' },
   { id: '4k', label: '4к', short: '4к+' },
+  { id: 'pantry', label: 'Кладовка', short: 'Кл' },
 ];
 
 const ROOM_LABELS = {
@@ -28,6 +29,7 @@ const ROOM_LABELS = {
   '2k': '2-комнатная',
   '3k': '3-комнатная',
   '4k': '4-комнатная',
+  pantry: 'Кладовая',
 };
 
 export const PROVIDER_META = {

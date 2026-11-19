@@ -5,7 +5,7 @@
 import { apiFetch } from './apiConfig';
 
 const DEFAULT_SYNC_TIMEOUT_MS = 45000;
-export const ROOM_TYPE_KEYS = ['studio', '1k', '2k', '3k', '4k'];
+export const ROOM_TYPE_KEYS = ['studio', '1k', '2k', '3k', '4k', 'pantry'];
 
 /**
  * Читает access_token из localStorage('neon_session') и формирует заголовки авторизации.
@@ -111,6 +111,7 @@ function createEmptyProjectSummary(meta = null) {
       '2k': 0,
       '3k': 0,
       '4k': 0,
+      pantry: 0,
     },
     _lotCount: 0,
   };

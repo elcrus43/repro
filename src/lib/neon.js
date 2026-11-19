@@ -73,22 +73,28 @@ async function request(sql, params = [], attempt = 0) {
 
     const json = await res.json().catch(() => null);
 
-    // Автоматический повтор запроса при кратковременном сбое БД / холодном старте Neon (500/503)
-    if (attempt < 1 && (res.status === 500 || res.status === 503)) {
+    // Автоматический повтор запроса при кратковременном сбое БД / холодном старте Neon (500/502/503/504)
+    if (attempt < 2 && (res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504)) {
       const errMsg = String(json?.error?.message || json?.error || '');
       if (
+        !json ||
         errMsg.includes('fetch failed') ||
         errMsg.includes('connecting to database') ||
         errMsg.includes('не удалось подключиться') ||
         json?.error?.code === 'DB_UNAVAILABLE'
       ) {
-        console.warn(`[neonDb] Database connection hiccup, retrying query (attempt ${attempt + 1})...`);
-        await new Promise(r => setTimeout(r, 600));
+        console.warn(`[neonDb] Database connection hiccup (${res.status}), retrying query (attempt ${attempt + 1})...`);
+        await new Promise(r => setTimeout(r, 700));
         return request(sql, params, attempt + 1);
       }
     }
 
-    return json || { data: null, error: { message: `Ошибка сервера (${res.status})`, code: 'SERVER_ERROR' } };
+    if (json) return json;
+
+    const fallbackMsg = res.status >= 500
+      ? `Сервер временно недоступен (${res.status}). Повторите попытку через пару секунд.`
+      : `Ошибка сервера (${res.status})`;
+    return { data: null, error: { message: fallbackMsg, code: 'SERVER_ERROR' } };
 
   } catch (err) {
     if (err.name === 'AbortError') {

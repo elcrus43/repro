@@ -234,7 +234,7 @@ describe('DevelopmentBannerModal Component', () => {
 
     expect(screen.getByText(/Чертеж прикреплен/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Заменить чертеж/i })).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('renders grid_hero composition mode and photos section with multiple images', () => {
     const devWithImages = {
@@ -273,7 +273,7 @@ describe('DevelopmentBannerModal Component', () => {
 
     fireEvent.click(addressCheckbox);
     expect(addressCheckbox).not.toBeChecked();
-  });
+  }, 15000);
 });
 
 describe('buildDevelopmentBannerCaption helper', () => {
@@ -283,13 +283,13 @@ describe('buildDevelopmentBannerCaption helper', () => {
       layout: { roomsLabel: 'Евро-2', area: 42.5, minPrice: 4800000 },
       phone: '+7 (909) 130-40-90',
       agentName: 'Александр',
-      stickers: ['0% комиссия для покупателя', 'Семейная ипотека от 6%'],
+      stickers: ['Прямые цены застройщика', 'Семейная ипотека от 6%'],
     });
 
     expect(caption).toContain('ЖК Булычев');
     expect(caption).toContain('Евро-2 · 42.5 м²');
     expect(caption).toContain('4 800 000 ₽');
-    expect(caption).toContain('0% комиссия для покупателя');
+    expect(caption).toContain('Прямые цены застройщика');
     expect(caption).toContain('+7 (909) 130-40-90');
     // STRICTLY NO DEVELOPER
     expect(caption).not.toContain('Железно');

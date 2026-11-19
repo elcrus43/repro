@@ -14,12 +14,24 @@ export default defineConfig(({ mode }) => {
       {
         name: 'start-api-server',
         configureServer(devServer) {
+          // Прямой middleware для всех /api/* роутов прямо в процессе Vite (порт 5173)
+          devServer.middlewares.use(async (req, res, next) => {
+            if (req.url && req.url.startsWith('/api/')) {
+              try {
+                const { handleApiRequest } = await import('./scripts/api-dev-server.mjs');
+                const handled = await handleApiRequest(req, res);
+                if (handled) return;
+              } catch (err) {
+                console.error('[Vite API Middleware] Error:', err);
+              }
+            }
+            next();
+          });
+
+          // Запуск отдельного слушателя на порту 3001 для внешних вызовов
           import('./scripts/api-dev-server.mjs')
-            .then(({ startApiServer, stopApiServer }) => {
+            .then(({ startApiServer }) => {
               startApiServer();
-              devServer.httpServer?.once('close', () => {
-                stopApiServer?.();
-              });
             })
             .catch(err => {
               console.error('Failed to start API dev server:', err);

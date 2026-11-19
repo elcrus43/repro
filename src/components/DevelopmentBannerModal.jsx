@@ -72,7 +72,7 @@ const ACCENT_COLORS = [
 ];
 
 const DEFAULT_ADVANTAGES = [
-  '0% комиссия для покупателя',
+  'Прямые цены застройщика',
   'Семейная ипотека от 6%',
   'Двор-парк без машин',
   'Подземный паркинг',
@@ -489,7 +489,7 @@ export function DevelopmentBannerModal({
 
   // Initial advantages badges
   const [selectedAdvantages, setSelectedAdvantages] = React.useState(() => {
-    const list = ['0% комиссия для покупателя', 'Семейная ипотека от 6%'];
+    const list = ['Семейная ипотека от 6%'];
     if (development.completion_date) {
       list.push(`Срок сдачи: ${development.completion_date}`);
     }
@@ -615,34 +615,12 @@ export function DevelopmentBannerModal({
       /* -------------------------------------------------------------
          1. BACKGROUND FILL
          ------------------------------------------------------------- */
-      if (composition === 'facade_hero' && loadedFacade) {
-        // Full bleed facade image with overlay
-        const fr = loadedFacade.width / loadedFacade.height;
-        const cr = w / h;
-        let dw, dh, dx, dy;
-        if (fr > cr) {
-          dh = h;
-          dw = h * fr;
-          dx = (w - dw) / 2;
-          dy = 0;
-        } else {
-          dw = w;
-          dh = w / fr;
-          dx = 0;
-          dy = (h - dh) / 2;
-        }
-        ctx.drawImage(loadedFacade, dx, dy, dw, dh);
-
-        // Soft dark or light scrim for readability
-        ctx.fillStyle = isLight ? 'rgba(248, 250, 252, 0.40)' : 'rgba(10, 15, 26, 0.50)';
-        ctx.fillRect(0, 0, w, h);
-      } else {
-        // Luxurious background gradient
-        const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-        if (isLight) {
-          bgGrad.addColorStop(0, '#FFFFFF');
-          bgGrad.addColorStop(0.5, '#F1F5F9');
-          bgGrad.addColorStop(1, '#E2E8F0');
+      // Clean background gradient (complex photo is kept in its own card, not across full canvas)
+      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
+      if (isLight) {
+        bgGrad.addColorStop(0, '#FFFFFF');
+        bgGrad.addColorStop(0.5, '#F1F5F9');
+        bgGrad.addColorStop(1, '#E2E8F0');
         } else if (isBrand) {
           const rgb = hexToRgb(accentColor);
           bgGrad.addColorStop(0, `rgb(${Math.round(rgb.r * 0.2)}, ${Math.round(rgb.g * 0.2)}, ${Math.round(rgb.b * 0.3)})`);
@@ -670,7 +648,6 @@ export function DevelopmentBannerModal({
         ctx.fillStyle = glowGrad;
         ctx.fillRect(0, 0, w, h);
         ctx.restore();
-      }
 
       /* -------------------------------------------------------------
          2. TOP HEADER: COMPLEX NAME & BADGES
@@ -728,56 +705,115 @@ export function DevelopmentBannerModal({
       const visualAreaH = h - bottomAreaH - visualAreaTop;
       const visualAreaW = w - PAD * 2;
 
-      if (composition === 'grid_hero') {
-        // Grid Hero: Collage / Grid of complex photos + floating CAD layout card on top
-        const gap = Math.round(10 * U);
-        const gridRadius = Math.round(20 * U);
-        const k = validGridImages.length;
+      if (composition === 'grid_hero' || composition === 'facade_hero') {
+        // Hero: Dedicated complex photo card (top/left) + dedicated white CAD layout card (bottom/right)
+        const gap = Math.round(14 * U);
+        const cardRadius = Math.round(18 * U);
 
-        if (k > 0) {
-          if (k === 1) {
-            drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, visualAreaW, visualAreaH, gridRadius);
-          } else if (k === 2) {
-            if (IS) {
-              const cellH = Math.round((visualAreaH - gap) / 2);
-              drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, visualAreaW, cellH, gridRadius);
-              drawImageCover(ctx, validGridImages[1], PAD, visualAreaTop + cellH + gap, visualAreaW, cellH, gridRadius);
-            } else {
-              const cellW = Math.round((visualAreaW - gap) / 2);
-              drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, cellW, visualAreaH, gridRadius);
-              drawImageCover(ctx, validGridImages[1], PAD + cellW + gap, visualAreaTop, cellW, visualAreaH, gridRadius);
-            }
-          } else if (k === 3) {
-            const topH = Math.round(visualAreaH * 0.52);
-            const btmH = visualAreaH - topH - gap;
-            const btmW = Math.round((visualAreaW - gap) / 2);
-            drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, visualAreaW, topH, gridRadius);
-            drawImageCover(ctx, validGridImages[1], PAD, visualAreaTop + topH + gap, btmW, btmH, gridRadius);
-            drawImageCover(ctx, validGridImages[2], PAD + btmW + gap, visualAreaTop + topH + gap, btmW, btmH, gridRadius);
-          } else {
-            const cellW = Math.round((visualAreaW - gap) / 2);
-            const cellH = Math.round((visualAreaH - gap) / 2);
-            drawImageCover(ctx, validGridImages[0], PAD, visualAreaTop, cellW, cellH, gridRadius);
-            drawImageCover(ctx, validGridImages[1], PAD + cellW + gap, visualAreaTop, cellW, cellH, gridRadius);
-            drawImageCover(ctx, validGridImages[2], PAD, visualAreaTop + cellH + gap, cellW, cellH, gridRadius);
-            drawImageCover(ctx, validGridImages[3], PAD + cellW + gap, visualAreaTop + cellH + gap, cellW, cellH, gridRadius);
-          }
+        let photoCardX, photoCardY, photoCardW, photoCardH;
+        let planCardX, planCardY, planCardW, planCardH;
+
+        if (IS || isPortrait) {
+          // Vertical layout (Stories 9:16 & Portrait 4:5): Photo card on top, Plan card below
+          const photoFraction = IS ? 0.38 : 0.40;
+          photoCardW = visualAreaW;
+          photoCardH = Math.round((visualAreaH - gap) * photoFraction);
+          photoCardX = PAD;
+          photoCardY = visualAreaTop;
+
+          planCardW = visualAreaW;
+          planCardH = visualAreaH - photoCardH - gap;
+          planCardX = PAD;
+          planCardY = photoCardY + photoCardH + gap;
+        } else {
+          // Square layout (1:1): Side-by-side split
+          photoCardW = Math.round((visualAreaW - gap) * 0.46);
+          photoCardH = visualAreaH;
+          photoCardX = PAD;
+          photoCardY = visualAreaTop;
+
+          planCardW = visualAreaW - photoCardW - gap;
+          planCardH = visualAreaH;
+          planCardX = photoCardX + photoCardW + gap;
+          planCardY = visualAreaTop;
         }
 
-        // --- FLOATING FLOOR PLAN CARD ON TOP ---
-        const cardW = Math.round(IS ? visualAreaW * 0.88 : visualAreaW * 0.74);
-        const cardH = Math.round(IS ? visualAreaH * 0.62 : visualAreaH * 0.76);
-        const cardX = PAD + Math.round((visualAreaW - cardW) / 2);
-        const cardY = visualAreaTop + Math.round((visualAreaH - cardH) / 2);
-
+        // --- DRAW CARD 1: COMPLEX PHOTO(S) ---
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.48)';
-        ctx.shadowBlur = Math.round(34 * U);
-        ctx.shadowOffsetY = Math.round(12 * U);
-
-        ctx.fillStyle = isGlass ? 'rgba(255, 255, 255, 0.96)' : '#FFFFFF';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+        ctx.shadowBlur = Math.round(20 * U);
+        ctx.shadowOffsetY = Math.round(8 * U);
+        ctx.fillStyle = '#0F172A';
         ctx.beginPath();
-        safeRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(22 * U));
+        safeRoundRect(ctx, photoCardX, photoCardY, photoCardW, photoCardH, cardRadius);
+        ctx.fill();
+        ctx.restore();
+
+        // Clip and draw photo(s)
+        ctx.save();
+        ctx.beginPath();
+        safeRoundRect(ctx, photoCardX, photoCardY, photoCardW, photoCardH, cardRadius);
+        ctx.clip();
+
+        const heroImgs = composition === 'facade_hero'
+          ? (loadedFacade ? [loadedFacade] : validGridImages.slice(0, 1))
+          : validGridImages;
+        const count = heroImgs.length;
+
+        if (count === 1) {
+          drawImageCover(ctx, heroImgs[0], photoCardX, photoCardY, photoCardW, photoCardH);
+        } else if (count === 2) {
+          const halfW = Math.round((photoCardW - 4 * U) / 2);
+          drawImageCover(ctx, heroImgs[0], photoCardX, photoCardY, halfW, photoCardH);
+          drawImageCover(ctx, heroImgs[1], photoCardX + halfW + Math.round(4 * U), photoCardY, photoCardW - halfW - Math.round(4 * U), photoCardH);
+        } else if (count >= 3) {
+          const mainW = Math.round(photoCardW * 0.58);
+          const rightW = photoCardW - mainW - Math.round(4 * U);
+          const rightH = Math.round((photoCardH - 4 * U) / 2);
+          drawImageCover(ctx, heroImgs[0], photoCardX, photoCardY, mainW, photoCardH);
+          drawImageCover(ctx, heroImgs[1], photoCardX + mainW + Math.round(4 * U), photoCardY, rightW, rightH);
+          drawImageCover(ctx, heroImgs[2] || heroImgs[0], photoCardX + mainW + Math.round(4 * U), photoCardY + rightH + Math.round(4 * U), rightW, photoCardH - rightH - Math.round(4 * U));
+        } else if (loadedFacade) {
+          drawImageCover(ctx, loadedFacade, photoCardX, photoCardY, photoCardW, photoCardH);
+        } else {
+          ctx.fillStyle = '#1E293B';
+          ctx.fillRect(photoCardX, photoCardY, photoCardW, photoCardH);
+        }
+        ctx.restore();
+
+        // Stroke photo card
+        ctx.save();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = Math.round(2 * U);
+        ctx.beginPath();
+        safeRoundRect(ctx, photoCardX, photoCardY, photoCardW, photoCardH, cardRadius);
+        ctx.stroke();
+        ctx.restore();
+
+        // Badge on photo card
+        ctx.save();
+        const photoBadgeText = 'ФОТО ЖК';
+        ctx.font = `700 ${Math.round(12 * U)}px system-ui, sans-serif`;
+        const pbw = ctx.measureText(photoBadgeText).width + Math.round(18 * U);
+        const pbh = Math.round(24 * U);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.beginPath();
+        safeRoundRect(ctx, photoCardX + Math.round(12 * U), photoCardY + Math.round(12 * U), pbw, pbh, pbh / 2);
+        ctx.fill();
+        ctx.fillStyle = '#F8FAFC';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(photoBadgeText, photoCardX + Math.round(21 * U), photoCardY + Math.round(12 * U) + pbh / 2);
+        ctx.restore();
+
+        // --- DRAW CARD 2: FLOOR PLAN CARD ---
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
+        ctx.shadowBlur = Math.round(24 * U);
+        ctx.shadowOffsetY = Math.round(8 * U);
+
+        ctx.fillStyle = isGlass ? 'rgba(255, 255, 255, 0.98)' : '#FFFFFF';
+        ctx.beginPath();
+        safeRoundRect(ctx, planCardX, planCardY, planCardW, planCardH, cardRadius);
         ctx.fill();
 
         ctx.strokeStyle = isGlass ? 'rgba(255, 255, 255, 0.95)' : 'rgba(226, 232, 240, 0.9)';
@@ -786,32 +822,32 @@ export function DevelopmentBannerModal({
         ctx.restore();
 
         // Top Chip on Floorplan Card
-        const chipText = 'ПЛАНИРОВКА КВАРТИРЫ';
+        const chipText = 'ПЛАНИРОВКА';
         ctx.save();
-        ctx.font = `700 ${Math.round(14 * U)}px system-ui, sans-serif`;
-        const ctw = ctx.measureText(chipText).width + Math.round(24 * U);
-        const chipH = Math.round(28 * U);
-        const chipX = cardX + Math.round(14 * U);
-        const chipY = cardY + Math.round(14 * U);
+        ctx.font = `700 ${Math.round(13 * U)}px system-ui, sans-serif`;
+        const ctw = ctx.measureText(chipText).width + Math.round(20 * U);
+        const chipH = Math.round(26 * U);
+        const chipX = planCardX + Math.round(14 * U);
+        const chipY = planCardY + Math.round(12 * U);
 
-        ctx.fillStyle = isLight ? 'rgba(0, 82, 255, 0.12)' : 'rgba(15, 23, 42, 0.85)';
+        ctx.fillStyle = isLight ? 'rgba(0, 82, 255, 0.10)' : 'rgba(15, 23, 42, 0.85)';
         ctx.beginPath();
         safeRoundRect(ctx, chipX, chipY, ctw, chipH, chipH / 2);
         ctx.fill();
 
         ctx.fillStyle = isLight ? accentColor : '#60A5FA';
         ctx.textBaseline = 'middle';
-        ctx.fillText(chipText, chipX + Math.round(12 * U), chipY + chipH / 2);
+        ctx.fillText(chipText, chipX + Math.round(10 * U), chipY + chipH / 2);
         ctx.restore();
 
-        // Draw CAD Floorplan inside card
+        // Draw CAD Floorplan inside planCard
         if (cleanPlan) {
-          const innerPad = Math.round(18 * U);
-          const innerTop = chipY + chipH + Math.round(8 * U);
-          const innerX = cardX + innerPad;
+          const innerPad = Math.round(16 * U);
+          const innerTop = chipY + chipH + Math.round(6 * U);
+          const innerX = planCardX + innerPad;
           const innerY = innerTop;
-          const innerW = cardW - innerPad * 2;
-          const innerH = cardY + cardH - innerTop - innerPad;
+          const innerW = planCardW - innerPad * 2;
+          const innerH = planCardY + planCardH - innerTop - innerPad;
 
           const pr = (cleanPlan.width || 1) / (cleanPlan.height || 1);
           const cr = innerW / innerH;
@@ -830,17 +866,17 @@ export function DevelopmentBannerModal({
 
           ctx.save();
           ctx.beginPath();
-          safeRoundRect(ctx, innerX, innerY, innerW, innerH, Math.round(14 * U));
+          safeRoundRect(ctx, innerX, innerY, innerW, innerH, Math.round(10 * U));
           ctx.clip();
           ctx.drawImage(cleanPlan, dx, dy, dw, dh);
           ctx.restore();
         } else {
           ctx.save();
           ctx.fillStyle = '#64748B';
-          ctx.font = `500 ${Math.round(26 * U)}px system-ui, sans-serif`;
+          ctx.font = `500 ${Math.round(22 * U)}px system-ui, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('Планировка квартиры', cardX + cardW / 2, cardY + cardH / 2);
+          ctx.fillText('Планировка помещения', planCardX + planCardW / 2, planCardY + planCardH / 2);
           ctx.restore();
         }
       } else if (composition === 'plan_hero' || composition === 'plan_only') {
@@ -1163,8 +1199,8 @@ export function DevelopmentBannerModal({
         ctx.fillText(phone, w - PAD - Math.round(28 * U), footerY + Math.round(36 * U));
 
         ctx.font = `600 ${Math.round((IS ? 20 : 16) * U)}px system-ui, sans-serif`;
-        ctx.fillStyle = '#10B981';
-        ctx.fillText('0% комиссия · Звоните', w - PAD - Math.round(28 * U), footerY + Math.round(72 * U));
+        ctx.fillStyle = isLight ? '#059669' : '#34D399';
+        ctx.fillText('Звоните / Пишите', w - PAD - Math.round(28 * U), footerY + Math.round(72 * U));
         ctx.restore();
       }
     } finally {
@@ -2192,17 +2228,17 @@ export function DevelopmentBannerModal({
 
         /* Sidebar Controls */
         .dev-banner-sidebar {
-          padding: 20px 24px;
+          padding: 12px 14px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 14px;
+          gap: 8px;
         }
 
         .dev-banner-section {
           background: #f8fafc;
           border: 1px solid #e2e8f0;
-          border-radius: 12px;
+          border-radius: 8px;
           overflow: hidden;
         }
 
@@ -2212,15 +2248,16 @@ export function DevelopmentBannerModal({
         }
 
         .dev-banner-sec-head {
-          padding: 12px 16px;
+          padding: 8px 10px;
           display: flex;
           align-items: center;
           justify-content: space-between;
           cursor: pointer;
           user-select: none;
           font-weight: 700;
-          font-size: 14px;
+          font-size: 12px;
           color: #0f172a;
+          min-height: 34px;
         }
 
         .dark .dev-banner-sec-head {
@@ -2228,14 +2265,14 @@ export function DevelopmentBannerModal({
         }
 
         .dev-banner-sec-content {
-          padding: 0 16px 14px;
+          padding: 0 10px 8px;
           display: flex;
           flex-direction: column;
-          gap: 12px;
+          gap: 8px;
         }
 
         .dev-sec-hint {
-          font-size: 12px;
+          font-size: 11px;
           color: #64748b;
           margin: 0;
         }
@@ -2246,22 +2283,22 @@ export function DevelopmentBannerModal({
 
         /* Format Tabs */
         .dev-banner-format-tabs {
-          padding: 0 16px 14px;
+          padding: 0 10px 8px;
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          gap: 8px;
+          gap: 6px;
         }
 
         .btn-format-tab {
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding: 8px 10px;
-          border-radius: 8px;
+          padding: 6px 8px;
+          border-radius: 6px;
           border: 1px solid #cbd5e1;
           background: #ffffff;
           cursor: pointer;
-          font-size: 12px;
+          font-size: 11px;
           transition: all 0.15s;
         }
 
@@ -2296,13 +2333,13 @@ export function DevelopmentBannerModal({
         .dev-theme-tabs {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 6px;
+          gap: 5px;
         }
 
         .dev-composition-tabs {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 6px;
+          gap: 5px;
         }
 
         @media (max-width: 600px) {
@@ -2312,11 +2349,11 @@ export function DevelopmentBannerModal({
         }
 
         .btn-theme-tab, .btn-comp-tab {
-          padding: 7px 8px;
-          border-radius: 8px;
+          padding: 5px 6px;
+          border-radius: 6px;
           border: 1px solid #cbd5e1;
           background: #ffffff;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
           cursor: pointer;
           transition: all 0.15s;
@@ -2344,23 +2381,23 @@ export function DevelopmentBannerModal({
         .dev-color-row {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
         }
 
         .dev-color-label {
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
           color: #64748b;
         }
 
         .dev-color-dots {
           display: flex;
-          gap: 6px;
+          gap: 5px;
         }
 
         .btn-color-dot {
-          width: 22px;
-          height: 22px;
+          width: 20px;
+          height: 20px;
           border-radius: 50%;
           border: 2px solid transparent;
           cursor: pointer;
@@ -2368,7 +2405,7 @@ export function DevelopmentBannerModal({
         }
 
         .btn-color-dot.active {
-          transform: scale(1.2);
+          transform: scale(1.15);
           border-color: #ffffff;
           box-shadow: 0 0 0 2px #0052ff;
         }
@@ -2377,14 +2414,14 @@ export function DevelopmentBannerModal({
         .dev-field-grid {
           display: grid;
           grid-template-columns: repeat(2, 1fr);
-          gap: 10px;
+          gap: 8px;
         }
 
         .dev-field-label {
           display: flex;
           flex-direction: column;
-          gap: 4px;
-          font-size: 12px;
+          gap: 3px;
+          font-size: 11px;
           font-weight: 600;
           color: #475569;
         }
@@ -2394,10 +2431,16 @@ export function DevelopmentBannerModal({
         }
 
         .dev-input {
-          padding: 8px 10px;
-          border-radius: 8px;
+          padding: 5px 8px;
+          border-radius: 6px;
           border: 1px solid #cbd5e1;
-          font-size: 13px;
+          font-size: 12px;
+          height: 32px;
+          box-sizing: border-box;
+          background: #ffffff;
+          color: #0f172a;
+          outline: none;
+        }
           background: #ffffff;
           color: #0f172a;
           outline: none;

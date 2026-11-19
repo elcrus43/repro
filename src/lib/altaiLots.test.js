@@ -195,4 +195,23 @@ describe('altaiLots', () => {
       expect(stats.minPrice).toBe(6500000);
     });
   });
+
+  describe('normalizeAltaiLot plan and pantry handling', () => {
+    it('maps real plan image for Erdyakova 9 37.18 m2', async () => {
+      const { normalizeAltaiLot } = await import('../../api/_altai-lots.js');
+      const item = { flat_number: '12', rooms_type: '1k', area: 37.18, floor: 2, price: 4647500 };
+      const lot = normalizeAltaiLot(item, { projectName: 'Дом на Ердякова, 9' }, 'dom-na-erdyakova-9');
+      expect(lot.plan_image).toContain('https://altai-stroi.org/upload/iblock/');
+      expect(lot.plan_image).not.toContain('/plans/dom-na-erdyakova-9');
+    });
+
+    it('generates SVG cellar layout for pantry in Altai', async () => {
+      const { normalizeAltaiLot } = await import('../../api/_altai-lots.js');
+      const item = { flat_number: 'К-1', rooms_type: 'pantry', area: 5.2, floor: -1, price: 260000 };
+      const lot = normalizeAltaiLot(item, { projectName: 'Дом на Ердякова, 9' }, 'dom-na-erdyakova-9');
+      expect(lot.rooms_type).toBe('pantry');
+      expect(lot.rooms_label).toBe('Кладовая');
+      expect(lot.plan_image).toMatch(/^data:image\/svg\+xml/);
+    });
+  });
 });

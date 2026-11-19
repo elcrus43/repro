@@ -10,12 +10,60 @@
 import {
   normalizeRoomsType,
   formatRoomsLabel,
+  getPantryPlanSvgDataUri,
   authenticateLotsRequest,
   createLotsRepository,
 } from './_lots-shared.js';
 import { STROYSOYUZ_PRICELIST_DATASET } from './_stroysoyuz-dataset.js';
 
 export { normalizeRoomsType, STROYSOYUZ_PRICELIST_DATASET };
+
+export const HOLMS_PLANS_BY_AREA = {
+  '46.97': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et4697.png',
+  '47.22': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et4729.png',
+  '47.29': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et4729.png',
+  '57.12': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et5712.png',
+  '60.55': 'https://holms.stroy-soyuz.ru/upload/Plan/2-et6055.png',
+  '60.56': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et6056-2.png',
+  '69.61': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et6969.png',
+  '69.69': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et6969.png',
+  '69.82': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et6982.png',
+  '70.5': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et7050.png',
+  '70.50': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et7050.png',
+  '71.74': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et7174.png',
+  '72.73': 'https://holms.stroy-soyuz.ru/upload/Plan/2-et7273.png',
+  '78.5': 'https://holms.stroy-soyuz.ru/upload/Plan/2-et7850.png',
+  '78.50': 'https://holms.stroy-soyuz.ru/upload/Plan/2-et7850.png',
+  '78.63': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et7863.png',
+  '79.5': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et7950.png',
+  '79.50': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et7950.png',
+  '80.9': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et8090.png',
+  '80.90': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et8090.png',
+  '84.85': 'https://holms.stroy-soyuz.ru/upload/Plan/2-et8485.png',
+  '91.7': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et9770.png',
+  '91.70': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et9770.png',
+  '93.68': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et9368.png',
+  '99.02': 'https://holms.stroy-soyuz.ru/upload/Plan/2-et9902.png',
+  '101.62': 'https://holms.stroy-soyuz.ru/upload/Plan/1-et10162.png',
+  '102.29': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et9874.png',
+  '106.19': 'https://holms.stroy-soyuz.ru/upload/Plan/5-et10619.png',
+};
+
+function findClosestHolmsPlan(targetArea = 0) {
+  if (!targetArea) return null;
+  const entries = Object.entries(HOLMS_PLANS_BY_AREA);
+  let closestImg = null;
+  let minDiff = Number.POSITIVE_INFINITY;
+  for (const [areaStr, img] of entries) {
+    const a = parseFloat(areaStr);
+    const diff = Math.abs(a - targetArea);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestImg = img;
+    }
+  }
+  return minDiff <= 5 ? closestImg : null;
+}
 
 export const config = {
   maxDuration: 60,
@@ -132,8 +180,18 @@ export function normalizeStroysoyuzLot(item = {}, projectSpec = {}, projectSlug 
   const completionDate = item.completion_date || projectSpec.completionDate || '';
 
   const rawRooms = Number(item.rooms);
+  const isPantry =
+    item.lot_type === 'storage' ||
+    item.room_type === 'pantry' ||
+    item.rooms_type === 'pantry' ||
+    /кладов|келлер|подсобн|хранилищ/i.test(String(item.flat_number || item.section || '')) ||
+    (rawRooms === 0 && (!areaM2 || areaM2 <= 16)) ||
+    (areaM2 && areaM2 <= 16 && item.lot_type !== 'flat');
+
   let roomType = item.room_type;
-  if (!roomType) {
+  if (isPantry) {
+    roomType = 'pantry';
+  } else if (!roomType) {
     if (rawRooms === 0 || (areaM2 && areaM2 <= 28)) {
       roomType = 'studio';
     } else if (rawRooms >= 4) {
@@ -143,9 +201,14 @@ export function normalizeStroysoyuzLot(item = {}, projectSpec = {}, projectSlug 
     }
   }
 
-  const roomsType = roomType === 'studio' ? 'studio' : (normalizeRoomsType(roomType) || `${rawRooms || 1}k`);
-  const roomsLabel = item.lot_type === 'commercial' ? 'Коммерческое помещение'
-    : item.lot_type === 'storage' ? 'Кладовая'
+  const roomsType =
+    isPantry ? 'pantry'
+    : roomType === 'studio' ? 'studio'
+    : (normalizeRoomsType(roomType) || `${rawRooms || 1}k`);
+
+  const roomsLabel =
+    item.lot_type === 'commercial' ? 'Коммерческое помещение'
+    : (isPantry || item.lot_type === 'storage') ? 'Кладовая'
     : item.lot_type === 'parking' ? 'Машино-место'
     : formatRoomsLabel(roomsType);
 
@@ -171,7 +234,20 @@ export function normalizeStroysoyuzLot(item = {}, projectSpec = {}, projectSlug 
   if (floor !== null) titleParts.push(`${floor} эт.`);
   const title = titleParts.join(', ');
 
-  const planImage = item.plan_image || null;
+  let planImage = item.plan_image || null;
+  if (!planImage) {
+    if (isPantry) {
+      planImage = getPantryPlanSvgDataUri(areaM2, 'Кладовая');
+    } else if (projectSlug === 'zhk-kholms' && areaM2) {
+      const areaKey = areaM2.toFixed(2);
+      const areaKeySimple = String(areaM2);
+      planImage =
+        HOLMS_PLANS_BY_AREA[areaKey] ||
+        HOLMS_PLANS_BY_AREA[areaKeySimple] ||
+        findClosestHolmsPlan(areaM2) ||
+        null;
+    }
+  }
   const lotUrl = item.lot_url || STROYSOYUZ_BASE_URL;
 
   return {

@@ -53,11 +53,12 @@ export function extractAttrFromTag(tagHtml, attrName) {
 /**
  * Нормализует описание комнатности в канонический ключ фильтра.
  * @param {string} text
- * @returns {'studio' | '1k' | '2k' | '3k' | '4k' | null}
+ * @returns {'studio' | '1k' | '2k' | '3k' | '4k' | 'pantry' | null}
  */
 export function normalizeRoomsType(text) {
   const s = cleanText(text).toLowerCase();
   if (!s) return null;
+  if (/кладов|келлер|колясочн|подсобн|хранилищ|pantry|storage|cellar/i.test(s)) return 'pantry';
   if (/студи/i.test(s) || /studio/i.test(s) || s === 'с' || s === 'ст') return 'studio';
 
   const digitMatch =
@@ -65,6 +66,7 @@ export function normalizeRoomsType(text) {
     s.match(/евро[-\s]*(\d+)/i);
   if (digitMatch) {
     const num = parseInt(digitMatch[1], 10);
+    if (num === 0) return 'pantry';
     if (num === 1) return '1k';
     if (num === 2) return '2k';
     if (num === 3) return '3k';
@@ -77,6 +79,7 @@ export function normalizeRoomsType(text) {
   if (/четыр[её]хкомнат|многокомнат/.test(s)) return '4k';
   if (/^\d+$/.test(s)) {
     const num = parseInt(s, 10);
+    if (num === 0) return 'pantry';
     if (num === 1) return '1k';
     if (num === 2) return '2k';
     if (num === 3) return '3k';
@@ -86,12 +89,55 @@ export function normalizeRoomsType(text) {
 }
 
 export function formatRoomsLabel(roomsType) {
+  if (roomsType === 'pantry') return 'Кладовая';
   if (roomsType === 'studio') return 'Студия';
   if (roomsType === '1k') return '1-комнатная';
   if (roomsType === '2k') return '2-комнатная';
   if (roomsType === '3k') return '3-комнатная';
   if (roomsType === '4k') return '4-комнатная';
   return 'Квартира';
+}
+
+/**
+ * Генерирует универсальную чертёжную SVG-схему для кладовки/келлера.
+ * @param {number|string} area
+ * @param {string} [title]
+ * @returns {string} Data URI (image/svg+xml)
+ */
+export function getPantryPlanSvgDataUri(area = null, title = 'Кладовая') {
+  const areaText = area ? `${area} м²` : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  <defs>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="0.8"/>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <rect width="100%" height="100%" fill="url(#grid)"/>
+  
+  <!-- Стены помещения -->
+  <rect x="70" y="70" width="360" height="360" fill="#f8fafc" stroke="#1e293b" stroke-width="8" rx="4"/>
+  
+  <!-- Металлические стеллажи по стенам -->
+  <rect x="80" y="80" width="340" height="45" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2" stroke-dasharray="4,2"/>
+  <rect x="80" y="125" width="45" height="240" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2" stroke-dasharray="4,2"/>
+  <rect x="375" y="125" width="45" height="240" fill="#e0e7ff" stroke="#4f46e5" stroke-width="2" stroke-dasharray="4,2"/>
+  
+  <!-- Дверной проём и открывание двери -->
+  <rect x="190" y="422" width="120" height="16" fill="#ffffff"/>
+  <path d="M 190 430 A 110 110 0 0 1 300 320" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="190" y1="430" x2="300" y2="430" stroke="#0ea5e9" stroke-width="3"/>
+  <circle cx="190" cy="430" r="4" fill="#0ea5e9"/>
+  
+  <!-- Подписи и размеры -->
+  <text x="250" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" fill="#0f172a" text-anchor="middle">${title}</text>
+  ${areaText ? `<text x="250" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="800" fill="#2563eb" text-anchor="middle">${areaText}</text>` : ''}
+  <text x="250" y="305" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="500" fill="#64748b" text-anchor="middle">Зона хранения / Стеллажи</text>
+  
+  <!-- Размеры на чертеже -->
+  <text x="250" y="55" font-family="monospace" font-size="12" fill="#64748b" text-anchor="middle">← План хозяйственного помещения →</text>
+</svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 export function formatLotRow(row) {

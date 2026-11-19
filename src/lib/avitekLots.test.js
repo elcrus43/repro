@@ -195,4 +195,26 @@ describe('avitekLots', () => {
       expect(stats.minPrice).toBe(3000000);
     });
   });
+
+  describe('normalizeAvitekLot cellar/pantry handling', () => {
+    it('normalizes 8.4 m2 storeroom with type=storeroom as pantry and generates plan', async () => {
+      const { normalizeAvitekLot } = await import('../../api/_avitek-lots.js');
+      const item = {
+        apartament_id: 5992,
+        number: 9,
+        floor: 'Подвал',
+        area: 8.4,
+        rooms: 0,
+        price: 674520,
+        type: 'storeroom',
+        status: 1,
+      };
+      const lot = normalizeAvitekLot(item, { id: 88, projectName: 'Дом на ул. Советская, 75' }, 'dom-na-ul-sovestkaya-75');
+      expect(lot.rooms_type).toBe('pantry');
+      expect(lot.rooms_label).toBe('Кладовая');
+      expect(lot.plan_image).toMatch(/^data:image\/svg\+xml/);
+      expect(lot.title).toContain('Кладовая');
+      expect(lot.title).toContain('8.4 м²');
+    });
+  });
 });

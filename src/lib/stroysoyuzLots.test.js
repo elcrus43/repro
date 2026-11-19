@@ -184,4 +184,32 @@ describe('stroysoyuzLots', () => {
       );
     });
   });
+
+  describe('normalizeStroysoyuzLot plan and pantry handling', () => {
+    it('maps real plan image for Holms apartment 46.97 m2', async () => {
+      const { normalizeStroysoyuzLot } = await import('../../api/_stroysoyuz-lots.js');
+      const item = { flat_number: '5', rooms: 2, area_m2: 46.97, floor: 2, price_total: 12000000, lot_type: 'flat' };
+      const lot = normalizeStroysoyuzLot(item, { projectName: 'ЖК Холмс' }, 'zhk-kholms');
+      expect(lot.plan_image).toBe('https://holms.stroy-soyuz.ru/upload/Plan/5-et4697.png');
+    });
+
+    it('identifies storage lot as pantry and assigns SVG blueprint', async () => {
+      const { normalizeStroysoyuzLot } = await import('../../api/_stroysoyuz-lots.js');
+      const item = {
+        flat_number: 'К1 (паркинг)',
+        lot_type: 'storage',
+        section: '1 подъезд',
+        floor: -1,
+        area_m2: 3.23,
+        rooms: 0,
+        price_total: 646000,
+      };
+      const lot = normalizeStroysoyuzLot(item, { projectName: 'ЖК Холмс' }, 'zhk-kholms');
+      expect(lot.rooms_type).toBe('pantry');
+      expect(lot.rooms_label).toBe('Кладовая');
+      expect(lot.plan_image).toMatch(/^data:image\/svg\+xml/);
+      expect(lot.title).toContain('Кладовая');
+      expect(lot.title).toContain('3.23 м²');
+    });
+  });
 });

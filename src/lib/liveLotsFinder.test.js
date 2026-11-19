@@ -7,6 +7,8 @@ import {
   findActiveBuyerRequestForClient,
   requestToFinderFilters,
   parseMaxFloor,
+  formatRoomsLabel,
+  ROOM_FILTER_OPTIONS,
   PROVIDER_META,
 } from './liveLotsFinder';
 
@@ -759,6 +761,27 @@ describe('liveLotsFinder', () => {
         notLastFloor: false,
         districts: ['Ленинский район'],
       });
+    });
+  });
+
+  describe('Pantry and storage lots support', () => {
+    it('includes pantry in ROOM_FILTER_OPTIONS and formats label as Кладовая', () => {
+      const pantryOption = ROOM_FILTER_OPTIONS.find((r) => r.id === 'pantry');
+      expect(pantryOption).toBeDefined();
+      expect(pantryOption?.label).toBe('Кладовка');
+      expect(pantryOption?.short).toBe('Кл');
+      expect(formatRoomsLabel('pantry')).toBe('Кладовая');
+    });
+
+    it('filters lots by pantry roomType in filterFinderLots', () => {
+      const lots = [
+        { id: 'apt-1', rooms_type: 'studio', price: 2500000 },
+        { id: 'apt-2', rooms_type: '1k', price: 3500000 },
+        { id: 'pantry-1', rooms_type: 'pantry', price: 650000 },
+      ];
+      const filtered = filterFinderLots(lots, { roomTypes: ['pantry'] });
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].id).toBe('pantry-1');
     });
   });
 });

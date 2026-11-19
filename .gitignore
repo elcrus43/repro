@@ -91,6 +91,8 @@ FIX_ADMIN_ROLE.sql
 .notes/test.*
 
 scratch/
+.make-feature/
+code_exec/
 deploy-edge-function.mjs
 generate_recovery_link.mjs
 run-migration-045.mjs

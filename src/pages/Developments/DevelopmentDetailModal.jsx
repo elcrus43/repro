@@ -46,6 +46,7 @@ const KSM_ROOM_FILTERS = [
   { id: '2k', label: '2к' },
   { id: '3k', label: '3к' },
   { id: '4k', label: '4к+' },
+  { id: 'pantry', label: 'Кл' },
 ];
 
 export function DevelopmentDetailModal({

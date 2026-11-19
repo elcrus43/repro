@@ -10,6 +10,7 @@
 import {
   normalizeRoomsType,
   formatRoomsLabel,
+  getPantryPlanSvgDataUri,
   authenticateLotsRequest,
   createLotsRepository,
 } from './_lots-shared.js';
@@ -129,6 +130,122 @@ export const ALTAI_PRICELIST_DATASET = {
   ],
 };
 
+export const ALTAI_PLANS_BY_PROJECT_AND_AREA = {
+  'dom-na-erdyakova-9': {
+    '37.18': 'https://altai-stroi.org/upload/iblock/269/7p7idtte7j9kmhb96vlljn7378s10wv9.png',
+    '37.69': 'https://altai-stroi.org/upload/iblock/4c5/vsvzg213zakppv70rowy6fd4ue5j5lv6.png',
+    '38.55': 'https://altai-stroi.org/upload/iblock/162/niezd4f3cblyb274y12t2lt4gd0zmdok.png',
+    '40.55': 'https://altai-stroi.org/upload/iblock/758/f6tyj8dlsk9se6yhp9a64k953p3t73t4.png',
+    '41.01': 'https://altai-stroi.org/upload/iblock/2d3/2z03xr2a1knuo0lkco0ddwdq4nheys4c.png',
+    '50.08': 'https://altai-stroi.org/upload/iblock/39c/ajpv3y0h8hj5g1eml6zmnh4jkjaq6qcz.png',
+    '50.70': 'https://altai-stroi.org/upload/iblock/bd8/gym2om9shxufddpsh6lnrlswm7b4fbvf.png',
+    '50.7': 'https://altai-stroi.org/upload/iblock/bd8/gym2om9shxufddpsh6lnrlswm7b4fbvf.png',
+    '55.09': 'https://altai-stroi.org/upload/iblock/6af/ni63kj2ih6birgsq4uf0b6u9fge0or56.png',
+    '55.55': 'https://altai-stroi.org/upload/iblock/433/5wch7ii01b4v41z6afn8nkrikauyx0dl.png',
+    '57.47': 'https://altai-stroi.org/upload/iblock/20a/z1b435m7i6rx81hr2rj5h0ibk05emlpn.png',
+    '57.92': 'https://altai-stroi.org/upload/iblock/66f/g9aozy11of1djnjwfyx0ekfzhmkkbjct.png',
+    '58.39': 'https://altai-stroi.org/upload/iblock/d54/vhbnrqcvipxt1fmeelql8g7i0mjs2cin.png',
+    '68.68': 'https://altai-stroi.org/upload/iblock/f2e/w0gcjkaomwpbyxsm1h5n0ii2jyq24j3p.png',
+    '69.21': 'https://altai-stroi.org/upload/iblock/6d3/gz4rs96jeph4fburt5enuvb890lb2i4p.png',
+  },
+  'zhk-dinastiya': {
+    '32': 'https://altai-stroi.org/upload/iblock/28a/91itagaphmjonc257xlfj3tloq7kvgk0.png',
+    '35': 'https://altai-stroi.org/upload/iblock/099/ghyn8vt5vbs3fb409npm0zkkin05q1sk.png',
+    '35.23': 'https://altai-stroi.org/upload/iblock/94f/44vkb3th2rap3qxx2q9bh54nhzwt2acb.png',
+    '35.93': 'https://altai-stroi.org/upload/iblock/09d/2g488mrviwi0jvykqxbhmu4xe7ncb9gx.png',
+    '37': 'https://altai-stroi.org/upload/iblock/d0c/bo831bltevhhp3jjl5ofh8qoq2l6epq8.png',
+    '37.22': 'https://altai-stroi.org/upload/iblock/6e2/qek98dba8ba3os3dy9diceq5miwqb08y.png',
+    '37.75': 'https://altai-stroi.org/upload/iblock/650/jt7aq8s1zrb5wvlzz1svgqle9qwtgwxh.png',
+    '39': 'https://altai-stroi.org/upload/iblock/e28/gh7og7r4xueburpgzq9rfbytes0goaoo.png',
+    '39.47': 'https://altai-stroi.org/upload/iblock/92d/ofo0m3cdylcwlua42m8o3a7fzxspkrkt.png',
+    '39.58': 'https://altai-stroi.org/upload/iblock/bcf/5ey4n02dv5rsieg9ohkqht95n0ldbuxb.png',
+    '39.59': 'https://altai-stroi.org/upload/iblock/4b1/9rkg57uk8q9iqjiaw0fenkexmtt4dggq.png',
+    '40': 'https://altai-stroi.org/upload/iblock/298/uypgt3sgruh060lijjomwtg1mi4i89yo.png',
+    '41.80': 'https://altai-stroi.org/upload/iblock/f49/4v32xwl4dv3ft31aeqzw9zmewol8pkf1.png',
+    '41.8': 'https://altai-stroi.org/upload/iblock/f49/4v32xwl4dv3ft31aeqzw9zmewol8pkf1.png',
+    '42.1': 'https://altai-stroi.org/upload/iblock/f49/4v32xwl4dv3ft31aeqzw9zmewol8pkf1.png',
+    '42.50': 'https://altai-stroi.org/upload/iblock/6fd/a91stl4lyzlnjuqzg42kj3g5jex5uw6a.png',
+    '42.5': 'https://altai-stroi.org/upload/iblock/6fd/a91stl4lyzlnjuqzg42kj3g5jex5uw6a.png',
+    '43.93': 'https://altai-stroi.org/upload/iblock/6fd/a91stl4lyzlnjuqzg42kj3g5jex5uw6a.png',
+    '44.31': 'https://altai-stroi.org/upload/iblock/ba2/x1egztymi8b90y36h1cclc3svfvym30d.png',
+    '45.20': 'https://altai-stroi.org/upload/iblock/ba2/x1egztymi8b90y36h1cclc3svfvym30d.png',
+    '45.2': 'https://altai-stroi.org/upload/iblock/ba2/x1egztymi8b90y36h1cclc3svfvym30d.png',
+    '46.10': 'https://altai-stroi.org/upload/iblock/1b0/3qa1r5yzl370nzv5e1d2e1knuy1fyisf.png',
+    '46.1': 'https://altai-stroi.org/upload/iblock/1b0/3qa1r5yzl370nzv5e1d2e1knuy1fyisf.png',
+    '47.26': 'https://altai-stroi.org/upload/iblock/1b0/3qa1r5yzl370nzv5e1d2e1knuy1fyisf.png',
+    '48.80': 'https://altai-stroi.org/upload/iblock/0d3/tjkn225wdq0t0z7tlcnlcqj6hvhcfhj7.png',
+    '48.8': 'https://altai-stroi.org/upload/iblock/0d3/tjkn225wdq0t0z7tlcnlcqj6hvhcfhj7.png',
+    '50': 'https://altai-stroi.org/upload/iblock/0d3/tjkn225wdq0t0z7tlcnlcqj6hvhcfhj7.png',
+    '51.66': 'https://altai-stroi.org/upload/iblock/492/oiwx1l4plhedbd1p76th1et08xldrm01.png',
+    '54.45': 'https://altai-stroi.org/upload/iblock/6e9/1j3p2zrl1ewd05i0z0j4l1zbacbkg0ds.png',
+    '59': 'https://altai-stroi.org/upload/iblock/26e/fc09sqb50pta4904gtpq2kbig7zf3yax.png',
+    '59.91': 'https://altai-stroi.org/upload/iblock/321/gy413ioihjw7qp7q519edxb1os7sfq2n.png',
+    '60.76': 'https://altai-stroi.org/upload/iblock/605/gh37ql6p4crdja48mjsqq6u61phtmluy.png',
+    '60.92': 'https://altai-stroi.org/upload/iblock/d31/ckmgtlcuurfdmw4binrcr3x3c95goh0q.png',
+    '61.02': 'https://altai-stroi.org/upload/iblock/0a5/5u7k7acqwu2sc3ywawal7fi32ipaoard.png',
+    '61.18': 'https://altai-stroi.org/upload/iblock/1ac/9217q9185ix8ivoku5awceike3njj18k.png',
+    '61.96': 'https://altai-stroi.org/upload/iblock/e3c/ym0oezva7x04iryvhct1tq1si6eo8mj4.png',
+    '62.30': 'https://altai-stroi.org/upload/iblock/c52/r1ktqydw04p1xrfjixac1o5xbjxevnrk.png',
+    '62.3': 'https://altai-stroi.org/upload/iblock/c52/r1ktqydw04p1xrfjixac1o5xbjxevnrk.png',
+    '62.76': 'https://altai-stroi.org/upload/iblock/c52/r1ktqydw04p1xrfjixac1o5xbjxevnrk.png',
+    '63.91': 'https://altai-stroi.org/upload/iblock/000/wxb8y9fl4xtvsrqnvymiw4ppv2v45hn9.png',
+    '64.20': 'https://altai-stroi.org/upload/iblock/000/wxb8y9fl4xtvsrqnvymiw4ppv2v45hn9.png',
+    '64.2': 'https://altai-stroi.org/upload/iblock/000/wxb8y9fl4xtvsrqnvymiw4ppv2v45hn9.png',
+    '68.50': 'https://altai-stroi.org/upload/iblock/22f/tkcaf0k1n0xshset2bc828mtloag69zo.png',
+    '68.5': 'https://altai-stroi.org/upload/iblock/22f/tkcaf0k1n0xshset2bc828mtloag69zo.png',
+    '70.10': 'https://altai-stroi.org/upload/iblock/13d/788xtxaqe9yaj9eelcuv9yaa2nujpo03.png',
+    '70.1': 'https://altai-stroi.org/upload/iblock/13d/788xtxaqe9yaj9eelcuv9yaa2nujpo03.png',
+    '72.40': 'https://altai-stroi.org/upload/iblock/ee6/e3hjnf4oqoo0bzwvt3fyzaqrp9e2ite7.png',
+    '72.4': 'https://altai-stroi.org/upload/iblock/ee6/e3hjnf4oqoo0bzwvt3fyzaqrp9e2ite7.png',
+    '73': 'https://altai-stroi.org/upload/iblock/22f/tkcaf0k1n0xshset2bc828mtloag69zo.png',
+    '74': 'https://altai-stroi.org/upload/iblock/13d/788xtxaqe9yaj9eelcuv9yaa2nujpo03.png',
+    '74.52': 'https://altai-stroi.org/upload/iblock/798/qjc1dymxxo8rlug9woyqahhbmehgrknt.png',
+    '74.86': 'https://altai-stroi.org/upload/iblock/f6e/hnriex9qbok0znaljza36smxbd4s5ltb.png',
+    '76': 'https://altai-stroi.org/upload/iblock/ee6/e3hjnf4oqoo0bzwvt3fyzaqrp9e2ite7.png',
+    '76.09': 'https://altai-stroi.org/upload/iblock/68c/yw09qx275u10gbtpb0zmbzeao0cbw24w.png',
+    '76.7': 'https://altai-stroi.org/upload/iblock/508/soaciv5sun15t68c9jko7zn8s1q49m63.png',
+    '78.90': 'https://altai-stroi.org/upload/iblock/508/soaciv5sun15t68c9jko7zn8s1q49m63.png',
+    '78.9': 'https://altai-stroi.org/upload/iblock/508/soaciv5sun15t68c9jko7zn8s1q49m63.png',
+    '81.40': 'https://altai-stroi.org/upload/iblock/508/soaciv5sun15t68c9jko7zn8s1q49m63.png',
+    '81.4': 'https://altai-stroi.org/upload/iblock/508/soaciv5sun15t68c9jko7zn8s1q49m63.png',
+    '85.60': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '85.6': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '92.10': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '92.1': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '94.17': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '94.50': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '94.5': 'https://altai-stroi.org/upload/iblock/7c5/dlj8po827bznf05269v73du3aztokyui.png',
+    '112.40': 'https://altai-stroi.org/upload/iblock/e92/v3lsafk9ogmv80gj41w8dmaegho49fw4.png',
+    '112.4': 'https://altai-stroi.org/upload/iblock/e92/v3lsafk9ogmv80gj41w8dmaegho49fw4.png',
+    '118.50': 'https://altai-stroi.org/upload/iblock/119/43a/vkubkte6xhqnx0k0k93fm6mcqcwl1fr0.png',
+    '118.5': 'https://altai-stroi.org/upload/iblock/43a/vkubkte6xhqnx0k0k93fm6mcqcwl1fr0.png',
+    '119.06': 'https://altai-stroi.org/upload/iblock/43a/vkubkte6xhqnx0k0k93fm6mcqcwl1fr0.png',
+    '119.13': 'https://altai-stroi.org/upload/iblock/e92/v3lsafk9ogmv80gj41w8dmaegho49fw4.png',
+    '126.80': 'https://altai-stroi.org/upload/iblock/698/ec1ygm9uvt9fh58sjvsrfa1vf442m9xb.png',
+    '126.8': 'https://altai-stroi.org/upload/iblock/698/ec1ygm9uvt9fh58sjvsrfa1vf442m9xb.png',
+    '128.01': 'https://altai-stroi.org/upload/iblock/698/ec1ygm9uvt9fh58sjvsrfa1vf442m9xb.png',
+    '131.67': 'https://altai-stroi.org/upload/iblock/c51/osc8yw4aol2uwn34j7ndtqfos8fs5lh2.png',
+  },
+};
+
+function findClosestAltaiPlan(projectPlans = {}, targetArea = 0) {
+  if (!targetArea || !projectPlans) return null;
+  const entries = Object.entries(projectPlans);
+  if (!entries.length) return null;
+  let closestImg = null;
+  let minDiff = Number.POSITIVE_INFINITY;
+  for (const [areaStr, img] of entries) {
+    const a = parseFloat(areaStr);
+    if (!Number.isFinite(a)) continue;
+    const diff = Math.abs(a - targetArea);
+    if (diff < minDiff) {
+      minDiff = diff;
+      closestImg = img;
+    }
+  }
+  return minDiff <= 6 ? closestImg : (entries[0]?.[1] || null);
+}
+
 /**
  * Преобразует элемент прайслиста Алтай-Строй в нормализованный объект лота.
  * @param {object} item
@@ -137,7 +254,13 @@ export const ALTAI_PRICELIST_DATASET = {
  * @returns {object}
  */
 export function normalizeAltaiLot(item = {}, projectSpec = {}, projectSlug = '') {
-  const roomsType = item.rooms_type || normalizeRoomsType(item.rooms) || '1k';
+  const isPantry =
+    item.lot_type === 'storage' ||
+    item.rooms_type === 'pantry' ||
+    (Number(item.area) && Number(item.area) <= 16) ||
+    /кладов|келлер|подсобн|хранилищ/i.test(String(item.title || item.rooms_label || ''));
+
+  const roomsType = isPantry ? 'pantry' : (item.rooms_type || normalizeRoomsType(item.rooms) || '1k');
   const roomsLabel = formatRoomsLabel(roomsType);
   const area = Number(item.area) || null;
   const floor = Number(item.floor) || null;
@@ -159,7 +282,22 @@ export function normalizeAltaiLot(item = {}, projectSpec = {}, projectSlug = '')
     ? `${projectSpec.address} (${item.section})`
     : (projectSpec.address || null);
 
-  const planImage = item.plan_image || `${ALTAI_BASE_URL}/plans/${projectSlug}-${roomsType}.png`;
+  let planImage = item.plan_image || null;
+  if (!planImage) {
+    if (roomsType === 'pantry' || (area && area <= 16)) {
+      planImage = getPantryPlanSvgDataUri(area, 'Кладовая');
+    } else {
+      const projectPlans = ALTAI_PLANS_BY_PROJECT_AND_AREA[projectSlug] || {};
+      const areaKey = area ? area.toFixed(2) : '';
+      const areaKeySimple = area ? String(area) : '';
+      planImage =
+        projectPlans[areaKey] ||
+        projectPlans[areaKeySimple] ||
+        findClosestAltaiPlan(projectPlans, area) ||
+        null;
+    }
+  }
+
   const lotUrl = `${ALTAI_BASE_URL}/objects/${projectSlug}/flat-${flatNumber || id}`;
 
   return {

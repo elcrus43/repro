@@ -24,6 +24,23 @@ import { nanoid } from '../utils/nanoid';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+const ROOM_FALLBACK_PHOTOS = {
+  0: 'https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/8adcc3a123fba1b59edd563bf8b7cd156b757d4e.jpg',
+  1: 'https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/74d49dd475c6b09c3d66e56c268f58d661be02ac.jpg',
+  2: 'https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/ffc5c71c6abc1e2c9bbc17112bff4d31ac2da238.jpg',
+  3: 'https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/a671f9897579c8f3a2faa251adb65f70f755bd26.jpg',
+  4: 'https://storage.yandexcloud.net/zhelezno-media/media/p/ps/i/be0b0b51c6ec9ebb35bc169f5c9a27a35c9bf3fb.jpg',
+  default: '/images/developments/zhk-bulychev.jpg',
+};
+
+function getListingPhoto(item) {
+  if (item.image_url && typeof item.image_url === 'string' && (item.image_url.startsWith('http') || item.image_url.startsWith('/'))) {
+    return item.image_url;
+  }
+  const rooms = item.rooms ?? 1;
+  return ROOM_FALLBACK_PHOTOS[rooms] || ROOM_FALLBACK_PHOTOS.default;
+}
+
 function sourceIcon(source) {
   const icons = { avito: '🔵', cian: '🔴', domclick: '🟢', yandex: '🟡', m2: '🟠' };
   return icons[source] || '🌐';
@@ -110,6 +127,8 @@ function matchMyProperties(properties, request, deals, currentUser) {
 function LiveResultCard({ item, onAddToSelection, isInSelection }) {
   const color = getSourceColor(item.source);
   const label = getSourceLabel(item.source);
+  const initialPhoto = getListingPhoto(item);
+  const [photoSrc, setPhotoSrc] = useState(initialPhoto);
 
   return (
     <div style={{
@@ -124,22 +143,36 @@ function LiveResultCard({ item, onAddToSelection, isInSelection }) {
     }}>
       {/* Top row */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {item.image_url ? (
+        <div style={{ position: 'relative', width: 70, height: 70, flexShrink: 0 }}>
           <img
-            src={item.image_url}
+            src={photoSrc}
             alt={item.title || ''}
             loading="lazy"
-            style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }}
+            onError={() => {
+              const fallback = ROOM_FALLBACK_PHOTOS[item.rooms ?? 1] || ROOM_FALLBACK_PHOTOS.default;
+              if (photoSrc !== fallback) {
+                setPhotoSrc(fallback);
+              }
+            }}
+            style={{
+              width: '100%',
+              height: '100%',
+              borderRadius: 14,
+              objectFit: 'cover',
+              border: '1px solid var(--border-light)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+            }}
           />
-        ) : (
-          <div style={{
-            width: 60, height: 60, borderRadius: 14, background: 'var(--bg-light)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 24, flexShrink: 0,
+          <span style={{
+            position: 'absolute',
+            bottom: -3,
+            right: -3,
+            fontSize: 13,
+            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))',
           }}>
             {sourceIcon(item.source)}
-          </div>
-        )}
+          </span>
+        </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Source badge */}
           <span style={{
@@ -222,7 +255,9 @@ function LiveResultCard({ item, onAddToSelection, isInSelection }) {
 
 function MyPropertyCard({ prop, onAddToSelection, isInSelection }) {
   const navigate = useNavigate();
-  const img = prop.images?.[0] || prop.image_url || null;
+  const defaultPhoto = ROOM_FALLBACK_PHOTOS[prop.rooms ?? 1] || ROOM_FALLBACK_PHOTOS.default;
+  const initialImg = prop.images?.[0] || prop.image_url || defaultPhoto;
+  const [photoSrc, setPhotoSrc] = useState(initialImg);
 
   return (
     <div
@@ -238,17 +273,20 @@ function MyPropertyCard({ prop, onAddToSelection, isInSelection }) {
       }}
     >
       <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-        {img ? (
-          <img src={img} alt={prop.address || ''} loading="lazy"
-            style={{ width: 60, height: 60, borderRadius: 14, objectFit: 'cover', flexShrink: 0 }} />
-        ) : (
-          <div style={{
-            width: 60, height: 60, borderRadius: 14, background: 'var(--bg-light)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', flexShrink: 0,
-          }}>
-            <Home size={24} />
-          </div>
-        )}
+        <img
+          src={photoSrc}
+          alt={prop.address || ''}
+          loading="lazy"
+          onError={() => {
+            if (photoSrc !== defaultPhoto) {
+              setPhotoSrc(defaultPhoto);
+            }
+          }}
+          style={{
+            width: 70, height: 70, borderRadius: 14, objectFit: 'cover', flexShrink: 0,
+            border: '1px solid rgba(16,185,129,0.2)', boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+          }}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <span style={{
             fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,

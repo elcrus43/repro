@@ -10,6 +10,7 @@
 import {
   normalizeRoomsType,
   formatRoomsLabel,
+  getPantryPlanSvgDataUri,
   authenticateLotsRequest,
   createLotsRepository,
 } from './_lots-shared.js';
@@ -81,8 +82,17 @@ export function normalizeAvitekLot(item = {}, projectConfig = {}, projectSlug = 
   const parsedArea = parseFloat(rawArea);
   const area_m2 = Number.isFinite(parsedArea) && parsedArea > 0 ? parsedArea : null;
 
+  const isPantry =
+    item.type === 'storeroom' ||
+    rawRooms === 0 ||
+    /подвал|цоколь|кладов|келлер|колясочн/i.test(String(item.floor || '')) ||
+    /кладов|келлер|подсобн/i.test(String(item.info || item.name || '')) ||
+    (area_m2 && area_m2 <= 16);
+
   let room_type;
-  if (rawRooms === 100 || (rawRooms === 1 && area_m2 && area_m2 <= 28) || (area_m2 && area_m2 <= 28)) {
+  if (isPantry) {
+    room_type = 'pantry';
+  } else if (rawRooms === 100 || (rawRooms === 1 && area_m2 && area_m2 <= 28) || (area_m2 && area_m2 <= 28)) {
     room_type = 'studio';
   } else if (rawRooms >= 4) {
     room_type = '4';
@@ -96,7 +106,7 @@ export function normalizeAvitekLot(item = {}, projectConfig = {}, projectSlug = 
     room_type = '1';
   }
 
-  const rooms_type = room_type === 'studio' ? 'studio' : (normalizeRoomsType(room_type) || `${room_type}k`);
+  const rooms_type = room_type === 'pantry' ? 'pantry' : (room_type === 'studio' ? 'studio' : (normalizeRoomsType(room_type) || `${room_type}k`));
   const rooms_label = formatRoomsLabel(rooms_type);
 
   const parsedPrice = parseInt(item.price, 10);
@@ -114,8 +124,8 @@ export function normalizeAvitekLot(item = {}, projectConfig = {}, projectSlug = 
     plan_url = roomDetails.img.startsWith('http')
       ? roomDetails.img
       : `${AVITEK_BASE_URL}${roomDetails.img}`;
-  } else if (projectConfig.id && id) {
-    plan_url = `${AVITEK_BASE_URL}/sale/current_room?apartment_id=${id}&facilityId=${projectConfig.id}`;
+  } else if (rooms_type === 'pantry') {
+    plan_url = getPantryPlanSvgDataUri(area_m2, 'Кладовая');
   }
 
   const finishing = roomDetails?.info || null;
