@@ -12,7 +12,6 @@ import {
   ClipboardList, 
   Sun, 
   Moon,
-  FolderHeart,
   Landmark,
   Search,
   Target
@@ -20,7 +19,7 @@ import {
 
 export function DesktopSidebar() {
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const { pathname } = useLocation();
   const { state } = useApp();
   const user = state.currentUser;
 
@@ -57,7 +56,6 @@ export function DesktopSidebar() {
     { path: '/properties', icon: Building2, label: 'Объекты' },
     { path: '/developments', icon: Landmark, label: 'Новостройки' },
     { path: '/requests', icon: Target, label: 'Подбор' },
-    { path: '/properties?filter=selection', icon: FolderHeart, label: 'Подборки' },
     { path: '/clients', icon: Users, label: 'Клиенты' },
     { path: '/tasks', icon: FileCheck, label: 'Сделки' },
     { path: '/history', icon: History, label: 'История' },
@@ -68,12 +66,6 @@ export function DesktopSidebar() {
   const isActive = (itemPath) => {
     if (itemPath === '/') {
       return pathname === '/';
-    }
-    if (itemPath === '/properties?filter=selection') {
-      return pathname === '/properties' && search.includes('filter=selection');
-    }
-    if (itemPath === '/properties') {
-      return pathname.startsWith('/properties') && !search.includes('filter=selection');
     }
     return pathname.startsWith(itemPath.split('?')[0]);
   };

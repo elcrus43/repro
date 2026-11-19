@@ -14,7 +14,6 @@ import {
   LayoutGrid,
   LayoutDashboard,
   Landmark,
-  FolderHeart,
   Target,
   Sparkles,
   MessageSquareText,
@@ -132,13 +131,6 @@ function BottomNav() {
       bg: 'rgba(2, 132, 199, 0.1)',
     },
     {
-      path: '/properties?filter=selection',
-      label: 'Подборки',
-      icon: FolderHeart,
-      color: '#0891b2',
-      bg: 'rgba(8, 145, 178, 0.1)',
-    },
-    {
       path: '/matches',
       label: 'Совпадения',
       icon: Sparkles,
@@ -170,17 +162,11 @@ function BottomNav() {
   ];
 
   const isActive = (path) => {
-    if (path === '/properties') {
-      return pathname.startsWith('/properties') && !search.includes('filter=selection');
-    }
     return pathname.startsWith(path);
   };
 
   const isMenuRouteActive = (itemPath) => {
     if (itemPath === '/') return pathname === '/';
-    if (itemPath === '/properties?filter=selection') {
-      return (pathname === '/properties' && search.includes('filter=selection')) || pathname.startsWith('/selection');
-    }
     return pathname.startsWith(itemPath);
   };
 
@@ -514,7 +500,7 @@ function AppRoutes() {
           <Route path="/properties/:id/estimate" element={<RequireAuth><EstimationPage /></RequireAuth>} />
 
           {/* Selection */}
-          <Route path="/selection" element={<Navigate to="/properties?filter=selection" replace />} />
+          <Route path="/selection" element={<Navigate to="/requests" replace />} />
           <Route path="/selection/new" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
           <Route path="/selection/:id/edit" element={<RequireAuth><SelectionFormPage /></RequireAuth>} />
 

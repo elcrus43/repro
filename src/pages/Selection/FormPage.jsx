@@ -35,8 +35,8 @@ export function FormPage() {
         link: existing.link || '',
         client_ids: existing.client_ids || (existing.client_id ? [existing.client_id] : [])
     } : {
-        client_ids: searchParams.get('client') ? [searchParams.get('client')] : [],
-        client_id: searchParams.get('client') || '',
+        client_ids: (searchParams.get('client') || searchParams.get('client_id')) ? [searchParams.get('client') || searchParams.get('client_id')] : [],
+        client_id: searchParams.get('client') || searchParams.get('client_id') || '',
         address: '',
         price: 0,
         contact_name: '',
@@ -209,7 +209,12 @@ export function FormPage() {
                     if (hasHistory) {
                         navigate(-1);
                     } else {
-                        navigate('/properties?filter=selection');
+                        const targetClient = form.client_id || (form.client_ids && form.client_ids[0]);
+                        if (targetClient) {
+                            navigate(`/clients/${targetClient}`);
+                        } else {
+                            navigate('/requests');
+                        }
                     }
                 }
             }

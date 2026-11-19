@@ -333,7 +333,7 @@ export function ListPage() {
 
                     <div className="list-filter-switcher" style={{ display: 'flex', gap: 8, background: 'var(--bg-light)', padding: 4, borderRadius: 16 }}>
                         {[
-                            ['active', 'Активные'], ['closed', 'Закрытые'], ['selection', 'Подбор']
+                            ['active', 'Активные'], ['closed', 'Закрытые']
                         ].map(([val, label]) => (
                             <button 
                                 key={val} 
