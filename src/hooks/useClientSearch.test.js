@@ -53,6 +53,42 @@ describe('useClientSearch', () => {
     expect(result.current.lastSearched).not.toBeNull();
   });
 
+  it('автоматически переключается на neonDb при 404 от /api/search-listings', async () => {
+    vi.spyOn(apiConfig, 'apiFetch').mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => 'Not Found',
+    });
+
+    const mockDbRows = [
+      { id: '10', source: 'CIAN', title: '2-к квартира', price: 4200000, rooms: 2, raw_data: {} },
+    ];
+
+    const neonDb = (await import('../lib/neon')).default;
+    vi.spyOn(neonDb, 'query').mockResolvedValueOnce({
+      data: mockDbRows,
+      error: null,
+    });
+
+    const sampleRequest = {
+      id: 'req_fallback',
+      city: 'Киров',
+      rooms: [2],
+      budget_max: 4500000,
+    };
+
+    const { result } = renderHook(() => useClientSearch(sampleRequest));
+
+    await act(async () => {
+      await result.current.search();
+    });
+
+    expect(result.current.error).toBeNull();
+    expect(result.current.results).toHaveLength(1);
+    expect(result.current.results[0].source).toBe('cian');
+  });
+
   it('sendTelegramAlert отправляет флаг notify_telegram', async () => {
     vi.spyOn(apiConfig, 'apiFetch').mockResolvedValueOnce({
       ok: true,

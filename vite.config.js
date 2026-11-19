@@ -141,6 +141,14 @@ export default defineConfig(({ mode }) => {
         '/api/cron-lots': {
           target: 'http://localhost:3001',
           changeOrigin: true
+        },
+        '/api/search-listings': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
+        },
+        '/api/social-publish': {
+          target: 'http://localhost:3001',
+          changeOrigin: true
         }
       }
     },
