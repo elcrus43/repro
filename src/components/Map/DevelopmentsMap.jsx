@@ -51,10 +51,12 @@ function buildLeafletMarkerIcon(item, isSelected) {
     ? `<span class="dev-marker-live-pill">${liveCount} кв.</span>`
     : '';
 
+  const tooltipText = `${item.name || ''}${item.address ? ` - ${item.address}` : ''}`;
+
   return L.divIcon({
     className: 'custom-dev-marker-wrapper',
     html: `
-      <div class="dev-marker-bubble ${isSelected ? 'selected' : ''} ${liveCount > 0 ? 'has-live' : ''}">
+      <div class="dev-marker-bubble ${isSelected ? 'selected' : ''} ${liveCount > 0 ? 'has-live' : ''}" title="${escapeMapHtml(tooltipText)}">
         <div class="dev-marker-dot"></div>
         <div class="dev-marker-text">
           <span class="dev-marker-name">${escapeMapHtml(shortLabel)}</span>

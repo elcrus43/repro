@@ -1897,11 +1897,11 @@ export const DEFAULT_DEVELOPMENTS = [
   },
   {
     "id": "zhk-mayak",
-    "name": "ЖД Маяк",
+    "name": "ЖК Маяк",
     "developer": "СМУ-5",
     "district": "Ленинский район",
     "microdistrict": "Центр (Ленинский)",
-    "address": "г. Киров, ул. Молодой Гвардии, 84 к.4",
+    "address": "г. Киров, ул. Молодой Гвардии, 84/4",
     "lat": 58.59775,
     "lng": 49.65471,
     "price_from": 6110000,
@@ -1960,7 +1960,7 @@ export const DEFAULT_DEVELOPMENTS = [
   },
   {
     "id": "zhk-sovremennik",
-    "name": "ЖД Современник",
+    "name": "ЖК Современник",
     "developer": "СМУ-5",
     "district": "Ленинский район",
     "microdistrict": "Зональный",
@@ -2198,7 +2198,7 @@ export const DEFAULT_DEVELOPMENTS = [
   },
   {
     "id": "zhk-erdyakova-9",
-    "name": "ЖД на Ердякова, 9",
+    "name": "ЖК на Ердякова, 9",
     "developer": "СМТ",
     "district": "Октябрьский район",
     "microdistrict": "Лепсе",

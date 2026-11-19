@@ -249,18 +249,15 @@ export function resolveHouseCoords(dev, rawAddress, options = {}) {
   };
 }
 
-function getShortDevName(devName) {
+export function getShortDevName(devName) {
   let clean = String(devName || '').trim();
-  clean = clean.replace(/^ЖК\s+/i, '');
-  clean = clean.replace(/^Квартал\s+/i, '');
-  clean = clean.replace(/^Дом\s+на\s+/i, '');
-  clean = clean.replace(/^Дом\s+/i, '');
+  clean = clean.replace(/^(?:ЖК|ЖД|Жилой\s+дом|Клубный\s+дом|Квартал|Дом\s+на|Дом|Резиденция)\s+/i, '');
   clean = clean.replace(/\s*\([^)]*\)\s*/g, ' ');
   clean = clean.replace(/[«»"]/g, '').replace(/\s+/g, ' ').trim();
   return clean || String(devName || '');
 }
 
-function extractHouseNumber(displayAddress) {
+export function extractHouseNumber(displayAddress) {
   if (!displayAddress) return '';
   const commaParts = String(displayAddress).split(',').map((p) => p.trim()).filter(Boolean);
   const tail = commaParts.length > 0 ? commaParts[commaParts.length - 1] : String(displayAddress).trim();
@@ -272,13 +269,24 @@ function extractHouseNumber(displayAddress) {
   return match ? match[1] : '';
 }
 
-function buildMarkerTitle(devName, displayAddress) {
+export function buildMarkerTitle(devName, displayAddress, devAddress = '', totalHouses = 1) {
   const shortName = getShortDevName(devName);
   const houseNum = extractHouseNumber(displayAddress);
+  const normDev = normalizeHouseAddress(devAddress);
+  const normGroup = normalizeHouseAddress(displayAddress);
+
+  if (
+    !houseNum ||
+    (totalHouses <= 1 && normDev && normGroup && normDev === normGroup) ||
+    (shortName && houseNum && shortName.toLowerCase().includes(houseNum.toLowerCase()))
+  ) {
+    return devName || shortName || displayAddress || '';
+  }
+
   if (shortName && houseNum) {
     return `${shortName} · ${houseNum}`;
   }
-  return shortName || displayAddress || '';
+  return devName || shortName || displayAddress || '';
 }
 
 function createEmptyRoomStats() {
@@ -542,7 +550,7 @@ export function buildMapItemsFromDevelopments(
           isHousePin: true,
           isExactHouse: coords.isExactHouse,
           name: dev.name,
-          markerTitle: buildMarkerTitle(dev.name, group.displayAddress),
+          markerTitle: buildMarkerTitle(dev.name, group.displayAddress, dev.address, groups.length),
           address: group.displayAddress,
           lat: coords.lat,
           lng: coords.lng,

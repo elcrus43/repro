@@ -23,6 +23,13 @@ import { PROFSTROY_PROJECTS, syncProfstroyProject } from './_profstroy-lots.js';
 import { SMU5_PROJECTS, syncSmu5Project } from './_smu5-lots.js';
 import { ZHELEZNO_PROJECTS, syncZheleznoProject } from './_zhelezno-lots.js';
 import { authenticateLotsRequest } from './_lots-shared.js';
+import {
+  collectTiktokReport,
+  buildTelegramMessage,
+  sendToTelegram,
+  isAuthorizedCronRequest as isAuthorizedTiktokCron,
+  fetchHtml as fetchTiktokHtml,
+} from './_tiktok-report.js';
 
 export const config = {
   maxDuration: 60,
@@ -380,6 +387,43 @@ async function resolveCronAuth(req) {
   return { sql: auth.sql, user: auth.user, mode: 'admin_jwt' };
 }
 
+async function handleTiktokCron(req, res) {
+  if (!isAuthorizedTiktokCron(req) && !isAuthorizedCronRequest(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const botToken = process.env.TELEGRAM_SECURITY_BOT_TOKEN || process.env.ALERT_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_SECURITY_CHAT_ID || process.env.REALTOR_CHAT_ID;
+  const dryRun = String(req.query?.dry || '') === '1';
+
+  try {
+    const report = await collectTiktokReport({ fetchVideo: fetchTiktokHtml });
+
+    if (dryRun) {
+      return res.status(200).json({
+        date: report.dateLabel,
+        chunks: buildTelegramMessage(report),
+        errors: report.errors,
+      });
+    }
+
+    if (!botToken || !chatId) {
+      return res.status(400).json({ error: 'Telegram-секреты не настроены', errors: report.errors });
+    }
+
+    const sent = await sendToTelegram(report, { botToken, chatId });
+    return res.status(200).json({
+      status: 'ok',
+      sent,
+      top: report.top ? { author: report.top.author, gained: report.top.gainedLabel } : null,
+      errors: report.errors,
+    });
+  } catch (err) {
+    console.error('[tiktok-report]', err);
+    return res.status(500).json({ error: err.message });
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -387,6 +431,10 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
+  }
+
+  if (req.query?.job === 'tiktok-report' || (req.url && req.url.includes('tiktok-report'))) {
+    return handleTiktokCron(req, res);
   }
 
   if (req.method !== 'GET' && req.method !== 'POST') {

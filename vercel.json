@@ -37,6 +37,14 @@
             "destination": "/api/developer-lots?provider=zhelezno"
         },
         {
+            "source": "/api/image-proxy",
+            "destination": "/api/developer-lots?provider=image-proxy"
+        },
+        {
+            "source": "/api/tiktok-report",
+            "destination": "/api/cron-lots?job=tiktok-report"
+        },
+        {
             "source": "/api/(.*)",
             "destination": "/api/$1"
         },

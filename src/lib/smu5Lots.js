@@ -19,8 +19,8 @@ export const SMU5_PROJECT_KEYS = [
 export const SMU5_PROJECT_SLUGS = SMU5_PROJECT_KEYS;
 
 export const SMU5_PROJECT_NAMES = {
-  mayak: 'Дом «Маяк»',
-  sovremennik: 'Дом «Современник»',
+  mayak: 'ЖК Маяк',
+  sovremennik: 'ЖК Современник',
   rudnitskogo: 'Клубный дом на Рудницкого',
 };
 

@@ -280,6 +280,43 @@ describe('houseCoordinates', () => {
       });
     });
 
+    it('keeps clean complex name on house pin when development has only one house matching dev address', () => {
+      const devMayak = {
+        id: 'zhk-mayak',
+        name: 'ЖК Маяк',
+        developer: 'СМУ-5',
+        address: 'г. Киров, ул. Молодой Гвардии, 84/4',
+        price_from: 7100000,
+      };
+
+      const smu5Lots = [
+        {
+          id: 'm1',
+          project_slug: 'mayak',
+          address: 'г. Киров, ул. Молодой Гвардии, д. 84/4',
+          rooms_type: '1k',
+          price: 7100000,
+          is_available: true,
+        },
+      ];
+
+      const items = buildMapItemsFromDevelopments([devMayak], {
+        smu5Lots,
+        showHousePins: true,
+      });
+
+      expect(items).toHaveLength(1);
+      expect(items[0]).toMatchObject({
+        devId: 'zhk-mayak',
+        name: 'ЖК Маяк',
+        markerTitle: 'ЖК Маяк',
+        address: 'ул. Молодой Гвардии, д. 84/4',
+      });
+      // STRICTLY no 'ЖД' and no cryptic '· 84/4'
+      expect(items[0].markerTitle).not.toContain('ЖД');
+      expect(items[0].markerTitle).not.toContain('84/4');
+    });
+
     it('enriches parent marker from summary when 0 detailed lots or showHousePins is false', () => {
       const itemsFromSummary = buildMapItemsFromDevelopments([devMetro], {
         ksskSummaryBySlug: {

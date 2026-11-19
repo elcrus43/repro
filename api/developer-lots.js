@@ -19,6 +19,7 @@ import stroysoyuzHandler from './_stroysoyuz-lots.js';
 import profstroyHandler from './_profstroy-lots.js';
 import smu5Handler from './_smu5-lots.js';
 import zheleznoHandler from './_zhelezno-lots.js';
+import imageProxyHandler from './_image-proxy.js';
 
 export const config = {
   maxDuration: 60,
@@ -34,6 +35,8 @@ const HANDLERS = {
   profstroy: profstroyHandler,
   smu5: smu5Handler,
   zhelezno: zheleznoHandler,
+  'image-proxy': imageProxyHandler,
+  imageproxy: imageProxyHandler,
 };
 
 export default async function handler(req, res) {
@@ -49,9 +52,13 @@ export default async function handler(req, res) {
   }
 
   if (!provider && req.url) {
-    const match = req.url.match(/\/api\/([a-z0-9_-]+)-lots/i);
-    if (match && match[1]) {
-      provider = match[1].toLowerCase();
+    if (req.url.includes('image-proxy')) {
+      provider = 'image-proxy';
+    } else {
+      const match = req.url.match(/\/api\/([a-z0-9_-]+)-lots/i);
+      if (match && match[1]) {
+        provider = match[1].toLowerCase();
+      }
     }
   }
 

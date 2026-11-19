@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import handler from '../../api/image-proxy.js';
+import handler from '../../api/_image-proxy.js';
 
 describe('api/image-proxy', () => {
   it('returns 400 when url is missing', async () => {
