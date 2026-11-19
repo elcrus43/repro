@@ -163,6 +163,7 @@ describe('ksmLots helpers', () => {
           '2k': 1,
           '3k': 0,
           '4k': 0,
+          pantry: 0,
         },
       });
 
@@ -180,6 +181,7 @@ describe('ksmLots helpers', () => {
           '2k': 0,
           '3k': 1,
           '4k': 0,
+          pantry: 0,
         },
       });
 
@@ -197,6 +199,7 @@ describe('ksmLots helpers', () => {
           '2k': 0,
           '3k': 0,
           '4k': 0,
+          pantry: 0,
         },
       });
     });
