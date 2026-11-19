@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
 import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, MapPin, Sparkles, Building2 } from 'lucide-react';
+import { Pencil, Trash, ChevronLeft, ChevronRight, Search, Plus, MapPin, Sparkles, Building2, Globe } from 'lucide-react';
 import { usePagination } from '../../hooks/usePagination';
 import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
@@ -16,7 +16,7 @@ export function ListPage() {
     const user = state.currentUser;
     const isAdmin = user?.role === 'admin';
     const [search, setSearch] = useState('');
-    const [filter, setFilter] = useState('all');
+    const [filter, setFilter] = useState('active');
     const [scope, setScope] = useState(isAdmin ? 'all' : 'mine');
 
     const filteredRequests = useMemo(() => {
@@ -42,7 +42,7 @@ export function ListPage() {
 
     return (
         <div className="page fade-in">
-            {/* Sticky Header — Open Design */}
+            {/* Sticky Header - Open Design */}
             <div className="topbar sticky" style={{ 
                 background: 'var(--topbar-bg)', 
                 backdropFilter: 'blur(20px) saturate(180%)',
@@ -54,11 +54,14 @@ export function ListPage() {
                 height: 'auto'
             }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Запросы на совпадения</span>
+                    <div>
+                        <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 22, fontWeight: 300 }}>Подбор</span>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 300 }}>Запросы клиентов на покупку</div>
+                    </div>
                     <button className="card-clickable" onClick={() => navigate('/requests/new')} style={{ 
                         width: 44, height: 44, borderRadius: 14, border: 'none', background: 'var(--primary)', color: 'white',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 8px 20px rgba(0, 82, 255, 0.2)'
-                    }}>
+                    }} title="Создать запрос">
                         <Plus size={24} />
                     </button>
                 </div>
@@ -95,7 +98,7 @@ export function ListPage() {
             </div>
 
             <div className="tab-filters" style={{ padding: '8px 20px', gap: 12, overflowX: 'auto' }}>
-                {[['all', 'Все'], ['active', 'Актуально'], ['completed', 'Завершен']].map(([val, label]) => (
+                {[['active', 'Актуально'], ['all', 'Все'], ['completed', 'Завершен']].map(([val, label]) => (
                     <button key={val} 
                         className={`tab-filter ${filter === val ? 'active' : ''}`} 
                         style={{ 
@@ -175,11 +178,11 @@ export function ListPage() {
                                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'nowrap', minWidth: 0, flex: 1, overflow: 'hidden' }}>
                                         <span style={{ color: 'var(--primary)', fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif", fontSize: 15, fontWeight: 400, flexShrink: 0 }}>до {formatNumber(req.budget_max)} ₽</span>
                                         <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100, flexShrink: 1 }}>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || '—'}</span>
+                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100, flexShrink: 1 }}>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || '-'}</span>
                                         <span style={{ opacity: 0.3, flexShrink: 0 }}>·</span>
                                         <span style={{ color: isReqActive ? '#858518' : 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                                             <Sparkles size={12} style={{ opacity: isReqActive ? 1 : 0.4 }} />
-                                            {isReqActive ? matches.length : '—'}
+                                            {isReqActive ? matches.length : '-'}
                                         </span>
                                         {req.districts?.length > 0 && (
                                             <>
@@ -263,6 +266,34 @@ export function ListPage() {
                                         >
                                             цена + локация
                                         </span>
+                                    </div>
+                                )}
+
+                                {/* Auto-Search Indicator */}
+                                {isReqActive && (
+                                    <div
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigate(`/requests/${req.id}`);
+                                        }}
+                                        style={{
+                                            marginTop: 2,
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            padding: '4px 8px',
+                                            borderRadius: 8,
+                                            background: 'rgba(0, 82, 255, 0.05)',
+                                            border: '1px solid rgba(0, 82, 255, 0.12)',
+                                            fontSize: 10.5,
+                                            fontWeight: 500,
+                                            color: 'var(--primary)',
+                                            cursor: 'pointer',
+                                            width: 'fit-content',
+                                        }}
+                                    >
+                                        <Globe size={11} />
+                                        <span>Автоподбор: Авито · ЦИАН · ДомКлик</span>
                                     </div>
                                 )}
                             </div>

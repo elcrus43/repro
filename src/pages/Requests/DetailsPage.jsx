@@ -1,293 +1,580 @@
 ﻿import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
-import { formatNumber } from '../../utils/format';
-import { Pencil, Trash, Sparkles, User, MapPin, Building2, Wallet, ChevronRight, TrendingUp, ChevronLeft } from 'lucide-react';
-import { PROPERTY_TYPES, REQUEST_STATUS_LABELS, REQUEST_STATUS_COLORS } from '../../data/constants';
+import { formatNumber, formatPhone, stripPhone } from '../../utils/format';
+import { 
+  Pencil, 
+  Trash2, 
+  Sparkles, 
+  User, 
+  MapPin, 
+  Building2, 
+  ChevronRight, 
+  ChevronLeft, 
+  Phone, 
+  FileText,
+  BadgePercent,
+  Layers,
+  Maximize2,
+  MessageCircle,
+  Home
+} from 'lucide-react';
+import { PROPERTY_TYPES } from '../../data/constants';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
 import { useDevelopmentsCatalog } from '../../hooks/useDevelopmentsCatalog';
 import { RequestDevelopmentsSection } from '../../components/RequestDevelopmentsSection';
+import { ClientSearchPanel } from '../../components/ClientSearchPanel';
 
 export function DetailsPage() {
-    const { id } = useParams();
-    const { state, dispatch } = useApp();
-    const navigate = useNavigate();
-    const { developments, ksmLots, ksskLots, ksmProjects, ksskProjects } = useDevelopmentsCatalog({ includeLiveLots: true });
-    const req = state.requests.find(r => r.id === id);
-    const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
-    
-    const status = req?.status || 'active';
-    const isActive = status === 'active';
-    
-    const matches = isActive ? state.matches.filter(m => {
-        if (m.request_id !== id) return false;
-        const prop = state.properties.find(p => p.id === m.property_id);
-        return prop && !hasPassedDealStage(prop, state.deals) && isDealTypeCompatible(prop, req);
-    }) : [];
+  const { id } = useParams();
+  const { state, dispatch } = useApp();
+  const navigate = useNavigate();
+  const { developments, ksmLots, ksskLots, ksmProjects, ksskProjects } = useDevelopmentsCatalog({ includeLiveLots: true });
+  const req = state.requests.find(r => r.id === id);
+  const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
+  
+  const status = req?.status || 'active';
+  const isActive = status === 'active';
+  
+  const matches = isActive ? state.matches.filter(m => {
+    if (m.request_id !== id) return false;
+    const prop = state.properties.find(p => p.id === m.property_id);
+    return prop && !hasPassedDealStage(prop, state.deals) && isDealTypeCompatible(prop, req);
+  }) : [];
 
-    if (!req) return (
-        <div className="page fade-in">
-            <div className="topbar sticky" style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)' }}>
-                <button className="topbar-back" onClick={() => navigate('/requests')} style={{ borderRadius: 14 }}>←</button>
-                <span className="topbar-title font-oswald" style={{ fontWeight: 300, fontSize: 20 }}>Запрос не найден</span>
+  if (!req) return (
+    <div className="page fade-in">
+      <div className="topbar sticky" style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(20px) saturate(180%)' }}>
+        <button 
+          type="button"
+          className="card-clickable" 
+          onClick={() => navigate('/requests')} 
+          style={{ 
+            width: 40, height: 40, borderRadius: 12, border: 'none', background: 'var(--surface)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text)'
+          }}
+          title="Назад к запросам"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        <span className="topbar-title font-oswald" style={{ fontWeight: 300, fontSize: 20 }}>Запрос не найден</span>
+      </div>
+    </div>
+  );
+
+  function handleUpdateStatus(newStatus) {
+    if ((req.status || 'active') === newStatus) return;
+    dispatch({
+      type: 'UPDATE_REQUEST',
+      request: {
+        ...req,
+        status: newStatus
+      }
+    });
+  }
+
+  function handleDelete() {
+    if (window.confirm('Удалить этот запрос на подбор?')) {
+      dispatch({ type: 'DELETE_REQUEST', id });
+      navigate('/requests');
+    }
+  }
+
+  // Format budget range
+  const budgetText = req.budget_min > 0 && req.budget_max > 0
+    ? `${formatNumber(req.budget_min)} - ${formatNumber(req.budget_max)} ₽`
+    : req.budget_max > 0
+      ? `до ${formatNumber(req.budget_max)} ₽`
+      : req.budget_min > 0
+        ? `от ${formatNumber(req.budget_min)} ₽`
+        : 'Бюджет не указан';
+
+  // Format rooms
+  const roomsText = req.rooms && req.rooms.length > 0
+    ? req.rooms.map(r => (r === 0 ? 'Студия' : `${r}-комн.`)).join(', ')
+    : 'Любая комнатность';
+
+  // Format area
+  const areaText = req.area_min > 0 && req.area_max > 0
+    ? `${req.area_min} - ${req.area_max} м²`
+    : req.area_min > 0
+      ? `от ${req.area_min} м²`
+      : req.area_max > 0
+        ? `до ${req.area_max} м²`
+        : null;
+
+  // Format floor
+  const floorText = req.floor_min > 0 || req.floor_max > 0
+    ? `${req.floor_min || 1} - ${req.floor_max || 'макс'} эт.`
+    : null;
+
+  return (
+    <div className="page fade-in" style={{ background: 'var(--bg)' }}>
+      {/* STICKY TOPBAR */}
+      <div className="topbar sticky" style={{ 
+        background: 'var(--topbar-bg)', 
+        backdropFilter: 'blur(20px) saturate(180%)',
+        padding: '12px 16px',
+        borderBottom: '1px solid var(--border-light)',
+        zIndex: 100,
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        gap: 12
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+          <button 
+            type="button"
+            onClick={() => navigate('/requests')} 
+            className="card-clickable" 
+            style={{ 
+              width: 38, height: 38, borderRadius: 12, border: 'none', 
+              background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)', color: 'var(--text)', flexShrink: 0
+            }}
+            title="Назад к списку"
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <div style={{ minWidth: 0 }}>
+            <div className="font-oswald" style={{ letterSpacing: '0.01em', fontSize: 18, fontWeight: 400, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              Детали запроса
             </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {clients[0]?.full_name ? `Покупатель: ${clients[0].full_name}` : 'Подбор недвижимости'}
+            </div>
+          </div>
         </div>
-    );
 
-    function handleUpdateStatus(newStatus) {
-        if ((req.status || 'active') === newStatus) return;
-        dispatch({
-            type: 'UPDATE_REQUEST',
-            request: {
-                ...req,
-                status: newStatus
-            }
-        });
-    }
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+          <button 
+            type="button"
+            className="card-clickable" 
+            onClick={() => navigate(`/requests/${id}/edit`)} 
+            title="Редактировать запрос"
+            style={{ 
+              width: 38, height: 38, borderRadius: 12, border: 'none', 
+              background: 'var(--surface)', color: 'var(--text)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)' 
+            }}
+          >
+            <Pencil size={16} />
+          </button>
+          <button 
+            type="button"
+            className="card-clickable" 
+            onClick={handleDelete} 
+            title="Удалить запрос"
+            style={{ 
+              width: 38, height: 38, borderRadius: 12, border: 'none', 
+              background: 'var(--surface)', color: 'var(--danger)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', 
+              boxShadow: '0 2px 8px rgba(0,0,0,0.04)' 
+            }}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
 
-    function handleDelete() {
-        if (window.confirm('Удалить этот запрос?')) {
-            dispatch({ type: 'DELETE_REQUEST', id });
-            navigate('/requests');
-        }
-    }
+      <div className="page-content" style={{ padding: '14px 16px 120px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+        
+        {/* COMPACT MASTER HERO CARD */}
+        <div className="card" style={{ 
+          padding: '16px', 
+          border: '1px solid var(--border-light)', 
+          borderRadius: 20, 
+          background: 'var(--surface)',
+          boxShadow: '0 6px 24px rgba(0,0,0,0.03)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12
+        }}>
 
-    return (
-        <div className="page fade-in" style={{ background: 'var(--surface)' }}>
-            {/* STICKY TOPBAR */}
-            <div className="topbar sticky" style={{ 
-                background: 'var(--topbar-bg)', 
-                backdropFilter: 'blur(24px) saturate(180%)',
-                padding: '20px',
-                borderBottom: '1px solid var(--border-light)',
-                zIndex: 1000,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
-            }}>
-                <button 
-                    onClick={() => navigate('/requests')} 
-                    className="card-clickable" 
-                    style={{ 
-                        width: 44, height: 44, borderRadius: 14, border: 'none', 
-                        background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)', color: 'var(--text)' 
-                    }}
+          {/* Row 1: Client & Status Switcher */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+            {/* Client info */}
+            {clients.length > 0 ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1 }}>
+                <div 
+                  onClick={() => navigate(`/clients/${clients[0].id}`)}
+                  className="card-clickable"
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 12,
+                    background: 'linear-gradient(135deg, var(--primary) 0%, #2563eb 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    flexShrink: 0
+                  }}
+                  title="Открыть карточку клиента"
                 >
-                    <ChevronLeft size={20} />
-                </button>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                    <span className="topbar-title font-oswald" style={{ letterSpacing: '0.01em', fontSize: 20, fontWeight: 300 }}>
-                        Детали запроса
-                    </span>
-                    <span style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, opacity: 0.6 }}>Запрос на подбор</span>
+                  {(clients[0].full_name || '?').charAt(0).toUpperCase()}
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                    <button 
-                        className="card-clickable" 
-                        onClick={() => navigate(`/requests/${id}/edit`)} 
-                        title="Редактировать"
-                        style={{ 
-                            width: 44, height: 44, borderRadius: 14, border: 'none', 
-                            background: 'var(--surface)', color: 'var(--text)', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)' 
-                        }}
-                    >
-                        <Pencil size={18} />
-                    </button>
-                    <button 
-                        className="card-clickable" 
-                        onClick={handleDelete} 
-                        title="Удалить"
-                        style={{ 
-                            width: 44, height: 44, borderRadius: 14, border: 'none', 
-                            background: 'var(--surface)', color: 'var(--danger)', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)' 
-                        }}
-                    >
-                        <Trash size={18} />
-                    </button>
-                </div>
-            </div>
-
-            <div className="page-content" style={{ padding: '20px 20px 120px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                
-                {/* Header Card */}
-                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
-                        <div style={{ flex: 1, minWidth: 200 }}>
-                            <h2 className="font-oswald" style={{ fontSize: 22, fontWeight: 300, letterSpacing: '0.02em', color: 'var(--text)', marginBottom: 6 }}>
-                                {req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(' / ') || 'Любой объект'}
-                            </h2>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300 }}>
-                                <MapPin size={14} color="var(--primary)" /> 
-                                {req.districts?.join(', ') || 'Все районы'}
-                            </div>
-                        </div>
-
-                        {/* Переключатель статуса прямо из карточки */}
-                        <div style={{ 
-                            display: 'inline-flex', 
-                            background: 'var(--bg-light)', 
-                            padding: 3, 
-                            borderRadius: 14, 
-                            gap: 3,
-                            border: '1px solid var(--border-light)'
-                        }}>
-                            <button
-                                type="button"
-                                onClick={() => handleUpdateStatus('active')}
-                                style={{
-                                    padding: '6px 14px',
-                                    borderRadius: 11,
-                                    border: 'none',
-                                    fontSize: 12,
-                                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
-                                    fontWeight: isActive ? 500 : 300,
-                                    background: isActive ? '#10b981' : 'transparent',
-                                    color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                    boxShadow: isActive ? '0 2px 8px rgba(16, 185, 129, 0.25)' : 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6
-                                }}
-                            >
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#fff' : '#10b981' }} />
-                                Актуально
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => handleUpdateStatus('completed')}
-                                style={{
-                                    padding: '6px 14px',
-                                    borderRadius: 11,
-                                    border: 'none',
-                                    fontSize: 12,
-                                    fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
-                                    fontWeight: !isActive ? 500 : 300,
-                                    background: !isActive ? '#64748b' : 'transparent',
-                                    color: !isActive ? '#ffffff' : 'var(--text-secondary)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                    boxShadow: !isActive ? '0 2px 8px rgba(100, 116, 139, 0.25)' : 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 6
-                                }}
-                            >
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: !isActive ? '#fff' : '#64748b' }} />
-                                Завершен
-                            </button>
-                        </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-                        <div style={{ background: 'var(--bg-light)', padding: '14px 16px', borderRadius: 18 }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, marginBottom: 4 }}>Макс. бюджет</div>
-                            <div className="font-oswald" style={{ fontSize: 22, fontWeight: 300, color: 'var(--primary)' }}>{formatNumber(req.budget_max)} ₽</div>
-                        </div>
-                        <div style={{ background: 'var(--bg-light)', padding: '14px 16px', borderRadius: 18 }}>
-                            <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 300, marginBottom: 4 }}>Комиссия</div>
-                            <div className="font-oswald" style={{ fontSize: 22, fontWeight: 300, color: '#10b981' }}>{formatNumber(req.commission)} ₽</div>
-                        </div>
-                    </div>
-
-                    {isActive ? (
-                        <button 
-                            className="btn btn-primary btn-full card-clickable" 
-                            style={{ 
-                                height: 50, borderRadius: 16, fontSize: 14, fontWeight: 400, 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 
-                            }} 
-                            onClick={() => navigate(`/matches?request=${id}`)}
-                        >
-                            <Sparkles size={18} /> Совпадений: {matches.length}
-                        </button>
-                    ) : (
-                        <div style={{ 
-                            padding: '14px 16px', borderRadius: 16, fontSize: 13, fontWeight: 300, 
-                            background: 'var(--bg-light)', color: 'var(--text-muted)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                            border: '1px dashed var(--border-light)'
-                        }}>
-                            <Sparkles size={16} style={{ opacity: 0.4 }} />
-                            <span>Запрос завершен — не участвует в анализе совпадений</span>
-                        </div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div 
+                    onClick={() => navigate(`/clients/${clients[0].id}`)}
+                    style={{ 
+                      fontSize: 14, 
+                      fontWeight: 600, 
+                      color: 'var(--text)', 
+                      whiteSpace: 'nowrap', 
+                      overflow: 'hidden', 
+                      textOverflow: 'ellipsis',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {clients[0].full_name}
+                    {clients.length > 1 && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>
+                        +{clients.length - 1}
+                      </span>
                     )}
+                  </div>
+                  {clients[0].phone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                      <a 
+                        href={`tel:${clients[0].phone}`} 
+                        style={{ 
+                          fontSize: 12, 
+                          color: 'var(--primary)', 
+                          fontWeight: 400, 
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        <Phone size={11} />
+                        {formatPhone(clients[0].phone)}
+                      </a>
+                      {clients[0].phone && (
+                        <a 
+                          href={`https://wa.me/${stripPhone(clients[0].phone)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Написать в WhatsApp"
+                          style={{
+                            fontSize: 10,
+                            padding: '1px 6px',
+                            borderRadius: 6,
+                            background: 'rgba(16, 185, 129, 0.1)',
+                            color: '#10b981',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 3,
+                            fontWeight: 500
+                          }}
+                        >
+                          <MessageCircle size={10} /> WA
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 13 }}>
+                <User size={16} />
+                <span>Клиент не привязан</span>
+              </div>
+            )}
 
-                {/* New Buildings Suggestions */}
-                <RequestDevelopmentsSection
-                    request={req}
-                    developments={developments}
-                    ksmLots={ksmLots}
-                    ksskLots={ksskLots}
-                    ksmProjects={ksmProjects}
-                    ksskProjects={ksskProjects}
-                />
-
-                {/* Clients Card */}
-                {clients.length > 0 && (
-                    <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, color: 'var(--text)', marginBottom: 16 }}>Покупатели</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {clients.map(c => (
-                                <div key={c.id} className="card-clickable" onClick={() => navigate(`/clients/${c.id}`)} style={{ padding: '12px 16px', background: 'var(--bg-light)', borderRadius: 18, display: 'flex', alignItems: 'center', gap: 14 }}>
-                                    <div style={{ 
-                                        width: 38, height: 38, borderRadius: 12, background: 'var(--primary)', color: 'white',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 300, fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif"
-                                    }}>
-                                        {(c.full_name || '?')[0].toUpperCase()}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 400, fontSize: 14, color: 'var(--text)' }}>{c.full_name}</div>
-                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 300 }}>{c.phone}</div>
-                                    </div>
-                                    <ChevronRight size={16} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Requirements Card */}
-                <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                    <div className="font-oswald" style={{ fontWeight: 300, fontSize: 16, color: 'var(--text)', marginBottom: 16 }}>Характеристики</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: '1px dashed var(--border-light)' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Тип недвижимости</span>
-                            <span style={{ fontWeight: 400, color: 'var(--text)' }}>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: '1px dashed var(--border-light)' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Комнатность</span>
-                            <span style={{ fontWeight: 400, color: 'var(--text)' }}>{req.rooms?.map(r => r === 0 ? 'С' : r).join(', ') || 'Любая'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: '1px dashed var(--border-light)' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Этажность</span>
-                            <span style={{ fontWeight: 400, color: 'var(--text)' }}>{req.floor_min || 1} - {req.floor_max || 'макс'}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, borderBottom: '1px dashed var(--border-light)' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Площадь</span>
-                            <span style={{ fontWeight: 400, color: 'var(--text)' }}>от {req.area_min || 0} м²</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ color: 'var(--text-secondary)', fontWeight: 300 }}>Ипотека</span>
-                            <span style={{ fontWeight: 400, color: req.mortgage ? 'var(--primary)' : 'var(--text)' }}>{req.mortgage ? 'Да' : 'Нет'}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Notes Card */}
-                {req.notes && (
-                    <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 8px 32px rgba(0,0,0,0.03)', borderRadius: 28, background: 'var(--surface)' }}>
-                        <div className="font-oswald" style={{ fontWeight: 300, fontSize: 15, color: 'var(--text)', marginBottom: 8 }}>Комментарий</div>
-                        <div style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)', fontWeight: 300, whiteSpace: 'pre-wrap' }}>{req.notes}</div>
-                    </div>
-                )}
-
+            {/* Status Switcher Pill */}
+            <div style={{ 
+              display: 'inline-flex', 
+              background: 'var(--bg-light)', 
+              padding: 3, 
+              borderRadius: 12, 
+              gap: 3,
+              border: '1px solid var(--border-light)',
+              flexShrink: 0
+            }}>
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus('active')}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 9,
+                  border: 'none',
+                  fontSize: 11.5,
+                  fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
+                  fontWeight: isActive ? 600 : 400,
+                  background: isActive ? '#10b981' : 'transparent',
+                  color: isActive ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: isActive ? '0 2px 6px rgba(16, 185, 129, 0.25)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: isActive ? '#fff' : '#10b981' }} />
+                Актуально
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUpdateStatus('completed')}
+                style={{
+                  padding: '5px 12px',
+                  borderRadius: 9,
+                  border: 'none',
+                  fontSize: 11.5,
+                  fontFamily: "'Medeo Sans', ui-sans-serif, sans-serif",
+                  fontWeight: !isActive ? 600 : 400,
+                  background: !isActive ? '#64748b' : 'transparent',
+                  color: !isActive ? '#ffffff' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  boxShadow: !isActive ? '0 2px 6px rgba(100, 116, 139, 0.25)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: !isActive ? '#fff' : '#64748b' }} />
+                Завершен
+              </button>
             </div>
+          </div>
+
+          {/* Row 2: Financials & Budget Highlight */}
+          <div style={{ 
+            background: 'var(--bg-light)', 
+            padding: '10px 14px', 
+            borderRadius: 14, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 10
+          }}>
+            <div>
+              <div style={{ fontSize: 10, color: 'var(--text-secondary)', fontWeight: 400, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Бюджет на покупку
+              </div>
+              <div className="font-oswald" style={{ fontSize: 20, fontWeight: 400, color: 'var(--primary)', letterSpacing: '0.01em', marginTop: 1 }}>
+                {budgetText}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {req.commission > 0 && (
+                <div style={{ 
+                  padding: '4px 9px', 
+                  borderRadius: 8, 
+                  background: 'rgba(16, 185, 129, 0.12)', 
+                  color: '#059669', 
+                  fontSize: 11, 
+                  fontWeight: 500,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4
+                }}>
+                  <BadgePercent size={12} />
+                  <span>Комиссия: {formatNumber(req.commission)} ₽</span>
+                </div>
+              )}
+              <div style={{ 
+                padding: '4px 9px', 
+                borderRadius: 8, 
+                background: req.mortgage ? 'rgba(0, 82, 255, 0.1)' : 'rgba(100, 116, 139, 0.1)', 
+                color: req.mortgage ? 'var(--primary)' : 'var(--text-secondary)', 
+                fontSize: 11, 
+                fontWeight: 500
+              }}>
+                {req.mortgage ? 'Ипотека: Да' : 'Без ипотеки'}
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Compact Criteria Chips */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            {/* Property type */}
+            <div style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              padding: '5px 10px', 
+              borderRadius: 10, 
+              background: 'var(--bg-light)', 
+              fontSize: 12, 
+              color: 'var(--text)', 
+              fontWeight: 500 
+            }}>
+              <Building2 size={13} color="var(--primary)" />
+              <span>{req.property_types?.map(t => PROPERTY_TYPES[t] || t).join(', ') || 'Любой объект'}</span>
+            </div>
+
+            {/* Rooms */}
+            <div style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              padding: '5px 10px', 
+              borderRadius: 10, 
+              background: 'var(--bg-light)', 
+              fontSize: 12, 
+              color: 'var(--text)', 
+              fontWeight: 500 
+            }}>
+              <Home size={13} color="var(--primary)" />
+              <span>{roomsText}</span>
+            </div>
+
+            {/* Area */}
+            {areaText && (
+              <div style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: 5, 
+                padding: '5px 10px', 
+                borderRadius: 10, 
+                background: 'var(--bg-light)', 
+                fontSize: 12, 
+                color: 'var(--text)', 
+                fontWeight: 500 
+              }}>
+                <Maximize2 size={13} color="var(--primary)" />
+                <span>{areaText}</span>
+              </div>
+            )}
+
+            {/* Floor */}
+            {floorText && (
+              <div style={{ 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                gap: 5, 
+                padding: '5px 10px', 
+                borderRadius: 10, 
+                background: 'var(--bg-light)', 
+                fontSize: 12, 
+                color: 'var(--text)', 
+                fontWeight: 500 
+              }}>
+                <Layers size={13} color="var(--primary)" />
+                <span>{floorText}</span>
+              </div>
+            )}
+
+            {/* Location / Districts */}
+            <div style={{ 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              gap: 5, 
+              padding: '5px 10px', 
+              borderRadius: 10, 
+              background: 'var(--bg-light)', 
+              fontSize: 12, 
+              color: 'var(--text)', 
+              fontWeight: 500 
+            }}>
+              <MapPin size={13} color="#f59e0b" />
+              <span>
+                {req.city || 'Киров'}: {req.districts && req.districts.length > 0 ? req.districts.join(', ') : 'все районы'}
+              </span>
+            </div>
+          </div>
+
+          {/* Row 4: Notes (if any) */}
+          {req.notes && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              gap: 8, 
+              padding: '9px 12px', 
+              borderRadius: 12, 
+              background: 'var(--bg-light)', 
+              fontSize: 12, 
+              lineHeight: 1.45, 
+              color: 'var(--text-secondary)' 
+            }}>
+              <FileText size={14} style={{ flexShrink: 0, marginTop: 2, opacity: 0.6 }} />
+              <div style={{ whiteSpace: 'pre-wrap', minWidth: 0, flex: 1 }}>{req.notes}</div>
+            </div>
+          )}
+
+          {/* Row 5: Matches Banner / CTA */}
+          {isActive ? (
+            <button 
+              type="button"
+              className="card-clickable" 
+              onClick={() => navigate(`/matches?request=${id}`)}
+              style={{ 
+                height: 44, 
+                borderRadius: 12, 
+                border: 'none', 
+                background: 'linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%)', 
+                color: '#ffffff',
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                padding: '0 16px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0, 82, 255, 0.25)',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500 }}>
+                <Sparkles size={16} />
+                <span>Подходящие объекты в базе CRM:</span>
+                <span style={{ 
+                  background: 'rgba(255, 255, 255, 0.25)', 
+                  padding: '2px 8px', 
+                  borderRadius: 8, 
+                  fontWeight: 700, 
+                  fontSize: 12 
+                }}>
+                  {matches.length}
+                </span>
+              </div>
+              <ChevronRight size={16} />
+            </button>
+          ) : (
+            <div style={{ 
+              padding: '10px 14px', 
+              borderRadius: 12, 
+              fontSize: 12, 
+              fontWeight: 400, 
+              background: 'var(--bg-light)', 
+              color: 'var(--text-muted)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: 8,
+              border: '1px dashed var(--border-light)'
+            }}>
+              <Sparkles size={14} style={{ opacity: 0.4 }} />
+              <span>Запрос завершен - не участвует в анализе совпадений</span>
+            </div>
+          )}
+
         </div>
-    );
+
+        {/* New Buildings Suggestions */}
+        <RequestDevelopmentsSection
+          request={req}
+          developments={developments}
+          ksmLots={ksmLots}
+          ksskLots={ksskLots}
+          ksmProjects={ksmProjects}
+          ksskProjects={ksskProjects}
+        />
+
+        {/* Live market search + my properties */}
+        {isActive && <ClientSearchPanel request={req} />}
+
+      </div>
+    </div>
+  );
 }

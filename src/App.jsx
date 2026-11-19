@@ -61,6 +61,7 @@ const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m
 const PublicChatPage = lazy(() => import('./pages/Messaging/PublicChatPage'));
 const DevelopmentsPage = lazy(() => import('./pages/Developments/DevelopmentsPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
+import { useAutoSearchNotifications } from './hooks/useAutoSearchNotifications';
 
 /* ─── BottomNav ────────────────────────────────────────────────────────────── */
 
@@ -110,6 +111,13 @@ function BottomNav() {
 
   const menuSections = [
     {
+      path: '/requests',
+      label: 'Подбор',
+      icon: Target,
+      color: '#7c3aed',
+      bg: 'rgba(124, 58, 237, 0.1)',
+    },
+    {
       path: '/developments',
       label: 'Новостройки',
       icon: Landmark,
@@ -129,13 +137,6 @@ function BottomNav() {
       icon: FolderHeart,
       color: '#0891b2',
       bg: 'rgba(8, 145, 178, 0.1)',
-    },
-    {
-      path: '/requests',
-      label: 'Запросы',
-      icon: Target,
-      color: '#7c3aed',
-      bg: 'rgba(124, 58, 237, 0.1)',
     },
     {
       path: '/matches',
@@ -485,6 +486,7 @@ function AppLayout({ children }) {
 
 function AppRoutes() {
   useMatchNotifications();
+  useAutoSearchNotifications();
 
   return (
     <Suspense fallback={<LoadingScreen />}>

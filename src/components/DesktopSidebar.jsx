@@ -14,7 +14,8 @@ import {
   Moon,
   FolderHeart,
   Landmark,
-  Search
+  Search,
+  Target
 } from 'lucide-react';
 
 export function DesktopSidebar() {
@@ -55,6 +56,7 @@ export function DesktopSidebar() {
     { path: '/', icon: LayoutDashboard, label: 'Дашборд' },
     { path: '/properties', icon: Building2, label: 'Объекты' },
     { path: '/developments', icon: Landmark, label: 'Новостройки' },
+    { path: '/requests', icon: Target, label: 'Подбор' },
     { path: '/properties?filter=selection', icon: FolderHeart, label: 'Подборки' },
     { path: '/clients', icon: Users, label: 'Клиенты' },
     { path: '/tasks', icon: FileCheck, label: 'Сделки' },

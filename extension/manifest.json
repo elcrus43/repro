@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Realtor-Match Importer",
   "version": "1.0",
-  "description": "Импорт объектов недвижимости с Авито и ЦИАН",
+  "description": "Импорт объектов недвижимости с Авито, ЦИАН и ДомКлик",
   "permissions": [
     "activeTab",
     "scripting"
@@ -10,6 +10,7 @@
   "host_permissions": [
     "*://*.avito.ru/*",
     "*://*.cian.ru/*",
+    "*://*.domclick.ru/*",
     "*://localhost/*",
     "*://127.0.0.1/*",
     "*://*.vercel.app/*",

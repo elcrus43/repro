@@ -16,7 +16,7 @@
         const priceMeta = document.querySelector('meta[property="product:price:amount"], meta[itemprop="price"]');
         if (priceMeta) data.price = priceMeta.getAttribute('content');
         if (!data.price) {
-            const priceEl = document.querySelector('[data-marker="item-view/price-value"], [itemprop="price"], span[class*="price-value"]');
+            const priceEl = document.querySelector('[data-marker="item-view/price-value"], [itemprop="price"], span[class*="price-value"], [data-e2e-id="offer-price"], [data-test="price"], [class*="OfferHeader__price"]');
             if (priceEl) {
                 const textPrice = priceEl.getAttribute('content') || priceEl.textContent || '';
                 const digits = textPrice.replace(/\D/g, '');
@@ -31,7 +31,7 @@
         // 2. DESCRIPTION
         const descMeta = document.querySelector('meta[property="og:description"], meta[name="description"]');
         if (descMeta) data.description = descMeta.getAttribute('content');
-        const descEl = document.querySelector('[data-marker="item-view/item-description"], div[class*="item-description"]');
+        const descEl = document.querySelector('[data-marker="item-view/item-description"], div[class*="item-description"], [data-e2e-id="offer-description"], [class*="OfferDescription"]');
         if (descEl && descEl.textContent.trim().length > (data.description || '').length) {
             data.description = descEl.textContent.trim();
         }
@@ -124,7 +124,7 @@
         });
 
         // DOM Address fallback
-        const addrEl = document.querySelector('[data-marker="item-view/item-address"], [itemprop="address"], span[class*="style-item-address__string"]');
+        const addrEl = document.querySelector('[data-marker="item-view/item-address"], [itemprop="address"], span[class*="style-item-address__string"], [data-e2e-id="offer-address"], [data-test="address"], [class*="Address__address"]');
         if (addrEl && addrEl.textContent.trim()) {
             data.address = addrEl.textContent.trim();
         }

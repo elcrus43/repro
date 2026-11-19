@@ -18,7 +18,8 @@ import {
   ArrowRight,
   Sparkles,
   Command,
-  Landmark
+  Landmark,
+  Target
 } from 'lucide-react';
 import { formatNumber, formatPhone, stripPhone } from '../utils/format';
 
@@ -136,6 +137,15 @@ export function CommandPalette() {
       action: () => { setIsOpen(false); navigate('/selection/new'); }
     },
     {
+      id: 'act-new-request',
+      type: 'action',
+      category: 'Быстрые действия',
+      title: 'Создать запрос на подбор',
+      subtitle: 'Параметры поиска недвижимости для покупателя',
+      icon: Target,
+      action: () => { setIsOpen(false); navigate('/requests/new'); }
+    },
+    {
       id: 'act-theme',
       type: 'action',
       category: 'Настройки',
@@ -170,6 +180,15 @@ export function CommandPalette() {
       subtitle: 'Каталог ЖК, карта и свободные квартиры',
       icon: Landmark,
       action: () => { setIsOpen(false); navigate('/developments'); }
+    },
+    {
+      id: 'nav-requests',
+      type: 'navigation',
+      category: 'Разделы',
+      title: 'Подбор недвижимости',
+      subtitle: 'Запросы на покупку и поиск совпадений',
+      icon: Target,
+      action: () => { setIsOpen(false); navigate('/requests'); }
     },
     {
       id: 'nav-clients',
