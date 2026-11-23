@@ -154,13 +154,13 @@ describe('AdsPage Component', () => {
     expect(screen.getByDisplayValue('0% КОМИССИИ')).toBeInTheDocument();
   });
 
-  it('allows modifying realtor details on Agent tab', () => {
+  it('allows modifying contact details on Contacts tab', () => {
     render(<AdsPage />);
 
-    // Switch to Agent tab
-    fireEvent.click(screen.getByText('5. Риелтор'));
+    // Switch to Contacts tab
+    fireEvent.click(screen.getByText('5. Контакты'));
 
-    expect(screen.getByText('Данные риелтора и брендинг')).toBeInTheDocument();
+    expect(screen.getByText(/Отображается внизу баннера крупной строкой/i)).toBeInTheDocument();
 
     const nameInput = screen.getByPlaceholderText('Имя Фамилия');
     expect(nameInput.value).toBe('Александр Ельчугин');

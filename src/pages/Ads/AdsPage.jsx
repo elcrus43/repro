@@ -452,7 +452,7 @@ export function AdsPage() {
               { id: 'slogan', label: '2. Слоган & Текст', icon: Sparkles },
               { id: 'design', label: '3. Оформление', icon: Palette },
               { id: 'cta', label: '4. CTA & Стикер', icon: Megaphone },
-              { id: 'agent', label: '5. Риелтор', icon: User }
+              { id: 'agent', label: '5. Контакты', icon: Phone }
             ].map(tab => {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -1241,53 +1241,26 @@ export function AdsPage() {
                     cursor: 'pointer'
                   }}
                 >
-                  <span>Далее: Данные риелтора</span>
+                  <span>Далее: Телефон для связи</span>
                   <ChevronRight size={16} />
                 </button>
               </div>
             </div>
           )}
 
-          {/* TAB 5: Realtor Personalization */}
+          {/* TAB 5: Contact Phone & Info */}
           {activeTab === 'agent' && (
             <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
-                  Данные риелтора и брендинг
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
+                  Телефон для связи
                 </h3>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showAgent}
-                    onChange={(e) => setShowAgent(e.target.checked)}
-                  />
-                  <span>Показывать карточку</span>
-                </label>
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                  Отображается внизу баннера крупной строкой: «Тел. для связи: {agentPhone}»
+                </p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                    Имя специалиста
-                  </label>
-                  <input
-                    type="text"
-                    value={agentName}
-                    onChange={(e) => setAgentName(e.target.value)}
-                    placeholder="Имя Фамилия"
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      fontSize: 13,
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
-
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
                     Телефон для связи
@@ -1299,36 +1272,13 @@ export function AdsPage() {
                     placeholder="8 (909) 130-40-90"
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 8,
+                      padding: '10px 14px',
+                      borderRadius: 10,
                       border: '1px solid var(--border)',
                       background: 'var(--bg)',
                       color: 'var(--text)',
-                      fontSize: 13,
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                    Должность / Статус
-                  </label>
-                  <input
-                    type="text"
-                    value={agentRole}
-                    onChange={(e) => setAgentRole(e.target.value)}
-                    placeholder="Эксперт по недвижимости"
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      fontSize: 13,
+                      fontSize: 15,
+                      fontWeight: 700,
                       fontFamily: 'inherit'
                     }}
                   />
@@ -1336,100 +1286,32 @@ export function AdsPage() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                    Бренд / Агентство
+                    Имя специалиста (опционально)
                   </label>
                   <input
                     type="text"
-                    value={agencyName}
-                    onChange={(e) => setAgencyName(e.target.value)}
-                    placeholder="REA CRM"
+                    value={agentName}
+                    onChange={(e) => setAgentName(e.target.value)}
+                    placeholder="Имя Фамилия"
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
-                      borderRadius: 8,
+                      padding: '10px 14px',
+                      borderRadius: 10,
                       border: '1px solid var(--border)',
                       background: 'var(--bg)',
                       color: 'var(--text)',
-                      fontSize: 13,
+                      fontSize: 14,
                       fontFamily: 'inherit'
                     }}
                   />
-                </div>
-              </div>
-
-              {/* Photo Upload */}
-              <div style={{ paddingTop: 14, borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  background: 'var(--bg)',
-                  border: '2px solid var(--border)',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0
-                }}>
-                  {agentPhotoUrl ? (
-                    <img src={agentPhotoUrl} alt="Агент" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    <User size={24} color="var(--text-muted)" />
-                  )}
-                </div>
-
-                <div style={{ flex: 1 }}>
-                  <input
-                    type="file"
-                    ref={fileInputPhotoRef}
-                    onChange={handlePhotoUpload}
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                  />
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button
-                      type="button"
-                      onClick={() => fileInputPhotoRef.current?.click()}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 8,
-                        border: '1px solid var(--border)',
-                        background: 'var(--bg)',
-                        color: 'var(--text)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {agentPhotoUrl ? 'Заменить фото' : 'Загрузить фото риелтора'}
-                    </button>
-                    {agentPhotoUrl && (
-                      <button
-                        type="button"
-                        onClick={() => setAgentPhotoUrl(null)}
-                        style={{
-                          padding: '6px 10px',
-                          borderRadius: 8,
-                          border: 'none',
-                          background: 'transparent',
-                          color: 'var(--danger, #ef4444)',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Удалить фото
-                      </button>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                    Квадратное или круглое фото лица в хорошем качестве
-                  </div>
+                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                    Отображается рядом с номером телефона, если позволяет ширина баннера
+                  </span>
                 </div>
               </div>
 
               {/* Navigation Back */}
-              <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-start' }}>
+              <div style={{ marginTop: 24, display: 'flex', justifyContent: 'flex-start' }}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('cta')}

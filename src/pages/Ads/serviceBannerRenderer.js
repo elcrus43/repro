@@ -1,5 +1,6 @@
 /* Service Banner Canvas Renderer
- * Renders pixel-perfect, high-resolution 2D banners for social media and advertising.
+ * Renders bold, impactful high-resolution 2D banners for social media and advertising.
+ * Large hero typography filling the banner, clean bottom phone contact, no bulky headers/footers.
  */
 
 function safeRoundRect(ctx, x, y, w, h, r = 0) {
@@ -62,19 +63,16 @@ export function renderServiceBanner(canvas, options = {}) {
     ctaText = 'Получить бесплатную консультацию',
     agentName = 'Александр Ельчугин',
     agentPhone = '8 (909) 130-40-90',
-    agentRole = 'Эксперт по недвижимости',
-    agencyName = 'REA CRM',
     accentColor = '#0052FF',
     layoutMode = 'expert',
     bgImage = null,
-    agentPhoto = null,
-    showAgent = true,
     showBullets = true,
     showBadge = true
   } = options;
 
   const W = format.w;
   const H = format.h;
+  const isStory = format.id === 'story' || H >= W * 1.5;
   const isHorizontal = W > H;
   const isCompactSquare = W === H;
 
@@ -109,7 +107,6 @@ export function renderServiceBanner(canvas, options = {}) {
   if (bgImage && bgImage.complete && bgImage.naturalWidth > 0) {
     ctx.save();
     ctx.globalAlpha = 0.22;
-    // Cover scale
     const hRatio = W / bgImage.naturalWidth;
     const vRatio = H / bgImage.naturalHeight;
     const ratio = Math.max(hRatio, vRatio);
@@ -131,18 +128,18 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.fillRect(0, 0, W, H);
   }
 
-  // Radial ambient glow
-  const glowX = isHorizontal ? W * 0.75 : W * 0.85;
-  const glowY = isHorizontal ? H * 0.35 : H * 0.25;
-  const glowRad = ctx.createRadialGradient(glowX, glowY, 40, glowX, glowY, W * 0.6);
+  // Radial ambient glow for depth
+  const glowX = isHorizontal ? W * 0.75 : W * 0.82;
+  const glowY = isHorizontal ? H * 0.35 : H * 0.28;
+  const glowRad = ctx.createRadialGradient(glowX, glowY, 40, glowX, glowY, W * 0.65);
   glowRad.addColorStop(0, theme.glowColor || 'rgba(0, 82, 255, 0.35)');
   glowRad.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = glowRad;
   ctx.fillRect(0, 0, W, H);
 
-  // Decorative subtle architectural lines / grid
+  // Subtle decorative geometric lines
   ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
   ctx.lineWidth = 1;
   const step = 80;
   for (let x = 0; x < W; x += step) {
@@ -159,73 +156,49 @@ export function renderServiceBanner(canvas, options = {}) {
   }
   ctx.restore();
 
-  // Layout boundaries
+  // Layout Boundaries: Text takes the full banner space
   const paddingX = isHorizontal ? 80 : 64;
-  const contentWidth = isHorizontal ? W * 0.58 : W - paddingX * 2;
-  let cursorY = isHorizontal ? 60 : 72;
+  const contentWidth = isHorizontal ? W * 0.62 : W - paddingX * 2;
+  let cursorY = isStory ? 90 : isCompactSquare ? 56 : 70;
 
-  // 2. Top Header Brand Bar
-  ctx.save();
-  // Agency Brand Name
-  ctx.font = '700 24px "Medeo Sans", system-ui, sans-serif';
-  ctx.fillStyle = textColor;
-  ctx.letterSpacing = '2px';
-  ctx.fillText(agencyName.toUpperCase(), paddingX, cursorY + 16);
-
-  // Decorative brand indicator dot
-  ctx.beginPath();
-  ctx.arc(paddingX + ctx.measureText(agencyName.toUpperCase()).width + 16, cursorY + 8, 4, 0, Math.PI * 2);
-  ctx.fillStyle = accentColor;
-  ctx.fill();
-
-  // Agency sub-tag
-  ctx.font = '500 16px "Medeo Sans", system-ui, sans-serif';
-  ctx.fillStyle = subTextColor;
-  ctx.letterSpacing = '1px';
-  ctx.fillText('НЕДВИЖИМОСТЬ & ИПОТЕКА', paddingX + ctx.measureText(agencyName.toUpperCase()).width + 30, cursorY + 14);
-  ctx.restore();
-
-  cursorY += 56;
-
-  // 3. Badge Pill
+  // 2. Top Badge (e.g. "ВЫГОДНО И БЫСТРО")
   if (showBadge && badgeText) {
     ctx.save();
-    ctx.font = '700 18px "Medeo Sans", system-ui, sans-serif';
+    const badgeFontSize = isStory ? 22 : 18;
+    ctx.font = `800 ${badgeFontSize}px "Medeo Sans", system-ui, sans-serif`;
     const badgeMetrics = ctx.measureText(badgeText.toUpperCase());
-    const badgeW = badgeMetrics.width + 36;
-    const badgeH = 40;
+    const badgeW = badgeMetrics.width + 40;
+    const badgeH = isStory ? 48 : 42;
 
-    safeRoundRect(ctx, paddingX, cursorY, badgeW, badgeH, 20);
+    safeRoundRect(ctx, paddingX, cursorY, badgeW, badgeH, badgeH / 2);
     ctx.fillStyle = badgeBg;
     ctx.fill();
-    ctx.strokeStyle = theme.badgeBorder || 'rgba(255, 255, 255, 0.2)';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = theme.badgeBorder || 'rgba(255, 255, 255, 0.25)';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
     ctx.fillStyle = badgeColor;
-    ctx.fillText(badgeText.toUpperCase(), paddingX + 18, cursorY + 26);
+    ctx.fillText(badgeText.toUpperCase(), paddingX + 20, cursorY + badgeH / 2 + badgeFontSize * 0.35);
     ctx.restore();
 
-    cursorY += badgeH + 28;
-  } else {
-    cursorY += 12;
+    cursorY += badgeH + (isStory ? 40 : 24);
   }
 
-  // 4. Service Category Title (e.g. "ПРОДАЖА КВАРТИРЫ")
+  // 3. Service Category Title (e.g. "ПРОДАЖА НЕДВИЖИМОСТИ")
   ctx.save();
-  const serviceFontSize = isHorizontal ? 32 : isCompactSquare ? 30 : 36;
-  ctx.font = `600 ${serviceFontSize}px "Medeo Sans", system-ui, sans-serif`;
+  const serviceFontSize = isStory ? 48 : isHorizontal ? 38 : isCompactSquare ? 34 : 42;
+  ctx.font = `700 ${serviceFontSize}px "Medeo Sans", system-ui, sans-serif`;
   ctx.fillStyle = accentColor;
   ctx.letterSpacing = '1.5px';
   ctx.fillText(serviceTitle.toUpperCase(), paddingX, cursorY + serviceFontSize * 0.8);
-  cursorY += serviceFontSize + 20;
+  cursorY += serviceFontSize + (isStory ? 32 : 20);
   ctx.restore();
 
-  // 5. Main Power Slogan (Bold Hero Headline)
+  // 4. Large Hero Slogan (Taking up the banner)
   ctx.save();
-  const sloganFontSize = isHorizontal ? 48 : isCompactSquare ? 42 : 54;
+  const sloganFontSize = isStory ? 76 : isHorizontal ? 56 : isCompactSquare ? 50 : 66;
   const sloganLineHeight = sloganFontSize * 1.22;
-  ctx.font = `800 ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
+  ctx.font = `900 ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
   ctx.fillStyle = textColor;
 
   const sloganLines = wrapText(ctx, slogan, contentWidth);
@@ -234,96 +207,101 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.fillText(line, paddingX, cursorY + sloganFontSize * 0.85);
     cursorY += sloganLineHeight;
   });
-  cursorY += 24;
+  cursorY += isStory ? 44 : 26;
   ctx.restore();
 
-  // 6. Benefits / Bullets
+  // 5. Key Benefits / Bullets
   if (showBullets && bullets && bullets.length > 0) {
-    const bulletFontSize = isHorizontal ? 22 : isCompactSquare ? 20 : 24;
+    const bulletFontSize = isStory ? 32 : isHorizontal ? 24 : isCompactSquare ? 22 : 26;
     const bulletLineHeight = bulletFontSize * 1.35;
     const visibleBullets = isCompactSquare ? bullets.slice(0, 2) : bullets.slice(0, 3);
 
     if (layoutMode === 'cards') {
-      // Card style benefits
+      // Modern Glass Card Style
       visibleBullets.forEach((bullet) => {
         ctx.save();
-        ctx.font = `500 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
-        const bulletLines = wrapText(ctx, bullet, contentWidth - 80);
-        const cardH = bulletLines.length * bulletLineHeight + 28;
+        ctx.font = `600 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        const bulletLines = wrapText(ctx, bullet, contentWidth - 100);
+        const cardH = bulletLines.length * bulletLineHeight + (isStory ? 38 : 28);
 
-        safeRoundRect(ctx, paddingX, cursorY, contentWidth, cardH, 16);
+        safeRoundRect(ctx, paddingX, cursorY, contentWidth, cardH, 18);
         ctx.fillStyle = cardBg;
         ctx.fill();
         ctx.strokeStyle = cardBorder;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
 
         // Icon check circle
+        const circleRadius = isStory ? 18 : 14;
+        const circleX = paddingX + circleRadius + 16;
+        const circleY = cursorY + cardH / 2;
+
         ctx.beginPath();
-        ctx.arc(paddingX + 28, cursorY + cardH / 2, 12, 0, Math.PI * 2);
+        ctx.arc(circleX, circleY, circleRadius, 0, Math.PI * 2);
         ctx.fillStyle = accentColor;
         ctx.fill();
 
-        // Checkmark tick in white
+        // Checkmark tick
         ctx.strokeStyle = '#FFFFFF';
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.moveTo(paddingX + 23, cursorY + cardH / 2);
-        ctx.lineTo(paddingX + 27, cursorY + cardH / 2 + 4);
-        ctx.lineTo(paddingX + 34, cursorY + cardH / 2 - 4);
+        ctx.moveTo(circleX - 6, circleY);
+        ctx.lineTo(circleX - 1, circleY + 5);
+        ctx.lineTo(circleX + 7, circleY - 5);
         ctx.stroke();
 
         ctx.fillStyle = textColor;
-        let bTextY = cursorY + 24;
+        let bTextY = cursorY + (isStory ? 32 : 24);
         bulletLines.forEach((bLine) => {
-          ctx.fillText(bLine, paddingX + 54, bTextY);
+          ctx.fillText(bLine, circleX + circleRadius + 18, bTextY);
           bTextY += bulletLineHeight;
         });
 
-        cursorY += cardH + 14;
+        cursorY += cardH + (isStory ? 18 : 12);
         ctx.restore();
       });
-      cursorY += 16;
+      cursorY += isStory ? 32 : 18;
     } else {
-      // Classic sleek bullet list
+      // Bold List Style
       visibleBullets.forEach((bullet) => {
         ctx.save();
-        ctx.font = `500 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
-        const bulletLines = wrapText(ctx, bullet, contentWidth - 50);
+        ctx.font = `600 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        const bulletLines = wrapText(ctx, bullet, contentWidth - 60);
 
-        // Bullet indicator dot with glow
+        // Bullet indicator dot
+        const dotRadius = isStory ? 8 : 6;
         ctx.beginPath();
-        ctx.arc(paddingX + 12, cursorY + bulletFontSize * 0.5, 6, 0, Math.PI * 2);
+        ctx.arc(paddingX + dotRadius + 4, cursorY + bulletFontSize * 0.45, dotRadius, 0, Math.PI * 2);
         ctx.fillStyle = accentColor;
         ctx.fill();
 
         ctx.fillStyle = subTextColor;
         let bTextY = cursorY + bulletFontSize * 0.75;
         bulletLines.forEach((bLine) => {
-          ctx.fillText(bLine, paddingX + 34, bTextY);
+          ctx.fillText(bLine, paddingX + dotRadius * 2 + 20, bTextY);
           bTextY += bulletLineHeight;
         });
 
-        cursorY += bulletLines.length * bulletLineHeight + 12;
+        cursorY += bulletLines.length * bulletLineHeight + (isStory ? 20 : 12);
         ctx.restore();
       });
-      cursorY += 16;
+      cursorY += isStory ? 36 : 20;
     }
   }
 
-  // 7. Call To Action (CTA) Button
+  // 6. Call To Action (CTA) Button
   if (ctaText) {
     ctx.save();
-    const ctaFontSize = isHorizontal ? 24 : isCompactSquare ? 22 : 26;
-    ctx.font = `700 ${ctaFontSize}px "Medeo Sans", system-ui, sans-serif`;
+    const ctaFontSize = isStory ? 32 : isHorizontal ? 26 : isCompactSquare ? 24 : 28;
+    ctx.font = `800 ${ctaFontSize}px "Medeo Sans", system-ui, sans-serif`;
     const ctaMetrics = ctx.measureText(ctaText);
-    const ctaW = Math.min(contentWidth, ctaMetrics.width + 80);
-    const ctaH = isHorizontal ? 64 : isCompactSquare ? 58 : 72;
+    const ctaW = Math.min(contentWidth, ctaMetrics.width + (isStory ? 100 : 80));
+    const ctaH = isStory ? 88 : isHorizontal ? 68 : isCompactSquare ? 64 : 76;
 
-    // Button Glow shadow
+    // Glowing shadow
     ctx.shadowColor = accentColor;
-    ctx.shadowBlur = 24;
-    ctx.shadowOffsetY = 6;
+    ctx.shadowBlur = 28;
+    ctx.shadowOffsetY = 8;
 
     safeRoundRect(ctx, paddingX, cursorY, ctaW, ctaH, ctaH / 2);
     ctx.fillStyle = ctaBg;
@@ -334,110 +312,78 @@ export function renderServiceBanner(canvas, options = {}) {
 
     // CTA Text
     ctx.fillStyle = ctaColor;
-    ctx.fillText(ctaText, paddingX + 32, cursorY + ctaH / 2 + ctaFontSize * 0.32);
+    ctx.fillText(ctaText, paddingX + 36, cursorY + ctaH / 2 + ctaFontSize * 0.32);
 
     // Arrow icon ->
-    const arrowX = paddingX + ctaW - 36;
+    const arrowX = paddingX + ctaW - 42;
     const arrowY = cursorY + ctaH / 2;
     ctx.strokeStyle = ctaColor;
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3.5;
     ctx.beginPath();
-    ctx.moveTo(arrowX - 10, arrowY);
-    ctx.lineTo(arrowX + 2, arrowY);
-    ctx.lineTo(arrowX - 3, arrowY - 6);
-    ctx.moveTo(arrowX + 2, arrowY);
-    ctx.lineTo(arrowX - 3, arrowY + 6);
+    ctx.moveTo(arrowX - 12, arrowY);
+    ctx.lineTo(arrowX + 4, arrowY);
+    ctx.lineTo(arrowX - 2, arrowY - 7);
+    ctx.moveTo(arrowX + 4, arrowY);
+    ctx.lineTo(arrowX - 2, arrowY + 7);
     ctx.stroke();
 
     ctx.restore();
-    cursorY += ctaH + 32;
+    cursorY += ctaH + (isStory ? 48 : 28);
   }
 
-  // 8. Agent / Realtor Card
-  if (showAgent && (agentName || agentPhone)) {
+  // 7. Clean Contact Phone (Replaces footer)
+  if (agentPhone) {
     ctx.save();
-    let cardX = paddingX;
-    let cardY = H - (isHorizontal ? 130 : isCompactSquare ? 140 : 180);
-    let cardW = isHorizontal ? W * 0.36 : W - paddingX * 2;
-    let cardH = isHorizontal ? 100 : isCompactSquare ? 110 : 130;
+    const phoneY = H - (isStory ? 90 : isCompactSquare ? 60 : 70);
+    const phoneFontSize = isStory ? 38 : isHorizontal ? 32 : isCompactSquare ? 28 : 34;
+    const labelFontSize = isStory ? 24 : isHorizontal ? 20 : isCompactSquare ? 18 : 22;
 
-    if (isHorizontal) {
-      // Place in right bottom quadrant
-      cardX = W - cardW - paddingX;
-      cardY = H - cardH - 60;
-    }
+    // Draw stylish contact line with phone icon
+    const iconR = isStory ? 20 : 16;
+    const iconX = paddingX + iconR;
 
-    // Glass Card Background
-    safeRoundRect(ctx, cardX, cardY, cardW, cardH, 20);
-    ctx.fillStyle = cardBg;
+    // Circular icon background
+    ctx.beginPath();
+    ctx.arc(iconX, phoneY - iconR / 2, iconR, 0, Math.PI * 2);
+    ctx.fillStyle = accentColor;
     ctx.fill();
-    ctx.strokeStyle = cardBorder;
-    ctx.lineWidth = 1.5;
+
+    // Phone handset silhouette inside icon
+    ctx.save();
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.fillStyle = '#FFFFFF';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    const px = iconX;
+    const py = phoneY - iconR / 2;
+    ctx.arc(px, py - 2, iconR * 0.35, Math.PI * 0.2, Math.PI * 0.8, false);
     ctx.stroke();
+    ctx.restore();
 
-    let textOffsetX = cardX + 28;
+    const textStartX = iconX + iconR + 16;
 
-    // Avatar / Photo
-    const avatarSize = cardH - 36;
-    const avatarX = cardX + 20;
-    const avatarY = cardY + 18;
-
-    if (agentPhoto && agentPhoto.complete && agentPhoto.naturalWidth > 0) {
-      // Draw circular photo
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(agentPhoto, avatarX, avatarY, avatarSize, avatarSize);
-      ctx.restore();
-
-      // Circle border
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.strokeStyle = accentColor;
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      textOffsetX = avatarX + avatarSize + 22;
-    } else {
-      // Initials Avatar
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.fillStyle = accentColor;
-      ctx.fill();
-
-      const initials = (agentName || 'R')
-        .split(' ')
-        .map(w => w[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase();
-      ctx.font = `700 ${avatarSize * 0.42}px "Medeo Sans", system-ui, sans-serif`;
-      ctx.fillStyle = '#FFFFFF';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(initials, avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 1);
-      ctx.restore();
-
-      textOffsetX = avatarX + avatarSize + 22;
-    }
-
-    // Agent Name
-    ctx.font = '700 24px "Medeo Sans", system-ui, sans-serif';
-    ctx.fillStyle = textColor;
-    ctx.fillText(agentName || 'Специалист по недвижимости', textOffsetX, cardY + 36);
-
-    // Agent Role
-    ctx.font = '500 16px "Medeo Sans", system-ui, sans-serif';
+    // "Тел. для связи:" label
+    ctx.font = `600 ${labelFontSize}px "Medeo Sans", system-ui, sans-serif`;
     ctx.fillStyle = subTextColor;
-    ctx.fillText(agentRole, textOffsetX, cardY + 60);
+    const labelText = 'Тел. для связи: ';
+    ctx.fillText(labelText, textStartX, phoneY);
 
-    // Phone with Icon
-    if (agentPhone) {
-      ctx.font = '700 20px "Medeo Sans", system-ui, sans-serif';
-      ctx.fillStyle = accentColor;
-      ctx.fillText(agentPhone, textOffsetX, cardY + 86);
+    const labelWidth = ctx.measureText(labelText).width;
+
+    // Phone number in bold
+    ctx.font = `800 ${phoneFontSize}px "Medeo Sans", system-ui, sans-serif`;
+    ctx.fillStyle = textColor;
+    ctx.fillText(agentPhone, textStartX + labelWidth, phoneY);
+
+    // Optional Agent Name alongside phone if space permits
+    if (agentName && !isCompactSquare) {
+      const phoneWidth = ctx.measureText(agentPhone).width;
+      const agentStartX = textStartX + labelWidth + phoneWidth + 24;
+      if (agentStartX + 200 < W - paddingX) {
+        ctx.font = `500 ${labelFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        ctx.fillStyle = subTextColor;
+        ctx.fillText(`• ${agentName}`, agentStartX, phoneY);
+      }
     }
 
     ctx.restore();
