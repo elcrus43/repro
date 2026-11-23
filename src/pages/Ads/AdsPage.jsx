@@ -27,7 +27,10 @@ import {
   Upload,
   RotateCcw,
   SlidersHorizontal,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  Plus,
+  Pencil
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
@@ -59,6 +62,43 @@ const ICON_MAP = {
   Sparkles
 };
 
+const LS_BADGES_KEY = 'rem_ads_badges';
+const LS_BULLETS_PREFIX = 'rem_ads_bullets_';
+
+function loadSavedBadges() {
+  try {
+    const raw = localStorage.getItem(LS_BADGES_KEY);
+    return raw ? JSON.parse(raw) : QUICK_BADGES;
+  } catch {
+    return QUICK_BADGES;
+  }
+}
+
+function saveBadgesToStorage(badges) {
+  try {
+    localStorage.setItem(LS_BADGES_KEY, JSON.stringify(badges));
+  } catch (e) {
+    console.warn('[Ads] Failed to save badges:', e);
+  }
+}
+
+function loadSavedBullets(serviceId, defaultBullets) {
+  try {
+    const raw = localStorage.getItem(LS_BULLETS_PREFIX + serviceId);
+    return raw ? JSON.parse(raw) : defaultBullets;
+  } catch {
+    return defaultBullets;
+  }
+}
+
+function saveBulletsToStorage(serviceId, bullets) {
+  try {
+    localStorage.setItem(LS_BULLETS_PREFIX + serviceId, JSON.stringify(bullets));
+  } catch (e) {
+    console.warn('[Ads] Failed to save bullets:', e);
+  }
+}
+
 export function AdsPage() {
   const { state } = useApp();
   const { toast } = useToastContext();
@@ -71,11 +111,19 @@ export function AdsPage() {
   }, [selectedServiceId]);
 
   // Customizable Banner Fields
-  const [serviceTitle, setServiceTitle] = useState(activeService.title);
   const [badgeText, setBadgeText] = useState(activeService.badge);
   const [slogan, setSlogan] = useState(activeService.defaultSlogan);
-  const [bullets, setBullets] = useState(activeService.bullets);
   const [ctaText, setCtaText] = useState(activeService.ctas[0] || 'Получить консультацию');
+
+  // Badges list with persistence
+  const [badgesList, setBadgesList] = useState(loadSavedBadges);
+  const [editingBadgeIndex, setEditingBadgeIndex] = useState(null);
+  const [editingBadgeText, setEditingBadgeText] = useState('');
+  const [newBadgeText, setNewBadgeText] = useState('');
+  const [showAddBadge, setShowAddBadge] = useState(false);
+
+  // Bullets with persistence per service
+  const [bullets, setBullets] = useState(() => loadSavedBullets('sell', SERVICE_CATEGORIES[0].bullets));
 
   // Design & Format Settings
   const [formatId, setFormatId] = useState('story');
@@ -132,11 +180,80 @@ export function AdsPage() {
   // When user switches service category, update defaults if not customized
   const handleServiceSelect = (service) => {
     setSelectedServiceId(service.id);
-    setServiceTitle(service.title);
     setBadgeText(service.badge);
     setSlogan(service.defaultSlogan);
-    setBullets([...service.bullets]);
+    const savedBullets = loadSavedBullets(service.id, service.bullets);
+    setBullets(savedBullets);
     setCtaText(service.ctas[0] || 'Получить консультацию');
+  };
+
+  const handleUpdateBullets = (newBullets) => {
+    setBullets(newBullets);
+    saveBulletsToStorage(selectedServiceId, newBullets);
+  };
+
+  const handleAddBullet = () => {
+    const newBullets = [...bullets, 'Новое преимущество'];
+    handleUpdateBullets(newBullets);
+    toast.success('Преимущество добавлено и сохранено в базе');
+  };
+
+  const handleDeleteBullet = (idx) => {
+    if (bullets.length <= 1) {
+      toast.error('Должно остаться хотя бы одно преимущество');
+      return;
+    }
+    const newBullets = bullets.filter((_, i) => i !== idx);
+    handleUpdateBullets(newBullets);
+    toast.success('Преимущество удалено');
+  };
+
+  const handleResetBullets = () => {
+    handleUpdateBullets([...activeService.bullets]);
+    toast.success('Преимущества сброшены к стандартным');
+  };
+
+  const handleSaveEditedBadge = (idx) => {
+    if (!editingBadgeText.trim()) return;
+    const updated = [...badgesList];
+    updated[idx] = editingBadgeText.trim();
+    setBadgesList(updated);
+    saveBadgesToStorage(updated);
+    setBadgeText(editingBadgeText.trim());
+    setEditingBadgeIndex(null);
+    toast.success('Стикер сохранен в базе');
+  };
+
+  const handleAddNewBadge = () => {
+    if (!newBadgeText.trim()) return;
+    const updated = [...badgesList, newBadgeText.trim()];
+    setBadgesList(updated);
+    saveBadgesToStorage(updated);
+    setBadgeText(newBadgeText.trim());
+    setNewBadgeText('');
+    setShowAddBadge(false);
+    toast.success('Новый стикер сохранен в базе');
+  };
+
+  const handleDeleteBadge = (idx, e) => {
+    e.stopPropagation();
+    if (badgesList.length <= 1) {
+      toast.error('Должен остаться хотя бы один стикер');
+      return;
+    }
+    const updated = badgesList.filter((_, i) => i !== idx);
+    setBadgesList(updated);
+    saveBadgesToStorage(updated);
+    if (badgeText === badgesList[idx]) {
+      setBadgeText(updated[0] || '');
+    }
+    toast.success('Стикер удален');
+  };
+
+  const handleResetBadges = () => {
+    setBadgesList(QUICK_BADGES);
+    saveBadgesToStorage(QUICK_BADGES);
+    toast.success('Стикеры сброшены к исходным');
   };
 
   // Shuffle slogan from current service or global catalog
@@ -224,7 +341,6 @@ export function AdsPage() {
     renderServiceBanner(canvasRef.current, {
       format: activeFormat,
       theme: activeTheme,
-      serviceTitle,
       badgeText,
       slogan,
       bullets,
@@ -244,7 +360,6 @@ export function AdsPage() {
   }, [
     activeFormat,
     activeTheme,
-    serviceTitle,
     badgeText,
     slogan,
     bullets,
@@ -332,8 +447,9 @@ export function AdsPage() {
   const postText = useMemo(() => {
     const bulletText = bullets.map(b => `• ${b}`).join('\n');
     const tags = (activeService.hashtags || []).join(' ');
-    return `${slogan}\n\n${serviceTitle.toUpperCase()}\n${bulletText}\n\n👉 ${ctaText}\n\nКонтакты для связи:\n👤 ${agentName}\n📞 ${agentPhone}\n\n${tags}`;
-  }, [slogan, serviceTitle, bullets, ctaText, agentName, agentPhone, activeService]);
+    const phoneStr = agentPhone.startsWith('+') ? agentPhone : (agentPhone.startsWith('8') ? agentPhone.replace(/^8/, '+7') : `+7 ${agentPhone}`);
+    return `${slogan}\n\n${bulletText}\n\n👉 ${ctaText}\n\nТел. для связи: ${phoneStr}${agentName ? ` (${agentName})` : ''}\n\n${tags}`;
+  }, [slogan, bullets, ctaText, agentPhone, agentName, activeService]);
 
   const handleCopyPostText = async () => {
     try {
@@ -358,13 +474,13 @@ export function AdsPage() {
           const file = new File([blob], `banner-${selectedServiceId}.png`, { type: 'image/png' });
           if (navigator.canShare && navigator.canShare({ files: [file] })) {
             await navigator.share({
-              title: serviceTitle,
+              title: activeService.title,
               text: postText,
               files: [file]
             });
           } else {
             await navigator.share({
-              title: serviceTitle,
+              title: activeService.title,
               text: postText
             });
           }
@@ -568,31 +684,8 @@ export function AdsPage() {
                 })}
               </div>
 
-              {/* Custom Service Title Input */}
-              <div style={{ marginTop: 18, paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                  Название услуги на баннере
-                </label>
-                <input
-                  type="text"
-                  value={serviceTitle}
-                  onChange={(e) => setServiceTitle(e.target.value)}
-                  placeholder="Например: Продажа недвижимости"
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 10,
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg)',
-                    color: 'var(--text)',
-                    fontSize: 14,
-                    fontFamily: 'inherit'
-                  }}
-                />
-              </div>
-
               {/* Forward Button */}
-              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('slogan')}
@@ -762,12 +855,17 @@ export function AdsPage() {
               {/* Editable Benefits / Bullets */}
               <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                  <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
-                    Ключевые преимущества (3 буллета)
-                  </label>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
+                      Ключевые преимущества
+                    </label>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      Добавляйте или удаляйте пункты - сохраняются автоматически
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setBullets([...activeService.bullets])}
+                    onClick={handleResetBullets}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -785,7 +883,7 @@ export function AdsPage() {
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
                   {bullets.map((b, idx) => (
                     <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{
@@ -809,7 +907,7 @@ export function AdsPage() {
                         onChange={(e) => {
                           const updated = [...bullets];
                           updated[idx] = e.target.value;
-                          setBullets(updated);
+                          handleUpdateBullets(updated);
                         }}
                         style={{
                           flex: 1,
@@ -822,9 +920,50 @@ export function AdsPage() {
                           fontFamily: 'inherit'
                         }}
                       />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBullet(idx)}
+                        title="Удалить преимущество"
+                        style={{
+                          width: 32,
+                          height: 32,
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg)',
+                          color: 'var(--danger, #ef4444)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   ))}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={handleAddBullet}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    borderRadius: 8,
+                    border: '1px dashed var(--primary)',
+                    background: 'rgba(0, 82, 255, 0.05)',
+                    color: 'var(--primary)',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Добавить преимущество</span>
+                </button>
               </div>
 
               {/* Forward Button */}
@@ -1201,58 +1340,290 @@ export function AdsPage() {
 
               {/* Top Badge / Tag Settings */}
               <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
-                    Верхний стикер / бейдж
-                  </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={showBadge}
-                      onChange={(e) => setShowBadge(e.target.checked)}
-                    />
-                    <span>Показывать бейдж</span>
-                  </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
+                      Верхний стикер / бейдж
+                    </label>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      Кликните для выбора, отредактируйте или добавьте свой (сохраняется в базе)
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button
+                      type="button"
+                      onClick={handleResetBadges}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <RotateCcw size={12} />
+                      <span>Сбросить стикеры</span>
+                    </button>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={showBadge}
+                        onChange={(e) => setShowBadge(e.target.checked)}
+                      />
+                      <span>Показывать бейдж</span>
+                    </label>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-                  {QUICK_BADGES.map(badge => (
-                    <button
-                      key={badge}
-                      type="button"
-                      onClick={() => setBadgeText(badge)}
+                {/* Badges List with inline edit, delete, and select */}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                  {badgesList.map((badge, idx) => {
+                    const isSelected = badgeText === badge;
+                    const isEditing = editingBadgeIndex === idx;
+
+                    if (isEditing) {
+                      return (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            padding: '3px 8px',
+                            borderRadius: 16,
+                            border: '1.5px solid var(--primary)',
+                            background: 'var(--bg)'
+                          }}
+                        >
+                          <input
+                            type="text"
+                            value={editingBadgeText}
+                            onChange={(e) => setEditingBadgeText(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSaveEditedBadge(idx);
+                              if (e.key === 'Escape') setEditingBadgeIndex(null);
+                            }}
+                            autoFocus
+                            style={{
+                              border: 'none',
+                              background: 'transparent',
+                              color: 'var(--text)',
+                              fontSize: 12,
+                              fontWeight: 700,
+                              outline: 'none',
+                              width: Math.max(90, editingBadgeText.length * 8 + 12)
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEditedBadge(idx)}
+                            title="Сохранить стикер"
+                            style={{
+                              background: 'var(--primary)',
+                              border: 'none',
+                              borderRadius: '50%',
+                              width: 20,
+                              height: 20,
+                              color: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <Check size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingBadgeIndex(null)}
+                            title="Отмена"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--text-muted)',
+                              cursor: 'pointer',
+                              padding: 2,
+                              fontSize: 12
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '5px 10px',
+                          borderRadius: 16,
+                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected ? 'rgba(0, 82, 255, 0.1)' : 'var(--bg)',
+                          color: isSelected ? 'var(--primary)' : 'var(--text)',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onClick={() => setBadgeText(badge)}
+                      >
+                        <span>{badge}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingBadgeIndex(idx);
+                            setEditingBadgeText(badge);
+                          }}
+                          title="Редактировать стикер"
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'inherit',
+                            cursor: 'pointer',
+                            padding: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            opacity: 0.7
+                          }}
+                        >
+                          <Pencil size={11} />
+                        </button>
+                        {badgesList.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteBadge(idx, e)}
+                            title="Удалить стикер"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'inherit',
+                              cursor: 'pointer',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              opacity: 0.7
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Add new badge form */}
+                {showAddBadge ? (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12 }}>
+                    <input
+                      type="text"
+                      value={newBadgeText}
+                      onChange={(e) => setNewBadgeText(e.target.value)}
+                      placeholder="Название нового стикера..."
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleAddNewBadge();
+                        if (e.key === 'Escape') setShowAddBadge(false);
+                      }}
+                      autoFocus
                       style={{
-                        padding: '5px 10px',
-                        borderRadius: 16,
-                        border: `1px solid ${badgeText === badge ? 'var(--primary)' : 'var(--border)'}`,
-                        background: badgeText === badge ? 'rgba(0, 82, 255, 0.1)' : 'var(--bg)',
-                        color: badgeText === badge ? 'var(--primary)' : 'var(--text)',
-                        fontSize: 11,
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        color: 'var(--text)',
+                        fontSize: 12,
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddNewBadge}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'var(--primary)',
+                        color: '#fff',
+                        fontSize: 12,
                         fontWeight: 700,
                         cursor: 'pointer'
                       }}
                     >
-                      {badge}
+                      Сохранить
                     </button>
-                  ))}
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddBadge(false)}
+                      style={{
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'transparent',
+                        color: 'var(--text-muted)',
+                        fontSize: 12,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Отмена
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddBadge(true);
+                      setNewBadgeText('');
+                    }}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '5px 10px',
+                      borderRadius: 14,
+                      border: '1px dashed var(--primary)',
+                      background: 'rgba(0, 82, 255, 0.04)',
+                      color: 'var(--primary)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      marginBottom: 12
+                    }}
+                  >
+                    <Plus size={12} />
+                    <span>Добавить свой стикер</span>
+                  </button>
+                )}
 
-                <input
-                  type="text"
-                  value={badgeText}
-                  onChange={(e) => setBadgeText(e.target.value)}
-                  placeholder="Текст стикера..."
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: 8,
-                    border: '1px solid var(--border)',
-                    background: 'var(--bg)',
-                    color: 'var(--text)',
-                    fontSize: 13,
-                    fontFamily: 'inherit'
-                  }}
-                />
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                    Текст выбранного стикера на баннере
+                  </label>
+                  <input
+                    type="text"
+                    value={badgeText}
+                    onChange={(e) => setBadgeText(e.target.value)}
+                    placeholder="Текст стикера..."
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg)',
+                      color: 'var(--text)',
+                      fontSize: 13,
+                      fontFamily: 'inherit'
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Forward Button */}

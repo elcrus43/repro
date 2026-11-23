@@ -58,7 +58,6 @@ export function renderServiceBanner(canvas, options = {}) {
   const {
     format = { w: 1080, h: 1920, id: 'story' },
     theme = {},
-    serviceTitle = 'Продажа недвижимости',
     badgeText = 'ВЫГОДНО И БЫСТРО',
     slogan = 'Продам вашу квартиру дороже и быстрее, чем вы ожидаете',
     bullets = [],
@@ -116,7 +115,6 @@ export function renderServiceBanner(canvas, options = {}) {
   // Background Image overlay
   if (hasBgPhoto && activeBgImg && activeBgImg.complete && activeBgImg.naturalWidth > 0) {
     ctx.save();
-    // When noDarkOverlay is true, photo displays in clean natural colors without dark underlay
     ctx.globalAlpha = noDarkOverlay ? 0.95 : 0.28;
 
     const hRatio = W / activeBgImg.naturalWidth;
@@ -131,7 +129,6 @@ export function renderServiceBanner(canvas, options = {}) {
     );
     ctx.restore();
 
-    // Only apply tint if user turned off noDarkOverlay
     if (!noDarkOverlay) {
       const tintGrad = ctx.createLinearGradient(0, 0, 0, H);
       tintGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
@@ -173,7 +170,6 @@ export function renderServiceBanner(canvas, options = {}) {
   // Draw Side Custom Photo without any dark backing
   if (hasSidePhoto) {
     ctx.save();
-    // 100% natural photo without dark backing
     const maxPhotoW = isHorizontal ? W * 0.38 : isStory ? W * 0.45 : W * 0.38;
     const photoRatio = agentPhoto.naturalWidth / agentPhoto.naturalHeight;
     let photoW = maxPhotoW;
@@ -188,7 +184,6 @@ export function renderServiceBanner(canvas, options = {}) {
     const photoX = W - photoW - (isHorizontal ? 36 : 16);
     const photoY = H - photoH - (isStory ? 70 : 40);
 
-    // Natural subtle drop shadow for depth
     ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
     ctx.shadowBlur = 36;
     ctx.shadowOffsetY = 14;
@@ -229,30 +224,27 @@ export function renderServiceBanner(canvas, options = {}) {
 
   const topPad = isStory ? 100 : isCompactSquare ? 52 : 68;
   const bottomPad = isStory ? 90 : isCompactSquare ? 52 : 64;
-  const phoneH = isStory ? 52 : 40;
+  const phoneFontSize = isStory ? 36 : isHorizontal ? 30 : isCompactSquare ? 26 : 30;
+  const phoneH = phoneFontSize + 16;
   const availableContentH = H - topPad - bottomPad - phoneH - 30;
 
-  // Measure Elements with Medeo Sans
+  // Measure Top Badge (increased size!)
   let badgeH = 0;
-  const badgeFontSize = isStory ? 22 : 18;
+  const badgeFontSize = isStory ? 30 : isCompactSquare ? 22 : 26;
   if (showBadge && badgeText) {
-    badgeH = isStory ? 48 : 42;
+    badgeH = isStory ? 64 : isCompactSquare ? 50 : 56;
   }
-
-  // Service Title: SemiBold (600) / Bold (700)
-  const serviceFontSize = isStory ? 48 : isHorizontal ? 38 : isCompactSquare ? 34 : 42;
-  const titleH = serviceFontSize;
 
   // Slogan: user chosen weight or Black (900)
   const weight = sloganWeight || 900;
-  let sloganFontSize = isStory ? 82 : isHorizontal ? 58 : isCompactSquare ? 52 : 68;
+  let sloganFontSize = isStory ? 84 : isHorizontal ? 60 : isCompactSquare ? 52 : 70;
   ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
   let sloganLines = wrapText(ctx, slogan, contentWidth);
 
   // Bullets: Medium (500) / Regular (400)
   const bulletFontSize = isStory ? 32 : isHorizontal ? 24 : isCompactSquare ? 22 : 26;
   const bulletLineHeight = bulletFontSize * 1.35;
-  const visibleBullets = isCompactSquare ? bullets.slice(0, 2) : bullets.slice(0, 3);
+  const visibleBullets = isCompactSquare ? bullets.slice(0, 2) : bullets.slice(0, 4);
   let bulletsTotalH = 0;
 
   if (showBullets && visibleBullets.length > 0) {
@@ -274,57 +266,48 @@ export function renderServiceBanner(canvas, options = {}) {
   // Calculate Base Content Height and Remaining Extra Space
   let sloganLineHeight = sloganFontSize * 1.22;
   let sloganTotalH = sloganLines.length * sloganLineHeight;
-  let totalContentH = badgeH + titleH + sloganTotalH + bulletsTotalH + ctaH;
+  let totalContentH = badgeH + sloganTotalH + bulletsTotalH + ctaH;
   let remainingSpace = availableContentH - totalContentH;
 
   // If ample extra space on banner, dynamically expand typography and spacing
   if (remainingSpace > 160 && isStory) {
-    sloganFontSize = Math.min(94, sloganFontSize + Math.floor(remainingSpace * 0.04));
+    sloganFontSize = Math.min(96, sloganFontSize + Math.floor(remainingSpace * 0.04));
     sloganLineHeight = sloganFontSize * 1.22;
     ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
     sloganLines = wrapText(ctx, slogan, contentWidth);
     sloganTotalH = sloganLines.length * sloganLineHeight;
-    totalContentH = badgeH + titleH + sloganTotalH + bulletsTotalH + ctaH;
+    totalContentH = badgeH + sloganTotalH + bulletsTotalH + ctaH;
     remainingSpace = availableContentH - totalContentH;
   }
 
   // Dynamically calculate gaps between sections so banner is completely filled
-  const gapsCount = (showBadge ? 1 : 0) + 1 + 1 + (showBullets ? 1 : 0) + 1; // 4 to 5 gaps
-  const dynamicGap = Math.max(isStory ? 32 : 16, Math.min(isStory ? 92 : 46, Math.floor(remainingSpace / gapsCount)));
+  const gapsCount = (showBadge ? 1 : 0) + 1 + (showBullets ? 1 : 0) + 1; // 3 to 4 gaps
+  const dynamicGap = Math.max(isStory ? 36 : 18, Math.min(isStory ? 96 : 48, Math.floor(remainingSpace / gapsCount)));
 
   let cursorY = topPad;
 
-  // 3. Render Top Badge (Medeo Sans ExtraBold 800)
+  // 3. Render Enlarged Top Badge (Medeo Sans Black 900 / ExtraBold 800)
   if (showBadge && badgeText) {
     ctx.save();
-    ctx.font = `800 ${badgeFontSize}px "Medeo Sans", system-ui, sans-serif`;
+    ctx.font = `900 ${badgeFontSize}px "Medeo Sans", system-ui, sans-serif`;
     const badgeMetrics = ctx.measureText(badgeText.toUpperCase());
-    const badgeW = badgeMetrics.width + 42;
+    const badgeW = badgeMetrics.width + 56;
 
     safeRoundRect(ctx, paddingX, cursorY, badgeW, badgeH, badgeH / 2);
     ctx.fillStyle = badgeBg;
     ctx.fill();
-    ctx.strokeStyle = theme.badgeBorder || 'rgba(255, 255, 255, 0.25)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = theme.badgeBorder || 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 2.5;
     ctx.stroke();
 
     ctx.fillStyle = badgeColor;
-    ctx.fillText(badgeText.toUpperCase(), paddingX + 21, cursorY + badgeH / 2 + badgeFontSize * 0.35);
+    ctx.fillText(badgeText.toUpperCase(), paddingX + 28, cursorY + badgeH / 2 + badgeFontSize * 0.35);
     ctx.restore();
 
     cursorY += badgeH + dynamicGap;
   }
 
-  // 4. Render Service Title (Medeo Sans SemiBold 600 / Bold 700)
-  ctx.save();
-  ctx.font = `700 ${serviceFontSize}px "Medeo Sans", system-ui, sans-serif`;
-  ctx.fillStyle = accentColor;
-  ctx.letterSpacing = '1.5px';
-  ctx.fillText(serviceTitle.toUpperCase(), paddingX, cursorY + serviceFontSize * 0.8);
-  cursorY += titleH + dynamicGap;
-  ctx.restore();
-
-  // 5. Render Large Hero Slogan (Medeo Sans Black 900)
+  // 4. Render Large Hero Slogan (Medeo Sans Black 900)
   ctx.save();
   ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
   ctx.fillStyle = textColor;
@@ -336,7 +319,7 @@ export function renderServiceBanner(canvas, options = {}) {
   cursorY += dynamicGap;
   ctx.restore();
 
-  // 6. Render Benefits / Bullets (Medeo Sans Medium 500 / Regular 400)
+  // 5. Render Benefits / Bullets (Medeo Sans Medium 500 / Regular 400)
   if (showBullets && visibleBullets.length > 0) {
     if (layoutMode === 'cards') {
       visibleBullets.forEach((bullet) => {
@@ -406,7 +389,7 @@ export function renderServiceBanner(canvas, options = {}) {
     }
   }
 
-  // 7. Render CTA Button (Medeo Sans Black 900)
+  // 6. Render CTA Button (Medeo Sans Black 900)
   if (ctaText) {
     ctx.save();
     ctx.font = `900 ${ctaFontSize}px "Medeo Sans", system-ui, sans-serif`;
@@ -442,12 +425,10 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.restore();
   }
 
-  // 8. Contact Phone Line (Medeo Sans Thin 200 label + Black 900 phone)
+  // 7. Contact Phone Line (UNIFIED font, size, and weight: Medeo Sans 800, bright textColor!)
   if (agentPhone) {
     ctx.save();
     const phoneY = H - bottomPad;
-    const phoneFontSize = isStory ? 40 : isHorizontal ? 32 : isCompactSquare ? 28 : 34;
-    const labelFontSize = isStory ? 24 : isHorizontal ? 20 : isCompactSquare ? 18 : 22;
 
     const iconR = isStory ? 20 : 16;
     const iconX = paddingX + iconR;
@@ -467,31 +448,15 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.stroke();
     ctx.restore();
 
-    const textStartX = iconX + iconR + 16;
+    const textStartX = iconX + iconR + 18;
 
-    // Medeo Sans ExtraLight (200) label
-    ctx.font = `200 ${labelFontSize}px "Medeo Sans", system-ui, sans-serif`;
-    ctx.fillStyle = subTextColor;
-    const labelText = 'Тел. для связи: ';
-    ctx.fillText(labelText, textStartX, phoneY);
-
-    const labelWidth = ctx.measureText(labelText).width;
-
-    // Medeo Sans Black (900) phone number
-    ctx.font = `900 ${phoneFontSize}px "Medeo Sans", system-ui, sans-serif`;
+    // Unified single text with identical font, size, weight and color across the entire string!
+    ctx.font = `800 ${phoneFontSize}px "Medeo Sans", system-ui, sans-serif`;
     ctx.fillStyle = textColor;
-    ctx.fillText(agentPhone, textStartX + labelWidth, phoneY);
 
-    // Optional Agent Name alongside phone (Medeo Sans Regular 400)
-    if (agentName && !isCompactSquare && !hasSidePhoto) {
-      const phoneWidth = ctx.measureText(agentPhone).width;
-      const agentStartX = textStartX + labelWidth + phoneWidth + 24;
-      if (agentStartX + 200 < W - paddingX) {
-        ctx.font = `400 ${labelFontSize}px "Medeo Sans", system-ui, sans-serif`;
-        ctx.fillStyle = subTextColor;
-        ctx.fillText(`• ${agentName}`, agentStartX, phoneY);
-      }
-    }
+    const phoneStr = agentPhone.startsWith('+') ? agentPhone : (agentPhone.startsWith('8') ? agentPhone.replace(/^8/, '+7') : `+7 ${agentPhone}`);
+    const fullContactLine = `Тел. для связи: ${phoneStr}`;
+    ctx.fillText(fullContactLine, textStartX, phoneY);
 
     ctx.restore();
   }

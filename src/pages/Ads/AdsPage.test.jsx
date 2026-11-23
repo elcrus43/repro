@@ -73,7 +73,7 @@ describe('AdsPage Component', () => {
     expect(screen.getByText('Предпросмотр баннера')).toBeInTheDocument();
   });
 
-  it('allows selecting different services and updates slogan and title', () => {
+  it('allows selecting different services and updates slogan and badges', () => {
     render(<AdsPage />);
 
     // Initially "Продажа" is active
@@ -83,9 +83,31 @@ describe('AdsPage Component', () => {
     const mortgageBtn = screen.getByText('Ипотека');
     fireEvent.click(mortgageBtn);
 
-    // Verify input updated with mortgage service title
-    const titleInput = screen.getByDisplayValue('Одобрение ипотеки');
-    expect(titleInput).toBeInTheDocument();
+    // Switch to Slogan tab to verify mortgage slogan is loaded
+    fireEvent.click(screen.getByText('2. Слоган & Текст'));
+    const textarea = screen.getByPlaceholderText('Введите привлекающий внимание слоган...');
+    expect(textarea.value).toContain('ипотек');
+  });
+
+  it('allows adding and deleting key benefits in Slogan tab', () => {
+    render(<AdsPage />);
+
+    // Click on Slogan tab
+    fireEvent.click(screen.getByText('2. Слоган & Текст'));
+
+    // Verify benefits section exists
+    expect(screen.getByText('Ключевые преимущества')).toBeInTheDocument();
+
+    // Click "Добавить преимущество"
+    const addBtn = screen.getByText('Добавить преимущество');
+    fireEvent.click(addBtn);
+    expect(mockToast.success).toHaveBeenCalledWith('Преимущество добавлено и сохранено в базе');
+
+    // Delete a benefit
+    const deleteBtns = screen.getAllByTitle('Удалить преимущество');
+    expect(deleteBtns.length).toBeGreaterThan(0);
+    fireEvent.click(deleteBtns[0]);
+    expect(mockToast.success).toHaveBeenCalledWith('Преимущество удалено');
   });
 
   it('allows navigating to Slogan tab and editing slogan', () => {
@@ -152,6 +174,16 @@ describe('AdsPage Component', () => {
     fireEvent.click(badgeBtn);
 
     expect(screen.getByDisplayValue('0% КОМИССИИ')).toBeInTheDocument();
+
+    // Edit badge
+    const editBtns = screen.getAllByTitle('Редактировать стикер');
+    expect(editBtns.length).toBeGreaterThan(0);
+    fireEvent.click(editBtns[0]);
+
+    // Save edited badge
+    const saveBadgeBtn = screen.getByTitle('Сохранить стикер');
+    fireEvent.click(saveBadgeBtn);
+    expect(mockToast.success).toHaveBeenCalledWith('Стикер сохранен в базе');
   });
 
   it('allows modifying contact details on Contacts tab', () => {

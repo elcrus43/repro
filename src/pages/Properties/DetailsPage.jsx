@@ -1042,7 +1042,10 @@ export function DetailsPage() {
                     </span>
                     <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 200, letterSpacing: '0.03em', opacity: 0.6 }}>Карточка объекта</span>
                 </div>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button className="icon-btn-deal" onClick={handleCreateDeal} title="Создать сделку" style={{ color: '#10b981' }}>
+                        <Handshake size={18} />
+                    </button>
                     <button className="icon-btn-calendar" onClick={handleCreateDocument} title="Создать договор / документ" style={{ color: 'var(--primary)' }}>
                         <FileText size={18} />
                     </button>
@@ -1322,17 +1325,8 @@ export function DetailsPage() {
                         );
                     })()}
 
-                    {/* Action Controls: Modern & Refined */}
+                    {/* Marketing & Presentation Tools */}
                     <div className="prop-action-controls">
-                        <button
-                            className="prop-deal-btn card-clickable"
-                            onClick={handleCreateDeal}
-                        >
-                            <Handshake size={17} />
-                            <span>Создать сделку</span>
-                        </button>
-
-                        {/* Marketing & Presentation Tools */}
                         <div className="prop-tools-grid">
                             <button
                                 className="prop-tool-btn card-clickable"
@@ -1350,15 +1344,6 @@ export function DetailsPage() {
                             >
                                 <ImageIcon size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
                                 <span>Баннер</span>
-                            </button>
-
-                            <button
-                                className="prop-tool-btn card-clickable"
-                                onClick={() => setShowPortfolio(true)}
-                                title="Портфолио и презентация объекта"
-                            >
-                                <Briefcase size={14} style={{ color: '#8b5cf6', flexShrink: 0 }} />
-                                <span>Портфолио</span>
                             </button>
 
                             <button
