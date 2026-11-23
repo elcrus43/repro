@@ -1,5 +1,8 @@
 ﻿import React from 'react';
-import { X, Download, Share2, Settings, ChevronDown, ChevronUp } from 'lucide-react';
+import {
+    X, Download, Share2, Settings, ChevronDown, ChevronUp,
+    Shuffle, Sparkles, Layers, Image as ImageIcon, Phone, Tag, Check, Palette
+} from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
 import { useApp } from '../context/AppContext';
 import {
@@ -471,7 +474,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     // Collapsible sections
     const [openSections, setOpenSections] = React.useState({
         format: true, theme: true, goal: true, photo: true, agent: true,
-        layout: true, stickers: false, colors: false,
+        layout: true, stickers: false, colors: true,
     });
     const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -1041,16 +1044,58 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
 
             <div style={{ ...S.root, flexDirection: isMobile ? 'column' : 'row' }}>
 
-                {/* ======== LEFT PANEL ======== */}
+                {/* ======== LEFT PANEL (STUDIO CONTROLS) ======== */}
                 <div style={S.panel}>
+                    {/* Header */}
                     <div style={S.panelHeader}>
-                        <span style={S.panelTitle}>Создание баннера</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                            <div style={S.brandIconWrap}>
+                                <Sparkles size={16} />
+                            </div>
+                            <div>
+                                <div style={S.panelTitle}>Генератор баннера</div>
+                                <div style={S.panelSubtitle}>
+                                    {property?.price ? `${formatNumber(property.price)} ₽ · ` : ''}
+                                    {property?.address || property?.city || 'Объект'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Quick navigation anchor pills */}
+                    <div style={S.quickNav}>
+                        {[
+                            { id: 'sec-format', label: 'Формат' },
+                            { id: 'sec-theme', label: 'Стиль' },
+                            { id: 'sec-photo', label: 'Фото' },
+                            { id: 'sec-goal', label: 'Плашки' },
+                            { id: 'sec-contacts', label: 'Контакты' },
+                        ].map(tab => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => {
+                                    const el = document.getElementById(tab.id);
+                                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                                }}
+                                style={S.quickNavBtn}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
 
                     <div style={S.panelBody}>
 
                         {/* FORMAT */}
-                        <Collapsible label="Формат" open={openSections.format} onToggle={() => toggleSection('format')}>
+                        <Collapsible
+                            id="sec-format"
+                            label="Формат"
+                            icon={Layers}
+                            badge={BANNER_FORMATS[format]?.label}
+                            open={openSections.format}
+                            onToggle={() => toggleSection('format')}
+                        >
                             <div style={S.formatGrid}>
                                 {Object.entries(BANNER_FORMATS).map(([key, fmt]) => (
                                     <FormatCard
@@ -1066,8 +1111,15 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             </div>
                         </Collapsible>
 
-                        {/* THEME */}
-                        <Collapsible label="Тема" open={openSections.theme} onToggle={() => toggleSection('theme')}>
+                        {/* THEME & GRID */}
+                        <Collapsible
+                            id="sec-theme"
+                            label="Стиль и цвет"
+                            icon={Palette}
+                            badge={DESIGN_THEMES.find(t => t.key === designTheme)?.label}
+                            open={openSections.theme}
+                            onToggle={() => toggleSection('theme')}
+                        >
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                                 {DESIGN_THEMES.map(t => (
                                     <PillBtn
@@ -1076,33 +1128,188 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                         color={AC}
                                         onClick={() => setDesignTheme(t.key)}
                                     >
+                                        <span style={{
+                                            width: 8, height: 8, borderRadius: '50%',
+                                            background: t.key === 'dark' ? '#0f172a'
+                                                : t.key === 'light' ? '#f8fafc'
+                                                : t.key === 'glass' ? 'rgba(0,180,255,0.7)'
+                                                : accentColor,
+                                            border: t.key === 'light' ? '1px solid #cbd5e1' : 'none',
+                                            display: 'inline-block',
+                                        }} />
                                         {t.label}
                                     </PillBtn>
                                 ))}
                             </div>
-                            <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+
+                            <div style={S.settingRow}>
                                 <span style={S.subLabel}>Сетка:</span>
-                                {[
-                                    ['adaptive', 'Адаптивная'],
-                                    ['classic', 'Симметричная']
-                                ].map(([m, l]) => (
-                                    <PillBtn key={m} active={gridMode === m} color={AC} onClick={() => setGridMode(m)}>
-                                        {l}
-                                    </PillBtn>
-                                ))}
+                                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                                    {[
+                                        ['adaptive', 'Адаптивная'],
+                                        ['classic', 'Симметричная']
+                                    ].map(([m, l]) => (
+                                        <PillBtn key={m} active={gridMode === m} color={AC} onClick={() => setGridMode(m)}>
+                                            {l}
+                                        </PillBtn>
+                                    ))}
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+
+                            <div style={S.settingRow}>
                                 <span style={S.subLabel}>Фото:</span>
-                                {[['cover', 'Заполнить'], ['contain', 'Целиком']].map(([m, l]) => (
-                                    <PillBtn key={m} active={fitMode === m} color={AC} onClick={() => setFitMode(m)}>
-                                        {l}
-                                    </PillBtn>
+                                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                                    {[['cover', 'Заполнить'], ['contain', 'Целиком']].map(([m, l]) => (
+                                        <PillBtn key={m} active={fitMode === m} color={AC} onClick={() => setFitMode(m)}>
+                                            {l}
+                                        </PillBtn>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--border-light, rgba(0,0,0,0.05))' }}>
+                                <div style={{ ...S.subLabel, marginBottom: 6 }}>Акцентный цвет цены:</div>
+                                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                    {TRENDING_COLORS.map(c => (
+                                        <button
+                                            key={c}
+                                            type="button"
+                                            onClick={() => setAccentColor(c)}
+                                            title={c}
+                                            style={{
+                                                width: 24, height: 24, borderRadius: '50%', background: c,
+                                                border: accentColor === c ? '2.5px solid var(--text)' : '2px solid transparent',
+                                                cursor: 'pointer',
+                                                boxShadow: accentColor === c ? `0 0 0 2px ${c}55, 0 2px 6px rgba(0,0,0,0.2)` : '0 1px 3px rgba(0,0,0,0.12)',
+                                                transform: accentColor === c ? 'scale(1.15)' : 'scale(1)',
+                                                transition: 'all 0.15s ease',
+                                            }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        </Collapsible>
+
+                        {/* PHOTOS */}
+                        <Collapsible
+                            id="sec-photo"
+                            label="Фотографии (в сетку)"
+                            icon={ImageIcon}
+                            badge={`${selectedImages.length} фото`}
+                            open={openSections.photo}
+                            onToggle={() => toggleSection('photo')}
+                        >
+                            {propertyImages.length > 1 && (
+                                <div style={S.photoGrid}>
+                                    {propertyImages.map((url, idx) => {
+                                        const sel = selectedImages.includes(idx);
+                                        return (
+                                            <div
+                                                key={idx}
+                                                onClick={() => setSelectedImages(prev => {
+                                                    if (prev.includes(idx)) return prev.length === 1 ? prev : prev.filter(i => i !== idx);
+                                                    return prev.length >= 8 ? prev : [...prev, idx];
+                                                })}
+                                                style={{
+                                                    ...S.thumb,
+                                                    border: `2px solid ${sel ? AC : 'transparent'}`,
+                                                    opacity: sel ? 1 : 0.45,
+                                                    boxShadow: sel ? `0 2px 6px ${AC}33` : 'none',
+                                                }}
+                                            >
+                                                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                {sel && (
+                                                    <div style={S.thumbCheck}>
+                                                        <Check size={9} strokeWidth={3} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            <div style={S.photoFooterRow}>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    Выбрано {selectedImages.length} фото (100% кадра)
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (selectedImages.length === 1) {
+                                            setSelectedImages([(selectedImages[0] + 1) % propertyImages.length]);
+                                        } else {
+                                            setSelectedImages(prev => [...prev.slice(1), prev[0]]);
+                                        }
+                                    }}
+                                    style={S.btnShuffle}
+                                    title="Сдвинуть порядок фото в сетке"
+                                >
+                                    <Shuffle size={12} />
+                                    <span>Сдвиг фото</span>
+                                </button>
+                            </div>
+                        </Collapsible>
+
+                        {/* LAYOUT / FLOORPLAN */}
+                        <Collapsible
+                            label="Планировка (поверх в углу)"
+                            icon={Layers}
+                            badge={layoutImage ? 'Включена' : 'Без плана'}
+                            open={openSections.layout}
+                            onToggle={() => toggleSection('layout')}
+                        >
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setLayoutImage(null)}
+                                    style={{
+                                        ...S.thumb,
+                                        border: `2px solid ${layoutImage === null ? AC : 'var(--border)'}`,
+                                        color: layoutImage === null ? AC : 'var(--text-muted)',
+                                        fontSize: 10, fontWeight: 700,
+                                        background: layoutImage === null ? 'var(--primary-light, rgba(0,82,255,0.08))' : 'var(--surface)',
+                                    }}
+                                >
+                                    БЕЗ
+                                </button>
+                                {availableLayouts.map((url, idx) => (
+                                    <div
+                                        key={idx}
+                                        onClick={() => setLayoutImage(url)}
+                                        style={{
+                                            ...S.thumb,
+                                            border: `2px solid ${layoutImage === url ? AC : 'transparent'}`,
+                                            opacity: layoutImage === url ? 1 : 0.5,
+                                            boxShadow: layoutImage === url ? `0 2px 6px ${AC}33` : 'none',
+                                        }}
+                                    >
+                                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
                                 ))}
+                                <label style={{
+                                    ...S.thumb,
+                                    border: '1.5px dashed var(--border)',
+                                    fontSize: 18, color: 'var(--text-muted)',
+                                    background: 'var(--surface)',
+                                }}>
+                                    +
+                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLayoutUpload} />
+                                </label>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.35 }}>
+                                Размещается поверх фото в правом нижнем углу. Текст автоматически выровнен слева без перекрытия.
                             </div>
                         </Collapsible>
 
                         {/* DEAL GOAL */}
-                        <Collapsible label="Цель сделки" open={openSections.goal} onToggle={() => toggleSection('goal')}>
+                        <Collapsible
+                            id="sec-goal"
+                            label="Цель сделки"
+                            icon={Tag}
+                            badge={showDealGoal ? (dealGoal === 'custom' ? customGoalText || 'Свой' : dealGoal) : 'Скрыта'}
+                            open={openSections.goal}
+                            onToggle={() => toggleSection('goal')}
+                        >
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
                                 {DEAL_GOAL_OPTIONS.map(g => (
                                     <PillBtn
@@ -1129,65 +1336,16 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             )}
                         </Collapsible>
 
-                        {/* PHOTOS */}
-                        <Collapsible label="Фотографии (в сетку)" open={openSections.photo} onToggle={() => toggleSection('photo')}>
-                            {propertyImages.length > 1 && (
-                                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-                                    {propertyImages.map((url, idx) => {
-                                        const sel = selectedImages.includes(idx);
-                                        return (
-                                            <div
-                                                key={idx}
-                                                onClick={() => setSelectedImages(prev => {
-                                                    if (prev.includes(idx)) return prev.length === 1 ? prev : prev.filter(i => i !== idx);
-                                                    return prev.length >= 8 ? prev : [...prev, idx];
-                                                })}
-                                                style={{ ...S.thumb, border: `2px solid ${sel ? AC : 'transparent'}`, opacity: sel ? 1 : 0.4 }}
-                                            >
-                                                <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                {sel && <div style={S.thumbCheck}>✓</div>}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
-                                Выбрано {selectedImages.length} фото для 100% заполнения сетки
-                            </div>
-                        </Collapsible>
-
-                        {/* LAYOUT / FLOORPLAN */}
-                        <Collapsible label="Планировка (поверх в углу)" open={openSections.layout} onToggle={() => toggleSection('layout')}>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setLayoutImage(null)}
-                                    style={{ ...S.thumb, border: `2px solid ${layoutImage === null ? AC : 'var(--border)'}`, color: 'var(--text-muted)', fontSize: 9, fontWeight: 700 }}
-                                >
-                                    БЕЗ
-                                </button>
-                                {availableLayouts.map((url, idx) => (
-                                    <div
-                                        key={idx}
-                                        onClick={() => setLayoutImage(url)}
-                                        style={{ ...S.thumb, border: `2px solid ${layoutImage === url ? AC : 'transparent'}`, opacity: layoutImage === url ? 1 : 0.5 }}
-                                    >
-                                        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
-                                ))}
-                                <label style={{ ...S.thumb, border: '2px dashed var(--border)', fontSize: 20, color: 'var(--text-muted)' }}>
-                                    +
-                                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLayoutUpload} />
-                                </label>
-                            </div>
-                            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.35 }}>
-                                Размещается поверх фото в правом нижнем углу. Текст автоматически сдвинут влево и не перекрывается.
-                            </div>
-                        </Collapsible>
-
                         {/* CONTACTS */}
-                        <Collapsible label="Контакты" open={openSections.agent} onToggle={() => toggleSection('agent')}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <Collapsible
+                            id="sec-contacts"
+                            label="Контакты"
+                            icon={Phone}
+                            badge={phone ? 'Заданы' : 'Нет'}
+                            open={openSections.agent}
+                            onToggle={() => toggleSection('agent')}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div>
                                     <div style={S.subLabel}>Телефон</div>
                                     <input
@@ -1232,8 +1390,14 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         </Collapsible>
 
                         {/* STICKERS */}
-                        <Collapsible label="Стикеры" open={openSections.stickers} onToggle={() => toggleSection('stickers')}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Collapsible
+                            label="Стикеры"
+                            icon={Tag}
+                            badge={stickers.length ? `${stickers.length} шт.` : null}
+                            open={openSections.stickers}
+                            onToggle={() => toggleSection('stickers')}
+                        >
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                                 {AVAILABLE_STICKERS.map(s => {
                                     const on = stickers.includes(s);
                                     return (
@@ -1241,9 +1405,18 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                                             key={s}
                                             type="button"
                                             onClick={() => setStickers(p => on ? p.filter(x => x !== s) : [...p, s])}
-                                            style={{ ...S.stickerRow, fontWeight: on ? 600 : 400, color: on ? AC : 'var(--text-muted)' }}
+                                            style={{
+                                                ...S.stickerRow,
+                                                fontWeight: on ? 600 : 400,
+                                                color: on ? AC : 'var(--text)',
+                                                background: on ? 'var(--primary-light, rgba(0,82,255,0.06))' : 'transparent',
+                                            }}
                                         >
-                                            <span style={{ ...S.stickerDot, background: on ? AC : 'var(--border)' }} />
+                                            <span style={{
+                                                ...S.stickerDot,
+                                                background: on ? AC : 'var(--border)',
+                                                borderColor: on ? AC : 'var(--border)',
+                                            }} />
                                             {s}
                                         </button>
                                     );
@@ -1260,47 +1433,17 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             </div>
                         </Collapsible>
 
-                        {/* COLORS */}
-                        <Collapsible label="Акцент (цвет цены)" open={openSections.colors} onToggle={() => toggleSection('colors')}>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                {TRENDING_COLORS.map(c => (
-                                    <button
-                                        key={c}
-                                        type="button"
-                                        onClick={() => setAccentColor(c)}
-                                        title={c}
-                                        style={{
-                                            width: 26, height: 26, borderRadius: '50%', background: c,
-                                            border: accentColor === c ? '3px solid var(--text)' : '2px solid transparent',
-                                            cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
-                                            transform: accentColor === c ? 'scale(1.18)' : 'scale(1)',
-                                            transition: 'all 0.15s',
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        </Collapsible>
-
                     </div>
 
                     {/* ---- Actions footer ---- */}
                     <div style={S.panelFooter}>
                         <button
                             type="button"
-                            onClick={() => {
-                                if (selectedImages.length === 1) {
-                                    setSelectedImages([(selectedImages[0] + 1) % propertyImages.length]);
-                                } else {
-                                    setSelectedImages(prev => [...prev.slice(1), prev[0]]);
-                                }
-                            }}
-                            style={S.btnSecondary}
+                            onClick={handleDownload}
+                            style={{ ...S.btnPrimary, background: AC }}
                         >
-                            Сдвиг фото
-                        </button>
-                        <button type="button" onClick={handleDownload} style={{ ...S.btnPrimary, background: AC }}>
-                            <Download size={15} style={{ flexShrink: 0 }} />
-                            Скачать
+                            <Download size={16} style={{ flexShrink: 0 }} />
+                            <span>Скачать баннер</span>
                         </button>
                     </div>
 
@@ -1309,7 +1452,12 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         <button
                             type="button"
                             onClick={() => { setShowSocialPanel(p => !p); setShareFeedback(null); }}
-                            style={{ ...S.shareToggle, borderColor: showSocialPanel ? AC : 'var(--border)', color: showSocialPanel ? AC : 'var(--text-secondary)' }}
+                            style={{
+                                ...S.shareToggle,
+                                borderColor: showSocialPanel ? AC : 'var(--border)',
+                                color: showSocialPanel ? AC : 'var(--text-secondary)',
+                                background: showSocialPanel ? 'var(--primary-light, rgba(0,82,255,0.08))' : 'var(--surface)',
+                            }}
                         >
                             <Share2 size={14} />
                             <span>В мои соцсети{connectedSocials.length > 0 ? ` (${connectedSocials.length})` : ''}</span>
@@ -1411,65 +1559,139 @@ const S = {
         color: 'var(--text)',
         cursor: 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
+        transition: 'all 0.15s ease',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
     },
     root: {
         display: 'flex', gap: 16,
-        width: '100%', maxWidth: 1200,
-        height: '90vh',
+        width: '100%', maxWidth: 1240,
+        height: '92vh',
         alignItems: 'flex-start',
     },
     panel: {
-        flex: '0 0 300px',
+        flex: '0 0 350px',
+        width: 350,
+        maxWidth: '100%',
         display: 'flex', flexDirection: 'column',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
-        borderRadius: 20,
+        borderRadius: 22,
         height: '100%',
         overflow: 'hidden',
-        boxShadow: '0 8px 40px rgba(0,0,0,0.10)',
+        boxShadow: '0 12px 48px rgba(0,0,0,0.12)',
     },
     panelHeader: {
-        padding: '16px 18px 12px',
+        padding: '14px 16px 12px',
         borderBottom: '1px solid var(--border)',
+        flexShrink: 0,
+        background: 'var(--surface)',
+    },
+    brandIconWrap: {
+        width: 30, height: 30, borderRadius: 9,
+        background: 'var(--primary-light, rgba(0,82,255,0.1))',
+        color: 'var(--primary)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
     },
     panelTitle: {
         fontSize: 13, fontWeight: 700, letterSpacing: '0.02em',
         color: 'var(--text)',
         fontFamily: 'Medeo Sans',
+        lineHeight: 1.2,
+    },
+    panelSubtitle: {
+        fontSize: 11, color: 'var(--text-muted)',
+        fontFamily: 'Medeo Sans', marginTop: 1,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        maxWidth: 240,
+    },
+    quickNav: {
+        display: 'flex', gap: 6,
+        padding: '8px 14px',
+        overflowX: 'auto',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg)',
+        flexShrink: 0,
+        scrollbarWidth: 'none',
+    },
+    quickNavBtn: {
+        padding: '4px 10px',
+        borderRadius: 14,
+        border: '1px solid var(--border)',
+        background: 'var(--surface)',
+        color: 'var(--text-secondary)',
+        fontSize: 11,
+        fontFamily: 'Medeo Sans',
+        fontWeight: 500,
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'all 0.15s ease',
     },
     panelBody: {
-        flex: 1, overflowY: 'auto', padding: '10px 14px',
+        flex: 1, overflowY: 'auto', padding: '12px 14px',
     },
     panelFooter: {
-        padding: '12px 14px',
+        padding: '12px 14px 8px',
         borderTop: '1px solid var(--border)',
         display: 'flex', gap: 8,
         flexShrink: 0,
+        background: 'var(--surface)',
     },
     formatGrid: {
         display: 'flex', gap: 8,
     },
-    input: {
-        width: '100%', padding: '7px 10px',
+    settingRow: {
+        display: 'flex', gap: 6,
+        marginTop: 10, flexWrap: 'wrap',
+        alignItems: 'center',
+    },
+    photoGrid: {
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(46px, 1fr))',
+        gap: 6,
+        marginBottom: 8,
+    },
+    photoFooterRow: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 6,
+    },
+    btnShuffle: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '4px 9px',
         borderRadius: 8,
         border: '1px solid var(--border)',
-        background: 'var(--bg)',
+        background: 'var(--surface)',
+        color: 'var(--text)',
+        fontSize: 11,
+        fontFamily: 'Medeo Sans',
+        fontWeight: 500,
+        cursor: 'pointer',
+        transition: 'all 0.15s ease',
+    },
+    input: {
+        width: '100%', padding: '8px 11px',
+        borderRadius: 9,
+        border: '1px solid var(--border)',
+        background: 'var(--surface)',
         color: 'var(--text)',
         fontSize: 13, fontFamily: 'Medeo Sans',
         outline: 'none', boxSizing: 'border-box',
         marginTop: 4,
+        transition: 'border-color 0.15s ease',
     },
     subLabel: {
         fontSize: 10, color: 'var(--text-muted)', letterSpacing: '0.08em',
         fontFamily: 'Medeo Sans', textTransform: 'uppercase', marginBottom: 2,
     },
     thumb: {
-        width: 44, height: 44, borderRadius: 8,
+        width: 46, height: 46, borderRadius: 10,
         overflow: 'hidden', cursor: 'pointer',
         boxSizing: 'border-box', position: 'relative',
-        transition: 'all 0.15s', flexShrink: 0,
+        transition: 'all 0.15s ease', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: 'var(--bg)',
     },
@@ -1482,45 +1704,48 @@ const S = {
     },
     stickerRow: {
         display: 'flex', alignItems: 'center', gap: 8,
-        padding: '5px 0',
+        padding: '6px 8px',
+        borderRadius: 8,
         background: 'transparent', border: 'none', cursor: 'pointer',
         fontSize: 13, fontFamily: 'Medeo Sans',
-        textAlign: 'left', transition: 'color 0.15s',
+        textAlign: 'left', transition: 'all 0.15s ease',
     },
     stickerDot: {
         width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
     },
     btnPrimary: {
-        flex: 1, padding: '9px 14px',
-        borderRadius: 10, border: 'none',
+        width: '100%', padding: '12px 18px',
+        borderRadius: 12, border: 'none',
         color: '#fff', cursor: 'pointer',
-        fontSize: 13, fontWeight: 600, fontFamily: 'Medeo Sans',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        transition: 'all 0.15s', letterSpacing: '0.03em',
+        fontSize: 13, fontWeight: 700, fontFamily: 'Medeo Sans',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+        transition: 'all 0.18s ease', letterSpacing: '0.02em',
+        boxShadow: '0 4px 14px rgba(0,82,255,0.25)',
     },
     btnSecondary: {
-        flex: 1, padding: '9px 14px',
+        padding: '9px 14px',
         borderRadius: 10,
         border: '1px solid var(--border)',
         background: 'transparent',
         color: 'var(--text-secondary)',
         cursor: 'pointer', fontSize: 12,
         fontFamily: 'Medeo Sans',
-        transition: 'all 0.15s',
+        transition: 'all 0.15s ease',
     },
     shareWrap: {
-        padding: '8px 14px 14px',
+        padding: '6px 14px 14px',
         flexShrink: 0,
+        background: 'var(--surface)',
     },
     shareToggle: {
-        width: '100%', padding: '9px 12px',
-        borderRadius: 10,
+        width: '100%', padding: '10px 14px',
+        borderRadius: 11,
         border: '1px solid',
         background: 'var(--bg)',
         cursor: 'pointer',
         fontSize: 12, fontWeight: 600, fontFamily: 'Medeo Sans',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-        transition: 'all 0.15s',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+        transition: 'all 0.15s ease',
     },
     socialPanel: {
         marginTop: 8, padding: '10px 10px',
@@ -1541,7 +1766,7 @@ const S = {
         color: 'var(--text)',
         cursor: 'pointer', fontSize: 12,
         fontFamily: 'Medeo Sans', fontWeight: 600,
-        textAlign: 'left', transition: 'opacity 0.15s',
+        textAlign: 'left', transition: 'opacity 0.15s ease',
     },
     settingsLink: {
         border: 'none', background: 'transparent',
@@ -1560,19 +1785,24 @@ const S = {
         flex: 1, height: '100%',
         display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        gap: 10,
+        gap: 10, minWidth: 0,
     },
     previewCard: {
         position: 'relative',
-        maxHeight: '95%', maxWidth: '100%',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.20)',
+        maxHeight: '92%', maxWidth: '100%',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
         borderRadius: 20, overflow: 'hidden',
         background: 'var(--surface)',
         border: '1px solid var(--border)',
+        transition: 'aspect-ratio 0.2s ease',
     },
     previewHint: {
         fontSize: 11, color: 'var(--text-muted)',
-        fontFamily: 'Medeo Sans', letterSpacing: '0.06em',
+        fontFamily: 'Medeo Sans', letterSpacing: '0.05em',
+        background: 'var(--surface)',
+        padding: '4px 12px',
+        borderRadius: 16,
+        border: '1px solid var(--border)',
     },
     loadingOverlay: {
         position: 'absolute', inset: 0,
@@ -1591,23 +1821,73 @@ const S = {
    SUB-COMPONENTS
    ================================================================ */
 
-function Collapsible({ label, open, onToggle, children }) {
+function Collapsible({ id, label, icon: Icon, badge, open, onToggle, children }) {
     return (
-        <div style={{ marginBottom: 4, borderBottom: '1px solid var(--border-light, rgba(0,0,0,0.05))' }}>
+        <div
+            id={id}
+            style={{
+                marginBottom: 8,
+                borderRadius: 14,
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                overflow: 'hidden',
+                transition: 'all 0.15s ease',
+            }}
+        >
             <button
                 type="button"
                 onClick={onToggle}
                 style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    width: '100%', padding: '9px 0', background: 'transparent', border: 'none',
-                    cursor: 'pointer', color: 'var(--text)', fontSize: 12, fontWeight: 600,
-                    fontFamily: 'Medeo Sans', letterSpacing: '0.03em',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    width: '100%',
+                    padding: '10px 12px',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: 'var(--text)',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    fontFamily: 'Medeo Sans',
+                    letterSpacing: '0.02em',
                 }}
             >
-                <span>{label}</span>
-                {open ? <ChevronUp size={14} style={{ color: 'var(--text-muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--text-muted)' }} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                    {Icon && <Icon size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />}
+                    <span>{label}</span>
+                    {badge && (
+                        <span style={{
+                            fontSize: 10,
+                            padding: '1px 6px',
+                            borderRadius: 8,
+                            background: 'var(--surface)',
+                            color: 'var(--text-muted)',
+                            border: '1px solid var(--border)',
+                            fontWeight: 500,
+                        }}>
+                            {badge}
+                        </span>
+                    )}
+                </div>
+                <div style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
+                    background: 'var(--surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--text-muted)',
+                }}>
+                    {open ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                </div>
             </button>
-            {open && <div style={{ paddingBottom: 12 }}>{children}</div>}
+            {open && (
+                <div style={{ padding: '2px 12px 12px', borderTop: '1px solid var(--border-light, rgba(0,0,0,0.04))' }}>
+                    {children}
+                </div>
+            )}
         </div>
     );
 }
@@ -1619,13 +1899,20 @@ function PillBtn({ active, color, onClick, children }) {
             onClick={onClick}
             style={{
                 padding: '5px 11px',
-                borderRadius: 20,
+                borderRadius: 18,
                 border: `1px solid ${active ? color : 'var(--border)'}`,
-                background: active ? (color === 'var(--primary)' ? 'var(--primary-light, rgba(0,82,255,0.1))' : color + '18') : 'transparent',
-                color: active ? color : 'var(--text-muted)',
-                cursor: 'pointer', fontSize: 12, fontFamily: 'Medeo Sans',
+                background: active ? (color === 'var(--primary)' ? 'var(--primary-light, rgba(0,82,255,0.1))' : color + '18') : 'var(--surface)',
+                color: active ? color : 'var(--text)',
+                cursor: 'pointer',
+                fontSize: 12,
+                fontFamily: 'Medeo Sans',
                 fontWeight: active ? 600 : 400,
-                transition: 'all 0.15s', whiteSpace: 'nowrap',
+                transition: 'all 0.15s ease',
+                whiteSpace: 'nowrap',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 5,
+                boxShadow: active ? `0 1px 4px ${color}20` : 'none',
             }}
         >
             {children}
@@ -1634,32 +1921,52 @@ function PillBtn({ active, color, onClick, children }) {
 }
 
 function FormatCard({ active, label, hint, ratio, color, onClick }) {
-    const h = ratio >= 1 ? 36 : ratio < 0.7 ? 56 : 44;
+    const h = ratio >= 1 ? 34 : ratio < 0.7 ? 50 : 40;
     const w = Math.round(h * ratio);
     return (
         <button
             type="button"
             onClick={onClick}
             style={{
-                flex: 1, padding: '8px 4px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5,
-                borderRadius: 10,
-                border: `1px solid ${active ? color : 'var(--border)'}`,
-                background: active ? 'var(--primary-light, rgba(0,82,255,0.07))' : 'var(--bg)',
-                cursor: 'pointer', transition: 'all 0.15s',
+                flex: 1,
+                padding: '9px 4px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 5,
+                borderRadius: 12,
+                border: `1.5px solid ${active ? color : 'var(--border)'}`,
+                background: active ? (color === 'var(--primary)' ? 'var(--primary-light, rgba(0,82,255,0.08))' : color + '15') : 'var(--surface)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                boxShadow: active ? `0 2px 8px ${color}22` : 'none',
             }}
         >
             <div style={{
-                width: w, height: h,
+                width: w,
+                height: h,
                 borderRadius: 4,
                 border: `2px solid ${active ? color : 'var(--border)'}`,
                 background: active ? color + '22' : 'transparent',
-                transition: 'all 0.15s',
+                transition: 'all 0.15s ease',
             }} />
-            <div style={{ fontSize: 10, fontWeight: active ? 700 : 400, color: active ? color : 'var(--text-muted)', fontFamily: 'Medeo Sans', letterSpacing: '0.03em' }}>
+            <div style={{
+                fontSize: 11,
+                fontWeight: active ? 700 : 500,
+                color: active ? color : 'var(--text)',
+                fontFamily: 'Medeo Sans',
+                letterSpacing: '0.02em',
+            }}>
                 {label}
             </div>
-            <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'Medeo Sans' }}>{hint}</div>
+            <div style={{
+                fontSize: 9,
+                fontWeight: 600,
+                color: active ? color : 'var(--text-muted)',
+                fontFamily: 'Medeo Sans',
+            }}>
+                {hint}
+            </div>
         </button>
     );
 }
@@ -1680,7 +1987,7 @@ function PhoneQuickPick({ assignedAgent, currentUser, property, phone, setPhone,
     }
     if (opts.length <= 1) return null;
     return (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
             {opts.map((o, i) => (
                 <PillBtn key={i} active={phone === o.val} color={color} onClick={() => setPhone(o.val)}>
                     {o.label}
@@ -1700,7 +2007,7 @@ function LocationQuickPick({ property, locationText, setLocation, color }) {
     }
     if (!opts.length) return null;
     return (
-        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
+        <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
             {opts.map((o, i) => (
                 <PillBtn key={i} active={locationText === o.val} color={color} onClick={() => setLocation(o.val)}>
                     {o.label}
