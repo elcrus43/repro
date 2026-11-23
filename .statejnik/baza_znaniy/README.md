@@ -49,3 +49,15 @@
 - [post_02_bankrotstvo_prodavtsa.md](06_baza_postov/post_02_bankrotstvo_prodavtsa.md) - о рисках банкротства продавца вторички
 - [post_03_ozempik_i_ipoteka.md](06_baza_postov/post_03_ozempik_i_ipoteka.md) - вирусный пост: Оземпик и субсидированная ставка
 - [post_04_tinder_i_prosmotr_kvartir.md](06_baza_postov/post_04_tinder_i_prosmotr_kvartir.md) - вирусный пост: Тиндер и просмотры квартир
+
+### 07_zastroyshchiki_i_zhk (Застройщики, проекты, фото и регламенты)
+- [REGLAMENT_RABOTY_S_ZASTROYSHCHIKAMI.md](07_zastroyshchiki_i_zhk/REGLAMENT_RABOTY_S_ZASTROYSHCHIKAMI.md) - общий регламент фиксации клиентов, показов, бронирования и комиссий
+- [KATALOG_VSEH_ZHK_KIROVA.md](07_zastroyshchiki_i_zhk/KATALOG_VSEH_ZHK_KIROVA.md) - полный каталог 37 ЖК г. Кирова с ценами, фото, сайтами и наш.дом.рф
+- [zhelezno.md](07_zastroyshchiki_i_zhk/zhelezno.md) - девелопер «Железно» (Булычев, ZNAK, Зарядное, Инноград)
+- [ksm_kirovspetsmontazh.md](07_zastroyshchiki_i_zhk/ksm_kirovspetsmontazh.md) - АО «Кировспецмонтаж» (Чистые Пруды, Лайф, Сити Парк, River Park, Видный, Озерки)
+- [kirovskiy_ssk.md](07_zastroyshchiki_i_zhk/kirovskiy_ssk.md) - АО «Кировский ССК» (Скандинавия, Метро, Слобода, Х2, Дом у реки, Пушкина)
+- [profstroy.md](07_zastroyshchiki_i_zhk/profstroy.md) - ГК «ПрофСтрой» (Метрополис, Вдохновение, Капитал, Гармония, Мурашинский 7)
+- [stroysouz.md](07_zastroyshchiki_i_zhk/stroysouz.md) - СК «Стройсоюз» (Заповедный, Репинские пруды, Премьер, На Успенской, Слобода Соломинцы)
+- [kino_development.md](07_zastroyshchiki_i_zhk/kino_development.md) - «КИНО Девелопмент» (Дом на Горького 2А, Fusion, Ютерра)
+- [smu_5.md](07_zastroyshchiki_i_zhk/smu_5.md) - ООО «СМУ-5» (Маяк, Современник, Рудницкого 32)
+- [altay_stroy.md](07_zastroyshchiki_i_zhk/altay_stroy.md) - ООО «Алтай-Строй», «СМТ», «СМУ-16» (Династия, Оникс, Ердякова 9, Красина 6)
