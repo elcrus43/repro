@@ -40,7 +40,9 @@ import {
   ACCENT_PALETTE,
   CURATED_BACKGROUND_PRESETS,
   QUICK_BADGES,
-  POPULAR_CTAS
+  POPULAR_CTAS,
+  PHOTO_PLACEMENTS,
+  MEDEO_FONT_WEIGHTS
 } from './serviceBannerData';
 import { renderServiceBanner } from './serviceBannerRenderer';
 
@@ -98,6 +100,9 @@ export function AdsPage() {
   const [agentPhone, setAgentPhone] = useState(defaultAgentPhone);
   const [agentRole, setAgentRole] = useState('Эксперт по недвижимости');
   const [agentPhotoUrl, setAgentPhotoUrl] = useState(null);
+  const [photoPlacement, setPhotoPlacement] = useState('side'); // 'side' | 'background' | 'circle' | 'none'
+  const [noDarkOverlay, setNoDarkOverlay] = useState(true); // Clean photo without dark underlay
+  const [sloganWeight, setSloganWeight] = useState(900); // Medeo Sans weight (100 to 900)
 
   // Toggles
   const [showAgent, setShowAgent] = useState(true);
@@ -226,13 +231,13 @@ export function AdsPage() {
       ctaText,
       agentName,
       agentPhone,
-      agentRole,
-      agencyName,
       accentColor,
       layoutMode,
       bgImage: bgImageRef.current,
       agentPhoto: agentPhotoRef.current,
-      showAgent,
+      photoPlacement,
+      noDarkOverlay,
+      sloganWeight,
       showBullets,
       showBadge
     });
@@ -246,14 +251,25 @@ export function AdsPage() {
     ctaText,
     agentName,
     agentPhone,
-    agentRole,
-    agencyName,
     accentColor,
     layoutMode,
-    showAgent,
+    photoPlacement,
+    noDarkOverlay,
+    sloganWeight,
     showBullets,
     showBadge
   ]);
+
+  // Preload Medeo Sans weights and redraw
+  useEffect(() => {
+    if (typeof document !== 'undefined' && document.fonts) {
+      const weights = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+      Promise.all(weights.map(w => document.fonts.load(`${w} 24px "Medeo Sans"`).catch(() => {})))
+        .then(() => {
+          drawBanner();
+        });
+    }
+  }, [drawBanner]);
 
   // Redraw whenever parameters change
   useEffect(() => {
@@ -686,7 +702,7 @@ export function AdsPage() {
               </div>
 
               {/* Custom Slogan Textarea */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 18 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
                   Свой текст слогана
                 </label>
@@ -708,6 +724,39 @@ export function AdsPage() {
                     resize: 'vertical'
                   }}
                 />
+              </div>
+
+              {/* Medeo Font Weight Selector */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  Начертание шрифта Medeo Sans (от Thin 100 до Black 900):
+                </label>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {MEDEO_FONT_WEIGHTS.map(f => {
+                    const isSelected = sloganWeight === f.weight;
+                    return (
+                      <button
+                        key={f.weight}
+                        type="button"
+                        onClick={() => setSloganWeight(f.weight)}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 8,
+                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
+                          color: isSelected ? 'var(--primary)' : 'var(--text)',
+                          fontSize: 12,
+                          fontWeight: f.weight,
+                          fontFamily: 'Medeo Sans',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {f.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {/* Editable Benefits / Bullets */}
@@ -1248,65 +1297,198 @@ export function AdsPage() {
             </div>
           )}
 
-          {/* TAB 5: Contact Phone & Info */}
+          {/* TAB 5: Photo & Contact Phone */}
           {activeTab === 'agent' && (
             <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
-              <div style={{ marginBottom: 16 }}>
+              {/* Photo Section */}
+              <div style={{ marginBottom: 20 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
-                  Телефон для связи
+                  Своё фото на баннере
                 </h3>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-                  Отображается внизу баннера крупной строкой: «Тел. для связи: {agentPhone}»
+                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 14px' }}>
+                  Загрузите своё фото без темной подложки. Фото отображается в чистых естественных цветах.
                 </p>
-              </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                    Телефон для связи
-                  </label>
-                  <input
-                    type="text"
-                    value={agentPhone}
-                    onChange={(e) => setAgentPhone(e.target.value)}
-                    placeholder="8 (909) 130-40-90"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      fontSize: 15,
-                      fontWeight: 700,
-                      fontFamily: 'inherit'
-                    }}
-                  />
+                {/* Upload Button & Preview */}
+                <input
+                  type="file"
+                  ref={fileInputPhotoRef}
+                  onChange={handlePhotoUpload}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 14 }}>
+                  <div style={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: 12,
+                    background: 'var(--bg)',
+                    border: '1.5px solid var(--border)',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    {agentPhotoUrl ? (
+                      <img src={agentPhotoUrl} alt="Фото" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <User size={28} color="var(--text-muted)" />
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputPhotoRef.current?.click()}
+                        style={{
+                          padding: '8px 14px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg)',
+                          color: 'var(--text)',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 6
+                        }}
+                      >
+                        <Upload size={14} />
+                        <span>{agentPhotoUrl ? 'Заменить фото' : 'Загрузить своё фото'}</span>
+                      </button>
+
+                      {agentPhotoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setAgentPhotoUrl(null)}
+                          style={{
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: 'none',
+                            background: 'transparent',
+                            color: 'var(--danger, #ef4444)',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Удалить
+                        </button>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      Портрет по пояс, в рост или логотип (PNG или JPG)
+                    </span>
+                  </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
-                    Имя специалиста (опционально)
-                  </label>
-                  <input
-                    type="text"
-                    value={agentName}
-                    onChange={(e) => setAgentName(e.target.value)}
-                    placeholder="Имя Фамилия"
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px',
-                      borderRadius: 10,
-                      border: '1px solid var(--border)',
-                      background: 'var(--bg)',
-                      color: 'var(--text)',
-                      fontSize: 14,
-                      fontFamily: 'inherit'
-                    }}
-                  />
-                  <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
-                    Отображается рядом с номером телефона, если позволяет ширина баннера
-                  </span>
+                {/* Photo Placement options */}
+                {agentPhotoUrl && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      Размещение фото:
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+                      {PHOTO_PLACEMENTS.map(pl => {
+                        const isSelected = photoPlacement === pl.id;
+                        return (
+                          <button
+                            key={pl.id}
+                            type="button"
+                            onClick={() => setPhotoPlacement(pl.id)}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: 8,
+                              border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                              background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
+                              color: isSelected ? 'var(--primary)' : 'var(--text)',
+                              fontSize: 12,
+                              fontWeight: isSelected ? 700 : 500,
+                              cursor: 'pointer',
+                              textAlign: 'left'
+                            }}
+                          >
+                            <div>{pl.label}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text)', fontWeight: 600, cursor: 'pointer', marginTop: 4 }}>
+                      <input
+                        type="checkbox"
+                        checked={noDarkOverlay}
+                        onChange={(e) => setNoDarkOverlay(e.target.checked)}
+                      />
+                      <span>Без темной подложки (100% чистый и естественный цвет фото)</span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Phone for contact */}
+              <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                <div style={{ marginBottom: 12 }}>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
+                    Телефон для связи
+                  </h3>
+                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                    Отображается внизу баннера крупной строкой: «Тел. для связи: {agentPhone}»
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                      Телефон для связи
+                    </label>
+                    <input
+                      type="text"
+                      value={agentPhone}
+                      onChange={(e) => setAgentPhone(e.target.value)}
+                      placeholder="8 (909) 130-40-90"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        color: 'var(--text)',
+                        fontSize: 15,
+                        fontWeight: 700,
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+                      Имя специалиста (опционально)
+                    </label>
+                    <input
+                      type="text"
+                      value={agentName}
+                      onChange={(e) => setAgentName(e.target.value)}
+                      placeholder="Имя Фамилия"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        color: 'var(--text)',
+                        fontSize: 14,
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
+                      Отображается рядом с номером телефона, если позволяет ширина баннера
+                    </span>
+                  </div>
                 </div>
               </div>
 

@@ -480,3 +480,21 @@ export const POPULAR_CTAS = [
   'Написать в WhatsApp',
   'Заказать расчет выгоды'
 ];
+
+export const PHOTO_PLACEMENTS = [
+  { id: 'side', label: 'Справа на баннере', hint: 'Рядом с текстом (в рост / по пояс)' },
+  { id: 'background', label: 'На весь фон', hint: 'Фото как фон без затемнения' },
+  { id: 'circle', label: 'Круглый аватар', hint: 'Парящий круг без темной подложки' },
+  { id: 'none', label: 'Без фото', hint: 'Только чистый текст и графика' }
+];
+
+export const MEDEO_FONT_WEIGHTS = [
+  { weight: 900, label: 'Black (900)', hint: 'Максимально мощный и жирный' },
+  { weight: 800, label: 'ExtraBold (800)', hint: 'Очень жирный' },
+  { weight: 700, label: 'Bold (700)', hint: 'Классический жирный' },
+  { weight: 600, label: 'SemiBold (600)', hint: 'Полужирный' },
+  { weight: 400, label: 'Regular (400)', hint: 'Обычный текст' },
+  { weight: 300, label: 'Light (300)', hint: 'Тонкий изящный' },
+  { weight: 100, label: 'Thin (100)', hint: 'Ультратонкий' }
+];
+
