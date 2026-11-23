@@ -71,6 +71,8 @@ export function renderServiceBanner(canvas, options = {}) {
     photoPlacement = 'side',   // 'side' | 'background' | 'circle' | 'none'
     noDarkOverlay = true,     // Clean natural photo without dark underlay
     sloganWeight = 900,       // Medeo Sans weight (100 to 900)
+    sloganScale = 100,        // Slogan font size scale slider (60 to 160%)
+    bulletScale = 100,        // Bullets font size scale slider (60 to 160%)
     showBullets = true,
     showBadge = true
   } = options;
@@ -235,14 +237,16 @@ export function renderServiceBanner(canvas, options = {}) {
     badgeH = isStory ? 64 : isCompactSquare ? 50 : 56;
   }
 
-  // Slogan: user chosen weight or Black (900)
+  // Slogan: user chosen weight or Black (900) + custom font size slider
   const weight = sloganWeight || 900;
-  let sloganFontSize = isStory ? 84 : isHorizontal ? 60 : isCompactSquare ? 52 : 70;
+  const sScale = Math.max(0.5, Math.min(2.0, (sloganScale || 100) / 100));
+  let sloganFontSize = Math.round((isStory ? 84 : isHorizontal ? 60 : isCompactSquare ? 52 : 70) * sScale);
   ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
   let sloganLines = wrapText(ctx, slogan, contentWidth);
 
-  // Bullets: Medium (500) / Regular (400)
-  const bulletFontSize = isStory ? 32 : isHorizontal ? 24 : isCompactSquare ? 22 : 26;
+  // Bullets: Medium (500) / Regular (400) + custom font size slider
+  const bScale = Math.max(0.5, Math.min(2.0, (bulletScale || 100) / 100));
+  const bulletFontSize = Math.round((isStory ? 32 : isHorizontal ? 24 : isCompactSquare ? 22 : 26) * bScale);
   const bulletLineHeight = bulletFontSize * 1.35;
   const visibleBullets = isCompactSquare ? bullets.slice(0, 2) : bullets.slice(0, 4);
   let bulletsTotalH = 0;
@@ -269,8 +273,8 @@ export function renderServiceBanner(canvas, options = {}) {
   let totalContentH = badgeH + sloganTotalH + bulletsTotalH + ctaH;
   let remainingSpace = availableContentH - totalContentH;
 
-  // If ample extra space on banner, dynamically expand typography and spacing
-  if (remainingSpace > 160 && isStory) {
+  // If ample extra space on banner and user didn't alter sloganScale, dynamically expand typography
+  if (remainingSpace > 160 && isStory && (!sloganScale || sloganScale === 100)) {
     sloganFontSize = Math.min(96, sloganFontSize + Math.floor(remainingSpace * 0.04));
     sloganLineHeight = sloganFontSize * 1.22;
     ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;

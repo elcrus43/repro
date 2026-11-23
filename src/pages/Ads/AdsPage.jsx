@@ -151,6 +151,8 @@ export function AdsPage() {
   const [photoPlacement, setPhotoPlacement] = useState('side'); // 'side' | 'background' | 'circle' | 'none'
   const [noDarkOverlay, setNoDarkOverlay] = useState(true); // Clean photo without dark underlay
   const [sloganWeight, setSloganWeight] = useState(900); // Medeo Sans weight (100 to 900)
+  const [sloganScale, setSloganScale] = useState(100); // Slogan font size percentage (60 to 150%)
+  const [bulletScale, setBulletScale] = useState(100); // Bullets font size percentage (65 to 145%)
 
   // Toggles
   const [showAgent, setShowAgent] = useState(true);
@@ -354,6 +356,8 @@ export function AdsPage() {
       photoPlacement,
       noDarkOverlay,
       sloganWeight,
+      sloganScale,
+      bulletScale,
       showBullets,
       showBadge
     });
@@ -371,6 +375,8 @@ export function AdsPage() {
     photoPlacement,
     noDarkOverlay,
     sloganWeight,
+    sloganScale,
+    bulletScale,
     showBullets,
     showBadge
   ]);
@@ -496,43 +502,43 @@ export function AdsPage() {
   };
 
   return (
-    <div className="ads-generator-page" style={{ padding: '24px 20px 80px', maxWidth: 1400, margin: '0 auto' }}>
+    <div className="ads-generator-page">
       {/* Page Header */}
-      <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+      <div className="ads-page-header">
         <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 12px', borderRadius: 20, background: 'rgba(0, 82, 255, 0.1)', color: 'var(--primary)', fontSize: 12, fontWeight: 700, marginBottom: 8 }}>
-            <Megaphone size={14} />
-            <span>МАРКЕТИНГ И ПРОДВИЖЕНИЕ</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 10px', borderRadius: 20, background: 'rgba(0, 82, 255, 0.1)', color: 'var(--primary)', fontSize: 11, fontWeight: 700, marginBottom: 4 }}>
+            <Megaphone size={13} />
+            <span>МАРКЕТИНГ</span>
           </div>
-          <h1 style={{ fontSize: 26, fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
             Генератор рекламных баннеров услуг
           </h1>
-          <p style={{ fontSize: 14, color: 'var(--text-secondary)', margin: 0, maxWidth: 640, lineHeight: 1.5 }}>
-            Создавайте яркие рекламные баннеры для соцсетей, Stories и мессенджеров. Выберите услугу, настройте слоган, оформление и CTA.
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, maxWidth: 640, lineHeight: 1.4 }}>
+            Баннеры для соцсетей, Stories и мессенджеров. Выберите услугу, слоган и оформите баннер в 1 клик.
           </p>
         </div>
 
         {/* Quick action buttons on top bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
             onClick={handleCopyPostText}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '10px 16px',
-              borderRadius: 12,
+              gap: 6,
+              padding: '8px 14px',
+              borderRadius: 10,
               border: '1px solid var(--border)',
               background: 'var(--surface)',
               color: 'var(--text)',
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s ease'
             }}
           >
-            {isCopied ? <Check size={16} color="#10b981" /> : <Copy size={16} />}
+            {isCopied ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
             <span>{isCopied ? 'Скопировано!' : 'Копировать пост'}</span>
           </button>
 
@@ -543,38 +549,38 @@ export function AdsPage() {
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: 8,
-              padding: '10px 18px',
-              borderRadius: 12,
+              gap: 6,
+              padding: '8px 16px',
+              borderRadius: 10,
               border: 'none',
               background: 'var(--primary)',
               color: '#ffffff',
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 4px 12px rgba(0, 82, 255, 0.25)',
+              boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',
               transition: 'all 0.2s ease'
             }}
           >
-            <Download size={16} />
+            <Download size={14} />
             <span>{isDownloading ? 'Сохранение...' : 'Скачать PNG'}</span>
           </button>
         </div>
       </div>
 
-      {/* Main Studio Grid: Controls on Left, Live Preview on Right */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.15fr) minmax(320px, 0.85fr)', gap: 24, alignItems: 'start' }} className="ads-studio-layout">
+      {/* Main Studio Grid: Controls on Left, Live Preview on Right (on mobile preview comes first via order: -1) */}
+      <div className="ads-studio-layout">
         
         {/* Left Column: Generator Studio Controls */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div className="ads-controls-col">
           
           {/* Navigation Tabs for settings */}
           <div style={{
             display: 'flex',
-            gap: 6,
+            gap: 4,
             background: 'var(--surface)',
-            padding: 6,
-            borderRadius: 14,
+            padding: 4,
+            borderRadius: 12,
             border: '1px solid var(--border)',
             overflowX: 'auto',
             scrollbarWidth: 'none'
@@ -595,24 +601,24 @@ export function AdsPage() {
                   onClick={() => setActiveTab(tab.id)}
                   style={{
                     flex: 1,
-                    minWidth: 100,
+                    minWidth: 84,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: 6,
-                    padding: '8px 12px',
-                    borderRadius: 10,
+                    gap: 5,
+                    padding: '7px 8px',
+                    borderRadius: 8,
                     border: 'none',
                     background: isActive ? 'var(--primary)' : 'transparent',
                     color: isActive ? '#ffffff' : 'var(--text-secondary)',
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
                     whiteSpace: 'nowrap'
                   }}
                 >
-                  <TabIcon size={14} />
+                  <TabIcon size={13} />
                   <span>{tab.label}</span>
                 </button>
               );
@@ -621,20 +627,20 @@ export function AdsPage() {
 
           {/* TAB 1: Service Selection */}
           {activeTab === 'service' && (
-            <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div className="ads-tab-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>
                     Выберите услугу для рекламы
                   </h3>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
-                    При выборе услуги автоматически загружаются подходящие слоганы, выгоды и CTA
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
+                    Автоматически загружаются подходящие слоганы, выгоды и CTA
                   </p>
                 </div>
               </div>
 
-              {/* Service Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 10 }}>
+              {/* Service Cards Grid - Compact & Responsive */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
                 {SERVICE_CATEGORIES.map(service => {
                   const Icon = ICON_MAP[service.iconName] || Building2;
                   const isSelected = selectedServiceId === service.id;
@@ -644,24 +650,24 @@ export function AdsPage() {
                       type="button"
                       onClick={() => handleServiceSelect(service)}
                       style={{
-                        padding: 12,
-                        borderRadius: 12,
+                        padding: '10px 10px',
+                        borderRadius: 10,
                         border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                         background: isSelected ? 'rgba(0, 82, 255, 0.06)' : 'var(--bg)',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'flex-start',
-                        gap: 8,
+                        gap: 6,
                         textAlign: 'left',
                         cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.15)' : 'none'
+                        transition: 'all 0.15s ease',
+                        boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.12)' : 'none'
                       }}
                     >
                       <div style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 8,
+                        width: 28,
+                        height: 28,
+                        borderRadius: 7,
                         background: isSelected ? 'var(--primary)' : 'var(--surface)',
                         color: isSelected ? '#ffffff' : 'var(--text)',
                         display: 'flex',
@@ -669,13 +675,13 @@ export function AdsPage() {
                         justifyContent: 'center',
                         boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
                       }}>
-                        <Icon size={16} />
+                        <Icon size={14} />
                       </div>
                       <div>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)' }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)', lineHeight: 1.25 }}>
                           {service.shortTitle}
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.3 }}>
+                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.2 }}>
                           {service.badge}
                         </div>
                       </div>
@@ -685,7 +691,7 @@ export function AdsPage() {
               </div>
 
               {/* Forward Button */}
-              <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+              <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
                 <button
                   type="button"
                   onClick={() => setActiveTab('slogan')}
@@ -693,18 +699,18 @@ export function AdsPage() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 6,
-                    padding: '8px 16px',
-                    borderRadius: 10,
+                    padding: '8px 14px',
+                    borderRadius: 8,
                     border: 'none',
                     background: 'var(--primary)',
                     color: '#ffffff',
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
                   <span>Далее: Слоган & Текст</span>
-                  <ChevronRight size={16} />
+                  <ChevronRight size={14} />
                 </button>
               </div>
             </div>
@@ -712,13 +718,13 @@ export function AdsPage() {
 
           {/* TAB 2: Slogan & Bullets */}
           {activeTab === 'slogan' && (
-            <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div className="ads-tab-panel">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                 <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>
                     Выбор слогана и ключевых выгод
                   </h3>
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: 0 }}>
+                  <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: 0 }}>
                     Сильный слоган привлекает внимание в ленте с первых секунд
                   </p>
                 </div>
@@ -730,28 +736,28 @@ export function AdsPage() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 12px',
+                    gap: 5,
+                    padding: '5px 10px',
                     borderRadius: 8,
                     border: '1px solid var(--border)',
                     background: 'var(--bg)',
                     color: 'var(--text)',
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 600,
                     cursor: 'pointer'
                   }}
                 >
-                  <Shuffle size={14} />
-                  <span>Случайный слоган</span>
+                  <Shuffle size={13} />
+                  <span>Случайный</span>
                 </button>
               </div>
 
               {/* Curated Slogan Chips */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  Рекомендованные слоганы для выбранной услуги:
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                  Рекомендованные слоганы для услуги:
                 </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {activeService.slogans.map((slog, index) => {
                     const isSelected = slogan === slog;
                     return (
@@ -760,24 +766,24 @@ export function AdsPage() {
                         type="button"
                         onClick={() => setSlogan(slog)}
                         style={{
-                          padding: '10px 14px',
-                          borderRadius: 10,
+                          padding: '8px 12px',
+                          borderRadius: 8,
                           border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                           background: isSelected ? 'rgba(0, 82, 255, 0.06)' : 'var(--bg)',
                           color: isSelected ? 'var(--primary)' : 'var(--text)',
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: isSelected ? 700 : 500,
                           textAlign: 'left',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 10,
+                          gap: 8,
                           transition: 'all 0.15s ease'
                         }}
                       >
                         <div style={{
-                          width: 18,
-                          height: 18,
+                          width: 16,
+                          height: 16,
                           borderRadius: '50%',
                           border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                           display: 'flex',
@@ -785,9 +791,9 @@ export function AdsPage() {
                           justifyContent: 'center',
                           flexShrink: 0
                         }}>
-                          {isSelected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--primary)' }} />}
+                          {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
                         </div>
-                        <span style={{ flex: 1, lineHeight: 1.4 }}>{slog}</span>
+                        <span style={{ flex: 1, lineHeight: 1.35 }}>{slog}</span>
                       </button>
                     );
                   })}
@@ -795,8 +801,8 @@ export function AdsPage() {
               </div>
 
               {/* Custom Slogan Textarea */}
-              <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
                   Свой текст слогана
                 </label>
                 <textarea
@@ -806,25 +812,69 @@ export function AdsPage() {
                   placeholder="Введите привлекающий внимание слоган..."
                   style={{
                     width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: 10,
+                    padding: '8px 12px',
+                    borderRadius: 8,
                     border: '1px solid var(--border)',
                     background: 'var(--bg)',
                     color: 'var(--text)',
-                    fontSize: 14,
-                    lineHeight: 1.4,
+                    fontSize: 13,
+                    lineHeight: 1.35,
                     fontFamily: 'inherit',
                     resize: 'vertical'
                   }}
                 />
               </div>
 
+              {/* Slogan Font Size Slider */}
+              <div style={{ marginBottom: 12, background: 'var(--bg)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
+                    Размер шрифта слогана: {sloganScale}%
+                  </label>
+                  {sloganScale !== 100 && (
+                    <button
+                      type="button"
+                      onClick={() => setSloganScale(100)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      Сброс (100%)
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="range"
+                  min="60"
+                  max="150"
+                  step="5"
+                  value={sloganScale}
+                  onChange={(e) => setSloganScale(Number(e.target.value))}
+                  style={{
+                    width: '100%',
+                    accentColor: 'var(--primary)',
+                    cursor: 'pointer'
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                  <span>Компактный (60%)</span>
+                  <span>Стандарт (100%)</span>
+                  <span>Крупный (150%)</span>
+                </div>
+              </div>
+
               {/* Medeo Font Weight Selector */}
-              <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  Начертание шрифта Medeo Sans (от Thin 100 до Black 900):
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                  Начертание шрифта Medeo Sans:
                 </label>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                   {MEDEO_FONT_WEIGHTS.map(f => {
                     const isSelected = sloganWeight === f.weight;
                     return (
@@ -833,12 +883,12 @@ export function AdsPage() {
                         type="button"
                         onClick={() => setSloganWeight(f.weight)}
                         style={{
-                          padding: '6px 12px',
-                          borderRadius: 8,
+                          padding: '4px 8px',
+                          borderRadius: 6,
                           border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                           background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
                           color: isSelected ? 'var(--primary)' : 'var(--text)',
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: f.weight,
                           fontFamily: 'Medeo Sans',
                           cursor: 'pointer',
@@ -853,14 +903,14 @@ export function AdsPage() {
               </div>
 
               {/* Editable Benefits / Bullets */}
-              <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div style={{ paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <div>
-                    <label style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
+                    <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', display: 'block' }}>
                       Ключевые преимущества
                     </label>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      Добавляйте или удаляйте пункты - сохраняются автоматически
+                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                      Добавляйте или удаляйте пункты (сохраняются в базе)
                     </span>
                   </div>
                   <button
@@ -878,24 +928,68 @@ export function AdsPage() {
                       gap: 4
                     }}
                   >
-                    <RotateCcw size={12} />
-                    <span>Сбросить к исходным</span>
+                    <RotateCcw size={11} />
+                    <span>Сброс</span>
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+                {/* Bullets Font Size Slider */}
+                <div style={{ marginBottom: 10, background: 'var(--bg)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
+                      Размер шрифта преимуществ: {bulletScale}%
+                    </label>
+                    {bulletScale !== 100 && (
+                      <button
+                        type="button"
+                        onClick={() => setBulletScale(100)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--primary)',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        Сброс (100%)
+                      </button>
+                    )}
+                  </div>
+                  <input
+                    type="range"
+                    min="65"
+                    max="145"
+                    step="5"
+                    value={bulletScale}
+                    onChange={(e) => setBulletScale(Number(e.target.value))}
+                    style={{
+                      width: '100%',
+                      accentColor: 'var(--primary)',
+                      cursor: 'pointer'
+                    }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>
+                    <span>Компактный (65%)</span>
+                    <span>Стандарт (100%)</span>
+                    <span>Крупный (145%)</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                   {bullets.map((b, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{
-                        width: 24,
-                        height: 24,
+                        width: 20,
+                        height: 20,
                         borderRadius: '50%',
                         background: 'rgba(0, 82, 255, 0.1)',
                         color: 'var(--primary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 700,
                         flexShrink: 0
                       }}>
@@ -911,12 +1005,12 @@ export function AdsPage() {
                         }}
                         style={{
                           flex: 1,
-                          padding: '8px 12px',
-                          borderRadius: 8,
+                          padding: '6px 10px',
+                          borderRadius: 7,
                           border: '1px solid var(--border)',
                           background: 'var(--bg)',
                           color: 'var(--text)',
-                          fontSize: 13,
+                          fontSize: 12,
                           fontFamily: 'inherit'
                         }}
                       />
@@ -925,9 +1019,9 @@ export function AdsPage() {
                         onClick={() => handleDeleteBullet(idx)}
                         title="Удалить преимущество"
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 8,
+                          width: 28,
+                          height: 28,
+                          borderRadius: 7,
                           border: '1px solid var(--border)',
                           background: 'var(--bg)',
                           color: 'var(--danger, #ef4444)',
@@ -938,7 +1032,7 @@ export function AdsPage() {
                           flexShrink: 0
                         }}
                       >
-                        <Trash2 size={14} />
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   ))}
@@ -950,18 +1044,18 @@ export function AdsPage() {
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: 6,
-                    padding: '8px 14px',
-                    borderRadius: 8,
+                    gap: 5,
+                    padding: '6px 12px',
+                    borderRadius: 7,
                     border: '1px dashed var(--primary)',
                     background: 'rgba(0, 82, 255, 0.05)',
                     color: 'var(--primary)',
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer'
                   }}
                 >
-                  <Plus size={14} />
+                  <Plus size={13} />
                   <span>Добавить преимущество</span>
                 </button>
               </div>
@@ -1010,8 +1104,8 @@ export function AdsPage() {
 
           {/* TAB 3: Design & Styling */}
           {activeTab === 'design' && (
-            <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 14px' }}>
+            <div className="ads-tab-panel">
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 10px' }}>
                 Оформление и визуальный стиль
               </h3>
 
@@ -1273,8 +1367,8 @@ export function AdsPage() {
 
           {/* TAB 4: CTA & Stickers */}
           {activeTab === 'cta' && (
-            <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 14px' }}>
+            <div className="ads-tab-panel">
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 10px' }}>
                 Призыв к действию (CTA) и стикеры
               </h3>
 
@@ -1670,13 +1764,13 @@ export function AdsPage() {
 
           {/* TAB 5: Photo & Contact Phone */}
           {activeTab === 'agent' && (
-            <div style={{ background: 'var(--surface)', borderRadius: 16, border: '1px solid var(--border)', padding: 20 }}>
+            <div className="ads-tab-panel">
               {/* Photo Section */}
-              <div style={{ marginBottom: 20 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', margin: '0 0 4px' }}>
+              <div style={{ marginBottom: 16 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '0 0 2px' }}>
                   Своё фото на баннере
                 </h3>
-                <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 14px' }}>
+                <p style={{ fontSize: 11, color: 'var(--text-secondary)', margin: '0 0 10px' }}>
                   Загрузите своё фото без темной подложки. Фото отображается в чистых естественных цветах.
                 </p>
 
@@ -1887,32 +1981,26 @@ export function AdsPage() {
 
         </div>
 
-        {/* Right Column: Live Interactive Canvas Preview & Export */}
-        <div style={{ position: 'sticky', top: 20 }}>
-          <div style={{
-            background: 'var(--surface)',
-            borderRadius: 18,
-            border: '1px solid var(--border)',
-            padding: 20,
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)'
-          }}>
+        {/* Right Column: Live Interactive Canvas Preview & Export (On mobile, placed on TOP via order: -1) */}
+        <div className="ads-preview-col">
+          <div className="ads-preview-card">
             {/* Preview Toolbar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 6 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Eye size={16} color="var(--primary)" />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                <Eye size={15} color="var(--primary)" />
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
                   Предпросмотр баннера
                 </span>
               </div>
 
-              <div style={{ display: 'flex', gap: 4 }}>
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                 {Object.values(BANNER_FORMATS).map(fmt => (
                   <button
                     key={fmt.id}
                     type="button"
                     onClick={() => setFormatId(fmt.id)}
                     style={{
-                      padding: '4px 8px',
+                      padding: '3px 7px',
                       borderRadius: 6,
                       border: 'none',
                       background: formatId === fmt.id ? 'var(--primary)' : 'var(--bg)',
@@ -1929,53 +2017,37 @@ export function AdsPage() {
             </div>
 
             {/* Canvas Stage */}
-            <div style={{
-              background: '#0B0F19',
-              borderRadius: 14,
-              overflow: 'hidden',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 16,
-              minHeight: 440
-            }}>
+            <div className="ads-canvas-stage">
               <canvas
                 ref={canvasRef}
-                style={{
-                  maxWidth: '100%',
-                  maxHeight: '62vh',
-                  height: 'auto',
-                  borderRadius: 10,
-                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45)',
-                  objectFit: 'contain'
-                }}
+                className="ads-canvas-element"
               />
             </div>
 
             {/* Export Action Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
               <button
                 type="button"
                 onClick={handleDownload}
                 disabled={isDownloading}
                 style={{
-                  padding: '12px 14px',
-                  borderRadius: 12,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   border: 'none',
                   background: 'var(--primary)',
                   color: '#ffffff',
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
+                  gap: 6,
                   cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(0, 82, 255, 0.25)',
+                  boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Download size={16} />
+                <Download size={14} />
                 <span>{isDownloading ? 'Сохраняем...' : 'Скачать PNG'}</span>
               </button>
 
@@ -1983,30 +2055,30 @@ export function AdsPage() {
                 type="button"
                 onClick={handleShare}
                 style={{
-                  padding: '12px 14px',
-                  borderRadius: 12,
+                  padding: '9px 12px',
+                  borderRadius: 8,
                   border: '1px solid var(--border)',
                   background: 'var(--surface)',
                   color: 'var(--text)',
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 8,
+                  gap: 6,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
               >
-                <Share2 size={16} />
+                <Share2 size={14} />
                 <span>Поделиться</span>
               </button>
             </div>
 
             {/* Ready to Publish Social Post Copy Snippet */}
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
                   Готовый текст для публикации
                 </span>
                 <button
@@ -2016,7 +2088,7 @@ export function AdsPage() {
                     background: 'none',
                     border: 'none',
                     color: isCopied ? '#10b981' : 'var(--primary)',
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 700,
                     cursor: 'pointer',
                     display: 'flex',
@@ -2024,21 +2096,21 @@ export function AdsPage() {
                     gap: 4
                   }}
                 >
-                  {isCopied ? <Check size={14} /> : <Copy size={14} />}
+                  {isCopied ? <Check size={13} /> : <Copy size={13} />}
                   <span>{isCopied ? 'Скопировано!' : 'Копировать'}</span>
                 </button>
               </div>
 
               <div style={{
                 background: 'var(--bg)',
-                borderRadius: 10,
-                padding: '10px 12px',
-                fontSize: 12,
+                borderRadius: 8,
+                padding: '8px 10px',
+                fontSize: 11,
                 color: 'var(--text-secondary)',
-                maxHeight: 120,
+                maxHeight: 90,
                 overflowY: 'auto',
                 whiteSpace: 'pre-wrap',
-                lineHeight: 1.45,
+                lineHeight: 1.4,
                 border: '1px solid var(--border)'
               }}>
                 {postText}

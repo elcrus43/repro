@@ -68,7 +68,7 @@ describe('AdsPage Component', () => {
     render(<AdsPage />);
 
     expect(screen.getByText('Генератор рекламных баннеров услуг')).toBeInTheDocument();
-    expect(screen.getByText(/МАРКЕТИНГ И ПРОДВИЖЕНИЕ/i)).toBeInTheDocument();
+    expect(screen.getByText(/МАРКЕТИНГ/i)).toBeInTheDocument();
     expect(screen.getAllByText('Скачать PNG').length).toBeGreaterThan(0);
     expect(screen.getByText('Предпросмотр баннера')).toBeInTheDocument();
   });
@@ -87,6 +87,30 @@ describe('AdsPage Component', () => {
     fireEvent.click(screen.getByText('2. Слоган & Текст'));
     const textarea = screen.getByPlaceholderText('Введите привлекающий внимание слоган...');
     expect(textarea.value).toContain('ипотек');
+  });
+
+  it('allows adjusting font size sliders for slogan and benefits', () => {
+    render(<AdsPage />);
+
+    // Click on Slogan tab
+    fireEvent.click(screen.getByText('2. Слоган & Текст'));
+
+    // Check slogan size slider
+    expect(screen.getByText(/Размер шрифта слогана: 100%/i)).toBeInTheDocument();
+
+    // Check benefits size slider
+    expect(screen.getByText(/Размер шрифта преимуществ: 100%/i)).toBeInTheDocument();
+
+    const sliders = screen.getAllByRole('slider');
+    expect(sliders.length).toBeGreaterThanOrEqual(2);
+
+    // Change slogan slider
+    fireEvent.change(sliders[0], { target: { value: '120' } });
+    expect(screen.getByText(/Размер шрифта слогана: 120%/i)).toBeInTheDocument();
+
+    // Change benefits slider
+    fireEvent.change(sliders[1], { target: { value: '90' } });
+    expect(screen.getByText(/Размер шрифта преимуществ: 90%/i)).toBeInTheDocument();
   });
 
   it('allows adding and deleting key benefits in Slogan tab', () => {

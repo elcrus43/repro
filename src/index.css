@@ -1,4 +1,4 @@
-﻿/* Medeo Sans as primary UI font — no Oswald */
+﻿/* Medeo Sans as primary UI font - no Oswald */
 
 /* ===== Medeo Sans Variable Font (local, no CDN) ===== */
 @font-face {
@@ -17,7 +17,7 @@
 }
 
 :root {
-  /* Premium Palette — Real Estate CRM */
+  /* Premium Palette - Real Estate CRM */
   --primary: #0052FF; /* Confident Brand Blue */
   --primary-hover: #0043D9;
   --primary-light: #eef4ff;
@@ -97,7 +97,7 @@
 .p-8 { padding: 8px; }
 .p-16 { padding: 16px; }
 .mb-0 { margin-bottom: 0; }
-/* .font-oswald now maps to Medeo Sans — Oswald removed */
+/* .font-oswald now maps to Medeo Sans - Oswald removed */
 .font-oswald { font-family: 'Medeo Sans', ui-sans-serif, sans-serif !important; }
 .rounded { border-radius: var(--radius); }
 .bg-muted { background: var(--border-light); }
@@ -113,7 +113,7 @@
 }
 
 .dark {
-  /* Keep blue primary — but slightly brighter for dark backgrounds */
+  /* Keep blue primary - but slightly brighter for dark backgrounds */
   --primary: #3b82f6;
   --primary-light: #1e3a5f;
   --bg: #0f172a;
@@ -3624,16 +3624,115 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
 }
 
 /* Service Ads Banner Studio */
+.ads-generator-page {
+  padding: 16px 16px 80px;
+  max-width: 1360px;
+  margin: 0 auto;
+}
+
+.ads-page-header {
+  margin-bottom: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .ads-studio-layout {
   display: grid;
-  grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr);
-  gap: 24px;
+  grid-template-columns: minmax(320px, 1.1fr) minmax(320px, 0.9fr);
+  gap: 20px;
   align-items: start;
 }
 
+.ads-controls-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ads-preview-col {
+  position: sticky;
+  top: 16px;
+  z-index: 10;
+}
+
+.ads-preview-card {
+  background: var(--surface);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.ads-canvas-stage {
+  background: #0B0F19;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  min-height: 400px;
+}
+
+.ads-canvas-element {
+  max-width: 100%;
+  max-height: 56vh;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  object-fit: contain;
+}
+
+.ads-tab-panel {
+  background: var(--surface);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  padding: 18px;
+}
+
+/* Mobile & Tablet Responsive: Banner Preview Prominently on Top */
 @media (max-width: 900px) {
+  .ads-generator-page {
+    padding: 12px 10px 76px;
+  }
+
+  .ads-page-header {
+    margin-bottom: 12px;
+  }
+
   .ads-studio-layout {
-    grid-template-columns: 1fr !important;
-    gap: 20px;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 14px;
+  }
+
+  /* CRITICAL: Banner Preview is on TOP on mobile so the user immediately sees live updates! */
+  .ads-preview-col {
+    order: -1 !important;
+    position: static !important;
+    top: auto;
+    width: 100%;
+  }
+
+  .ads-preview-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .ads-canvas-stage {
+    min-height: 230px !important;
+    padding: 8px !important;
+  }
+
+  .ads-canvas-element {
+    max-height: 38vh !important;
+  }
+
+  .ads-tab-panel {
+    padding: 14px !important;
+    border-radius: 14px !important;
   }
 }
