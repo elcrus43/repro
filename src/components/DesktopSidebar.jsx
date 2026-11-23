@@ -14,7 +14,8 @@ import {
   Moon,
   Landmark,
   Search,
-  Target
+  Target,
+  Megaphone
 } from 'lucide-react';
 
 export function DesktopSidebar() {
@@ -60,6 +61,7 @@ export function DesktopSidebar() {
     { path: '/tasks', icon: FileCheck, label: 'Сделки' },
     { path: '/history', icon: History, label: 'История' },
     { path: '/documents', icon: ClipboardList, label: 'Документы' },
+    { path: '/ads', icon: Megaphone, label: 'Реклама' },
     { path: '/profile', icon: UserCircle, label: 'Профиль', badge: pendingUsersCount > 0 ? pendingUsersCount : null },
   ];
 

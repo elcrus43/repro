@@ -17,6 +17,7 @@ import {
   Target,
   Sparkles,
   MessageSquareText,
+  Megaphone,
   Sun,
   Moon,
   X
@@ -59,6 +60,7 @@ const DebugPage = lazy(() => import('./pages/Debug/DebugPage'));
 const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m => ({ default: m.SelectionFormPage })));
 const PublicChatPage = lazy(() => import('./pages/Messaging/PublicChatPage'));
 const DevelopmentsPage = lazy(() => import('./pages/Developments/DevelopmentsPage'));
+const AdsPage = lazy(() => import('./pages/Ads/AdsPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 import { useAutoSearchNotifications } from './hooks/useAutoSearchNotifications';
 
@@ -150,6 +152,13 @@ function BottomNav() {
       icon: MessageSquareText,
       color: '#ec4899',
       bg: 'rgba(236, 72, 153, 0.1)',
+    },
+    {
+      path: '/ads',
+      label: 'Реклама',
+      icon: Megaphone,
+      color: '#f97316',
+      bg: 'rgba(249, 115, 22, 0.1)',
     },
     {
       path: '/profile',
@@ -536,6 +545,8 @@ function AppRoutes() {
           <Route path="/chat/:dealId/:side" element={<PublicChatPage />} />
           <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
+          <Route path="/ads" element={<RequireAuth><AdsPage /></RequireAuth>} />
+          <Route path="/advertising" element={<Navigate to="/ads" replace />} />
           <Route path="/debug" element={<RequireAdmin><DebugPage /></RequireAdmin>} />
 
           {/* Profile — доступно всем, но админские функции защищены внутри компонента */}

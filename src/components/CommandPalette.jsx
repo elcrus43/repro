@@ -19,7 +19,8 @@ import {
   Sparkles,
   Command,
   Landmark,
-  Target
+  Target,
+  Megaphone
 } from 'lucide-react';
 import { formatNumber, formatPhone, stripPhone } from '../utils/format';
 
@@ -146,6 +147,16 @@ export function CommandPalette() {
       action: () => { setIsOpen(false); navigate('/requests/new'); }
     },
     {
+      id: 'act-new-ad-banner',
+      type: 'action',
+      category: 'Быстрые действия',
+      title: 'Создать рекламный баннер услуг',
+      subtitle: 'Выбор услуги, слогана, оформления и CTA',
+      icon: Megaphone,
+      badge: '1 клик',
+      action: () => { setIsOpen(false); navigate('/ads'); }
+    },
+    {
       id: 'act-theme',
       type: 'action',
       category: 'Настройки',
@@ -216,6 +227,15 @@ export function CommandPalette() {
       subtitle: 'Договоры, акты и соглашения',
       icon: ClipboardList,
       action: () => { setIsOpen(false); navigate('/documents'); }
+    },
+    {
+      id: 'nav-ads',
+      type: 'navigation',
+      category: 'Разделы',
+      title: 'Реклама и баннеры услуг',
+      subtitle: 'Генератор баннеров, слоганов и CTA для соцсетей',
+      icon: Megaphone,
+      action: () => { setIsOpen(false); navigate('/ads'); }
     }
   ], [navigate]);
 

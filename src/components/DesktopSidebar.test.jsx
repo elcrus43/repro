@@ -24,6 +24,9 @@ describe('DesktopSidebar', () => {
     // "Подбор" should be present in nav
     expect(screen.getByText('Подбор')).toBeInTheDocument();
 
+    // "Реклама" should be present in nav
+    expect(screen.getByText('Реклама')).toBeInTheDocument();
+
     // "Подборки" should NOT be in nav
     expect(screen.queryByText('Подборки')).not.toBeInTheDocument();
   });

@@ -500,6 +500,7 @@ a:focus:not(:focus-visible) {
 .icon-btn-copy,
 .icon-btn-delete,
 .icon-btn-calendar,
+.icon-btn-deal,
 .icon-btn-import {
   width: 34px;
   height: 34px;
@@ -534,6 +535,7 @@ a:focus:not(:focus-visible) {
   box-shadow: 0 2px 6px rgba(239, 68, 68, 0.15) !important;
 }
 
+.icon-btn-deal:hover,
 .icon-btn-import:hover {
   background: var(--success-light) !important;
   border-color: var(--success-light) !important;
@@ -546,6 +548,7 @@ a:focus:not(:focus-visible) {
 .icon-btn-copy:active,
 .icon-btn-delete:active,
 .icon-btn-calendar:active,
+.icon-btn-deal:active,
 .icon-btn-import:active {
   transform: scale(0.92);
 }
@@ -554,6 +557,7 @@ a:focus:not(:focus-visible) {
 .dark .icon-btn-copy,
 .dark .icon-btn-delete,
 .dark .icon-btn-calendar,
+.dark .icon-btn-deal,
 .dark .icon-btn-import {
   border: 1px solid var(--border) !important;
   background: var(--surface) !important;
@@ -574,6 +578,7 @@ a:focus:not(:focus-visible) {
   color: #ffffff !important;
 }
 
+.dark .icon-btn-deal:hover,
 .dark .icon-btn-import:hover {
   background: var(--success) !important;
   border-color: var(--success) !important;
@@ -2670,7 +2675,7 @@ input[type="range"]::-moz-range-thumb {
 
 .prop-tools-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
   width: 100%;
   min-width: 0;
@@ -2710,7 +2715,7 @@ input[type="range"]::-moz-range-thumb {
 
 @media (max-width: 480px) {
   .prop-tools-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -2889,7 +2894,7 @@ input[type="range"]::-moz-range-thumb {
 
   .prop-tools-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 8px;
     width: 100%;
     min-width: 0;
@@ -3615,5 +3620,20 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   .mobile-menu-backdrop,
   .mobile-menu-sheet {
     display: none !important;
+  }
+}
+
+/* Service Ads Banner Studio */
+.ads-studio-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr);
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ads-studio-layout {
+    grid-template-columns: 1fr !important;
+    gap: 20px;
   }
 }
