@@ -10,6 +10,8 @@ import { hasPassedDealStage } from '../../utils/matching';
 import {
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
+    Archive,
     Phone,
     Calendar,
     Home,
@@ -85,6 +87,8 @@ export function DetailsPage() {
     const [isBirthdayModalOpen, setIsBirthdayModalOpen] = useState(false);
     const [isContractModalOpen, setIsContractModalOpen] = useState(false);
     const [editingContractId, setEditingContractId] = useState(null);
+    const [renewingContractId, setRenewingContractId] = useState(null);
+    const [showArchivedContracts, setShowArchivedContracts] = useState(false);
     const [isSyncingContact, setIsSyncingContact] = useState(false);
     const [isLinkPropertyModalOpen, setIsLinkPropertyModalOpen] = useState(false);
     const [propertySearch, setPropertySearch] = useState('');
@@ -124,8 +128,10 @@ export function DetailsPage() {
         return [];
     }, [client?.agency_contracts, client?.has_agency_contract, client?.agency_contract_date, client?.id, client?.agency_contract_property_id]);
 
-    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled'), [clientContracts]);
-    const fulfilledContracts = useMemo(() => clientContracts.filter(c => c && c.status === 'fulfilled'), [clientContracts]);
+    const activeContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'cancelled' && c.status !== 'closed' && !c.archived && c.status !== 'fulfilled' && c.status !== 'executed'), [clientContracts]);
+    const fulfilledContracts = useMemo(() => clientContracts.filter(c => c && (c.status === 'fulfilled' || c.status === 'executed')), [clientContracts]);
+    const archivedContracts = useMemo(() => clientContracts.filter(c => c && (c.status === 'terminated' || c.status === 'cancelled' || c.status === 'closed' || Boolean(c.archived))), [clientContracts]);
+    const mainContracts = useMemo(() => clientContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'cancelled' && c.status !== 'closed' && !c.archived), [clientContracts]);
 
     const clientAlerts = useMemo(() => {
         return getClientContractAlerts(client, new Date(), { deals: state.deals });
@@ -541,6 +547,7 @@ export function DetailsPage() {
 
     function openAddContractModal() {
         setEditingContractId(null);
+        setRenewingContractId(null);
         let defaultType = 'АД Продажа';
         const types = client?.client_types || [];
         if (types.some(t => ['landlord', 'lessor'].includes(t))) {
@@ -577,6 +584,7 @@ export function DetailsPage() {
 
     function openEditContractModal(c) {
         setEditingContractId(c.id);
+        setRenewingContractId(null);
         let startDateStr = '';
         if (c.contract_date) {
             try {
@@ -689,14 +697,38 @@ export function DetailsPage() {
         toast.success(`Договор продлен на ${duration} мес. (до ${formatContractDate(newValidUntil)}). Обратите внимание: повторное продление невозможно, далее потребуется перезаключение.`);
     }
 
+    const buildUpdatedClientObj = (targetClient, listForClient) => {
+        const nowIso = new Date().toISOString();
+        const activeList = listForClient.filter(c => c && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(c.status) && !c.archived);
+        const primary = activeList[0] || listForClient[0] || null;
+        let nextStatus = targetClient.status;
+        let nextStage = targetClient.pipeline_stage;
+        if (activeList.length > 0 && targetClient.status !== 'refused') {
+            nextStatus = 'active';
+            nextStage = 'active';
+        }
+        return {
+            ...targetClient,
+            status: nextStatus,
+            ...(nextStage ? { pipeline_stage: nextStage } : {}),
+            agency_contracts: listForClient,
+            agency_contract_date: primary ? primary.contract_date : null,
+            agency_contract_property_id: primary ? primary.property_id : null,
+            has_agency_contract: activeList.length > 0,
+            updated_at: nowIso
+        };
+    };
+
     function handleRenewContract(contract) {
         setEditingContractId(null);
+        setRenewingContractId(contract?.id || null);
         const duration = Number(contract?.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
         const todayStr = new Date().toISOString().split('T')[0];
         const initialEnd = calculateContractEndDate(todayStr, duration, false);
         const endStr = initialEnd ? initialEnd.toISOString().split('T')[0] : '';
         setContractForm({
             id: null,
+            renewing_contract_id: contract?.id || null,
             contract_number: '',
             type: contract?.type || 'АД Продажа',
             date: todayStr,
@@ -712,6 +744,55 @@ export function DetailsPage() {
         });
         setIsContractModalOpen(true);
         toast.info('Оформление нового договора взамен истекшего (перезаключение)');
+    }
+
+    function handleCloseContractToArchive(contract) {
+        if (!contract) return;
+        const nowIso = new Date().toISOString();
+        const updatedContracts = clientContracts.map(c => {
+            if (c.id === contract.id || (contract.group_id && c.group_id === contract.group_id)) {
+                return {
+                    ...c,
+                    status: 'closed',
+                    closed_at: nowIso,
+                    closed_reason: 'manual_archive',
+                    updated_at: nowIso,
+                    comment: c.comment
+                        ? (c.comment.includes('Архив') ? c.comment : `${c.comment} (Архив)`)
+                        : 'Закрыт в архив'
+                };
+            }
+            return c;
+        });
+
+        dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(client, updatedContracts) });
+
+        if (contract.group_id) {
+            state.clients.forEach(sib => {
+                if (sib.id === client.id) return;
+                const sibList = Array.isArray(sib.agency_contracts) ? sib.agency_contracts : [];
+                const hasMatch = sibList.some(sc => sc.group_id === contract.group_id && sc.status !== 'closed');
+                if (hasMatch) {
+                    const nextSibList = sibList.map(sc => {
+                        if (sc.group_id === contract.group_id) {
+                            return {
+                                ...sc,
+                                status: 'closed',
+                                closed_at: nowIso,
+                                closed_reason: 'manual_archive',
+                                updated_at: nowIso,
+                                comment: sc.comment
+                                    ? (sc.comment.includes('Архив') ? sc.comment : `${sc.comment} (Архив)`)
+                                    : 'Закрыт в архив'
+                            };
+                        }
+                        return sc;
+                    });
+                    dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(sib, nextSibList) });
+                }
+            });
+        }
+        toast.success('Договор закрыт и перемещен в архив. Напоминания отключены.');
     }
 
     async function handleSyncContact() {
@@ -885,35 +966,71 @@ export function DetailsPage() {
             return next;
         };
 
-        const buildUpdatedClientObj = (targetClient, listForClient) => {
-            const activeList = listForClient.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
-            const primary = activeList[0] || listForClient[0] || null;
-            let nextStatus = targetClient.status;
-            let nextStage = targetClient.pipeline_stage;
-            if (activeList.length > 0 && targetClient.status !== 'refused') {
-                nextStatus = 'active';
-                nextStage = 'active';
-            }
-            return {
-                ...targetClient,
-                status: nextStatus,
-                ...(nextStage ? { pipeline_stage: nextStage } : {}),
-                agency_contracts: listForClient,
-                agency_contract_date: primary ? primary.contract_date : null,
-                agency_contract_property_id: primary ? primary.property_id : null,
-                has_agency_contract: activeList.length > 0,
-                updated_at: nowIso
-            };
-        };
-
         let updatedContracts;
+        const renewingId = contractForm.renewing_contract_id || renewingContractId;
+
         if (editingContractId) {
             updatedContracts = clientContracts.map(c => (c.id === editingContractId ? buildContractEntry(c) : c));
+        } else if (renewingId) {
+            const newEntry = buildContractEntry(null);
+            newEntry.renewed_from_id = renewingId;
+            const targetRenewed = clientContracts.find(c => c.id === renewingId);
+            const renewedGroupId = targetRenewed?.group_id;
+
+            updatedContracts = [
+                newEntry,
+                ...clientContracts.map(c => {
+                    if (c.id === renewingId || (renewedGroupId && c.group_id === renewedGroupId)) {
+                        return {
+                            ...c,
+                            status: 'closed',
+                            closed_at: nowIso,
+                            closed_reason: 'renewed',
+                            updated_at: nowIso,
+                            comment: c.comment
+                                ? (c.comment.includes('Перезаключен') ? c.comment : `${c.comment} (Перезаключен)`)
+                                : 'Перезаключен (закрыт в архив)'
+                        };
+                    }
+                    return c;
+                })
+            ];
         } else {
             updatedContracts = [buildContractEntry(null), ...clientContracts];
         }
 
         dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(client, updatedContracts) });
+
+        // Если перезаключался групповой договор сособственников, закрываем прежний договор и у них
+        if (renewingId) {
+            const targetRenewed = clientContracts.find(c => c.id === renewingId);
+            const renewedGroupId = targetRenewed?.group_id;
+            if (renewedGroupId) {
+                state.clients.forEach(sib => {
+                    if (sib.id === client.id) return;
+                    const sibList = Array.isArray(sib.agency_contracts) ? sib.agency_contracts : [];
+                    const hasOldGroup = sibList.some(sc => sc.group_id === renewedGroupId && sc.status !== 'closed');
+                    if (hasOldGroup) {
+                        const nextSibList = sibList.map(sc => {
+                            if (sc.group_id === renewedGroupId) {
+                                return {
+                                    ...sc,
+                                    status: 'closed',
+                                    closed_at: nowIso,
+                                    closed_reason: 'renewed',
+                                    updated_at: nowIso,
+                                    comment: sc.comment
+                                        ? (sc.comment.includes('Перезаключен') ? sc.comment : `${sc.comment} (Перезаключен)`)
+                                        : 'Перезаключен (закрыт в архив)'
+                                };
+                            }
+                            return sc;
+                        });
+                        dispatch({ type: 'UPDATE_CLIENT', client: buildUpdatedClientObj(sib, nextSibList) });
+                    }
+                });
+            }
+        }
 
         // Синхронизируем с сособственниками (и удаляем у отвязанных при наличии group_id)
         if (groupId) {
@@ -935,7 +1052,8 @@ export function DetailsPage() {
             });
         }
 
-        toast.success(editingContractId ? 'Договор обновлен' : (isMulti ? `Агентский договор добавлен для ${coIds.length} лиц` : 'Агентский договор добавлен'));
+        setRenewingContractId(null);
+        toast.success(editingContractId ? 'Договор обновлен' : (renewingId ? 'Новый агентский договор заключен, прежний закрыт в архив' : (isMulti ? `Агентский договор добавлен для ${coIds.length} лиц` : 'Агентский договор добавлен')));
         setIsContractModalOpen(false);
     }
 
@@ -943,7 +1061,7 @@ export function DetailsPage() {
         if (window.confirm('Удалить этот агентский договор?')) {
             const target = clientContracts.find(c => c.id === contractId);
             const updatedContracts = clientContracts.filter(c => c.id !== contractId);
-            const activeList = updatedContracts.filter(c => c && c.status !== 'terminated' && c.status !== 'closed' && c.status !== 'fulfilled');
+            const activeList = updatedContracts.filter(c => c && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(c.status) && !c.archived);
             const primary = activeList[0] || updatedContracts[0] || null;
 
             const updatedClient = {
@@ -1921,7 +2039,7 @@ export function DetailsPage() {
                         </div>
                     )}
 
-                    {clientContracts.length === 0 ? (
+                    {mainContracts.length === 0 ? (
                         <div style={{
                             fontSize: 12,
                             color: 'var(--text-muted)',
@@ -1933,18 +2051,18 @@ export function DetailsPage() {
                             justifyContent: 'space-between',
                             gap: 8
                         }}>
-                            <span>Договоры еще не заключены</span>
+                            <span>{archivedContracts.length > 0 ? 'Нет действующих договоров' : 'Договоры еще не заключены'}</span>
                             <span
                                 role="button"
                                 onClick={openAddContractModal}
                                 style={{ fontSize: 11.5, color: 'var(--primary)', fontWeight: 600, cursor: 'pointer' }}
                             >
-                                + Оформить
+                                + {archivedContracts.length > 0 ? 'Оформить новый' : 'Оформить'}
                             </span>
                         </div>
                     ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {clientContracts.map(c => {
+                            {mainContracts.map(c => {
                                 const typeCfg = getContractTypeConfig(c.type);
                                 const info = getContractStatusInfo(c, new Date(), { deals: state.deals, client });
                                 const isTerminated = c.status === 'terminated' || c.status === 'closed';
@@ -2087,21 +2205,38 @@ export function DetailsPage() {
                                                 </button>
 
                                                 {!info?.isFulfilled && (info?.needsRenewal || info?.isOverdue || info?.isUrgentReSign) && (
-                                                    <button
-                                                        type="button"
-                                                        className="card-clickable"
-                                                        onClick={() => handleRenewContract(c)}
-                                                        style={{
-                                                            display: 'inline-flex', alignItems: 'center', gap: 4,
-                                                            padding: '4px 9px', borderRadius: 8, border: 'none',
-                                                            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                                                            color: '#fff', fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
-                                                            boxShadow: '0 2px 5px rgba(245,158,11,0.25)'
-                                                        }}
-                                                        title="Переподписать новый агентский договор с клиентом"
-                                                    >
-                                                        <Plus size={11} /> {info?.isUrgentReSign ? 'Переподписать АД' : 'Перезаключить'}
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                                        <button
+                                                            type="button"
+                                                            className="card-clickable"
+                                                            onClick={() => handleRenewContract(c)}
+                                                            style={{
+                                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                padding: '4px 9px', borderRadius: 8, border: 'none',
+                                                                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                                                                color: '#fff', fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                                                                boxShadow: '0 2px 5px rgba(245,158,11,0.25)'
+                                                            }}
+                                                            title="Переподписать новый агентский договор с клиентом"
+                                                        >
+                                                            <Plus size={11} /> {info?.isUrgentReSign ? 'Переподписать АД' : 'Перезаключить'}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="card-clickable"
+                                                            onClick={() => handleCloseContractToArchive(c)}
+                                                            style={{
+                                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                padding: '4px 8px', borderRadius: 8,
+                                                                border: '1px solid var(--border-light)',
+                                                                background: 'var(--surface)',
+                                                                color: 'var(--text-muted)', fontSize: 10.5, fontWeight: 500, cursor: 'pointer'
+                                                            }}
+                                                            title="Перенести истекший договор в архив со статусом Закрыт"
+                                                        >
+                                                            <Archive size={11} /> В архив
+                                                        </button>
+                                                    </div>
                                                 )}
                                             </div>
                                         </div>
@@ -2243,6 +2378,234 @@ export function DetailsPage() {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+
+                    {archivedContracts.length > 0 && (
+                        <div style={{ marginTop: 12 }}>
+                            <button
+                                type="button"
+                                className="card-clickable"
+                                onClick={() => setShowArchivedContracts(prev => !prev)}
+                                style={{
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '9px 12px',
+                                    borderRadius: 12,
+                                    border: '1px solid var(--border-light)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-secondary)',
+                                    fontSize: 12,
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                                    <Archive size={14} style={{ color: 'var(--text-muted)' }} />
+                                    <span style={{ fontWeight: 600, color: 'var(--text)' }}>Архив договоров</span>
+                                    <span style={{
+                                        fontSize: 10.5,
+                                        fontWeight: 600,
+                                        padding: '1px 6px',
+                                        borderRadius: 6,
+                                        background: 'var(--bg-light)',
+                                        color: 'var(--text-muted)',
+                                        border: '1px solid var(--border-light)'
+                                    }}>
+                                        {archivedContracts.length}
+                                    </span>
+                                </div>
+                                {showArchivedContracts ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                            </button>
+
+                            {showArchivedContracts && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+                                    {archivedContracts.map(c => {
+                                        const typeCfg = getContractTypeConfig(c.type);
+                                        const info = getContractStatusInfo(c, new Date(), { deals: state.deals, client });
+                                        const contractProp = state.properties.find(p => p.id === c.property_id);
+                                        return (
+                                            <div
+                                                key={c.id}
+                                                style={{
+                                                    background: 'var(--bg-light)',
+                                                    borderRadius: 16,
+                                                    padding: '12px 14px',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: 8,
+                                                    border: '1px dashed var(--border-light)',
+                                                    opacity: 0.85
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                                        <span style={{
+                                                            fontSize: 11,
+                                                            fontWeight: 600,
+                                                            padding: '2px 8px',
+                                                            borderRadius: 6,
+                                                            background: typeCfg.bg,
+                                                            color: typeCfg.color,
+                                                            border: `1px solid ${typeCfg.border}`,
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 4
+                                                        }}>
+                                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: typeCfg.color, flexShrink: 0 }} />
+                                                            {c.type || 'АД Продажа'}
+                                                        </span>
+                                                        {c.contract_number && (
+                                                            <span style={{
+                                                                fontSize: 10.5,
+                                                                fontWeight: 600,
+                                                                padding: '2px 6px',
+                                                                borderRadius: 6,
+                                                                background: 'var(--surface)',
+                                                                color: 'var(--text)',
+                                                                border: '1px solid var(--border-light)'
+                                                            }}>
+                                                                № {c.contract_number}
+                                                            </span>
+                                                        )}
+                                                        {info?.badge && (
+                                                            <span style={{
+                                                                fontSize: 10.5,
+                                                                fontWeight: 600,
+                                                                padding: '2px 7px',
+                                                                borderRadius: 6,
+                                                                background: info.badge.bg,
+                                                                color: info.badge.color,
+                                                                border: `1px solid ${info.badge.border}`,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 4
+                                                            }}>
+                                                                {info.badge.label}
+                                                            </span>
+                                                        )}
+                                                        {Array.isArray(c.co_client_ids) && c.co_client_ids.length > 1 && (
+                                                            <span style={{
+                                                                fontSize: 10.5,
+                                                                fontWeight: 600,
+                                                                padding: '2px 6px',
+                                                                borderRadius: 6,
+                                                                background: 'rgba(0, 82, 255, 0.08)',
+                                                                color: 'var(--primary)',
+                                                                border: '1px solid rgba(0, 82, 255, 0.25)',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: 3
+                                                            }}>
+                                                                <Users size={10} /> {c.co_client_ids.length} лиц
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                                                        <button
+                                                            type="button"
+                                                            className="card-clickable"
+                                                            onClick={() => handleCreateDocumentForContract(c)}
+                                                            style={{
+                                                                display: 'inline-flex', alignItems: 'center', gap: 4,
+                                                                padding: '4px 8px', borderRadius: 7,
+                                                                background: 'var(--surface)',
+                                                                color: 'var(--text)', fontSize: 10.5, fontWeight: 500, cursor: 'pointer',
+                                                                border: '1px solid var(--border-light)'
+                                                            }}
+                                                            title="Сформировать печатный документ"
+                                                        >
+                                                            <FileText size={11} /> Документ
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="card-clickable"
+                                                            onClick={() => openEditContractModal(c)}
+                                                            style={{
+                                                                width: 26, height: 26, borderRadius: 7,
+                                                                border: '1px solid var(--border-light)', background: 'var(--surface)',
+                                                                color: 'var(--text)', cursor: 'pointer',
+                                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}
+                                                            title="Редактировать архивный договор"
+                                                        >
+                                                            <Pencil size={11} />
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="card-clickable"
+                                                            onClick={() => handleDeleteContract(c.id)}
+                                                            style={{
+                                                                width: 26, height: 26, borderRadius: 7,
+                                                                border: '1px solid rgba(239, 68, 68, 0.25)', background: 'rgba(239, 68, 68, 0.06)',
+                                                                color: '#ef4444', cursor: 'pointer',
+                                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center'
+                                                            }}
+                                                            title="Удалить из архива"
+                                                        >
+                                                            <Trash2 size={11} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                        <Calendar size={12} style={{ color: 'var(--text-muted)' }} />
+                                                        <span>Заключен: <strong style={{ color: 'var(--text)' }}>{formatContractDate(info?.startDate)}</strong></span>
+                                                    </div>
+                                                    {c.closed_at && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <Archive size={12} style={{ color: 'var(--text-muted)' }} />
+                                                            <span>Закрыт в архив: <strong style={{ color: 'var(--text)' }}>{formatContractDate(c.closed_at)}</strong></span>
+                                                        </div>
+                                                    )}
+                                                    {c.price > 0 && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <span style={{ color: 'var(--text-muted)' }}>Сумма:</span>
+                                                            <strong style={{ color: 'var(--text)' }}>{formatNumber(c.price)} ₽</strong>
+                                                        </div>
+                                                    )}
+                                                    {c.commission && (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                                            <span style={{ color: 'var(--text-muted)' }}>Комиссия:</span>
+                                                            <strong style={{ color: '#059669' }}>{c.commission}</strong>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {contractProp && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11.5 }}>
+                                                        <Home size={12} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
+                                                        <span style={{ color: 'var(--text-muted)' }}>Объект:</span>
+                                                        <span
+                                                            onClick={() => navigate(`/properties/${contractProp.id}`)}
+                                                            style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer' }}
+                                                        >
+                                                            {contractProp.address || contractProp.city}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {c.comment && (
+                                                    <div style={{
+                                                        fontSize: 11,
+                                                        color: 'var(--text-muted)',
+                                                        fontStyle: 'italic',
+                                                        padding: '4px 8px',
+                                                        borderRadius: 6,
+                                                        background: 'var(--surface)',
+                                                        border: '1px solid var(--border-light)'
+                                                    }}>
+                                                        {c.comment}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -3877,7 +4240,7 @@ export function DetailsPage() {
                                 </div>
                                 <div>
                                     <div className="font-oswald" style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>
-                                        {editingContractId ? 'Редактировать агентский договор' : 'Добавить агентский договор'}
+                                        {editingContractId ? 'Редактировать агентский договор' : (renewingContractId ? 'Перезаключить агентский договор' : 'Добавить агентский договор')}
                                     </div>
                                     <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Клиент: {client.full_name}</div>
                                 </div>
@@ -3889,6 +4252,26 @@ export function DetailsPage() {
                                 <X size={20} />
                             </button>
                         </div>
+
+                        {renewingContractId && (
+                            <div style={{
+                                padding: '10px 14px',
+                                borderRadius: 12,
+                                background: 'rgba(59, 130, 246, 0.08)',
+                                border: '1px solid rgba(59, 130, 246, 0.25)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                fontSize: 12,
+                                color: 'var(--text)',
+                                marginBottom: 14
+                            }}>
+                                <Archive size={16} color="#3b82f6" style={{ flexShrink: 0 }} />
+                                <div>
+                                    <strong>Перезаключение договора:</strong> Истекшая версия будет перенесена в архив со статусом «Закрыт», напоминания по ней будут отключены.
+                                </div>
+                            </div>
+                        )}
 
                         {(() => {
                             const modalTypeCfg = getContractTypeConfig(contractForm.type);

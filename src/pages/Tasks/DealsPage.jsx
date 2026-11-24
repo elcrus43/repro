@@ -264,7 +264,7 @@ export function DealsPage() {
                 const ownerWithContract = state.clients.find(c => {
                     if (!propClientIds.includes(c.id)) return false;
                     const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
-                    const activeContracts = rawContracts.filter(ct => ct && ct.status !== 'terminated');
+                    const activeContracts = rawContracts.filter(ct => ct && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(ct.status) && !ct.archived);
                     const match = activeContracts.find(ct => ct.property_id === prop.id) || activeContracts[0];
                     if (match) {
                         matchedContractDate = match.contract_date;
@@ -1262,7 +1262,7 @@ function DealCard({ deal, lastMessages = {}, setLastMessages, editDeal, updateSt
 
     counterparties.forEach(c => {
         const rawContracts = Array.isArray(c.agency_contracts) ? c.agency_contracts : [];
-        const activeContracts = rawContracts.filter(ct => ct && ct.status !== 'terminated');
+        const activeContracts = rawContracts.filter(ct => ct && !['terminated', 'cancelled', 'closed', 'fulfilled', 'executed'].includes(ct.status) && !ct.archived);
         
         let matched = null;
         if (deal.property_id) {

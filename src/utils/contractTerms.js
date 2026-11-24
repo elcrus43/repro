@@ -101,7 +101,7 @@ export function formatContractDate(date) {
 export function getContractStatusInfo(contract, referenceDate = new Date(), context = {}) {
     if (!contract) return null;
 
-    const isTerminated = contract.status === 'terminated' || contract.status === 'cancelled' || contract.status === 'closed';
+    const isTerminated = contract.status === 'terminated' || contract.status === 'cancelled' || contract.status === 'closed' || Boolean(contract.archived);
     const durationMonths = Number(contract.duration_months) || DEFAULT_CONTRACT_DURATION_MONTHS;
 
     let startDate = null;
@@ -153,8 +153,13 @@ export function getContractStatusInfo(contract, referenceDate = new Date(), cont
         };
     }
 
-    // 2. РАСТОРГНУТ / ЗАКРЫТ
+    // 2. РАСТОРГНУТ / ЗАКРЫТ / АННУЛИРОВАН
     if (isTerminated) {
+        const isClosed = contract.status === 'closed' || Boolean(contract.archived);
+        const label = isClosed
+            ? (contract.closed_reason === 'renewed' ? 'Перезаключен (архив)' : 'Закрыт')
+            : (contract.status === 'cancelled' ? 'Аннулирован' : 'Расторгнут');
+
         return {
             isTerminated: true,
             isFulfilled: false,
@@ -167,14 +172,14 @@ export function getContractStatusInfo(contract, referenceDate = new Date(), cont
             isOverdue: false,
             isExpiring: false,
             isUrgentReSign: false,
-            statusCategory: 'terminated',
+            statusCategory: isClosed ? 'closed' : 'terminated',
             daysLeft: null,
             startDate,
             endDate: null,
             initialEndDate: null,
             maxEndDate: null,
             badge: {
-                label: 'Расторгнут',
+                label,
                 color: '#64748b',
                 bg: 'rgba(100, 116, 139, 0.08)',
                 border: 'rgba(100, 116, 139, 0.2)'
@@ -380,8 +385,9 @@ export function getClientContractAlerts(client, referenceDate = new Date(), cont
     const mergedContext = { ...context, client };
 
     contracts.forEach(c => {
+        if (!c || c.status === 'closed' || c.status === 'terminated' || c.status === 'cancelled' || c.status === 'fulfilled' || c.status === 'executed' || c.archived) return;
         const info = getContractStatusInfo(c, referenceDate, mergedContext);
-        if (!info || info.isTerminated || info.isFulfilled) return;
+        if (!info || info.isTerminated || info.isFulfilled || info.statusCategory === 'closed' || info.statusCategory === 'terminated') return;
         if (info.statusCategory === 'expired') {
             hasExpired = true;
             alerts.push({ contract: c, info, type: 'expired' });
@@ -664,9 +670,30 @@ export function applyDraftAndContractToClient(client, draft, contractParams = {}
         validUntilIso = null,
         contractStatus = 'active',
         contractType = 'АД ЮСС Продажа',
+        renewingContractId = null,
+        renewing_contract_id = null,
     } = contractParams;
 
-    const existingContracts = Array.isArray(client.agency_contracts) ? [...client.agency_contracts] : [];
+    const nowIso = new Date().toISOString();
+    const renewTargetId = renewingContractId || renewing_contract_id;
+    let existingContracts = Array.isArray(client.agency_contracts) ? [...client.agency_contracts] : [];
+    if (renewTargetId) {
+        existingContracts = existingContracts.map(c => {
+            if (c.id === renewTargetId) {
+                return {
+                    ...c,
+                    status: 'closed',
+                    closed_at: nowIso,
+                    closed_reason: 'renewed',
+                    updated_at: nowIso,
+                    comment: c.comment
+                        ? (c.comment.includes('Перезаключен') ? c.comment : `${c.comment} (Перезаключен)`)
+                        : 'Перезаключен (закрыт в архив)',
+                };
+            }
+            return c;
+        });
+    }
     let matchIdx = -1;
     if (selectedContractId) {
         matchIdx = existingContracts.findIndex(c => c.id === selectedContractId);
@@ -679,7 +706,6 @@ export function applyDraftAndContractToClient(client, draft, contractParams = {}
     }
 
     const normalizedCoIds = Array.isArray(coClientIds) && coClientIds.length > 1 ? coClientIds : undefined;
-    const nowIso = new Date().toISOString();
     let updatedContracts;
 
     if (matchIdx >= 0) {
@@ -698,7 +724,7 @@ export function applyDraftAndContractToClient(client, draft, contractParams = {}
             else delete next.co_client_ids;
             return next;
         });
-    } else if (existingContracts.length > 0 && !selectedContractId && !groupId && !propertyId) {
+    } else if (existingContracts.length > 0 && !selectedContractId && !groupId && !propertyId && !renewTargetId) {
         updatedContracts = existingContracts.map((c, i) => {
             if (i !== 0) return c;
             return {
@@ -720,6 +746,7 @@ export function applyDraftAndContractToClient(client, draft, contractParams = {}
             status: contractStatus,
             property_id: propertyId || null,
             created_at: nowIso,
+            ...(renewTargetId ? { renewed_from_id: renewTargetId } : {}),
             ...(groupId ? { group_id: groupId } : {}),
             ...(normalizedCoIds ? { co_client_ids: normalizedCoIds } : {}),
         };
