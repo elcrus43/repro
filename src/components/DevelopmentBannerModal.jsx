@@ -98,6 +98,45 @@ const DEFAULT_ADVANTAGES = [
   'Trade-in / Обмен старой на новую',
 ];
 
+const TEXT_COLOR_OPTIONS = [
+  { id: 'white', label: 'Белый', color: '#FFFFFF' },
+  { id: 'dark', label: 'Графит', color: '#0F172A' },
+  { id: 'gold', label: 'Золотой', color: '#FACC15' },
+  { id: 'sky', label: 'Голубой', color: '#38BDF8' },
+  { id: 'emerald', label: 'Изумруд', color: '#34D399' },
+];
+
+function TextColorSwatches({ label, value, onChange }) {
+  return (
+    <div className="dev-text-color-row">
+      <span className="dev-text-color-label">{label}:</span>
+      <div className="dev-text-color-dots">
+        <button
+          type="button"
+          className={`btn-theme-color-reset ${!value ? 'active' : ''}`}
+          onClick={() => onChange('')}
+        >
+          По теме
+        </button>
+        {TEXT_COLOR_OPTIONS.map((opt) => {
+          const isSelected = value === opt.color;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              title={opt.label}
+              aria-label={`${label}: ${opt.label}`}
+              className={`btn-text-swatch ${isSelected ? 'active' : ''}`}
+              style={{ backgroundColor: opt.color }}
+              onClick={() => onChange(opt.color)}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /* ================================================================
    HELPERS & MATH
    ================================================================ */
@@ -554,6 +593,11 @@ export function DevelopmentBannerModal({
   });
 
   const [customAdvantageText, setCustomAdvantageText] = useState('');
+  const [sloganScale, setSloganScale]                 = useState(100);
+  const [sloganColor, setSloganColor]                 = useState('');
+  const [bulletScale, setBulletScale]                 = useState(100);
+  const [bulletColor, setBulletColor]                 = useState('');
+  const [priceColor, setPriceColor]                   = useState('');
   const [copyFeedback, setCopyFeedback]               = useState(false);
   const [copyPostFeedback, setCopyPostFeedback]       = useState(false);
   const [isGenerating, setIsGenerating]               = useState(false);
@@ -685,7 +729,7 @@ export function DevelopmentBannerModal({
       ctx.fillStyle = toneBg;
       ctx.fillRect(0, 0, w, h);
 
-      const topPhotoH = Math.round((IS ? 0.46 : (isPortrait ? 0.42 : 0.40)) * h);
+      const topPhotoH = Math.round((IS ? 0.50 : (isPortrait ? 0.44 : 0.41)) * h);
 
       // Render photo(s) in top zone
       ctx.save();
@@ -928,33 +972,59 @@ export function DevelopmentBannerModal({
       const ctaPhoneGap = Math.round((IS ? 24 : 18) * U);
       const ctaY = phoneY - phoneFontSize - ctaPhoneGap - ctaH;
 
-      let curY = topPhotoH - Math.round((IS ? 16 : 8) * U);
+      // Pre-measure offer & advantages block to anchor it right above CTA
+      const sloganFontSize = Math.round((IS ? 52 : (isPortrait ? 40 : 32)) * U * (sloganScale / 100));
+      const sloganLineHeight = sloganFontSize * 1.18;
+      ctx.font = `900 ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
+      const finalSlogan = (sloganText || `${roomTitle}${areaText ? ` · ${areaText} м²` : ''} в ${devTitle}`).trim();
+      const usedSloganLines = wrapText(ctx, finalSlogan, contentWidth).slice(0, 2);
+      const sloganGap = Math.round((IS ? 16 : 10) * U);
+
+      const priceFontSize = Math.round((IS ? 70 : (isPortrait ? 54 : 44)) * U);
+      const priceGap = Math.round((IS ? 16 : 10) * U);
+
+      const mortH = Math.round((IS ? 54 : (isPortrait ? 44 : 38)) * U);
+      const mortGap = Math.round((IS ? 16 : 10) * U);
+      const hasMortgage = showMortgage && mortgagePayment > 0;
+
+      const bulletLimit = IS ? 4 : (isPortrait ? 3 : 2);
+      const bulletFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U * (bulletScale / 100));
+      const bulletLineHeight = bulletFontSize * 1.3;
+      const bulletStepGap = Math.round((IS ? 10 : 6) * U);
+      const visibleBullets = selectedAdvantages.slice(0, bulletLimit);
+
+      const totalOfferH =
+        usedSloganLines.length * sloganLineHeight +
+        sloganGap +
+        priceFontSize +
+        priceGap +
+        (hasMortgage ? mortH + mortGap : 0) +
+        visibleBullets.length * (bulletLineHeight + bulletStepGap);
+
+      const offerToCtaGap = Math.round((IS ? 28 : 18) * U);
+      const minOfferY = topPhotoH - Math.round((IS ? 12 : 6) * U);
+      let curY = Math.max(minOfferY, ctaY - offerToCtaGap - totalOfferH);
 
       // A. Slogan / Marketing Headline (Medeo Sans 900)
       ctx.save();
-      const sloganFontSize = Math.round((IS ? 54 : (isPortrait ? 42 : 34)) * U);
-      const sloganLineHeight = sloganFontSize * 1.18;
       ctx.font = `900 ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
-      ctx.fillStyle = textColor;
+      ctx.fillStyle = sloganColor || textColor;
       ctx.textBaseline = 'top';
 
-      const finalSlogan = (sloganText || `${roomTitle}${areaText ? ` · ${areaText} м²` : ''} в ${devTitle}`).trim();
-      const sloganLines = wrapText(ctx, finalSlogan, contentWidth);
-      sloganLines.slice(0, 2).forEach((line) => {
+      usedSloganLines.forEach((line) => {
         ctx.fillText(line, PAD, curY);
         curY += sloganLineHeight;
       });
       ctx.restore();
 
-      curY += Math.round((IS ? 16 : 10) * U);
+      curY += sloganGap;
 
       // B. Price & Sqm Block (Huge vibrant numbers)
       ctx.save();
       const pricePrefix = showPriceFrom ? 'от ' : '';
       const priceText = priceVal ? `${pricePrefix}${formatNumber(priceVal)} ₽` : 'Цена по запросу';
-      const priceFontSize = Math.round((IS ? 72 : (isPortrait ? 56 : 46)) * U);
       ctx.font = `900 ${priceFontSize}px "Medeo Sans", system-ui, sans-serif`;
-      ctx.fillStyle = isLight ? accentColor : '#38BDF8';
+      ctx.fillStyle = priceColor || (isLight ? accentColor : '#38BDF8');
       ctx.textBaseline = 'top';
       ctx.fillText(priceText, PAD, curY);
 
@@ -971,12 +1041,11 @@ export function DevelopmentBannerModal({
       }
       ctx.restore();
 
-      curY += priceFontSize + Math.round((IS ? 18 : 12) * U);
+      curY += priceFontSize + priceGap;
 
       // C. Mortgage Banner Pill (Семейная ипотека 6%)
-      if (showMortgage && mortgagePayment > 0) {
+      if (hasMortgage) {
         ctx.save();
-        const mortH = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
         const mortFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U);
         const mortText = `Семейная ипотека ${mortgageRate}% · платеж ${showPriceFrom ? 'от ' : ''}${formatNumber(mortgagePayment)} ₽/мес`;
         ctx.font = `700 ${mortFontSize}px "Medeo Sans", system-ui, sans-serif`;
@@ -1000,18 +1069,15 @@ export function DevelopmentBannerModal({
         ctx.fillText(mortText, PAD + Math.round(20 * U), curY + mortH / 2);
         ctx.restore();
 
-        curY += mortH + Math.round((IS ? 18 : 12) * U);
+        curY += mortH + mortGap;
       }
 
       // D. Key Advantages Bullets (with white checkmarks in accent circles)
-      if (selectedAdvantages.length > 0) {
-        const bulletLimit = IS ? 4 : (isPortrait ? 3 : 2);
-        const bulletFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U);
-        const bulletLineHeight = bulletFontSize * 1.3;
-        const circleR = Math.round((IS ? 14 : (isPortrait ? 12 : 10)) * U);
+      if (visibleBullets.length > 0) {
+        const circleR = Math.round((IS ? 14 : (isPortrait ? 12 : 10)) * U * Math.min(1.25, Math.max(0.8, bulletScale / 100)));
 
-        selectedAdvantages.slice(0, bulletLimit).forEach((adv) => {
-          if (curY + bulletLineHeight > ctaY - Math.round(10 * U)) return;
+        visibleBullets.forEach((adv) => {
+          if (curY + bulletLineHeight > ctaY - Math.round(8 * U)) return;
 
           ctx.save();
           // Circle with checkmark
@@ -1033,11 +1099,11 @@ export function DevelopmentBannerModal({
 
           // Text
           ctx.font = `600 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
-          ctx.fillStyle = textColor;
+          ctx.fillStyle = bulletColor || textColor;
           ctx.textBaseline = 'top';
           ctx.fillText(adv, cx + circleR + Math.round(14 * U), curY);
 
-          curY += bulletLineHeight + Math.round((IS ? 10 : 6) * U);
+          curY += bulletLineHeight + bulletStepGap;
           ctx.restore();
         });
       }
@@ -1144,6 +1210,11 @@ export function DevelopmentBannerModal({
     mortgageRate,
     mortgagePayment,
     selectedAdvantages,
+    sloganScale,
+    sloganColor,
+    bulletScale,
+    bulletColor,
+    priceColor,
     planImageUrl,
     facadeImageUrl,
     selectedGridImages,
@@ -1563,6 +1634,43 @@ export function DevelopmentBannerModal({
                         </button>
                       ))}
                     </div>
+
+                    {/* Slogan Size Slider */}
+                    <div className="dev-range-box">
+                      <div className="dev-range-head">
+                        <span className="dev-range-label">Размер текста слогана: {sloganScale}%</span>
+                        {sloganScale !== 100 && (
+                          <button
+                            type="button"
+                            className="btn-range-reset"
+                            onClick={() => setSloganScale(100)}
+                          >
+                            Сброс (100%)
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="range"
+                        min="60"
+                        max="150"
+                        step="5"
+                        value={sloganScale}
+                        onChange={(e) => setSloganScale(Number(e.target.value))}
+                        className="dev-range-input"
+                      />
+                      <div className="dev-range-hints">
+                        <span>Компактный (60%)</span>
+                        <span>Стандарт (100%)</span>
+                        <span>Крупный (150%)</span>
+                      </div>
+                    </div>
+
+                    {/* Slogan Color Swatches */}
+                    <TextColorSwatches
+                      label="Цвет текста слогана"
+                      value={sloganColor}
+                      onChange={setSloganColor}
+                    />
                   </div>
 
                   {/* Call To Action Button (CTA) */}
@@ -1834,6 +1942,12 @@ export function DevelopmentBannerModal({
                         <span>Показать адрес на баннере</span>
                       </label>
                     </div>
+
+                    <TextColorSwatches
+                      label="Цвет цены"
+                      value={priceColor}
+                      onChange={setPriceColor}
+                    />
                   </div>
 
                   {/* Mortgage Calculator Badge */}
@@ -1886,6 +2000,43 @@ export function DevelopmentBannerModal({
                     <p className="dev-sec-hint">
                       Выберите до 4 ключевых преимуществ для размещения на баннере:
                     </p>
+
+                    {/* Bullets Font Size Slider */}
+                    <div className="dev-range-box">
+                      <div className="dev-range-head">
+                        <span className="dev-range-label">Размер шрифта преимуществ: {bulletScale}%</span>
+                        {bulletScale !== 100 && (
+                          <button
+                            type="button"
+                            className="btn-range-reset"
+                            onClick={() => setBulletScale(100)}
+                          >
+                            Сброс (100%)
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        type="range"
+                        min="65"
+                        max="145"
+                        step="5"
+                        value={bulletScale}
+                        onChange={(e) => setBulletScale(Number(e.target.value))}
+                        className="dev-range-input"
+                      />
+                      <div className="dev-range-hints">
+                        <span>Компактный (65%)</span>
+                        <span>Стандарт (100%)</span>
+                        <span>Крупный (145%)</span>
+                      </div>
+                    </div>
+
+                    {/* Bullets Color Swatches */}
+                    <TextColorSwatches
+                      label="Цвет текста преимуществ"
+                      value={bulletColor}
+                      onChange={setBulletColor}
+                    />
 
                     <div className="dev-adv-chips-list">
                       {Array.from(new Set([...DEFAULT_ADVANTAGES, ...selectedAdvantages])).map((adv) => {
@@ -2292,6 +2443,7 @@ export function DevelopmentBannerModal({
         }
 
         .dev-banner-section {
+          flex-shrink: 0;
           background: #f8fafc;
           border: 1px solid #e2e8f0;
           border-radius: 8px;
@@ -2540,6 +2692,142 @@ export function DevelopmentBannerModal({
           border-color: #60a5fa;
           background: rgba(96, 165, 250, 0.15);
           color: #60a5fa;
+        }
+
+        /* Text Size Sliders & Color Swatches */
+        .dev-range-box {
+          padding: 8px 10px;
+          background: #f8fafc;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .dark .dev-range-box {
+          background: #1e293b;
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .dev-range-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .dev-range-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: #0f172a;
+        }
+
+        .dark .dev-range-label {
+          color: #f1f5f9;
+        }
+
+        .btn-range-reset {
+          background: none;
+          border: none;
+          color: #0052ff;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .dark .btn-range-reset {
+          color: #60a5fa;
+        }
+
+        .dev-range-input {
+          width: 100%;
+          accent-color: #0052ff;
+          cursor: pointer;
+          margin: 2px 0;
+        }
+
+        .dev-range-hints {
+          display: flex;
+          justify-content: space-between;
+          font-size: 10px;
+          color: #64748b;
+        }
+
+        .dark .dev-range-hints {
+          color: #94a3b8;
+        }
+
+        .dev-text-color-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          flex-wrap: wrap;
+          padding-top: 2px;
+        }
+
+        .dev-text-color-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: #475569;
+        }
+
+        .dark .dev-text-color-label {
+          color: #94a3b8;
+        }
+
+        .dev-text-color-dots {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-theme-color-reset {
+          padding: 3px 8px;
+          border-radius: 6px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .dark .btn-theme-color-reset {
+          background: #0f172a;
+          border-color: rgba(255, 255, 255, 0.12);
+          color: #94a3b8;
+        }
+
+        .btn-theme-color-reset.active {
+          border-color: #0052ff;
+          background: rgba(0, 82, 255, 0.1);
+          color: #0052ff;
+        }
+
+        .dark .btn-theme-color-reset.active {
+          border-color: #60a5fa;
+          background: rgba(96, 165, 250, 0.18);
+          color: #60a5fa;
+        }
+
+        .btn-text-swatch {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          border: 1.5px solid rgba(148, 163, 184, 0.55);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+          cursor: pointer;
+          transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-text-swatch.active {
+          border: 2.5px solid #0052ff;
+          box-shadow: 0 0 0 2px rgba(0, 82, 255, 0.25);
+          transform: scale(1.1);
         }
 
         /* Form Inputs */

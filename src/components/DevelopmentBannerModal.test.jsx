@@ -295,6 +295,13 @@ describe('DevelopmentBannerModal Component', () => {
     // CTA section
     expect(screen.getByText(/Кнопка призыва \(CTA\)/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue('Забронировать по цене застройщика')).toBeInTheDocument();
+
+    // Text size & color controls
+    expect(screen.getByText(/Размер текста слогана: 100%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Размер шрифта преимуществ: 100%/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Цвет текста слогана: Золотой')).toBeInTheDocument();
+    expect(screen.getByLabelText('Цвет цены: Голубой')).toBeInTheDocument();
+    expect(screen.getByLabelText('Цвет текста преимуществ: Изумруд')).toBeInTheDocument();
   });
 
   it('renders mobile navigation and switches between editor and preview tabs on small screens', () => {
