@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AdsPage } from './AdsPage';
 import { renderServiceBanner } from './serviceBannerRenderer';
-import { SERVICE_CATEGORIES, BANNER_FORMATS, DESIGN_THEMES } from './serviceBannerData';
+import { SERVICE_CATEGORIES, BANNER_FORMATS, BANNER_PALETTE } from './serviceBannerData';
 
 const mockToast = {
   success: vi.fn(),
@@ -159,7 +159,7 @@ describe('AdsPage Component', () => {
     expect(textarea.value).toBe('Мой уникальный продающий слоган');
   });
 
-  it('allows switching formats and themes on Design tab', () => {
+  it('allows switching formats, bottom tone, 5-color palette and textures on Design tab', () => {
     render(<AdsPage />);
 
     // Switch to Design tab
@@ -171,11 +171,18 @@ describe('AdsPage Component', () => {
     const squareBtn = screen.getByText('Квадрат');
     fireEvent.click(squareBtn);
 
-    // Click on Emerald theme
-    const emeraldTheme = screen.getByText('Изумруд Люкс');
-    fireEvent.click(emeraldTheme);
+    // Switch bottom tone to Light
+    const lightToneBtn = screen.getByText('Светлый фон');
+    fireEvent.click(lightToneBtn);
+    expect(lightToneBtn).toBeInTheDocument();
 
-    expect(emeraldTheme).toBeInTheDocument();
+    // Select a color from 5-color palette
+    const goldColorBtn = screen.getByText('Золотой');
+    fireEvent.click(goldColorBtn);
+
+    // Select a visual texture preset
+    const marblePreset = screen.getByText('Мрамор');
+    fireEvent.click(marblePreset);
   });
 
   it('allows setting CTA and top badge on CTA tab', () => {
@@ -270,7 +277,8 @@ describe('AdsPage Component', () => {
     expect(() => {
       renderServiceBanner(mockCanvas, {
         format: BANNER_FORMATS.square,
-        theme: DESIGN_THEMES[0],
+        bottomTone: 'light',
+        accentColor: BANNER_PALETTE[1].color,
         badgeText: 'ВЫГОДНО',
         slogan: 'Продам вашу квартиру дороже рынка',
         bullets: ['Бесплатная оценка', '12+ площадок', 'Юридическая защита'],

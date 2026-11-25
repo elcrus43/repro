@@ -306,120 +306,34 @@ export const BANNER_FORMATS = {
   }
 };
 
-export const DESIGN_THEMES = [
+export const BANNER_PALETTE = [
+  { id: 'blue', label: 'Синий', color: '#0052FF', ctaText: '#FFFFFF' },
+  { id: 'gold', label: 'Золотой', color: '#FACC15', ctaText: '#0F172A' },
+  { id: 'emerald', label: 'Изумруд', color: '#10B981', ctaText: '#FFFFFF' },
+  { id: 'coral', label: 'Коралл', color: '#F97316', ctaText: '#FFFFFF' },
+  { id: 'violet', label: 'Аметист', color: '#8B5CF6', ctaText: '#FFFFFF' }
+];
+
+export const BOTTOM_TONES = [
   {
-    id: 'neo_dark',
-    label: 'Ночной Премиум',
-    hint: 'Глубокий обсидиан и золото',
-    bgType: 'gradient',
-    bgColors: ['#070B14', '#0F172A', '#1E293B'],
-    textColor: '#FFFFFF',
-    subTextColor: '#CBD5E1',
-    cardBg: 'rgba(255, 255, 255, 0.07)',
-    cardBorder: 'rgba(250, 204, 21, 0.25)',
-    accentColor: '#FACC15',
-    accentLight: 'rgba(250, 204, 21, 0.22)',
-    badgeBg: 'rgba(250, 204, 21, 0.16)',
-    badgeBorder: 'rgba(250, 204, 21, 0.55)',
-    badgeColor: '#FDE047',
-    ctaBg: '#FACC15',
-    ctaColor: '#0F172A',
-    glowColor: 'rgba(250, 204, 21, 0.25)'
-  },
-  {
-    id: 'brand_blue',
-    label: 'Кобальт Драйв',
-    hint: 'Насыщенный синий и белый',
-    bgType: 'gradient',
-    bgColors: ['#06133D', '#0040C1', '#0052FF'],
-    textColor: '#FFFFFF',
-    subTextColor: '#DBEAFE',
-    cardBg: 'rgba(255, 255, 255, 0.11)',
-    cardBorder: 'rgba(255, 255, 255, 0.24)',
-    accentColor: '#38BDF8',
-    accentLight: 'rgba(56, 189, 248, 0.24)',
-    badgeBg: '#FFFFFF',
-    badgeBorder: '#FFFFFF',
-    badgeColor: '#0040C1',
-    ctaBg: '#FFFFFF',
-    ctaColor: '#0040C1',
-    glowColor: 'rgba(56, 189, 248, 0.35)'
-  },
-  {
-    id: 'emerald_lux',
-    label: 'Изумруд Люкс',
-    hint: 'Глубокий изумруд и мята',
-    bgType: 'gradient',
-    bgColors: ['#021F1A', '#064E3B', '#047857'],
-    textColor: '#FFFFFF',
-    subTextColor: '#D1FAE5',
-    cardBg: 'rgba(255, 255, 255, 0.09)',
-    cardBorder: 'rgba(52, 211, 153, 0.30)',
-    accentColor: '#34D399',
-    accentLight: 'rgba(52, 211, 153, 0.22)',
-    badgeBg: 'rgba(52, 211, 153, 0.22)',
-    badgeBorder: 'rgba(110, 231, 183, 0.6)',
-    badgeColor: '#A7F3D0',
-    ctaBg: '#10B981',
-    ctaColor: '#FFFFFF',
-    glowColor: 'rgba(16, 185, 129, 0.35)'
-  },
-  {
-    id: 'sunset_glow',
-    label: 'Терракота & Крем',
-    hint: 'Теплый медный и янтарь',
-    bgType: 'gradient',
-    bgColors: ['#290B07', '#7C2D12', '#B45309'],
-    textColor: '#FFFBEB',
-    subTextColor: '#FDE68A',
-    cardBg: 'rgba(255, 255, 255, 0.10)',
-    cardBorder: 'rgba(251, 191, 36, 0.28)',
-    accentColor: '#FBBF24',
-    accentLight: 'rgba(251, 191, 36, 0.25)',
-    badgeBg: '#FEF3C7',
-    badgeBorder: '#FEF3C7',
-    badgeColor: '#7C2D12',
-    ctaBg: '#F59E0B',
-    ctaColor: '#1F1209',
-    glowColor: 'rgba(245, 158, 11, 0.38)'
-  },
-  {
-    id: 'minimal_light',
-    label: 'Сканди Чистый',
-    hint: 'Архитектурный светлый',
-    bgType: 'gradient',
-    bgColors: ['#FFFFFF', '#F1F5F9', '#E2E8F0'],
-    textColor: '#0F172A',
-    subTextColor: '#334155',
-    cardBg: 'rgba(255, 255, 255, 0.92)',
-    cardBorder: 'rgba(15, 23, 42, 0.12)',
-    accentColor: '#0052FF',
-    accentLight: 'rgba(0, 82, 255, 0.12)',
-    badgeBg: '#0F172A',
-    badgeBorder: '#0F172A',
-    badgeColor: '#FFFFFF',
-    ctaBg: '#0052FF',
-    ctaColor: '#FFFFFF',
-    glowColor: 'rgba(0, 82, 255, 0.14)'
-  },
-  {
-    id: 'cyber_violet',
-    label: 'Графит и Коралл',
-    hint: 'Современный урбан-контраст',
-    bgType: 'gradient',
-    bgColors: ['#111827', '#1F2937', '#334155'],
-    textColor: '#F8FAFC',
-    subTextColor: '#E2E8F0',
+    id: 'dark',
+    label: 'Тёмный фон',
+    bg: '#0B0F19',
+    rgb: '11, 15, 25',
+    text: '#FFFFFF',
+    subText: '#CBD5E1',
     cardBg: 'rgba(255, 255, 255, 0.08)',
-    cardBorder: 'rgba(249, 115, 22, 0.30)',
-    accentColor: '#FB7185',
-    accentLight: 'rgba(251, 113, 133, 0.22)',
-    badgeBg: 'rgba(249, 115, 22, 0.24)',
-    badgeBorder: 'rgba(251, 146, 60, 0.55)',
-    badgeColor: '#FDBA74',
-    ctaBg: '#F97316',
-    ctaColor: '#FFFFFF',
-    glowColor: 'rgba(249, 115, 22, 0.32)'
+    cardBorder: 'rgba(255, 255, 255, 0.15)'
+  },
+  {
+    id: 'light',
+    label: 'Светлый фон',
+    bg: '#FFFFFF',
+    rgb: '255, 255, 255',
+    text: '#0F172A',
+    subText: '#334155',
+    cardBg: 'rgba(15, 23, 42, 0.05)',
+    cardBorder: 'rgba(15, 23, 42, 0.12)'
   }
 ];
 
@@ -444,33 +358,134 @@ export const LAYOUT_MODES = [
   { id: 'cards', label: 'Преимущества', hint: 'Выгоды в виде карточек' }
 ];
 
-export const ACCENT_PALETTE = [
-  '#0052FF', // REA Blue
-  '#FACC15', // Gold Yellow
-  '#10B981', // Emerald
-  '#F97316', // Orange
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#06B6D4', // Cyan
-  '#FFFFFF'  // White
-];
+const svgUri = (svg) => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg.trim())}`;
 
 export const CURATED_BACKGROUND_PRESETS = [
-  { id: 'none', label: 'Градиент' },
   {
-    id: 'modern_building',
+    id: 'none',
+    label: 'Градиент',
+    previewBg: 'linear-gradient(135deg, #0F172A 0%, #1E3A8A 60%, #0052FF 100%)'
+  },
+  {
+    id: 'arch_blueprint',
     label: 'Архитектура',
-    url: 'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=1200&q=80'
+    url: svgUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+        <defs>
+          <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#0B132B"/>
+            <stop offset="55%" stop-color="#1C2541"/>
+            <stop offset="100%" stop-color="#3A506B"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="900" fill="url(#g1)"/>
+        <g stroke="rgba(255,255,255,0.12)" stroke-width="2" fill="none">
+          <rect x="120" y="180" width="240" height="720"/>
+          <rect x="390" y="90" width="310" height="810"/>
+          <rect x="730" y="220" width="280" height="680"/>
+          <line x1="120" y1="280" x2="360" y2="280"/>
+          <line x1="120" y1="380" x2="360" y2="380"/>
+          <line x1="390" y1="200" x2="700" y2="200"/>
+          <line x1="390" y1="310" x2="700" y2="310"/>
+          <line x1="390" y1="420" x2="700" y2="420"/>
+          <line x1="730" y1="340" x2="1010" y2="340"/>
+          <line x1="730" y1="460" x2="1010" y2="460"/>
+        </g>
+        <g fill="rgba(96,165,250,0.22)">
+          <rect x="430" y="130" width="45" height="45" rx="4"/>
+          <rect x="495" y="130" width="45" height="45" rx="4"/>
+          <rect x="430" y="240" width="45" height="45" rx="4"/>
+          <rect x="560" y="240" width="45" height="45" rx="4"/>
+          <rect x="770" y="260" width="50" height="50" rx="4"/>
+          <rect x="840" y="370" width="50" height="50" rx="4"/>
+        </g>
+      </svg>
+    `)
   },
   {
-    id: 'luxury_interior',
-    label: 'Интерьер',
-    url: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80'
-  },
-  {
-    id: 'city_skyline',
+    id: 'city_horizon',
     label: 'Панорама',
-    url: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80'
+    url: svgUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+        <defs>
+          <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1E1B4B"/>
+            <stop offset="50%" stop-color="#4338CA"/>
+            <stop offset="100%" stop-color="#F97316"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="900" fill="url(#sky)"/>
+        <circle cx="900" cy="240" r="140" fill="rgba(253,224,71,0.28)"/>
+        <path d="M0 900 L0 520 L90 520 L90 420 L190 420 L190 560 L260 560 L260 320 L380 320 L380 480 L450 480 L450 260 L580 260 L580 510 L650 510 L650 370 L790 370 L790 540 L870 540 L870 290 L990 290 L990 490 L1080 490 L1080 410 L1200 410 L1200 900 Z" fill="rgba(15,23,42,0.82)"/>
+        <g fill="rgba(253,224,71,0.55)">
+          <rect x="290" y="360" width="22" height="14"/>
+          <rect x="330" y="360" width="22" height="14"/>
+          <rect x="480" y="300" width="26" height="16"/>
+          <rect x="520" y="340" width="26" height="16"/>
+          <rect x="900" y="330" width="24" height="16"/>
+          <rect x="940" y="370" width="24" height="16"/>
+        </g>
+      </svg>
+    `)
+  },
+  {
+    id: 'marble_gold',
+    label: 'Мрамор',
+    url: svgUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+        <defs>
+          <linearGradient id="mg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#111827"/>
+            <stop offset="50%" stop-color="#1F2937"/>
+            <stop offset="100%" stop-color="#0F172A"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="900" fill="url(#mg)"/>
+        <path d="M-50 200 C250 140, 420 420, 750 310 C980 230, 1100 380, 1260 280" stroke="rgba(250,204,21,0.45)" stroke-width="4" fill="none"/>
+        <path d="M-50 520 C220 460, 460 210, 820 490 C1020 630, 1150 480, 1260 540" stroke="rgba(255,255,255,0.20)" stroke-width="3" fill="none"/>
+        <path d="M120 -40 C260 260, 560 440, 680 940" stroke="rgba(250,204,21,0.28)" stroke-width="2.5" fill="none"/>
+        <path d="M780 -40 C720 260, 960 520, 1080 940" stroke="rgba(255,255,255,0.14)" stroke-width="2" fill="none"/>
+      </svg>
+    `)
+  },
+  {
+    id: 'geo_mesh',
+    label: 'Геометрия',
+    url: svgUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+        <defs>
+          <linearGradient id="gm" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#064E3B"/>
+            <stop offset="50%" stop-color="#047857"/>
+            <stop offset="100%" stop-color="#0F172A"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="900" fill="url(#gm)"/>
+        <polygon points="0,0 520,0 280,440" fill="rgba(255,255,255,0.06)"/>
+        <polygon points="520,0 1200,0 840,390 280,440" fill="rgba(52,211,153,0.12)"/>
+        <polygon points="840,390 1200,0 1200,720" fill="rgba(255,255,255,0.05)"/>
+        <polygon points="0,900 280,440 840,390 620,900" fill="rgba(16,185,129,0.10)"/>
+      </svg>
+    `)
+  },
+  {
+    id: 'soft_studio',
+    label: 'Светлая арка',
+    url: svgUri(`
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">
+        <defs>
+          <linearGradient id="ss" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#F8FAFC"/>
+            <stop offset="50%" stop-color="#E2E8F0"/>
+            <stop offset="100%" stop-color="#CBD5E1"/>
+          </linearGradient>
+        </defs>
+        <rect width="1200" height="900" fill="url(#ss)"/>
+        <path d="M220 900 L220 380 A220 220 0 0 1 660 380 L660 900 Z" fill="rgba(255,255,255,0.72)"/>
+        <path d="M560 900 L560 440 A200 200 0 0 1 960 440 L960 900 Z" fill="rgba(148,163,184,0.22)"/>
+        <circle cx="940" cy="190" r="110" fill="rgba(0,82,255,0.10)"/>
+      </svg>
+    `)
   }
 ];
 

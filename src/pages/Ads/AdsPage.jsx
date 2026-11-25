@@ -38,9 +38,9 @@ import { formatPhone } from '../../utils/format';
 import {
   SERVICE_CATEGORIES,
   BANNER_FORMATS,
-  DESIGN_THEMES,
+  BANNER_PALETTE,
+  BOTTOM_TONES,
   LAYOUT_MODES,
-  ACCENT_PALETTE,
   CURATED_BACKGROUND_PRESETS,
   QUICK_BADGES,
   POPULAR_CTAS,
@@ -181,10 +181,10 @@ export function AdsPage() {
 
   // Design & Format Settings
   const [formatId, setFormatId] = useState('story');
-  const [themeId, setThemeId] = useState('neo_dark');
+  const [bottomTone, setBottomTone] = useState('dark'); // 'dark' | 'light'
   const [layoutMode, setLayoutMode] = useState('expert');
-  const [accentColor, setAccentColor] = useState(DESIGN_THEMES[0].accentColor);
-  const [bgPresetId, setBgPresetId] = useState('none');
+  const [accentColor, setAccentColor] = useState(BANNER_PALETTE[0].color);
+  const [bgPresetId, setBgPresetId] = useState('arch_blueprint');
   const [customBgUrl, setCustomBgUrl] = useState(null);
   const [agencyName, setAgencyName] = useState('REA CRM');
 
@@ -228,10 +228,6 @@ export function AdsPage() {
   const agentPhotoRef = useRef(null);
   const fileInputBgRef = useRef(null);
   const fileInputPhotoRef = useRef(null);
-
-  const activeTheme = useMemo(() => {
-    return DESIGN_THEMES.find(t => t.id === themeId) || DESIGN_THEMES[0];
-  }, [themeId]);
 
   const activeFormat = useMemo(() => {
     return BANNER_FORMATS[formatId] || BANNER_FORMATS.story;
@@ -400,7 +396,7 @@ export function AdsPage() {
     if (!canvasRef.current) return;
     renderServiceBanner(canvasRef.current, {
       format: activeFormat,
-      theme: activeTheme,
+      bottomTone,
       badgeText,
       slogan,
       bullets,
@@ -425,7 +421,7 @@ export function AdsPage() {
     });
   }, [
     activeFormat,
-    activeTheme,
+    bottomTone,
     badgeText,
     slogan,
     bullets,
@@ -1236,49 +1232,85 @@ export function AdsPage() {
                 </div>
               </div>
 
-              {/* Design Themes */}
-              <div style={{ marginBottom: 20 }}>
+              {/* Bottom Zone Tone (Dark or Light with 0-100% fade) */}
+              <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  Тема оформления:
+                  Фон нижней части (плавный градиент 0-100%):
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 8 }}>
-                  {DESIGN_THEMES.map(thm => {
-                    const isSelected = themeId === thm.id;
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  {BOTTOM_TONES.map(tone => {
+                    const isSelected = bottomTone === tone.id;
                     return (
                       <button
-                        key={thm.id}
+                        key={tone.id}
                         type="button"
-                        onClick={() => {
-                          setThemeId(thm.id);
-                          setAccentColor(thm.accentColor);
-                        }}
+                        onClick={() => setBottomTone(tone.id)}
                         style={{
-                          padding: 10,
+                          padding: '10px 12px',
                           borderRadius: 10,
                           border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                          background: 'var(--bg)',
+                          background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 8,
+                          gap: 10,
                           cursor: 'pointer',
-                          textAlign: 'left',
                           transition: 'all 0.15s ease'
                         }}
                       >
                         <div style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: '50%',
-                          background: `linear-gradient(135deg, ${thm.bgColors[0]} 0%, ${thm.accentColor} 100%)`,
-                          border: '2px solid rgba(255,255,255,0.4)',
-                          boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+                          width: 24,
+                          height: 24,
+                          borderRadius: 6,
+                          background: tone.bg,
+                          border: '1.5px solid rgba(148, 163, 184, 0.45)',
                           flexShrink: 0
                         }} />
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {thm.label}
-                          </div>
-                        </div>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)' }}>
+                          {tone.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 5-Color Banner Palette */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                  Палитра (5 цветов):
+                </label>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {BANNER_PALETTE.map(item => {
+                    const isSelected = accentColor === item.color;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        title={item.label}
+                        onClick={() => setAccentColor(item.color)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '6px 10px',
+                          borderRadius: 20,
+                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <span style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: '50%',
+                          background: item.color,
+                          border: '1.5px solid rgba(0,0,0,0.15)',
+                          flexShrink: 0
+                        }} />
+                        <span style={{ fontSize: 11, fontWeight: isSelected ? 700 : 600, color: isSelected ? 'var(--primary)' : 'var(--text)' }}>
+                          {item.label}
+                        </span>
                       </button>
                     );
                   })}
@@ -1286,7 +1318,7 @@ export function AdsPage() {
               </div>
 
               {/* Layout Mode */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
                   Стиль макета:
                 </label>
@@ -1299,7 +1331,7 @@ export function AdsPage() {
                         type="button"
                         onClick={() => setLayoutMode(mode.id)}
                         style={{
-                          padding: '10px 8px',
+                          padding: '8px 6px',
                           borderRadius: 10,
                           border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                           background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
@@ -1314,33 +1346,6 @@ export function AdsPage() {
                       </button>
                     );
                   })}
-                </div>
-              </div>
-
-              {/* Accent Color Palette */}
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                  Цветовой акцент:
-                </label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {ACCENT_PALETTE.map(clr => (
-                    <button
-                      key={clr}
-                      type="button"
-                      onClick={() => setAccentColor(clr)}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: '50%',
-                        background: clr,
-                        border: accentColor === clr ? '3px solid var(--text)' : '2px solid rgba(0,0,0,0.15)',
-                        cursor: 'pointer',
-                        transform: accentColor === clr ? 'scale(1.15)' : 'scale(1)',
-                        transition: 'all 0.15s ease',
-                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                      }}
-                    />
-                  ))}
                 </div>
               </div>
 
@@ -1376,34 +1381,62 @@ export function AdsPage() {
                 </div>
               </div>
 
-              {/* Background Preset or Upload */}
-              <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+              {/* Top Image / Background Texture Presets with Visual Thumbnails */}
+              <div style={{ paddingTop: 14, borderTop: '1px solid var(--border)' }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
-                  Фоновая текстура / фото:
+                  Картинка вверху / фоновая текстура:
                 </label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  {CURATED_BACKGROUND_PRESETS.map(preset => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        setBgPresetId(preset.id);
-                        setCustomBgUrl(null);
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        borderRadius: 8,
-                        border: `1px solid ${bgPresetId === preset.id && !customBgUrl ? 'var(--primary)' : 'var(--border)'}`,
-                        background: bgPresetId === preset.id && !customBgUrl ? 'rgba(0, 82, 255, 0.1)' : 'var(--bg)',
-                        color: bgPresetId === preset.id && !customBgUrl ? 'var(--primary)' : 'var(--text)',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {preset.label}
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))', gap: 8 }}>
+                  {CURATED_BACKGROUND_PRESETS.map(preset => {
+                    const isSelected = bgPresetId === preset.id && !customBgUrl;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          setBgPresetId(preset.id);
+                          setCustomBgUrl(null);
+                        }}
+                        style={{
+                          padding: 4,
+                          borderRadius: 10,
+                          border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          overflow: 'hidden',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{
+                          width: '100%',
+                          height: 46,
+                          borderRadius: 6,
+                          overflow: 'hidden',
+                          background: preset.previewBg || '#0F172A'
+                        }}>
+                          {preset.url && (
+                            <img
+                              src={preset.url}
+                              alt={preset.label}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                            />
+                          )}
+                        </div>
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: isSelected ? 700 : 600,
+                          color: isSelected ? 'var(--primary)' : 'var(--text)',
+                          paddingBottom: 2
+                        }}>
+                          {preset.label}
+                        </span>
+                      </button>
+                    );
+                  })}
 
                   <input
                     type="file"
@@ -1416,21 +1449,29 @@ export function AdsPage() {
                     type="button"
                     onClick={() => fileInputBgRef.current?.click()}
                     style={{
-                      padding: '6px 12px',
-                      borderRadius: 8,
-                      border: '1px dashed var(--border)',
-                      background: customBgUrl ? 'rgba(0, 82, 255, 0.1)' : 'transparent',
-                      color: customBgUrl ? 'var(--primary)' : 'var(--text-secondary)',
-                      fontSize: 12,
-                      fontWeight: 600,
+                      padding: 4,
+                      borderRadius: 10,
+                      border: `2px dashed ${customBgUrl ? 'var(--primary)' : 'var(--border)'}`,
+                      background: customBgUrl ? 'rgba(0, 82, 255, 0.08)' : 'transparent',
                       cursor: 'pointer',
                       display: 'flex',
+                      flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 4
+                      justifyContent: 'center',
+                      gap: 4,
+                      minHeight: 72
                     }}
                   >
-                    <Upload size={13} />
-                    <span>{customBgUrl ? 'Своё фото (загружено)' : 'Загрузить фон'}</span>
+                    {customBgUrl ? (
+                      <div style={{ width: '100%', height: 46, borderRadius: 6, overflow: 'hidden' }}>
+                        <img src={customBgUrl} alt="Своё фото" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </div>
+                    ) : (
+                      <Upload size={18} color="var(--primary)" />
+                    )}
+                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)' }}>
+                      {customBgUrl ? 'Своя картинка' : 'Загрузить фото'}
+                    </span>
                   </button>
                 </div>
               </div>

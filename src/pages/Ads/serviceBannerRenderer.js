@@ -1,8 +1,9 @@
 /* Service Banner Canvas Renderer
- * Renders bold, impactful high-resolution 2D banners for social media and advertising.
+ * 2-Part Split Layout:
+ *   Top: User's picture / background texture in clean natural colors.
+ *   Transition: Smooth 0% to 100% transparency gradient into dark or light bottom.
+ *   Bottom: Hero slogan, key benefits, CTA near phone line, and contact phone.
  * Typography: Medeo Sans from Thin (100) to Black (900).
- * Dynamic vertical space distribution: automatically fills the banner with balanced spacing.
- * Clean custom photo placement without dark backing / overlay.
  */
 
 function hexToRgba(hex, alpha = 1) {
@@ -68,6 +69,23 @@ function wrapText(ctx, text, maxWidth) {
   return lines;
 }
 
+function drawCoverImage(ctx, img, x, y, w, h) {
+  const iw = img.naturalWidth || img.width;
+  const ih = img.naturalHeight || img.height;
+  if (!iw || !ih) return;
+  const hRatio = w / iw;
+  const vRatio = h / ih;
+  const ratio = Math.max(hRatio, vRatio);
+  const shiftX = x + (w - iw * ratio) / 2;
+  const shiftY = y + (h - ih * ratio) / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  ctx.drawImage(img, 0, 0, iw, ih, shiftX, shiftY, iw * ratio, ih * ratio);
+  ctx.restore();
+}
+
 export function renderServiceBanner(canvas, options = {}) {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -75,26 +93,24 @@ export function renderServiceBanner(canvas, options = {}) {
 
   const {
     format = { w: 1080, h: 1920, id: 'story' },
-    theme = {},
+    bottomTone = 'dark',      // 'dark' | 'light'
     badgeText = 'ВЫГОДНО И БЫСТРО',
     slogan = 'Продам вашу квартиру дороже и быстрее, чем вы ожидаете',
     bullets = [],
     ctaText = 'Получить бесплатную консультацию',
-    agentName = 'Александр Ельчугин',
     agentPhone = '8 (909) 130-40-90',
     accentColor = '#0052FF',
     layoutMode = 'expert',
     bgImage = null,
     agentPhoto = null,
-    photoPlacement = 'side',   // 'side' | 'background' | 'circle' | 'none'
-    noDarkOverlay = true,     // Clean natural photo without dark underlay
-    sloganWeight = 900,       // Medeo Sans weight (100 to 900)
-    sloganScale = 100,        // Slogan font size scale slider (60 to 160%)
-    bulletScale = 100,        // Bullets font size scale slider (60 to 160%)
-    sloganColor = '',         // Custom slogan color override
-    bulletColor = '',         // Custom bullet color override
-    phoneColor = '',          // Custom phone text color override
-    textBackdrop = 'none',    // 'none' | 'dark_glass' | 'light_glass' | 'accent_tint'
+    photoPlacement = 'side',
+    sloganWeight = 900,
+    sloganScale = 100,
+    bulletScale = 100,
+    sloganColor = '',
+    bulletColor = '',
+    phoneColor = '',
+    textBackdrop = 'none',
     showBullets = true,
     showBadge = true
   } = options;
@@ -105,267 +121,151 @@ export function renderServiceBanner(canvas, options = {}) {
   const isHorizontal = W > H;
   const isCompactSquare = W === H;
 
-  // Set internal canvas resolution
   canvas.width = W;
   canvas.height = H;
 
-  const colors = theme.bgColors || ['#0B0F19', '#111827', '#1E293B'];
-  const textColor = theme.textColor || '#FFFFFF';
-  const subTextColor = theme.subTextColor || '#94A3B8';
-  const cardBg = theme.cardBg || 'rgba(255, 255, 255, 0.08)';
-  const cardBorder = theme.cardBorder || 'rgba(255, 255, 255, 0.14)';
-  const badgeColor = theme.badgeColor || '#60A5FA';
-  const badgeBg = theme.badgeBg || 'rgba(0, 82, 255, 0.25)';
-  const ctaBg = theme.ctaBg || accentColor || '#0052FF';
-  const ctaColor = theme.ctaColor || '#FFFFFF';
+  const isLightBottom = bottomTone === 'light';
+  const toneBg = isLightBottom ? '#FFFFFF' : '#0B0F19';
+  const toneRgb = isLightBottom ? '255, 255, 255' : '11, 15, 25';
+  const textColor = isLightBottom ? '#0F172A' : '#FFFFFF';
+  const subTextColor = isLightBottom ? '#334155' : '#CBD5E1';
+  const cardBg = isLightBottom ? 'rgba(15, 23, 42, 0.05)' : 'rgba(255, 255, 255, 0.08)';
+  const cardBorder = isLightBottom ? 'rgba(15, 23, 42, 0.12)' : 'rgba(255, 255, 255, 0.15)';
+  const ctaBg = accentColor || '#0052FF';
+  const ctaColor = (accentColor || '').toUpperCase() === '#FACC15' ? '#0F172A' : '#FFFFFF';
 
-  const hasSidePhoto = agentPhoto && agentPhoto.complete && agentPhoto.naturalWidth > 0 && photoPlacement === 'side';
-  const hasBgPhoto = (agentPhoto && photoPlacement === 'background') || (bgImage && bgImage.complete && bgImage.naturalWidth > 0);
-  const activeBgImg = (photoPlacement === 'background' && agentPhoto) ? agentPhoto : bgImage;
+  const hasBgImg = bgImage && bgImage.complete && bgImage.naturalWidth > 0;
+  const hasAgentPhoto = agentPhoto && agentPhoto.complete && agentPhoto.naturalWidth > 0 && photoPlacement !== 'none';
+  const topPhotoImg = hasBgImg ? bgImage : (hasAgentPhoto ? agentPhoto : null);
 
-  // 1. Background rendering
-  ctx.save();
-  const bgGrad = ctx.createLinearGradient(0, 0, W, H);
-  bgGrad.addColorStop(0, colors[0]);
-  if (colors.length > 2) {
-    bgGrad.addColorStop(0.5, colors[1]);
-    bgGrad.addColorStop(1, colors[2]);
-  } else {
-    bgGrad.addColorStop(1, colors[1] || colors[0]);
-  }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, W, H);
-
-  // Background Image overlay
-  if (hasBgPhoto && activeBgImg && activeBgImg.complete && activeBgImg.naturalWidth > 0) {
-    ctx.save();
-    ctx.globalAlpha = noDarkOverlay ? 0.95 : 0.28;
-
-    const hRatio = W / activeBgImg.naturalWidth;
-    const vRatio = H / activeBgImg.naturalHeight;
-    const ratio = Math.max(hRatio, vRatio);
-    const centerShiftX = (W - activeBgImg.naturalWidth * ratio) / 2;
-    const centerShiftY = (H - activeBgImg.naturalHeight * ratio) / 2;
-    ctx.drawImage(
-      activeBgImg,
-      0, 0, activeBgImg.naturalWidth, activeBgImg.naturalHeight,
-      centerShiftX, centerShiftY, activeBgImg.naturalWidth * ratio, activeBgImg.naturalHeight * ratio
-    );
-    ctx.restore();
-
-    if (!noDarkOverlay) {
-      const tintGrad = ctx.createLinearGradient(0, 0, 0, H);
-      tintGrad.addColorStop(0, 'rgba(0, 0, 0, 0.45)');
-      tintGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.65)');
-      tintGrad.addColorStop(1, 'rgba(0, 0, 0, 0.88)');
-      ctx.fillStyle = tintGrad;
-      ctx.fillRect(0, 0, W, H);
-    }
-  }
-
-  // Radial ambient glow for depth
-  const glowX = isHorizontal ? W * 0.75 : W * 0.82;
-  const glowY = isHorizontal ? H * 0.35 : H * 0.28;
-  const glowRad = ctx.createRadialGradient(glowX, glowY, 40, glowX, glowY, W * 0.65);
-  glowRad.addColorStop(0, theme.glowColor || 'rgba(0, 82, 255, 0.35)');
-  glowRad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = glowRad;
-  ctx.fillRect(0, 0, W, H);
-
-  // Subtle decorative grid lines
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.035)';
-  ctx.lineWidth = 1;
-  const step = 80;
-  for (let x = 0; x < W; x += step) {
-    ctx.beginPath();
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, H);
-    ctx.stroke();
-  }
-  for (let y = 0; y < H; y += step) {
-    ctx.beginPath();
-    ctx.moveTo(0, y);
-    ctx.lineTo(W, y);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Draw Side Custom Photo without any dark backing
-  if (hasSidePhoto) {
-    ctx.save();
-    const maxPhotoW = isHorizontal ? W * 0.38 : isStory ? W * 0.45 : W * 0.38;
-    const photoRatio = agentPhoto.naturalWidth / agentPhoto.naturalHeight;
-    let photoW = maxPhotoW;
-    let photoH = photoW / photoRatio;
-
-    const maxPhotoH = isStory ? H * 0.72 : H * 0.78;
-    if (photoH > maxPhotoH) {
-      photoH = maxPhotoH;
-      photoW = photoH * photoRatio;
-    }
-
-    const photoX = W - photoW - (isHorizontal ? 36 : 16);
-    const photoY = H - photoH - (isStory ? 70 : 40);
-
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-    ctx.shadowBlur = 36;
-    ctx.shadowOffsetY = 14;
-
-    ctx.drawImage(agentPhoto, 0, 0, agentPhoto.naturalWidth, agentPhoto.naturalHeight, photoX, photoY, photoW, photoH);
-    ctx.restore();
-  }
-
-  // Draw Circle Photo if circle mode is selected
-  if (photoPlacement === 'circle' && agentPhoto && agentPhoto.complete && agentPhoto.naturalWidth > 0) {
-    ctx.save();
-    const circleR = isStory ? 76 : 58;
-    const circleX = W - (isHorizontal ? 80 : 64) - circleR;
-    const circleY = isStory ? 120 : 88;
-
-    ctx.beginPath();
-    ctx.arc(circleX, circleY, circleR, 0, Math.PI * 2);
-    ctx.clip();
-    ctx.drawImage(agentPhoto, circleX - circleR, circleY - circleR, circleR * 2, circleR * 2);
-    ctx.restore();
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(circleX, circleY, circleR, 0, Math.PI * 2);
-    ctx.strokeStyle = accentColor;
-    ctx.lineWidth = 3.5;
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // 2. Dynamic Vertical Layout & Space Distribution
+  // 1. Measure Layout & Typography
   const paddingX = isHorizontal ? 80 : 64;
-  const contentWidth = hasSidePhoto
-    ? W - paddingX - (W * 0.43)
-    : isHorizontal
-      ? W * 0.68
-      : W - paddingX * 2;
+  const contentWidth = W - paddingX * 2;
+  const topPad = isStory ? 84 : isCompactSquare ? 48 : 64;
+  const bottomPad = isStory ? 84 : isCompactSquare ? 48 : 60;
 
-  const topPad = isStory ? 100 : isCompactSquare ? 52 : 68;
-  const bottomPad = isStory ? 90 : isCompactSquare ? 52 : 64;
-  const phoneFontSize = isStory ? 36 : isHorizontal ? 30 : isCompactSquare ? 26 : 30;
-  const phoneH = phoneFontSize + 16;
-  const availableContentH = H - topPad - bottomPad - phoneH - 30;
-
-  // Measure Top Badge (increased size!)
-  let badgeH = 0;
   const badgeFontSize = isStory ? 30 : isCompactSquare ? 22 : 26;
-  if (showBadge && badgeText) {
-    badgeH = isStory ? 64 : isCompactSquare ? 50 : 56;
-  }
+  const badgeH = (showBadge && badgeText) ? (isStory ? 64 : isCompactSquare ? 50 : 56) : 0;
 
-  // Slogan: user chosen weight or Black (900) + custom font size slider
   const weight = sloganWeight || 900;
   const sScale = Math.max(0.5, Math.min(2.0, (sloganScale || 100) / 100));
-  let sloganFontSize = Math.round((isStory ? 84 : isHorizontal ? 60 : isCompactSquare ? 52 : 70) * sScale);
+  const sloganFontSize = Math.round((isStory ? 80 : isHorizontal ? 58 : isCompactSquare ? 50 : 68) * sScale);
+  const sloganLineHeight = sloganFontSize * 1.20;
   ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
-  let sloganLines = wrapText(ctx, slogan, contentWidth);
+  const sloganLines = wrapText(ctx, slogan, contentWidth);
+  const sloganTotalH = sloganLines.length * sloganLineHeight;
 
-  // Bullets: Medium (500) / Regular (400) + custom font size slider
   const bScale = Math.max(0.5, Math.min(2.0, (bulletScale || 100) / 100));
   const bulletFontSize = Math.round((isStory ? 32 : isHorizontal ? 24 : isCompactSquare ? 22 : 26) * bScale);
-  const bulletLineHeight = bulletFontSize * 1.35;
+  const bulletLineHeight = bulletFontSize * 1.32;
   const visibleBullets = isCompactSquare ? bullets.slice(0, 2) : bullets.slice(0, 4);
+  const hasVisibleBullets = showBullets && visibleBullets.length > 0;
   let bulletsTotalH = 0;
 
-  if (showBullets && visibleBullets.length > 0) {
-    visibleBullets.forEach(b => {
+  if (hasVisibleBullets) {
+    visibleBullets.forEach((b) => {
       ctx.font = `500 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
-      const bLines = wrapText(ctx, b, contentWidth - 80);
-      const cardPad = layoutMode === 'cards' ? (isStory ? 38 : 28) : 0;
-      bulletsTotalH += bLines.length * bulletLineHeight + cardPad + (isStory ? 18 : 12);
+      const bLines = wrapText(ctx, b, contentWidth - 90);
+      const cardPad = layoutMode === 'cards' ? (isStory ? 34 : 24) : 0;
+      bulletsTotalH += bLines.length * bulletLineHeight + cardPad + (isStory ? 16 : 10);
     });
   }
 
-  // CTA button: Black (900)
-  let ctaH = 0;
+  const phoneFontSize = isStory ? 36 : isHorizontal ? 30 : isCompactSquare ? 26 : 30;
   const ctaFontSize = isStory ? 32 : isHorizontal ? 26 : isCompactSquare ? 24 : 28;
-  if (ctaText) {
-    ctaH = isStory ? 88 : isHorizontal ? 68 : isCompactSquare ? 64 : 76;
-  }
-
-  // Anchor CTA close to the contact phone line at the bottom
-  const ctaPhoneGap = isStory ? 34 : isHorizontal ? 22 : isCompactSquare ? 20 : 26;
+  const ctaH = ctaText ? (isStory ? 84 : isHorizontal ? 66 : isCompactSquare ? 62 : 74) : 0;
+  const ctaPhoneGap = isStory ? 30 : isHorizontal ? 20 : isCompactSquare ? 18 : 24;
   const phoneY = H - bottomPad;
   const anchoredCtaY = ctaText ? (phoneY - phoneFontSize - ctaPhoneGap - ctaH) : (phoneY - phoneFontSize);
-  const availableUpperH = anchoredCtaY - topPad - (isStory ? 32 : 20);
 
-  // Calculate Base Content Height and Remaining Extra Space in upper area
-  let sloganLineHeight = sloganFontSize * 1.22;
-  let sloganTotalH = sloganLines.length * sloganLineHeight;
-  const hasVisibleBullets = showBullets && visibleBullets.length > 0;
-  let upperContentH = badgeH + sloganTotalH + (hasVisibleBullets ? bulletsTotalH : 0);
-  let remainingSpace = availableUpperH - upperContentH;
+  const sloganToBulletsGap = isStory ? 34 : isCompactSquare ? 18 : 26;
+  const bulletsToCtaGap = isStory ? 44 : isCompactSquare ? 24 : 32;
+  const textBlockH = sloganTotalH + (hasVisibleBullets ? sloganToBulletsGap + bulletsTotalH : 0);
 
-  // If ample extra space on banner and user didn't alter sloganScale, dynamically expand typography
-  if (remainingSpace > 140 && isStory && (!sloganScale || sloganScale === 100)) {
-    sloganFontSize = Math.min(96, sloganFontSize + Math.floor(remainingSpace * 0.04));
-    sloganLineHeight = sloganFontSize * 1.22;
-    ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
-    sloganLines = wrapText(ctx, slogan, contentWidth);
-    sloganTotalH = sloganLines.length * sloganLineHeight;
-    upperContentH = badgeH + sloganTotalH + (hasVisibleBullets ? bulletsTotalH : 0);
-    remainingSpace = availableUpperH - upperContentH;
+  const minUpperLimit = topPad + (badgeH > 0 ? badgeH + (isStory ? 40 : 24) : 0);
+  const idealSloganStartY = anchoredCtaY - bulletsToCtaGap - textBlockH;
+  const sloganStartY = Math.max(minUpperLimit, idealSloganStartY);
+
+  // 2. Render 2-Part Split Background:
+  //    Top part = User's photo / texture (100% crisp, no dark overlay)
+  //    Smooth 0% -> 100% transparency gradient into dark or light bottom background
+  ctx.save();
+  ctx.fillStyle = toneBg;
+  ctx.fillRect(0, 0, W, H);
+
+  const topPhotoZoneH = Math.min(H, Math.max(H * 0.45, sloganStartY + (isStory ? 110 : 70)));
+
+  if (topPhotoImg) {
+    drawCoverImage(ctx, topPhotoImg, 0, 0, W, topPhotoZoneH);
+  } else {
+    // Rich ambient gradient if no image or texture is selected
+    const topGrad = ctx.createLinearGradient(0, 0, W, topPhotoZoneH);
+    topGrad.addColorStop(0, isLightBottom ? '#E2E8F0' : '#0F172A');
+    topGrad.addColorStop(0.55, hexToRgba(accentColor, isLightBottom ? 0.25 : 0.45));
+    topGrad.addColorStop(1, isLightBottom ? '#CBD5E1' : '#1E293B');
+    ctx.fillStyle = topGrad;
+    ctx.fillRect(0, 0, W, topPhotoZoneH);
   }
 
-  // Dynamically calculate gaps between upper sections (Badge -> Slogan -> Bullets)
-  const upperGapsCount = (showBadge && badgeText ? 1 : 0) + (hasVisibleBullets ? 1 : 0);
-  const dynamicGap = upperGapsCount > 0
-    ? Math.max(isStory ? 28 : 16, Math.min(isStory ? 84 : 44, Math.floor(remainingSpace / upperGapsCount)))
-    : 0;
-  const sloganToBulletsGap = textBackdrop && textBackdrop !== 'none'
-    ? Math.min(dynamicGap, isStory ? 44 : 26)
-    : dynamicGap;
+  // Smooth 0% -> 100% vertical transparency gradient into bottom tone
+  const fadeHeight = isStory ? 280 : isCompactSquare ? 160 : 200;
+  const fadeStartY = Math.max(0, sloganStartY - fadeHeight);
+  const fadeEndY = Math.min(H, sloganStartY + (isStory ? 40 : 20));
 
-  let cursorY = topPad;
+  const fadeGrad = ctx.createLinearGradient(0, fadeStartY, 0, fadeEndY);
+  fadeGrad.addColorStop(0.0, `rgba(${toneRgb}, 0)`);
+  fadeGrad.addColorStop(0.28, `rgba(${toneRgb}, 0.24)`);
+  fadeGrad.addColorStop(0.58, `rgba(${toneRgb}, 0.65)`);
+  fadeGrad.addColorStop(0.84, `rgba(${toneRgb}, 0.92)`);
+  fadeGrad.addColorStop(1.0, `rgba(${toneRgb}, 1)`);
 
-  // 3. Render Enlarged Top Badge (Medeo Sans Black 900 / ExtraBold 800)
+  ctx.fillStyle = fadeGrad;
+  ctx.fillRect(0, fadeStartY, W, fadeEndY - fadeStartY);
+
+  // Solid 100% bottom zone
+  ctx.fillStyle = toneBg;
+  ctx.fillRect(0, fadeEndY, W, H - fadeEndY);
+  ctx.restore();
+
+  // 3. Render Enlarged Top Badge in Upper Photo Zone
   if (showBadge && badgeText) {
     ctx.save();
     ctx.font = `900 ${badgeFontSize}px "Medeo Sans", system-ui, sans-serif`;
     const badgeMetrics = ctx.measureText(badgeText.toUpperCase());
     const badgeW = badgeMetrics.width + 56;
 
-    safeRoundRect(ctx, paddingX, cursorY, badgeW, badgeH, badgeH / 2);
-    ctx.fillStyle = badgeBg;
+    safeRoundRect(ctx, paddingX, topPad, badgeW, badgeH, badgeH / 2);
+    ctx.fillStyle = ctaBg;
     ctx.fill();
-    ctx.strokeStyle = theme.badgeBorder || 'rgba(255, 255, 255, 0.35)';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.fillStyle = badgeColor;
-    ctx.fillText(badgeText.toUpperCase(), paddingX + 28, cursorY + badgeH / 2 + badgeFontSize * 0.35);
+    ctx.fillStyle = ctaColor;
+    ctx.fillText(badgeText.toUpperCase(), paddingX + 28, topPad + badgeH / 2 + badgeFontSize * 0.35);
     ctx.restore();
-
-    cursorY += badgeH + dynamicGap;
   }
 
-  // 3.5 Optional Translucent Text Backdrop (wraps Slogan + Bullets)
+  // 4. Optional Translucent Text Backdrop behind Slogan + Bullets
+  let cursorY = sloganStartY;
   if (textBackdrop && textBackdrop !== 'none') {
     ctx.save();
     const padX = isStory ? 28 : 20;
-    const padY = isStory ? 24 : 16;
+    const padY = isStory ? 22 : 14;
     const backdropX = Math.max(24, paddingX - padX);
     const backdropY = cursorY - padY;
     const backdropW = Math.min(W - backdropX - 24, contentWidth + padX * 2);
-    const backdropContentH = sloganTotalH + (hasVisibleBullets ? sloganToBulletsGap + bulletsTotalH : 0);
-    const backdropH = backdropContentH + padY * 2;
+    const backdropH = textBlockH + padY * 2;
 
-    safeRoundRect(ctx, backdropX, backdropY, backdropW, backdropH, isStory ? 28 : 20);
+    safeRoundRect(ctx, backdropX, backdropY, backdropW, backdropH, isStory ? 26 : 18);
     if (textBackdrop === 'light_glass') {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.78)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.80)';
       ctx.strokeStyle = 'rgba(15, 23, 42, 0.14)';
     } else if (textBackdrop === 'accent_tint') {
-      ctx.fillStyle = hexToRgba(accentColor, 0.28);
+      ctx.fillStyle = hexToRgba(accentColor, 0.25);
       ctx.strokeStyle = hexToRgba(accentColor, 0.55);
     } else {
-      // dark_glass default
-      ctx.fillStyle = 'rgba(10, 15, 28, 0.66)';
+      ctx.fillStyle = 'rgba(10, 15, 28, 0.68)';
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
     }
     ctx.fill();
@@ -374,7 +274,7 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.restore();
   }
 
-  // 4. Render Large Hero Slogan (Medeo Sans)
+  // 5. Render Hero Slogan (Medeo Sans)
   ctx.save();
   ctx.font = `${weight} ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
   ctx.fillStyle = sloganColor || textColor;
@@ -386,16 +286,16 @@ export function renderServiceBanner(canvas, options = {}) {
   cursorY += hasVisibleBullets ? sloganToBulletsGap : 0;
   ctx.restore();
 
-  // 5. Render Benefits / Bullets (Medeo Sans Medium 500 / Regular 400)
+  // 6. Render Benefits / Bullets
   if (hasVisibleBullets) {
     if (layoutMode === 'cards') {
       visibleBullets.forEach((bullet) => {
         ctx.save();
         ctx.font = `500 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
         const bulletLines = wrapText(ctx, bullet, contentWidth - 100);
-        const cardH = bulletLines.length * bulletLineHeight + (isStory ? 38 : 28);
+        const cardH = bulletLines.length * bulletLineHeight + (isStory ? 34 : 24);
 
-        safeRoundRect(ctx, paddingX, cursorY, contentWidth, cardH, 18);
+        safeRoundRect(ctx, paddingX, cursorY, contentWidth, cardH, 16);
         ctx.fillStyle = cardBg;
         ctx.fill();
         ctx.strokeStyle = cardBorder;
@@ -411,7 +311,7 @@ export function renderServiceBanner(canvas, options = {}) {
         ctx.fillStyle = accentColor;
         ctx.fill();
 
-        ctx.strokeStyle = '#FFFFFF';
+        ctx.strokeStyle = ctaColor;
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(circleX - 6, circleY);
@@ -420,13 +320,13 @@ export function renderServiceBanner(canvas, options = {}) {
         ctx.stroke();
 
         ctx.fillStyle = bulletColor || textColor;
-        let bTextY = cursorY + (isStory ? 32 : 24);
+        let bTextY = cursorY + (isStory ? 30 : 22);
         bulletLines.forEach((bLine) => {
           ctx.fillText(bLine, circleX + circleRadius + 18, bTextY);
           bTextY += bulletLineHeight;
         });
 
-        cursorY += cardH + (isStory ? 16 : 10);
+        cursorY += cardH + (isStory ? 14 : 10);
         ctx.restore();
       });
     } else {
@@ -448,22 +348,22 @@ export function renderServiceBanner(canvas, options = {}) {
           bTextY += bulletLineHeight;
         });
 
-        cursorY += bulletLines.length * bulletLineHeight + (isStory ? 18 : 10);
+        cursorY += bulletLines.length * bulletLineHeight + (isStory ? 16 : 10);
         ctx.restore();
       });
     }
   }
 
-  // 6. Render CTA Button (Anchored close to contact phone line)
+  // 7. Render CTA Button (Anchored close to contact phone line)
   if (ctaText) {
-    const finalCtaY = Math.max(anchoredCtaY, cursorY + (isStory ? 24 : 14));
+    const finalCtaY = Math.max(anchoredCtaY, cursorY + (isStory ? 20 : 12));
     ctx.save();
     ctx.font = `900 ${ctaFontSize}px "Medeo Sans", system-ui, sans-serif`;
     const ctaMetrics = ctx.measureText(ctaText);
     const ctaW = Math.min(contentWidth, ctaMetrics.width + (isStory ? 100 : 80));
 
-    ctx.shadowColor = accentColor;
-    ctx.shadowBlur = 28;
+    ctx.shadowColor = hexToRgba(accentColor, 0.45);
+    ctx.shadowBlur = 24;
     ctx.shadowOffsetY = 8;
 
     safeRoundRect(ctx, paddingX, finalCtaY, ctaW, ctaH, ctaH / 2);
@@ -491,7 +391,7 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.restore();
   }
 
-  // 7. Contact Phone Line (UNIFIED font, size, and weight: Medeo Sans 800)
+  // 8. Contact Phone Line (UNIFIED font, size, weight: Medeo Sans 800)
   if (agentPhone) {
     ctx.save();
 
@@ -504,7 +404,7 @@ export function renderServiceBanner(canvas, options = {}) {
     ctx.fill();
 
     ctx.save();
-    ctx.strokeStyle = '#FFFFFF';
+    ctx.strokeStyle = ctaColor;
     ctx.lineWidth = 2.5;
     ctx.beginPath();
     const px = iconX;
@@ -515,7 +415,6 @@ export function renderServiceBanner(canvas, options = {}) {
 
     const textStartX = iconX + iconR + 18;
 
-    // Unified single text with identical font, size, weight and color across the entire string!
     ctx.font = `800 ${phoneFontSize}px "Medeo Sans", system-ui, sans-serif`;
     ctx.fillStyle = phoneColor || textColor;
 
@@ -525,6 +424,4 @@ export function renderServiceBanner(canvas, options = {}) {
 
     ctx.restore();
   }
-
-  ctx.restore();
 }
