@@ -149,6 +149,16 @@ describe('AdsPage Component', () => {
     expect(deleteBtns.length).toBeGreaterThan(0);
     fireEvent.click(deleteBtns[0]);
     expect(mockToast.success).toHaveBeenCalledWith('Преимущество удалено');
+
+    // Verify persistent benefits library exists and supports click-to-add & edit/save
+    expect(screen.getByText(/База преимуществ/i)).toBeInTheDocument();
+    const editLibBtns = screen.getAllByTitle('Редактировать в базе');
+    expect(editLibBtns.length).toBeGreaterThan(0);
+    fireEvent.click(editLibBtns[0]);
+
+    const saveLibBtn = screen.getByTitle('Сохранить преимущество в базе');
+    fireEvent.click(saveLibBtn);
+    expect(mockToast.success).toHaveBeenCalledWith('Преимущество сохранено в базе');
   });
 
   it('allows navigating to Slogan tab and editing slogan', () => {

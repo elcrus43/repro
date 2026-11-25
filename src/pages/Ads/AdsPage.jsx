@@ -161,6 +161,32 @@ function saveBulletsToStorage(serviceId, bullets) {
   }
 }
 
+const LS_BULLETS_LIBRARY_KEY = 'rem_ads_bullets_library';
+const DEFAULT_BULLETS_LIBRARY = Array.from(
+  new Set(SERVICE_CATEGORIES.flatMap(s => s.bullets || []))
+);
+
+function loadBulletsLibrary() {
+  try {
+    const raw = localStorage.getItem(LS_BULLETS_LIBRARY_KEY);
+    if (!raw) return DEFAULT_BULLETS_LIBRARY;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_BULLETS_LIBRARY;
+    // Merge any missing original defaults so old benefit titles never disappear
+    return Array.from(new Set([...parsed, ...DEFAULT_BULLETS_LIBRARY]));
+  } catch {
+    return DEFAULT_BULLETS_LIBRARY;
+  }
+}
+
+function saveBulletsLibraryToStorage(list) {
+  try {
+    localStorage.setItem(LS_BULLETS_LIBRARY_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('[Ads] Failed to save bullets library:', e);
+  }
+}
+
 export function AdsPage() {
   const { state } = useApp();
   const { toast } = useToastContext();
@@ -183,6 +209,13 @@ export function AdsPage() {
   const [editingBadgeText, setEditingBadgeText] = useState('');
   const [newBadgeText, setNewBadgeText] = useState('');
   const [showAddBadge, setShowAddBadge] = useState(false);
+
+  // Bullets library with persistence (all old + custom benefits)
+  const [bulletsLibrary, setBulletsLibrary] = useState(loadBulletsLibrary);
+  const [editingLibBulletIdx, setEditingLibBulletIdx] = useState(null);
+  const [editingLibBulletText, setEditingLibBulletText] = useState('');
+  const [showAddLibBullet, setShowAddLibBullet] = useState(false);
+  const [newLibBulletText, setNewLibBulletText] = useState('');
 
   // Bullets with persistence per service
   const [bullets, setBullets] = useState(() => loadSavedBullets('sell', SERVICE_CATEGORIES[0].bullets));
@@ -277,6 +310,75 @@ export function AdsPage() {
   const handleResetBullets = () => {
     handleUpdateBullets([...activeService.bullets]);
     toast.success('Преимущества сброшены к стандартным');
+  };
+
+  const handleToggleBulletFromLibrary = (text) => {
+    if (bullets.includes(text)) {
+      if (bullets.length <= 1) {
+        toast.error('Должно остаться хотя бы одно преимущество');
+        return;
+      }
+      handleUpdateBullets(bullets.filter(b => b !== text));
+    } else {
+      handleUpdateBullets([...bullets, text]);
+      toast.success('Преимущество добавлено на баннер');
+    }
+  };
+
+  const handleSaveEditedLibBullet = (idx) => {
+    const trimmed = editingLibBulletText.trim();
+    if (!trimmed) return;
+    const oldVal = bulletsLibrary[idx];
+    const updatedLib = [...bulletsLibrary];
+    updatedLib[idx] = trimmed;
+    setBulletsLibrary(updatedLib);
+    saveBulletsLibraryToStorage(updatedLib);
+    if (oldVal && bullets.includes(oldVal)) {
+      handleUpdateBullets(bullets.map(b => (b === oldVal ? trimmed : b)));
+    }
+    setEditingLibBulletIdx(null);
+    toast.success('Преимущество сохранено в базе');
+  };
+
+  const handleDeleteLibBullet = (idx, e) => {
+    e.stopPropagation();
+    if (bulletsLibrary.length <= 1) {
+      toast.error('В базе должно остаться хотя бы одно преимущество');
+      return;
+    }
+    const updatedLib = bulletsLibrary.filter((_, i) => i !== idx);
+    setBulletsLibrary(updatedLib);
+    saveBulletsLibraryToStorage(updatedLib);
+    toast.success('Удалено из базы');
+  };
+
+  const handleAddLibBullet = () => {
+    const trimmed = newLibBulletText.trim();
+    if (!trimmed) return;
+    const updatedLib = Array.from(new Set([trimmed, ...bulletsLibrary]));
+    setBulletsLibrary(updatedLib);
+    saveBulletsLibraryToStorage(updatedLib);
+    if (!bullets.includes(trimmed)) {
+      handleUpdateBullets([...bullets, trimmed]);
+    }
+    setNewLibBulletText('');
+    setShowAddLibBullet(false);
+    toast.success('Сохранено в базу и добавлено на баннер');
+  };
+
+  const handleSaveActiveBulletToLibrary = (text) => {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return;
+    const updatedLib = Array.from(new Set([trimmed, ...bulletsLibrary]));
+    setBulletsLibrary(updatedLib);
+    saveBulletsLibraryToStorage(updatedLib);
+    toast.success('Преимущество сохранено в базе');
+  };
+
+  const handleResetBulletsLibrary = () => {
+    setBulletsLibrary(DEFAULT_BULLETS_LIBRARY);
+    saveBulletsLibraryToStorage(DEFAULT_BULLETS_LIBRARY);
+    toast.success('База преимуществ восстановлена');
   };
 
   const handleSaveEditedBadge = (idx) => {
@@ -1143,7 +1245,7 @@ export function AdsPage() {
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                   {bullets.map((b, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, width: '100%', minWidth: 0 }}>
                       <span style={{
                         width: 20,
                         height: 20,
@@ -1169,7 +1271,9 @@ export function AdsPage() {
                         }}
                         style={{
                           flex: 1,
-                          padding: '6px 10px',
+                          minWidth: 0,
+                          width: '100%',
+                          padding: '6px 9px',
                           borderRadius: 7,
                           border: '1px solid var(--border)',
                           background: 'var(--bg)',
@@ -1180,15 +1284,35 @@ export function AdsPage() {
                       />
                       <button
                         type="button"
+                        onClick={() => handleSaveActiveBulletToLibrary(b)}
+                        title="Сохранить преимущество в базу"
+                        style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 7,
+                          border: '1px solid rgba(0, 82, 255, 0.25)',
+                          background: 'rgba(0, 82, 255, 0.06)',
+                          color: 'var(--primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Save size={13} />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => handleDeleteBullet(idx)}
                         title="Удалить преимущество"
                         style={{
                           width: 28,
                           height: 28,
                           borderRadius: 7,
-                          border: '1px solid var(--border)',
-                          background: 'var(--bg)',
-                          color: 'var(--danger, #ef4444)',
+                          border: '1px solid rgba(239, 68, 68, 0.3)',
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          color: '#ef4444',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1216,12 +1340,265 @@ export function AdsPage() {
                     color: 'var(--primary)',
                     fontSize: 11,
                     fontWeight: 700,
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    marginBottom: 14
                   }}
                 >
                   <Plus size={13} />
                   <span>Добавить преимущество</span>
                 </button>
+
+                {/* Persistent Benefits Library (Click to Add, Edit & Save) */}
+                <div style={{ paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      База преимуществ (кликните, чтобы добавить):
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleResetBulletsLibrary}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      Восстановить стандартные
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {bulletsLibrary.map((libItem, idx) => {
+                      const isOnBanner = bullets.includes(libItem);
+                      const isEditing = editingLibBulletIdx === idx;
+
+                      if (isEditing) {
+                        return (
+                          <div
+                            key={idx}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              padding: '3px 8px',
+                              borderRadius: 12,
+                              border: '1.5px solid var(--primary)',
+                              background: 'var(--bg)',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={editingLibBulletText}
+                              onChange={(e) => setEditingLibBulletText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleSaveEditedLibBullet(idx);
+                                if (e.key === 'Escape') setEditingLibBulletIdx(null);
+                              }}
+                              autoFocus
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'var(--text)',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                outline: 'none',
+                                minWidth: 80,
+                                maxWidth: 220
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSaveEditedLibBullet(idx)}
+                              title="Сохранить преимущество в базе"
+                              style={{
+                                background: 'var(--primary)',
+                                border: 'none',
+                                borderRadius: '50%',
+                                width: 18,
+                                height: 18,
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                flexShrink: 0
+                              }}
+                            >
+                              <Check size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setEditingLibBulletIdx(null)}
+                              title="Отмена"
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: 'var(--text-muted)',
+                                cursor: 'pointer',
+                                fontSize: 11,
+                                padding: 2
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => handleToggleBulletFromLibrary(libItem)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 5,
+                            padding: '5px 9px',
+                            borderRadius: 12,
+                            border: `1px solid ${isOnBanner ? 'var(--primary)' : 'var(--border)'}`,
+                            background: isOnBanner ? 'rgba(0, 82, 255, 0.1)' : 'var(--bg)',
+                            color: isOnBanner ? 'var(--primary)' : 'var(--text)',
+                            fontSize: 11,
+                            fontWeight: isOnBanner ? 700 : 500,
+                            cursor: 'pointer',
+                            maxWidth: '100%'
+                          }}
+                        >
+                          <span style={{ fontWeight: 700 }}>{isOnBanner ? '✓' : '+'}</span>
+                          <span style={{ lineHeight: 1.25 }}>{libItem}</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingLibBulletIdx(idx);
+                              setEditingLibBulletText(libItem);
+                            }}
+                            title="Редактировать в базе"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'inherit',
+                              cursor: 'pointer',
+                              padding: 0,
+                              display: 'flex',
+                              alignItems: 'center',
+                              opacity: 0.7
+                            }}
+                          >
+                            <Pencil size={11} />
+                          </button>
+                          {bulletsLibrary.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteLibBullet(idx, e)}
+                              title="Удалить из базы"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'inherit',
+                                cursor: 'pointer',
+                                padding: 0,
+                                display: 'flex',
+                                alignItems: 'center',
+                                opacity: 0.7,
+                                fontSize: 11
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {showAddLibBullet ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="text"
+                        value={newLibBulletText}
+                        onChange={(e) => setNewLibBulletText(e.target.value)}
+                        placeholder="Новое преимущество..."
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddLibBullet();
+                          if (e.key === 'Escape') setShowAddLibBullet(false);
+                        }}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          minWidth: 150,
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg)',
+                          color: 'var(--text)',
+                          fontSize: 12,
+                          fontFamily: 'inherit'
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddLibBullet}
+                        style={{
+                          padding: '6px 12px',
+                          borderRadius: 8,
+                          border: 'none',
+                          background: 'var(--primary)',
+                          color: '#fff',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Сохранить
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddLibBullet(false)}
+                        style={{
+                          padding: '6px 10px',
+                          borderRadius: 8,
+                          border: '1px solid var(--border)',
+                          background: 'transparent',
+                          color: 'var(--text-muted)',
+                          fontSize: 11,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Отмена
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddLibBullet(true);
+                        setNewLibBulletText('');
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        padding: '5px 10px',
+                        borderRadius: 10,
+                        border: '1px dashed var(--border)',
+                        background: 'var(--bg)',
+                        color: 'var(--text-secondary)',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Plus size={12} />
+                      <span>Добавить своё в базу</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Forward Button */}
@@ -2348,8 +2725,8 @@ export function AdsPage() {
               </button>
             </div>
 
-            {/* Ready to Publish Social Post Copy Snippet */}
-            <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            {/* Ready to Publish Social Post Copy Snippet (Desktop right column) */}
+            <div className="ads-post-desktop" style={{ marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
                   Готовый текст для публикации
@@ -2393,6 +2770,50 @@ export function AdsPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* Ready to Publish Social Post Copy Snippet (Mobile bottom placement) */}
+      <div className="ads-post-mobile ads-tab-panel">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+            Готовый текст для публикации
+          </span>
+          <button
+            type="button"
+            onClick={handleCopyPostText}
+            style={{
+              background: 'rgba(0, 82, 255, 0.08)',
+              border: '1px solid rgba(0, 82, 255, 0.25)',
+              borderRadius: 8,
+              padding: '4px 10px',
+              color: isCopied ? '#10b981' : 'var(--primary)',
+              fontSize: 11,
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            {isCopied ? <Check size={13} /> : <Copy size={13} />}
+            <span>{isCopied ? 'Скопировано!' : 'Копировать'}</span>
+          </button>
+        </div>
+
+        <div style={{
+          background: 'var(--bg)',
+          borderRadius: 8,
+          padding: '10px 12px',
+          fontSize: 12,
+          color: 'var(--text-secondary)',
+          maxHeight: 140,
+          overflowY: 'auto',
+          whiteSpace: 'pre-wrap',
+          lineHeight: 1.45,
+          border: '1px solid var(--border)'
+        }}>
+          {postText}
+        </div>
       </div>
 
       {/* Saved Ads Banners Gallery */}

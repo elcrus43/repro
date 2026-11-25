@@ -3695,8 +3695,24 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   padding: 18px;
 }
 
+.ads-post-desktop {
+  display: block;
+}
+
+.ads-post-mobile {
+  display: none;
+}
+
 /* Mobile & Tablet Responsive: Banner Preview Prominently Sticky on Top */
 @media (max-width: 900px) {
+  .ads-post-desktop {
+    display: none !important;
+  }
+
+  .ads-post-mobile {
+    display: block !important;
+    margin-top: 14px;
+  }
   .ads-generator-page {
     padding: 8px 10px 84px;
   }
