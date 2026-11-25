@@ -243,19 +243,44 @@ describe('AdsPage Component', () => {
     });
   });
 
+  it('allows selecting custom colors for slogan, benefits and phone and text backdrop', () => {
+    render(<AdsPage />);
+
+    // Slogan & Benefits colors on Tab 2
+    fireEvent.click(screen.getByText('2. Слоган & Текст'));
+    expect(screen.getByText(/Цвет текста слогана/i)).toBeInTheDocument();
+    expect(screen.getByText(/Цвет текста преимуществ/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Цвет текста слогана: Золотой'));
+    fireEvent.click(screen.getByLabelText('Цвет текста преимуществ: Голубой'));
+
+    // Text backdrop on Tab 3
+    fireEvent.click(screen.getByText('3. Оформление'));
+    expect(screen.getByText(/Полупрозрачный фон для текста/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Тёмное стекло'));
+
+    // Phone color on Tab 5
+    fireEvent.click(screen.getByText('5. Контакты'));
+    expect(screen.getByText(/Цвет телефона/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Цвет телефона: Изумруд'));
+  });
+
   it('renders canvas correctly using renderServiceBanner without exceptions', () => {
     const mockCanvas = document.createElement('canvas');
     expect(() => {
       renderServiceBanner(mockCanvas, {
         format: BANNER_FORMATS.square,
         theme: DESIGN_THEMES[0],
-        serviceTitle: 'Продажа недвижимости',
         badgeText: 'ВЫГОДНО',
         slogan: 'Продам вашу квартиру дороже рынка',
         bullets: ['Бесплатная оценка', '12+ площадок', 'Юридическая защита'],
         ctaText: 'Получить консультацию',
         agentName: 'Александр',
-        agentPhone: '8 (909) 130-40-90'
+        agentPhone: '8 (909) 130-40-90',
+        sloganColor: '#FACC15',
+        bulletColor: '#FFFFFF',
+        phoneColor: '#34D399',
+        textBackdrop: 'dark_glass'
       });
     }).not.toThrow();
 

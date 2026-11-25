@@ -45,9 +45,63 @@ import {
   QUICK_BADGES,
   POPULAR_CTAS,
   PHOTO_PLACEMENTS,
-  MEDEO_FONT_WEIGHTS
+  MEDEO_FONT_WEIGHTS,
+  TEXT_COLOR_OPTIONS,
+  TEXT_BACKDROPS
 } from './serviceBannerData';
 import { renderServiceBanner } from './serviceBannerRenderer';
+
+function ColorSwatches({ label, value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>
+        {label}:
+      </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          style={{
+            padding: '3px 8px',
+            borderRadius: 6,
+            border: `1px solid ${!value ? 'var(--primary)' : 'var(--border)'}`,
+            background: !value ? 'rgba(0, 82, 255, 0.1)' : 'var(--bg)',
+            color: !value ? 'var(--primary)' : 'var(--text-muted)',
+            fontSize: 10,
+            fontWeight: 700,
+            cursor: 'pointer'
+          }}
+        >
+          По теме
+        </button>
+        {TEXT_COLOR_OPTIONS.map((opt) => {
+          const isSelected = value === opt.color;
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              title={opt.label}
+              aria-label={`${label}: ${opt.label}`}
+              onClick={() => onChange(opt.color)}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                background: opt.color,
+                border: isSelected ? '2.5px solid var(--primary)' : '1.5px solid rgba(148, 163, 184, 0.5)',
+                boxShadow: isSelected ? '0 0 0 2px rgba(0, 82, 255, 0.25)' : '0 1px 3px rgba(0,0,0,0.15)',
+                transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                padding: 0
+              }}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 const ICON_MAP = {
   Building2,
@@ -153,6 +207,10 @@ export function AdsPage() {
   const [sloganWeight, setSloganWeight] = useState(900); // Medeo Sans weight (100 to 900)
   const [sloganScale, setSloganScale] = useState(100); // Slogan font size percentage (60 to 150%)
   const [bulletScale, setBulletScale] = useState(100); // Bullets font size percentage (65 to 145%)
+  const [sloganColor, setSloganColor] = useState(''); // '' = theme default
+  const [bulletColor, setBulletColor] = useState(''); // '' = theme default
+  const [phoneColor, setPhoneColor] = useState(''); // '' = theme default
+  const [textBackdrop, setTextBackdrop] = useState('none'); // 'none' | 'dark_glass' | 'light_glass' | 'accent_tint'
 
   // Toggles
   const [showAgent, setShowAgent] = useState(true);
@@ -358,6 +416,10 @@ export function AdsPage() {
       sloganWeight,
       sloganScale,
       bulletScale,
+      sloganColor,
+      bulletColor,
+      phoneColor,
+      textBackdrop,
       showBullets,
       showBadge
     });
@@ -377,6 +439,10 @@ export function AdsPage() {
     sloganWeight,
     sloganScale,
     bulletScale,
+    sloganColor,
+    bulletColor,
+    phoneColor,
+    textBackdrop,
     showBullets,
     showBadge
   ]);
@@ -869,6 +935,13 @@ export function AdsPage() {
                 </div>
               </div>
 
+              {/* Slogan Color Swatches (5 colors) */}
+              <ColorSwatches
+                label="Цвет текста слогана"
+                value={sloganColor}
+                onChange={setSloganColor}
+              />
+
               {/* Medeo Font Weight Selector */}
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6 }}>
@@ -976,6 +1049,13 @@ export function AdsPage() {
                     <span>Крупный (145%)</span>
                   </div>
                 </div>
+
+                {/* Bullets Color Swatches (5 colors) */}
+                <ColorSwatches
+                  label="Цвет текста преимуществ"
+                  value={bulletColor}
+                  onChange={setBulletColor}
+                />
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                   {bullets.map((b, idx) => (
@@ -1238,7 +1318,7 @@ export function AdsPage() {
               </div>
 
               {/* Accent Color Palette */}
-              <div style={{ marginBottom: 20 }}>
+              <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 8 }}>
                   Цветовой акцент:
                 </label>
@@ -1261,6 +1341,38 @@ export function AdsPage() {
                       }}
                     />
                   ))}
+                </div>
+              </div>
+
+              {/* Translucent Text Backdrop */}
+              <div style={{ marginBottom: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
+                  Полупрозрачный фон для текста:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(115px, 1fr))', gap: 6 }}>
+                  {TEXT_BACKDROPS.map(bp => {
+                    const isSelected = textBackdrop === bp.id;
+                    return (
+                      <button
+                        key={bp.id}
+                        type="button"
+                        onClick={() => setTextBackdrop(bp.id)}
+                        style={{
+                          padding: '7px 10px',
+                          borderRadius: 8,
+                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
+                          color: isSelected ? 'var(--primary)' : 'var(--text)',
+                          fontSize: 11,
+                          fontWeight: isSelected ? 700 : 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {bp.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1929,6 +2041,13 @@ export function AdsPage() {
                       }}
                     />
                   </div>
+
+                  {/* Phone Color Swatches (5 colors) */}
+                  <ColorSwatches
+                    label="Цвет телефона"
+                    value={phoneColor}
+                    onChange={setPhoneColor}
+                  />
 
                   <div>
                     <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 6 }}>
