@@ -835,7 +835,11 @@ export function AdsPage() {
             borderRadius: 12,
             border: '1px solid var(--border)',
             overflowX: 'auto',
-            scrollbarWidth: 'none'
+            scrollbarWidth: 'none',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box'
           }}>
             {[
               { id: 'service', label: '1. Услуга', icon: Layers },
@@ -852,13 +856,12 @@ export function AdsPage() {
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   style={{
-                    flex: 1,
-                    minWidth: 84,
+                    flex: '1 0 auto',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: 5,
-                    padding: '7px 8px',
+                    padding: '7px 10px',
                     borderRadius: 8,
                     border: 'none',
                     background: isActive ? 'var(--primary)' : 'transparent',
@@ -892,7 +895,7 @@ export function AdsPage() {
               </div>
 
               {/* Service Cards Grid - Compact & Responsive */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
                 {SERVICE_CATEGORIES.map(service => {
                   const Icon = ICON_MAP[service.iconName] || Building2;
                   const isSelected = selectedServiceId === service.id;
@@ -2651,7 +2654,7 @@ export function AdsPage() {
             </div>
 
             {/* Export Action Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, marginTop: 10, width: '100%' }}>
               <button
                 type="button"
                 onClick={handleDownload}
