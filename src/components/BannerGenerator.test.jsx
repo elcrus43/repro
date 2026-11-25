@@ -3,6 +3,14 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BannerGenerator } from './BannerGenerator';
 
+// Mock savedBanners to prevent real network calls during unit tests
+vi.mock('../lib/savedBanners', () => ({
+  fetchSavedBanners: vi.fn().mockResolvedValue({ data: [], error: null }),
+  saveBannerToDb: vi.fn().mockResolvedValue({ data: null, error: null }),
+  deleteSavedBanner: vi.fn().mockResolvedValue({ error: null }),
+  shareSavedBanner: vi.fn().mockResolvedValue({ ok: true, message: 'OK' }),
+}));
+
 // Mock AppContext
 vi.mock('../context/AppContext', () => ({
   useApp: () => ({
@@ -257,5 +265,27 @@ describe('BannerGenerator phone resolution', () => {
 
     // Badge counter should now indicate 2
     expect(screen.getByText('2 шт.')).toBeInTheDocument();
+  });
+
+  it('adapts layout cleanly on mobile viewport without fixed desktop width', () => {
+    const origWidth = window.innerWidth;
+    window.innerWidth = 375;
+    window.dispatchEvent(new Event('resize'));
+
+    const property = { id: 'p1', address: 'ул. Ленина 10', price: 3000000 };
+    const { container } = render(
+      <BannerGenerator
+        property={property}
+        onClose={() => {}}
+      />
+    );
+
+    const canvas = container.querySelector('canvas');
+    expect(canvas).toBeInTheDocument();
+    expect(canvas.style.maxWidth).toBe('100%');
+    expect(canvas.style.maxHeight).toBe('46vh');
+
+    window.innerWidth = origWidth;
+    window.dispatchEvent(new Event('resize'));
   });
 });
