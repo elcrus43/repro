@@ -550,7 +550,16 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
         return () => { active = false; };
     }, [effectiveUser?.id, property?.id]);
 
-    const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
+    const [isMobile, setIsMobile] = React.useState(() =>
+        typeof window !== 'undefined' ? window.innerWidth <= 900 : false
+    );
+
+    React.useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+        const onResize = () => setIsMobile(window.innerWidth <= 900);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
 
     /* ---- social networks ---- */
     const connectedSocials = React.useMemo(
@@ -1158,30 +1167,69 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     return (
         <div
             onClick={e => { if (e.target === e.currentTarget && typeof onClose === 'function') onClose(); }}
-            style={S.overlay}
+            style={{
+                ...S.overlay,
+                padding: isMobile ? 8 : 16,
+                alignItems: isMobile ? 'stretch' : 'center',
+            }}
         >
             <button
                 type="button"
                 onClick={e => { e.stopPropagation(); if (typeof onClose === 'function') onClose(); }}
-                style={S.closeBtn}
+                style={{
+                    ...S.closeBtn,
+                    top: isMobile ? 10 : 16,
+                    right: isMobile ? 10 : 16,
+                    width: isMobile ? 36 : 40,
+                    height: isMobile ? 36 : 40,
+                }}
                 title="Закрыть (Esc)"
             >
-                <X size={20} />
+                <X size={isMobile ? 18 : 20} />
             </button>
 
-            <div style={{ ...S.root, flexDirection: isMobile ? 'column' : 'row' }}>
+            <div
+                style={{
+                    ...S.root,
+                    flexDirection: isMobile ? 'column' : 'row',
+                    gap: isMobile ? 10 : 16,
+                    height: isMobile ? '100%' : '92vh',
+                    maxHeight: isMobile ? '100%' : '92vh',
+                    overflowY: isMobile ? 'auto' : 'visible',
+                    overflowX: isMobile ? 'hidden' : 'visible',
+                    alignItems: isMobile ? 'stretch' : 'flex-start',
+                    WebkitOverflowScrolling: 'touch',
+                    paddingBottom: isMobile ? 16 : 0,
+                    boxSizing: 'border-box',
+                }}
+            >
 
                 {/* ======== LEFT PANEL (STUDIO CONTROLS) ======== */}
-                <div style={S.panel}>
+                <div
+                    style={{
+                        ...S.panel,
+                        order: isMobile ? 2 : 1,
+                        flex: isMobile ? '0 0 auto' : '0 0 350px',
+                        width: isMobile ? '100%' : 350,
+                        height: isMobile ? 'auto' : '100%',
+                        overflow: 'hidden',
+                        borderRadius: isMobile ? 18 : 22,
+                    }}
+                >
                     {/* Header */}
                     <div style={S.panelHeader}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                             <div style={S.brandIconWrap}>
                                 <Sparkles size={16} />
                             </div>
-                            <div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={S.panelTitle}>Генератор баннера</div>
-                                <div style={S.panelSubtitle}>
+                                <div
+                                    style={{
+                                        ...S.panelSubtitle,
+                                        maxWidth: isMobile ? '100%' : 240,
+                                    }}
+                                >
                                     {property?.price ? `${formatNumber(property.price)} ₽ · ` : ''}
                                     {property?.address || property?.city || 'Объект'}
                                 </div>
@@ -1212,7 +1260,13 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                         ))}
                     </div>
 
-                    <div style={S.panelBody}>
+                    <div
+                        style={{
+                            ...S.panelBody,
+                            flex: isMobile ? 'none' : 1,
+                            overflowY: isMobile ? 'visible' : 'auto',
+                        }}
+                    >
 
                         {/* FORMAT */}
                         <Collapsible
@@ -1773,16 +1827,45 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 </div>
 
                 {/* ======== PREVIEW ======== */}
-                <div style={S.previewWrap}>
-                    <div style={{ ...S.previewCard, aspectRatio: `${BANNER_FORMATS[format].w}/${BANNER_FORMATS[format].h}` }}>
-                        <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
+                <div
+                    style={{
+                        ...S.previewWrap,
+                        order: isMobile ? 1 : 2,
+                        flex: isMobile ? '0 0 auto' : 1,
+                        width: isMobile ? '100%' : undefined,
+                        height: isMobile ? 'auto' : '100%',
+                        paddingTop: isMobile ? 6 : 0,
+                        paddingBottom: isMobile ? 4 : 0,
+                    }}
+                >
+                    <div
+                        style={{
+                            ...S.previewCard,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            maxWidth: '100%',
+                            maxHeight: isMobile ? '46vh' : 'calc(92vh - 44px)',
+                            borderRadius: isMobile ? 14 : 20,
+                        }}
+                    >
+                        <canvas
+                            ref={canvasRef}
+                            style={{
+                                display: 'block',
+                                width: 'auto',
+                                height: 'auto',
+                                maxWidth: '100%',
+                                maxHeight: isMobile ? '46vh' : 'calc(92vh - 44px)',
+                            }}
+                        />
                         {loading && (
                             <div style={S.loadingOverlay}>
                                 <div style={S.spinner} />
                             </div>
                         )}
                     </div>
-                    <div style={S.previewHint}>
+                    <div style={{ ...S.previewHint, fontSize: isMobile ? 10 : 12, marginTop: isMobile ? 4 : 8 }}>
                         {BANNER_FORMATS[format].label} &nbsp;{BANNER_FORMATS[format].hint}
                         &nbsp;·&nbsp;{BANNER_FORMATS[format].w}&times;{BANNER_FORMATS[format].h}
                     </div>

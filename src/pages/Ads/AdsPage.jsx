@@ -663,13 +663,13 @@ export function AdsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', margin: '0 0 4px', letterSpacing: '-0.02em' }}>
             Генератор рекламных баннеров услуг
           </h1>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, maxWidth: 640, lineHeight: 1.4 }}>
+          <p className="ads-header-desc" style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0, maxWidth: 640, lineHeight: 1.4 }}>
             Баннеры для соцсетей, Stories и мессенджеров. Выберите услугу, слоган и оформите баннер в 1 клик.
           </p>
         </div>
 
         {/* Quick action buttons on top bar */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="ads-header-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             type="button"
             onClick={handleCopyPostText}
@@ -2269,6 +2269,7 @@ export function AdsPage() {
               <canvas
                 ref={canvasRef}
                 className="ads-canvas-element"
+                style={{ aspectRatio: `${activeFormat.w} / ${activeFormat.h}` }}
               />
             </div>
 

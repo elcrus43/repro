@@ -3674,13 +3674,15 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   align-items: center;
   justify-content: center;
   padding: 12px;
-  min-height: 400px;
+  height: 440px;
 }
 
 .ads-canvas-element {
+  display: block;
+  width: auto;
+  height: 100%;
   max-width: 100%;
-  max-height: 56vh;
-  height: auto;
+  max-height: 100%;
   border-radius: 8px;
   box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
   object-fit: contain;
@@ -3693,46 +3695,62 @@ h1, h2, h3, h4, h5, h6, .topbar-title {
   padding: 18px;
 }
 
-/* Mobile & Tablet Responsive: Banner Preview Prominently on Top */
+/* Mobile & Tablet Responsive: Banner Preview Prominently Sticky on Top */
 @media (max-width: 900px) {
   .ads-generator-page {
-    padding: 12px 10px 76px;
+    padding: 8px 10px 84px;
   }
 
   .ads-page-header {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
+  }
+
+  .ads-page-header h1 {
+    font-size: 18px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .ads-header-desc,
+  .ads-header-actions {
+    display: none !important;
   }
 
   .ads-studio-layout {
     display: flex !important;
     flex-direction: column !important;
-    gap: 14px;
+    gap: 12px;
   }
 
-  /* CRITICAL: Banner Preview is on TOP on mobile so the user immediately sees live updates! */
+  /* CRITICAL: Banner Preview is sticky on TOP on mobile so the user always sees live updates! */
   .ads-preview-col {
     order: -1 !important;
-    position: static !important;
-    top: auto;
+    position: sticky !important;
+    top: 4px !important;
+    z-index: 25;
     width: 100%;
   }
 
   .ads-preview-card {
-    padding: 12px;
+    padding: 10px;
     border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
   }
 
   .ads-canvas-stage {
-    min-height: 230px !important;
-    padding: 8px !important;
+    height: 32vh !important;
+    min-height: 190px !important;
+    padding: 6px !important;
   }
 
   .ads-canvas-element {
-    max-height: 38vh !important;
+    height: 100% !important;
+    width: auto !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
   }
 
   .ads-tab-panel {
-    padding: 14px !important;
+    padding: 12px !important;
     border-radius: 14px !important;
   }
 }
