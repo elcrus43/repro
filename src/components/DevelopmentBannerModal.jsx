@@ -558,6 +558,20 @@ export function DevelopmentBannerModal({
   const [copyPostFeedback, setCopyPostFeedback]       = useState(false);
   const [isGenerating, setIsGenerating]               = useState(false);
 
+  // Mobile detection & active view tab
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth <= 768 : false
+  );
+  const [mobileTab, setMobileTab] = useState('editor'); // 'editor' | 'preview'
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Collapsible control sections
   const [openSections, setOpenSections] = useState({
     format: true,
@@ -1294,8 +1308,28 @@ export function DevelopmentBannerModal({
           </button>
         </div>
 
+        {/* Mobile Navigation Switcher */}
+        {isMobile && (
+          <div className="dev-banner-mobile-nav">
+            <button
+              type="button"
+              className={`btn-mobile-nav ${mobileTab === 'editor' ? 'active' : ''}`}
+              onClick={() => setMobileTab('editor')}
+            >
+              <span>⚙️ Настройки и превью</span>
+            </button>
+            <button
+              type="button"
+              className={`btn-mobile-nav ${mobileTab === 'preview' ? 'active' : ''}`}
+              onClick={() => setMobileTab('preview')}
+            >
+              <span>👁️ Готовый баннер</span>
+            </button>
+          </div>
+        )}
+
         {/* Modal Body: Left Canvas, Right Controls */}
-        <div className="dev-banner-body">
+        <div className={`dev-banner-body ${isMobile ? `mobile-tab-${mobileTab}` : ''}`}>
           {/* Canvas Preview Column */}
           <div className="dev-banner-preview-pane">
             <div className={`dev-banner-canvas-wrap aspect-${format}`}>
@@ -1977,6 +2011,39 @@ export function DevelopmentBannerModal({
             </div>
           </div>
         </div>
+
+        {/* Floating Mobile Bottom Dock */}
+        {isMobile && mobileTab === 'editor' && (
+          <div className="dev-banner-mobile-dock">
+            <button
+              type="button"
+              className="btn-mobile-dock-btn primary"
+              onClick={handleDownload}
+              title="Скачать PNG"
+            >
+              <Download size={15} />
+              <span>Скачать PNG</span>
+            </button>
+            <button
+              type="button"
+              className={`btn-mobile-dock-btn secondary ${copyFeedback ? 'success' : ''}`}
+              onClick={handleCopyImage}
+              title="Копировать картинку"
+            >
+              {copyFeedback ? <Check size={15} /> : <Copy size={15} />}
+              <span>{copyFeedback ? 'Скопировано!' : 'Копировать'}</span>
+            </button>
+            <button
+              type="button"
+              className={`btn-mobile-dock-btn secondary ${copyPostFeedback ? 'success' : ''}`}
+              onClick={handleCopyPostText}
+              title="Скопировать текст"
+            >
+              {copyPostFeedback ? <Check size={15} /> : <Share2 size={15} />}
+              <span>Текст поста</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <style>{`
@@ -2876,6 +2943,252 @@ export function DevelopmentBannerModal({
         .dark .dev-toggles-box {
           background: #0f172a;
           border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* ================================================================
+           MOBILE & SMALL SCREENS RESPONSIVE DESIGN (<= 768px)
+           ================================================================ */
+        @media (max-width: 768px) {
+          .dev-banner-modal-overlay {
+            padding: 0;
+            background: rgba(11, 15, 26, 0.98);
+          }
+
+          .dev-banner-modal-window {
+            width: 100%;
+            height: 100dvh;
+            max-height: 100dvh;
+            border-radius: 0;
+            border: none;
+            box-shadow: none;
+          }
+
+          .dev-banner-header {
+            padding: 8px 12px;
+          }
+
+          .dev-banner-badge {
+            font-size: 10px;
+            padding: 2px 7px;
+            margin-bottom: 2px;
+          }
+
+          .dev-banner-title {
+            font-size: 14px;
+            max-width: calc(100vw - 70px);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .dev-banner-subtitle {
+            display: none;
+          }
+
+          .dev-banner-close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+          }
+
+          /* Mobile Navigation Switcher */
+          .dev-banner-mobile-nav {
+            display: flex;
+            gap: 6px;
+            padding: 6px 10px;
+            background: #f1f5f9;
+            border-bottom: 1px solid #e2e8f0;
+          }
+
+          .dark .dev-banner-mobile-nav {
+            background: #1e293b;
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+          }
+
+          .btn-mobile-nav {
+            flex: 1;
+            height: 34px;
+            border-radius: 8px;
+            border: 1px solid transparent;
+            background: transparent;
+            color: #64748b;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s;
+          }
+
+          .dark .btn-mobile-nav {
+            color: #94a3b8;
+          }
+
+          .btn-mobile-nav.active {
+            background: #ffffff;
+            color: #0052ff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+
+          .dark .btn-mobile-nav.active {
+            background: #0f172a;
+            color: #60a5fa;
+            border-color: rgba(255, 255, 255, 0.1);
+          }
+
+          .dev-banner-body {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            height: calc(100dvh - 90px);
+          }
+
+          /* Editor Mode */
+          .mobile-tab-editor .dev-banner-preview-pane {
+            flex-shrink: 0;
+            padding: 8px 12px;
+            background: #0b1120;
+            border-right: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: visible;
+          }
+
+          .mobile-tab-editor .dev-banner-canvas-wrap {
+            max-height: 27vh;
+            width: auto;
+            aspect-ratio: inherit;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+          }
+
+          .mobile-tab-editor .dev-banner-canvas {
+            max-height: 27vh;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+          }
+
+          .mobile-tab-editor .dev-banner-quick-actions,
+          .mobile-tab-editor .dev-banner-social-row {
+            display: none;
+          }
+
+          .mobile-tab-editor .dev-banner-sidebar {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 10px calc(70px + env(safe-area-inset-bottom, 0px));
+          }
+
+          /* Full Preview Mode */
+          .mobile-tab-preview .dev-banner-preview-pane {
+            flex: 1;
+            overflow-y: auto;
+            padding: 14px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+            border-right: none;
+          }
+
+          .mobile-tab-preview .dev-banner-canvas-wrap {
+            max-height: 60vh;
+            width: auto;
+            aspect-ratio: inherit;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0 auto;
+          }
+
+          .mobile-tab-preview .dev-banner-canvas {
+            max-height: 60vh;
+            width: auto;
+            max-width: 100%;
+            object-fit: contain;
+          }
+
+          .mobile-tab-preview .dev-banner-quick-actions {
+            display: flex;
+            width: 100%;
+            max-width: 360px;
+            margin-top: 14px;
+          }
+
+          .mobile-tab-preview .dev-banner-social-row {
+            display: flex;
+            width: 100%;
+            max-width: 360px;
+            margin-top: 10px;
+          }
+
+          .mobile-tab-preview .dev-banner-sidebar {
+            display: none;
+          }
+
+          /* Floating Mobile Dock Bar */
+          .dev-banner-mobile-dock {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+            background: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            gap: 6px;
+            z-index: 10001;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+          }
+
+          .btn-mobile-dock-btn {
+            flex: 1;
+            height: 38px;
+            border-radius: 8px;
+            border: none;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            cursor: pointer;
+            transition: all 0.15s;
+          }
+
+          .btn-mobile-dock-btn.primary {
+            background: #0052ff;
+            color: #ffffff;
+          }
+
+          .btn-mobile-dock-btn.secondary {
+            background: rgba(255, 255, 255, 0.12);
+            color: #f1f5f9;
+          }
+
+          .btn-mobile-dock-btn.secondary.success {
+            background: #10b981;
+            color: #ffffff;
+          }
+
+          @media (max-width: 480px) {
+            .dev-field-grid {
+              grid-template-columns: 1fr;
+              gap: 6px;
+            }
+
+            .dev-photos-picker-grid {
+              grid-template-columns: repeat(4, 1fr);
+              gap: 5px;
+            }
+
+            .dev-banner-format-tabs {
+              grid-template-columns: repeat(3, 1fr);
+              gap: 4px;
+            }
+
+            .dev-theme-tabs, .dev-composition-tabs {
+              grid-template-columns: repeat(2, 1fr);
+              gap: 4px;
+            }
+          }
         }
       `}</style>
     </div>

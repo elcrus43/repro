@@ -296,6 +296,40 @@ describe('DevelopmentBannerModal Component', () => {
     expect(screen.getByText(/Кнопка призыва \(CTA\)/i)).toBeInTheDocument();
     expect(screen.getByDisplayValue('Забронировать по цене застройщика')).toBeInTheDocument();
   });
+
+  it('renders mobile navigation and switches between editor and preview tabs on small screens', () => {
+    // Simulate mobile viewport width
+    window.innerWidth = 375;
+    window.dispatchEvent(new Event('resize'));
+
+    render(
+      <DevelopmentBannerModal
+        development={sampleDev}
+        layout={sampleLayout}
+        onClose={() => {}}
+      />
+    );
+
+    // Mobile nav switcher buttons
+    const editorNavBtn = screen.getByRole('button', { name: /⚙️ Настройки и превью/i });
+    const previewNavBtn = screen.getByRole('button', { name: /👁️ Готовый баннер/i });
+    expect(editorNavBtn).toBeInTheDocument();
+    expect(previewNavBtn).toBeInTheDocument();
+    expect(editorNavBtn).toHaveClass('active');
+
+    // Bottom mobile dock exists in editor mode
+    const dockDownloadBtns = screen.getAllByRole('button', { name: /Скачать PNG/i });
+    expect(dockDownloadBtns.length).toBeGreaterThanOrEqual(1);
+
+    // Switch to preview mode
+    fireEvent.click(previewNavBtn);
+    expect(previewNavBtn).toHaveClass('active');
+    expect(editorNavBtn).not.toHaveClass('active');
+
+    // Reset window width
+    window.innerWidth = 1024;
+    window.dispatchEvent(new Event('resize'));
+  }, 15000);
 });
 
 describe('buildDevelopmentBannerCaption helper', () => {
