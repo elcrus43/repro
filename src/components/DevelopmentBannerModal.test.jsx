@@ -274,6 +274,28 @@ describe('DevelopmentBannerModal Component', () => {
     fireEvent.click(addressCheckbox);
     expect(addressCheckbox).not.toBeChecked();
   }, 15000);
+
+  it('renders advertising slogan, badge, and CTA controls', () => {
+    render(
+      <DevelopmentBannerModal
+        development={sampleDev}
+        layout={sampleLayout}
+        onClose={() => {}}
+      />
+    );
+
+    // Advertising Badge section
+    expect(screen.getByText(/Рекламный бейдж \/ Стикер/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('⚡ СЕМЕЙНАЯ ИПОТЕКА 6%')).toBeInTheDocument();
+
+    // Slogan section
+    expect(screen.getByText(/Рекламный оффер \/ Слоган/i)).toBeInTheDocument();
+    expect(screen.getByText('По ценам застройщика без переплат')).toBeInTheDocument();
+
+    // CTA section
+    expect(screen.getByText(/Кнопка призыва \(CTA\)/i)).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Забронировать по цене застройщика')).toBeInTheDocument();
+  });
 });
 
 describe('buildDevelopmentBannerCaption helper', () => {

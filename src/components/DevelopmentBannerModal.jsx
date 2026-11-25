@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   X,
   Download,
@@ -6,30 +6,18 @@ import {
   Copy,
   Check,
   Sparkles,
-  Home,
-  Building2,
-  Percent,
-  ShieldCheck,
-  Phone,
-  User,
-  Calendar,
-  MapPin,
+  Upload,
+  Image as ImageIcon,
+  RotateCcw,
   ChevronDown,
   ChevronUp,
   CheckSquare,
   Square,
-  Upload,
-  Image as ImageIcon,
-  RotateCcw,
-  Eye,
-  EyeOff,
 } from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
 import { useApp } from '../context/AppContext';
 import { buildApiUrl } from '../lib/apiConfig';
 import {
-  getConnectedSocialNetworks,
-  getSocialTokenStatus,
   shareBannerToSocial,
   triggerDownload,
   dataUrlToFile,
@@ -54,7 +42,7 @@ const DESIGN_THEMES = [
 ];
 
 const COMPOSITION_MODES = [
-  { key: 'grid_hero',   label: 'Сетка + План', hint: 'Сетка из фото ЖК + карточка планировки поверх' },
+  { key: 'grid_hero',   label: 'Сетка + План', hint: 'Сетка из фото ЖК + карточка планировки' },
   { key: 'plan_hero',   label: 'План + Фасад', hint: 'Фокус на планировке + мини-фото ЖК' },
   { key: 'facade_hero', label: 'Фасад + План', hint: 'Фото ЖК на фоне + карточка плана' },
   { key: 'plan_only',   label: 'Только план',  hint: 'Максимум чертежа планировки' },
@@ -69,6 +57,31 @@ const ACCENT_COLORS = [
   '#eab308', // Gold
   '#ef4444', // Red
   '#14b8a6', // Teal
+];
+
+const BADGE_PRESETS = [
+  '⚡ СЕМЕЙНАЯ ИПОТЕКА 6%',
+  '🔥 СТАРТ ПРОДАЖ',
+  'ПРЯМЫЕ ЦЕНЫ ЗАСТРОЙЩИКА',
+  'АКЦИЯ МЕСЯЦА',
+  'КВАРТИРА ОТ ЗАСТРОЙЩИКА',
+  'ВЫГОДНОЕ ПРЕДЛОЖЕНИЕ',
+  '🔑 КЛЮЧИ В ЭТОМ ГОДУ',
+];
+
+const CTA_PRESETS = [
+  'Забронировать по цене застройщика',
+  'Получить расчет ипотеки',
+  'Узнать подробнее и планировки',
+  'Записаться на просмотр',
+];
+
+const SLOGAN_PRESETS = [
+  'По ценам застройщика без переплат',
+  'Своя квартира дешевле аренды',
+  'Семейная ипотека от 6% любого банка',
+  'Просторная планировка с кухней-гостиной',
+  'Успейте забронировать до повышения цен',
 ];
 
 const DEFAULT_ADVANTAGES = [
@@ -91,10 +104,12 @@ const DEFAULT_ADVANTAGES = [
 
 function safeRoundRect(ctx, x, y, w, h, r = 0) {
   if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
     ctx.roundRect(x, y, w, h, r);
     return;
   }
   const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
   ctx.moveTo(x + radius, y);
   ctx.lineTo(x + w - radius, y);
   ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
@@ -104,6 +119,32 @@ function safeRoundRect(ctx, x, y, w, h, r = 0) {
   ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, maxWidth) {
+  const words = (text || '').split(' ');
+  const lines = [];
+  let currentLine = '';
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i];
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const testWidth = ctx.measureText(testLine).width;
+
+    if (testWidth > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
+    } else {
+      currentLine = testLine;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines.filter(Boolean);
 }
 
 function drawImageCover(ctx, img, cx, cy, cw, ch, r = 0) {
@@ -123,28 +164,32 @@ function drawImageCover(ctx, img, cx, cy, cw, ch, r = 0) {
     dy = cy + (ch - dh) / 2;
   }
   ctx.save();
-  ctx.beginPath();
   safeRoundRect(ctx, cx, cy, cw, ch, r);
   ctx.clip();
   ctx.drawImage(img, dx, dy, dw, dh);
-
-  // Subtle contrast scrim so floating card and text pop out cleanly
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.16)';
-  ctx.fillRect(cx, cy, cw, ch);
   ctx.restore();
 }
 
-function hexToRgb(hex) {
-  if (!hex) return { r: 0, g: 82, b: 255 };
-  const c = hex.replace('#', '');
-  const num = parseInt(c.length === 3 ? c.split('').map((x) => x + x).join('') : c, 16);
-  if (Number.isNaN(num)) return { r: 0, g: 82, b: 255 };
-  return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+function hexToRgba(hex, alpha = 1) {
+  if (!hex || typeof hex !== 'string') return `rgba(0, 82, 255, ${alpha})`;
+  const clean = hex.replace('#', '');
+  if (clean.length === 3) {
+    const r = parseInt(clean[0] + clean[0], 16);
+    const g = parseInt(clean[1] + clean[1], 16);
+    const b = parseInt(clean[2] + clean[2], 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  if (clean.length === 6) {
+    const r = parseInt(clean.slice(0, 2), 16);
+    const g = parseInt(clean.slice(2, 4), 16);
+    const b = parseInt(clean.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  return `rgba(0, 82, 255, ${alpha})`;
 }
 
 /**
- * Расчет ежемесячного платежа по аннуитетной ипотеке:
- * Базово: Семейная ипотека 6%, первоначальный взнос 20.1%, срок 30 лет.
+ * Расчет ежемесячного платежа по аннуитетной ипотеке
  */
 function calculateMortgagePayment(price, annualRate = 6, downPaymentPercent = 20, years = 30) {
   const p = Number(price) || 0;
@@ -365,9 +410,9 @@ export function DevelopmentBannerModal({
     return trimmed;
   }, [layout, development]);
 
-  const [customPlanUrl, setCustomPlanUrl]     = React.useState(null);
-  const planImageUrl                          = customPlanUrl || defaultPlanImageUrl;
-  const planFileInputRef                      = useRef(null);
+  const [customPlanUrl, setCustomPlanUrl] = useState(null);
+  const planImageUrl = customPlanUrl || defaultPlanImageUrl;
+  const planFileInputRef = useRef(null);
 
   const handlePlanUpload = (e) => {
     const file = e.target.files?.[0];
@@ -402,12 +447,12 @@ export function DevelopmentBannerModal({
     return list;
   }, [development, layout.dev]);
 
-  const [customDevImages, setCustomDevImages]       = React.useState([]);
+  const [customDevImages, setCustomDevImages] = useState([]);
   const combinedDevImages = useMemo(() => {
     return Array.from(new Set([...customDevImages, ...allDevImages]));
   }, [customDevImages, allDevImages]);
 
-  const [selectedGridImages, setSelectedGridImages] = React.useState(() => {
+  const [selectedGridImages, setSelectedGridImages] = useState(() => {
     return allDevImages.slice(0, 4);
   });
 
@@ -450,23 +495,33 @@ export function DevelopmentBannerModal({
     return selectedGridImages[0] || combinedDevImages[0] || null;
   }, [selectedGridImages, combinedDevImages]);
 
-  /* ---- State ---- */
-  const [format, setFormat]                   = React.useState('story');
-  const [designTheme, setDesignTheme]         = React.useState('dark');
-  const [composition, setComposition]         = React.useState('grid_hero');
-  const [accentColor, setAccentColor]         = React.useState('#0052FF');
+  /* ---- Advertising State ---- */
+  const [format, setFormat]                   = useState('story');
+  const [designTheme, setDesignTheme]         = useState('dark');
+  const [composition, setComposition]         = useState('grid_hero');
+  const [accentColor, setAccentColor]         = useState('#0052FF');
 
-  const [devTitle, setDevTitle]               = React.useState(complexName);
-  const [roomTitle, setRoomTitle]             = React.useState(defaultRoomTitle);
-  const [areaText, setAreaText]               = React.useState(defaultArea);
-  const [priceVal, setPriceVal]               = React.useState(defaultPrice);
-  const [priceSqmVal, setPriceSqmVal]         = React.useState(defaultPriceSqm);
-  const [locationText, setLocationText]       = React.useState(defaultLocation);
-  const [phone, setPhone]                     = React.useState(defaultPhone);
-  const [agentName, setAgentName]             = React.useState(defaultAgentName);
-  const [agencySubtitle, setAgencySubtitle]   = React.useState('Эксперт по новостройкам');
+  const [badgeText, setBadgeText]             = useState('⚡ СЕМЕЙНАЯ ИПОТЕКА 6%');
+  const [showBadge, setShowBadge]             = useState(true);
 
-  const [showAddress, setShowAddress]         = React.useState(true);
+  const [devTitle, setDevTitle]               = useState(complexName);
+  const [roomTitle, setRoomTitle]             = useState(defaultRoomTitle);
+  const [areaText, setAreaText]               = useState(defaultArea);
+  const [priceVal, setPriceVal]               = useState(defaultPrice);
+  const [priceSqmVal, setPriceSqmVal]         = useState(defaultPriceSqm);
+  const [locationText, setLocationText]       = useState(defaultLocation);
+  const [phone, setPhone]                     = useState(defaultPhone);
+  const [agentName, setAgentName]             = useState(defaultAgentName);
+  const [agencySubtitle, setAgencySubtitle]   = useState('Эксперт по новостройкам');
+
+  const [sloganText, setSloganText]           = useState(() => {
+    return `${defaultRoomTitle}${defaultArea ? ` · ${defaultArea} м²` : ''} в ${complexName}`;
+  });
+
+  const [ctaText, setCtaText]                 = useState('Забронировать по цене застройщика');
+  const [showCta, setShowCta]                 = useState(true);
+
+  const [showAddress, setShowAddress]         = useState(true);
 
   const initialShowPriceFrom = useMemo(() => {
     if (layout.flat_number || layout.flatNumber) return false;
@@ -474,21 +529,20 @@ export function DevelopmentBannerModal({
     if (layout.id && !layout.count && !layout.minPrice) return false;
     return true;
   }, [layout]);
-  const [showPriceFrom, setShowPriceFrom]     = React.useState(initialShowPriceFrom);
+  const [showPriceFrom, setShowPriceFrom]     = useState(initialShowPriceFrom);
 
-  const [showMortgage, setShowMortgage]       = React.useState(true);
-  const [mortgageRate, setMortgageRate]       = React.useState(6);
-  const [mortgagePayment, setMortgagePayment] = React.useState(() =>
+  const [showMortgage, setShowMortgage]       = useState(true);
+  const [mortgageRate, setMortgageRate]       = useState(6);
+  const [mortgagePayment, setMortgagePayment] = useState(() =>
     calculateMortgagePayment(defaultPrice, 6)
   );
 
-  // Recalculate mortgage payment on price/rate changes
-  React.useEffect(() => {
+  useEffect(() => {
     setMortgagePayment(calculateMortgagePayment(priceVal, mortgageRate));
   }, [priceVal, mortgageRate]);
 
-  // Initial advantages badges
-  const [selectedAdvantages, setSelectedAdvantages] = React.useState(() => {
+  // Initial advantages
+  const [selectedAdvantages, setSelectedAdvantages] = useState(() => {
     const list = ['Семейная ипотека от 6%'];
     if (development.completion_date) {
       list.push(`Срок сдачи: ${development.completion_date}`);
@@ -499,31 +553,33 @@ export function DevelopmentBannerModal({
     return list;
   });
 
-  const [customAdvantageText, setCustomAdvantageText] = React.useState('');
-  const [copyFeedback, setCopyFeedback]               = React.useState(false);
-  const [copyPostFeedback, setCopyPostFeedback]       = React.useState(false);
-  const [isGenerating, setIsGenerating]               = React.useState(false);
+  const [customAdvantageText, setCustomAdvantageText] = useState('');
+  const [copyFeedback, setCopyFeedback]               = useState(false);
+  const [copyPostFeedback, setCopyPostFeedback]       = useState(false);
+  const [isGenerating, setIsGenerating]               = useState(false);
 
   // Collapsible control sections
-  const [openSections, setOpenSections] = React.useState({
+  const [openSections, setOpenSections] = useState({
     format: true,
     theme: true,
     composition: true,
+    badge: true,
+    slogan: true,
+    cta: true,
     plan: true,
     photos: true,
     data: true,
     mortgage: true,
     advantages: true,
     agent: true,
-    share: true,
   });
 
   const toggleSection = (key) => {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  /* ---- Image Loader with CORS Safe Handling & Proxy Fallback ---- */
-  const loadImageSafe = React.useCallback(async (src) => {
+  /* ---- Safe Image Loader with Proxy Fallback ---- */
+  const loadImageSafe = useCallback(async (src) => {
     if (!src) return null;
     if (imageCacheRef.current.has(src)) return imageCacheRef.current.get(src);
 
@@ -539,16 +595,16 @@ export function DevelopmentBannerModal({
       });
     };
 
-    // 1. Direct load with crossOrigin='anonymous'
+    // 1. Direct anonymous load
     try {
       const img = await loadDirect(src, true);
       imageCacheRef.current.set(src, img);
       return img;
     } catch {
-      // Direct anonymous CORS load failed
+      // ignore
     }
 
-    // 2. Proxied load via /api/image-proxy for external http/https
+    // 2. Proxied load for remote images
     if (src.startsWith('http://') || src.startsWith('https://')) {
       try {
         const proxyUrl = buildApiUrl(`/api/image-proxy?url=${encodeURIComponent(src)}`);
@@ -556,11 +612,11 @@ export function DevelopmentBannerModal({
         imageCacheRef.current.set(src, img);
         return img;
       } catch {
-        // Proxy failed
+        // ignore
       }
     }
 
-    // 3. Fallback direct without crossOrigin so it still draws on canvas
+    // 3. Fallback direct without crossOrigin
     try {
       const img = await loadDirect(src, false);
       imageCacheRef.current.set(src, img);
@@ -571,9 +627,9 @@ export function DevelopmentBannerModal({
   }, []);
 
   /* ================================================================
-     CANVAS DRAWING ENGINE
+     CANVAS ADVERTISING BANNER RENDERER
      ================================================================ */
-  const draw = React.useCallback(async () => {
+  const draw = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas || !isMountedRef.current) return;
 
@@ -586,9 +642,15 @@ export function DevelopmentBannerModal({
     const IS = format === 'story';
     const isPortrait = format === 'portrait';
     const isLight = designTheme === 'light';
-    const isGlass = designTheme === 'glass';
     const isBrand = designTheme === 'brand';
     const U = w / 1080;
+
+    const toneBg = isLight ? '#FFFFFF' : (isBrand ? '#070D1E' : '#0B0F19');
+    const toneRgb = isLight ? '255, 255, 255' : (isBrand ? '7, 13, 30' : '11, 15, 25');
+    const textColor = isLight ? '#0F172A' : '#FFFFFF';
+    const subTextColor = isLight ? '#475569' : '#CBD5E1';
+    const PAD = Math.round((IS ? 52 : (isPortrait ? 42 : 36)) * U);
+    const contentWidth = w - PAD * 2;
 
     setIsGenerating(true);
 
@@ -602,7 +664,6 @@ export function DevelopmentBannerModal({
 
       if (!isMountedRef.current) return;
 
-      // Crop whitespace from CAD floorplan
       let cleanPlan = null;
       if (loadedPlan) {
         cleanPlan = floorplanCacheRef.current.get(planImageUrl);
@@ -613,241 +674,140 @@ export function DevelopmentBannerModal({
       }
 
       /* -------------------------------------------------------------
-         1. BACKGROUND FILL
+         1. BASE BACKGROUND & TOP VISUAL ZONE
          ------------------------------------------------------------- */
-      // Clean background gradient (complex photo is kept in its own card, not across full canvas)
-      const bgGrad = ctx.createLinearGradient(0, 0, w, h);
-      if (isLight) {
-        bgGrad.addColorStop(0, '#FFFFFF');
-        bgGrad.addColorStop(0.5, '#F1F5F9');
-        bgGrad.addColorStop(1, '#E2E8F0');
-        } else if (isBrand) {
-          const rgb = hexToRgb(accentColor);
-          bgGrad.addColorStop(0, `rgb(${Math.round(rgb.r * 0.2)}, ${Math.round(rgb.g * 0.2)}, ${Math.round(rgb.b * 0.3)})`);
-          bgGrad.addColorStop(0.6, '#0B1120');
-          bgGrad.addColorStop(1, '#050811');
-        } else if (isGlass) {
-          bgGrad.addColorStop(0, '#1E293B');
-          bgGrad.addColorStop(0.5, '#0F172A');
-          bgGrad.addColorStop(1, '#020617');
-        } else {
-          // Dark Luxury Slate
-          bgGrad.addColorStop(0, '#0F172A');
-          bgGrad.addColorStop(0.4, '#0B1120');
-          bgGrad.addColorStop(1, '#030712');
-        }
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = toneBg;
+      ctx.fillRect(0, 0, w, h);
 
-        // Subtle geometric ambient glow
-        ctx.save();
-        const rgb = hexToRgb(accentColor);
-        const glowGrad = ctx.createRadialGradient(w * 0.8, h * 0.2, 0, w * 0.8, h * 0.2, w * 0.7);
-        glowGrad.addColorStop(0, `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${isLight ? 0.12 : 0.25})`);
-        glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.fillStyle = glowGrad;
-        ctx.fillRect(0, 0, w, h);
-        ctx.restore();
+      const topPhotoH = Math.round((IS ? 0.46 : (isPortrait ? 0.42 : 0.40)) * h);
 
-      /* -------------------------------------------------------------
-         2. TOP HEADER: COMPLEX NAME & BADGES
-         ------------------------------------------------------------- */
-      const PAD = Math.round((IS ? 52 : (isPortrait ? 44 : 36)) * U);
-      let curY = PAD;
-
-      // Complex Name / Brand header
+      // Render photo(s) in top zone
       ctx.save();
-      const topBadgeH = Math.round((IS ? 48 : 42) * U);
-      const topBadgeText = 'НОВОСТРОЙКА · ПРЯМЫЕ ЦЕНЫ';
-      ctx.font = `600 ${Math.round((IS ? 20 : 18) * U)}px system-ui, -apple-system, sans-serif`;
-      const tbw = ctx.measureText(topBadgeText).width + Math.round(32 * U);
-
-      ctx.fillStyle = isLight ? 'rgba(0, 82, 255, 0.12)' : 'rgba(255, 255, 255, 0.12)';
       ctx.beginPath();
-      safeRoundRect(ctx, PAD, curY, tbw, topBadgeH, topBadgeH / 2);
-      ctx.fill();
+      ctx.rect(0, 0, w, topPhotoH);
+      ctx.clip();
 
-      ctx.fillStyle = isLight ? accentColor : '#60A5FA';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(topBadgeText, PAD + Math.round(16 * U), curY + topBadgeH / 2);
-      ctx.restore();
+      const heroImgs = composition === 'facade_hero'
+        ? (loadedFacade ? [loadedFacade] : validGridImages.slice(0, 1))
+        : validGridImages;
+      const count = heroImgs.length;
 
-      curY += topBadgeH + Math.round(16 * U);
-
-      // Residential Complex Title (NO DEVELOPER!)
-      ctx.save();
-      ctx.font = `800 ${Math.round((IS ? 56 : (isPortrait ? 48 : 42)) * U)}px system-ui, -apple-system, sans-serif`;
-      ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
-      ctx.textBaseline = 'top';
-      ctx.shadowColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.45)';
-      ctx.shadowBlur = Math.round(8 * U);
-      ctx.fillText(devTitle, PAD, curY);
-      ctx.restore();
-
-      curY += Math.round((IS ? 62 : 52) * U);
-
-      // Location / Address line (Only if showAddress is enabled)
-      if (showAddress && locationText) {
-        ctx.save();
-        ctx.font = `500 ${Math.round((IS ? 28 : 24) * U)}px system-ui, -apple-system, sans-serif`;
-        ctx.fillStyle = isLight ? '#475569' : '#94A3B8';
-        ctx.textBaseline = 'top';
-        ctx.fillText(locationText, PAD, curY);
-        ctx.restore();
-        curY += Math.round((IS ? 38 : 32) * U);
+      if (composition === 'plan_only') {
+        ctx.fillStyle = isLight ? '#F1F5F9' : '#1E293B';
+        ctx.fillRect(0, 0, w, topPhotoH);
+      } else if (count === 1) {
+        drawImageCover(ctx, heroImgs[0], 0, 0, w, topPhotoH);
+      } else if (count === 2) {
+        const halfW = Math.round((w - 4 * U) / 2);
+        drawImageCover(ctx, heroImgs[0], 0, 0, halfW, topPhotoH);
+        drawImageCover(ctx, heroImgs[1], halfW + Math.round(4 * U), 0, w - halfW - Math.round(4 * U), topPhotoH);
+      } else if (count >= 3) {
+        const mainW = Math.round(w * 0.58);
+        const rightW = w - mainW - Math.round(4 * U);
+        const rightH = Math.round((topPhotoH - 4 * U) / 2);
+        drawImageCover(ctx, heroImgs[0], 0, 0, mainW, topPhotoH);
+        drawImageCover(ctx, heroImgs[1], mainW + Math.round(4 * U), 0, rightW, rightH);
+        drawImageCover(ctx, heroImgs[2] || heroImgs[0], mainW + Math.round(4 * U), rightH + Math.round(4 * U), rightW, topPhotoH - rightH - Math.round(4 * U));
+      } else if (loadedFacade) {
+        drawImageCover(ctx, loadedFacade, 0, 0, w, topPhotoH);
+      } else {
+        const topGrad = ctx.createLinearGradient(0, 0, w, topPhotoH);
+        topGrad.addColorStop(0, isLight ? '#E2E8F0' : '#0F172A');
+        topGrad.addColorStop(1, isLight ? '#CBD5E1' : '#1E293B');
+        ctx.fillStyle = topGrad;
+        ctx.fillRect(0, 0, w, topPhotoH);
       }
+      ctx.restore();
 
       /* -------------------------------------------------------------
-         3. HERO VISUAL AREA (FLOOR PLAN & FACADE)
+         2. INSET CAD FLOORPLAN CARD
          ------------------------------------------------------------- */
-      const bottomAreaH = Math.round((IS ? 700 : (isPortrait ? 580 : 490)) * U);
-      const visualAreaTop = curY + Math.round(16 * U);
-      const visualAreaH = h - bottomAreaH - visualAreaTop;
-      const visualAreaW = w - PAD * 2;
+      if (composition === 'plan_only' || composition === 'plan_hero') {
+        // Full width plan card
+        const cardPad = Math.round(18 * U);
+        const cardX = PAD;
+        const cardY = PAD;
+        const cardW = contentWidth;
+        const cardH = topPhotoH - PAD;
 
-      if (composition === 'grid_hero' || composition === 'facade_hero') {
-        // Hero: Dedicated complex photo card (top/left) + dedicated white CAD layout card (bottom/right)
-        const gap = Math.round(14 * U);
-        const cardRadius = Math.round(18 * U);
-
-        let photoCardX, photoCardY, photoCardW, photoCardH;
-        let planCardX, planCardY, planCardW, planCardH;
-
-        if (IS || isPortrait) {
-          // Vertical layout (Stories 9:16 & Portrait 4:5): Photo card on top, Plan card below
-          const photoFraction = IS ? 0.38 : 0.40;
-          photoCardW = visualAreaW;
-          photoCardH = Math.round((visualAreaH - gap) * photoFraction);
-          photoCardX = PAD;
-          photoCardY = visualAreaTop;
-
-          planCardW = visualAreaW;
-          planCardH = visualAreaH - photoCardH - gap;
-          planCardX = PAD;
-          planCardY = photoCardY + photoCardH + gap;
-        } else {
-          // Square layout (1:1): Side-by-side split
-          photoCardW = Math.round((visualAreaW - gap) * 0.46);
-          photoCardH = visualAreaH;
-          photoCardX = PAD;
-          photoCardY = visualAreaTop;
-
-          planCardW = visualAreaW - photoCardW - gap;
-          planCardH = visualAreaH;
-          planCardX = photoCardX + photoCardW + gap;
-          planCardY = visualAreaTop;
-        }
-
-        // --- DRAW CARD 1: COMPLEX PHOTO(S) ---
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
         ctx.shadowBlur = Math.round(20 * U);
-        ctx.shadowOffsetY = Math.round(8 * U);
-        ctx.fillStyle = '#0F172A';
-        ctx.beginPath();
-        safeRoundRect(ctx, photoCardX, photoCardY, photoCardW, photoCardH, cardRadius);
+        ctx.fillStyle = '#FFFFFF';
+        safeRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(18 * U));
         ctx.fill();
         ctx.restore();
 
-        // Clip and draw photo(s)
-        ctx.save();
-        ctx.beginPath();
-        safeRoundRect(ctx, photoCardX, photoCardY, photoCardW, photoCardH, cardRadius);
-        ctx.clip();
-
-        const heroImgs = composition === 'facade_hero'
-          ? (loadedFacade ? [loadedFacade] : validGridImages.slice(0, 1))
-          : validGridImages;
-        const count = heroImgs.length;
-
-        if (count === 1) {
-          drawImageCover(ctx, heroImgs[0], photoCardX, photoCardY, photoCardW, photoCardH);
-        } else if (count === 2) {
-          const halfW = Math.round((photoCardW - 4 * U) / 2);
-          drawImageCover(ctx, heroImgs[0], photoCardX, photoCardY, halfW, photoCardH);
-          drawImageCover(ctx, heroImgs[1], photoCardX + halfW + Math.round(4 * U), photoCardY, photoCardW - halfW - Math.round(4 * U), photoCardH);
-        } else if (count >= 3) {
-          const mainW = Math.round(photoCardW * 0.58);
-          const rightW = photoCardW - mainW - Math.round(4 * U);
-          const rightH = Math.round((photoCardH - 4 * U) / 2);
-          drawImageCover(ctx, heroImgs[0], photoCardX, photoCardY, mainW, photoCardH);
-          drawImageCover(ctx, heroImgs[1], photoCardX + mainW + Math.round(4 * U), photoCardY, rightW, rightH);
-          drawImageCover(ctx, heroImgs[2] || heroImgs[0], photoCardX + mainW + Math.round(4 * U), photoCardY + rightH + Math.round(4 * U), rightW, photoCardH - rightH - Math.round(4 * U));
-        } else if (loadedFacade) {
-          drawImageCover(ctx, loadedFacade, photoCardX, photoCardY, photoCardW, photoCardH);
-        } else {
-          ctx.fillStyle = '#1E293B';
-          ctx.fillRect(photoCardX, photoCardY, photoCardW, photoCardH);
+        if (cleanPlan) {
+          const innerX = cardX + cardPad;
+          const innerY = cardY + cardPad;
+          const innerW = cardW - cardPad * 2;
+          const innerH = cardH - cardPad * 2;
+          const pr = (cleanPlan.width || 1) / (cleanPlan.height || 1);
+          const cr = innerW / innerH;
+          let dw, dh, dx, dy;
+          if (pr > cr) {
+            dw = innerW;
+            dh = innerW / pr;
+            dx = innerX;
+            dy = innerY + (innerH - dh) / 2;
+          } else {
+            dh = innerH;
+            dw = innerH * pr;
+            dx = innerX + (innerW - dw) / 2;
+            dy = innerY;
+          }
+          ctx.save();
+          safeRoundRect(ctx, innerX, innerY, innerW, innerH, Math.round(12 * U));
+          ctx.clip();
+          ctx.drawImage(cleanPlan, dx, dy, dw, dh);
+          ctx.restore();
         }
-        ctx.restore();
+      } else {
+        // Inset CAD card floating on the right
+        const cardW = Math.round((IS ? 420 : (isPortrait ? 380 : 360)) * U);
+        const cardH = Math.round((IS ? 360 : (isPortrait ? 320 : 300)) * U);
+        const cardX = w - PAD - cardW;
+        const cardY = topPhotoH - cardH - Math.round(16 * U);
 
-        // Stroke photo card
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.lineWidth = Math.round(2 * U);
-        ctx.beginPath();
-        safeRoundRect(ctx, photoCardX, photoCardY, photoCardW, photoCardH, cardRadius);
-        ctx.stroke();
-        ctx.restore();
-
-        // Badge on photo card
-        ctx.save();
-        const photoBadgeText = 'ФОТО ЖК';
-        ctx.font = `700 ${Math.round(12 * U)}px system-ui, sans-serif`;
-        const pbw = ctx.measureText(photoBadgeText).width + Math.round(18 * U);
-        const pbh = Math.round(24 * U);
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
-        ctx.beginPath();
-        safeRoundRect(ctx, photoCardX + Math.round(12 * U), photoCardY + Math.round(12 * U), pbw, pbh, pbh / 2);
-        ctx.fill();
-        ctx.fillStyle = '#F8FAFC';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(photoBadgeText, photoCardX + Math.round(21 * U), photoCardY + Math.round(12 * U) + pbh / 2);
-        ctx.restore();
-
-        // --- DRAW CARD 2: FLOOR PLAN CARD ---
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.32)';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.40)';
         ctx.shadowBlur = Math.round(24 * U);
         ctx.shadowOffsetY = Math.round(8 * U);
-
-        ctx.fillStyle = isGlass ? 'rgba(255, 255, 255, 0.98)' : '#FFFFFF';
-        ctx.beginPath();
-        safeRoundRect(ctx, planCardX, planCardY, planCardW, planCardH, cardRadius);
+        ctx.fillStyle = '#FFFFFF';
+        safeRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(16 * U));
         ctx.fill();
 
-        ctx.strokeStyle = isGlass ? 'rgba(255, 255, 255, 0.95)' : 'rgba(226, 232, 240, 0.9)';
+        ctx.strokeStyle = 'rgba(226, 232, 240, 0.95)';
         ctx.lineWidth = Math.round(2 * U);
         ctx.stroke();
         ctx.restore();
 
         // Top Chip on Floorplan Card
-        const chipText = 'ПЛАНИРОВКА';
+        const chipText = `ПЛАНИРОВКА${areaText ? ` · ${areaText} м²` : ''}`;
         ctx.save();
-        ctx.font = `700 ${Math.round(13 * U)}px system-ui, sans-serif`;
-        const ctw = ctx.measureText(chipText).width + Math.round(20 * U);
-        const chipH = Math.round(26 * U);
-        const chipX = planCardX + Math.round(14 * U);
-        const chipY = planCardY + Math.round(12 * U);
+        ctx.font = `700 ${Math.round(12 * U)}px "Medeo Sans", system-ui, sans-serif`;
+        const ctw = ctx.measureText(chipText).width + Math.round(18 * U);
+        const chipH = Math.round(24 * U);
+        const chipX = cardX + Math.round(12 * U);
+        const chipY = cardY + Math.round(10 * U);
 
         ctx.fillStyle = isLight ? 'rgba(0, 82, 255, 0.10)' : 'rgba(15, 23, 42, 0.85)';
-        ctx.beginPath();
         safeRoundRect(ctx, chipX, chipY, ctw, chipH, chipH / 2);
         ctx.fill();
 
         ctx.fillStyle = isLight ? accentColor : '#60A5FA';
         ctx.textBaseline = 'middle';
-        ctx.fillText(chipText, chipX + Math.round(10 * U), chipY + chipH / 2);
+        ctx.fillText(chipText, chipX + Math.round(9 * U), chipY + chipH / 2);
         ctx.restore();
 
-        // Draw CAD Floorplan inside planCard
         if (cleanPlan) {
-          const innerPad = Math.round(16 * U);
+          const innerPad = Math.round(14 * U);
           const innerTop = chipY + chipH + Math.round(6 * U);
-          const innerX = planCardX + innerPad;
+          const innerX = cardX + innerPad;
           const innerY = innerTop;
-          const innerW = planCardW - innerPad * 2;
-          const innerH = planCardY + planCardH - innerTop - innerPad;
+          const innerW = cardW - innerPad * 2;
+          const innerH = cardY + cardH - innerTop - innerPad;
 
           const pr = (cleanPlan.width || 1) / (cleanPlan.height || 1);
           const cr = innerW / innerH;
@@ -865,7 +825,6 @@ export function DevelopmentBannerModal({
           }
 
           ctx.save();
-          ctx.beginPath();
           safeRoundRect(ctx, innerX, innerY, innerW, innerH, Math.round(10 * U));
           ctx.clip();
           ctx.drawImage(cleanPlan, dx, dy, dw, dh);
@@ -873,334 +832,281 @@ export function DevelopmentBannerModal({
         } else {
           ctx.save();
           ctx.fillStyle = '#64748B';
-          ctx.font = `500 ${Math.round(22 * U)}px system-ui, sans-serif`;
+          ctx.font = `500 ${Math.round(18 * U)}px "Medeo Sans", system-ui, sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('Планировка помещения', planCardX + planCardW / 2, planCardY + planCardH / 2);
-          ctx.restore();
-        }
-      } else if (composition === 'plan_hero' || composition === 'plan_only') {
-        // Plan Hero: Big white contrast card with the CAD floorplan
-        const planCardPad = Math.round(20 * U);
-        const planCardX = PAD;
-        const planCardY = visualAreaTop;
-        const planCardW = visualAreaW;
-        const planCardH = visualAreaH;
-
-        // Card shadow & background
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
-        ctx.shadowBlur = Math.round(28 * U);
-        ctx.shadowOffsetY = Math.round(10 * U);
-
-        // Always pure white or frosted white background for CAD lines readability
-        ctx.fillStyle = isGlass ? 'rgba(255, 255, 255, 0.96)' : '#FFFFFF';
-        ctx.beginPath();
-        safeRoundRect(ctx, planCardX, planCardY, planCardW, planCardH, Math.round(24 * U));
-        ctx.fill();
-
-        if (isGlass) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-          ctx.lineWidth = Math.round(2 * U);
-          ctx.stroke();
-        }
-        ctx.restore();
-
-        // Draw CAD Floorplan inside card with clean margins
-        if (cleanPlan) {
-          const innerX = planCardX + planCardPad;
-          const innerY = planCardY + planCardPad;
-          const innerW = planCardW - planCardPad * 2;
-          const innerH = planCardH - planCardPad * 2;
-
-          const pr = (cleanPlan.width || 1) / (cleanPlan.height || 1);
-          const cr = innerW / innerH;
-          let dw, dh, dx, dy;
-          if (pr > cr) {
-            dw = innerW;
-            dh = innerW / pr;
-            dx = innerX;
-            dy = innerY + (innerH - dh) / 2;
-          } else {
-            dh = innerH;
-            dw = innerH * pr;
-            dx = innerX + (innerW - dw) / 2;
-            dy = innerY;
-          }
-
-          ctx.save();
-          ctx.beginPath();
-          safeRoundRect(ctx, innerX, innerY, innerW, innerH, Math.round(16 * U));
-          ctx.clip();
-          ctx.drawImage(cleanPlan, dx, dy, dw, dh);
-          ctx.restore();
-        } else {
-          // Placeholder icon if plan is missing
-          ctx.save();
-          ctx.fillStyle = '#64748B';
-          ctx.font = `500 ${Math.round(28 * U)}px system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('Планировка квартиры', planCardX + planCardW / 2, planCardY + planCardH / 2);
-          ctx.restore();
-        }
-
-        // Mini Facade chip in the top right corner if plan_hero and facade image exists
-        if (composition === 'plan_hero' && loadedFacade) {
-          const chipW = Math.round((IS ? 280 : 230) * U);
-          const chipH = Math.round((IS ? 180 : 150) * U);
-          const chipX = planCardX + planCardW - chipW - Math.round(16 * U);
-          const chipY = planCardY + Math.round(16 * U);
-
-          ctx.save();
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-          ctx.shadowBlur = Math.round(16 * U);
-          ctx.shadowOffsetY = Math.round(6 * U);
-
-          ctx.beginPath();
-          safeRoundRect(ctx, chipX, chipY, chipW, chipH, Math.round(16 * U));
-          ctx.clip();
-
-          // Draw facade
-          const fr = loadedFacade.width / loadedFacade.height;
-          const cr = chipW / chipH;
-          let fdw, fdh, fdx, fdy;
-          if (fr > cr) {
-            fdh = chipH;
-            fdw = chipH * fr;
-            fdx = chipX + (chipW - fdw) / 2;
-            fdy = chipY;
-          } else {
-            fdw = chipW;
-            fdh = chipW / fr;
-            fdx = chipX;
-            fdy = chipY + (chipH - fdh) / 2;
-          }
-          ctx.drawImage(loadedFacade, fdx, fdy, fdw, fdh);
-
-          // Subtle label over facade chip
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.70)';
-          ctx.fillRect(chipX, chipY + chipH - Math.round(32 * U), chipW, Math.round(32 * U));
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = `600 ${Math.round(16 * U)}px system-ui, sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('Архитектура ЖК', chipX + chipW / 2, chipY + chipH - Math.round(16 * U));
-          ctx.restore();
-        }
-      } else if (composition === 'facade_hero') {
-        // Facade Hero: Plan is displayed in a floating white card on the right
-        const cardSize = Math.round((IS ? 440 : 380) * U);
-        const cardX = w - PAD - cardSize;
-        const cardY = visualAreaTop + Math.round(30 * U);
-
-        ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.40)';
-        ctx.shadowBlur = Math.round(24 * U);
-        ctx.shadowOffsetY = Math.round(8 * U);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        safeRoundRect(ctx, cardX, cardY, cardSize, cardSize, Math.round(20 * U));
-        ctx.fill();
-        ctx.restore();
-
-        if (cleanPlan) {
-          const pad = Math.round(16 * U);
-          const pr = (cleanPlan.width || 1) / (cleanPlan.height || 1);
-          const inner = cardSize - pad * 2;
-          let dw, dh, dx, dy;
-          if (pr > 1) {
-            dw = inner;
-            dh = inner / pr;
-            dx = cardX + pad;
-            dy = cardY + pad + (inner - dh) / 2;
-          } else {
-            dh = inner;
-            dw = inner * pr;
-            dx = cardX + pad + (inner - dw) / 2;
-            dy = cardY + pad;
-          }
-          ctx.save();
-          ctx.beginPath();
-          safeRoundRect(ctx, cardX + pad, cardY + pad, inner, inner, Math.round(14 * U));
-          ctx.clip();
-          ctx.drawImage(cleanPlan, dx, dy, dw, dh);
+          ctx.fillText('Планировка помещения', cardX + cardW / 2, cardY + cardH / 2);
           ctx.restore();
         }
       }
 
       /* -------------------------------------------------------------
-         4. BOTTOM SECTION: SPECS, PRICING, MORTGAGE & ADVANTAGES
+         3. SMOOTH 0% -> 100% TRANSPARENCY GRADIENT TRANSITION
          ------------------------------------------------------------- */
-      const btmY = h - bottomAreaH;
+      const fadeHeight = Math.round((IS ? 260 : (isPortrait ? 180 : 140)) * U);
+      const fadeStartY = Math.max(0, topPhotoH - fadeHeight);
+      const fadeEndY = topPhotoH + Math.round((IS ? 30 : 20) * U);
 
-      // Bottom Gradient Scrim
       ctx.save();
-      const btmGrad = ctx.createLinearGradient(0, btmY - Math.round(60 * U), 0, h);
-      if (isLight) {
-        btmGrad.addColorStop(0, 'rgba(241, 245, 249, 0)');
-        btmGrad.addColorStop(0.2, 'rgba(241, 245, 249, 0.85)');
-        btmGrad.addColorStop(0.5, 'rgba(241, 245, 249, 0.98)');
-        btmGrad.addColorStop(1, '#F1F5F9');
-      } else {
-        btmGrad.addColorStop(0, 'rgba(11, 17, 32, 0)');
-        btmGrad.addColorStop(0.2, 'rgba(11, 17, 32, 0.88)');
-        btmGrad.addColorStop(0.5, 'rgba(11, 17, 32, 0.98)');
-        btmGrad.addColorStop(1, '#0B1120');
+      const fadeGrad = ctx.createLinearGradient(0, fadeStartY, 0, fadeEndY);
+      fadeGrad.addColorStop(0.0, `rgba(${toneRgb}, 0)`);
+      fadeGrad.addColorStop(0.30, `rgba(${toneRgb}, 0.35)`);
+      fadeGrad.addColorStop(0.65, `rgba(${toneRgb}, 0.85)`);
+      fadeGrad.addColorStop(1.0, `rgba(${toneRgb}, 1)`);
+
+      ctx.fillStyle = fadeGrad;
+      ctx.fillRect(0, fadeStartY, w, fadeEndY - fadeStartY);
+
+      ctx.fillStyle = toneBg;
+      ctx.fillRect(0, fadeEndY, w, h - fadeEndY);
+      ctx.restore();
+
+      /* -------------------------------------------------------------
+         4. TOP ENLARGED ADVERTISING BADGE
+         ------------------------------------------------------------- */
+      if (showBadge && badgeText) {
+        ctx.save();
+        const badgeFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 17)) * U);
+        const badgeH = Math.round((IS ? 52 : (isPortrait ? 44 : 38)) * U);
+        ctx.font = `900 ${badgeFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        const badgeW = ctx.measureText(badgeText.toUpperCase()).width + Math.round(44 * U);
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.40)';
+        ctx.shadowBlur = Math.round(16 * U);
+        ctx.shadowOffsetY = Math.round(4 * U);
+
+        safeRoundRect(ctx, PAD, PAD, badgeW, badgeH, badgeH / 2);
+        ctx.fillStyle = accentColor;
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = Math.round(2 * U);
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(badgeText.toUpperCase(), PAD + Math.round(22 * U), PAD + badgeH / 2);
+        ctx.restore();
+
+        // Address pill under badge
+        if (showAddress && locationText) {
+          ctx.save();
+          const addrFont = Math.round((IS ? 18 : 15) * U);
+          ctx.font = `600 ${addrFont}px "Medeo Sans", system-ui, sans-serif`;
+          const addrText = `📍 ${locationText}`;
+          const aw = ctx.measureText(addrText).width + Math.round(28 * U);
+          const ah = Math.round((IS ? 36 : 30) * U);
+          const ay = PAD + badgeH + Math.round(10 * U);
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+          safeRoundRect(ctx, PAD, ay, aw, ah, ah / 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#F8FAFC';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(addrText, PAD + Math.round(14 * U), ay + ah / 2);
+          ctx.restore();
+        }
       }
-      ctx.fillStyle = btmGrad;
-      ctx.fillRect(0, btmY - Math.round(60 * U), w, bottomAreaH + Math.round(60 * U));
-      ctx.restore();
 
-      let infoY = btmY + Math.round(10 * U);
+      /* -------------------------------------------------------------
+         5. BOTTOM ADVERTISING OFFER & SPECIFICATIONS
+         ------------------------------------------------------------- */
+      // Calculate bottom anchors
+      const phoneFontSize = Math.round((IS ? 34 : (isPortrait ? 28 : 24)) * U);
+      const phoneY = h - PAD;
 
-      // Room Title + Area badge
+      const ctaFontSize = Math.round((IS ? 28 : (isPortrait ? 24 : 20)) * U);
+      const ctaH = showCta && ctaText ? Math.round((IS ? 76 : (isPortrait ? 64 : 54)) * U) : 0;
+      const ctaPhoneGap = Math.round((IS ? 24 : 18) * U);
+      const ctaY = phoneY - phoneFontSize - ctaPhoneGap - ctaH;
+
+      let curY = topPhotoH - Math.round((IS ? 16 : 8) * U);
+
+      // A. Slogan / Marketing Headline (Medeo Sans 900)
       ctx.save();
-      const titleText = `${roomTitle}${areaText ? ` · ${areaText} м²` : ''}`;
-      ctx.font = `800 ${Math.round((IS ? 44 : (isPortrait ? 38 : 34)) * U)}px system-ui, -apple-system, sans-serif`;
-      ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
+      const sloganFontSize = Math.round((IS ? 54 : (isPortrait ? 42 : 34)) * U);
+      const sloganLineHeight = sloganFontSize * 1.18;
+      ctx.font = `900 ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
+      ctx.fillStyle = textColor;
       ctx.textBaseline = 'top';
-      ctx.fillText(titleText, PAD, infoY);
+
+      const finalSlogan = (sloganText || `${roomTitle}${areaText ? ` · ${areaText} м²` : ''} в ${devTitle}`).trim();
+      const sloganLines = wrapText(ctx, finalSlogan, contentWidth);
+      sloganLines.slice(0, 2).forEach((line) => {
+        ctx.fillText(line, PAD, curY);
+        curY += sloganLineHeight;
+      });
       ctx.restore();
 
-      infoY += Math.round((IS ? 52 : 44) * U);
+      curY += Math.round((IS ? 16 : 10) * U);
 
-      // Price from / Price exact + Price per sqm
+      // B. Price & Sqm Block (Huge vibrant numbers)
       ctx.save();
       const pricePrefix = showPriceFrom ? 'от ' : '';
       const priceText = priceVal ? `${pricePrefix}${formatNumber(priceVal)} ₽` : 'Цена по запросу';
-      ctx.font = `900 ${Math.round((IS ? 72 : (isPortrait ? 60 : 52)) * U)}px system-ui, -apple-system, sans-serif`;
-      ctx.fillStyle = isLight ? '#0052FF' : '#38BDF8';
+      const priceFontSize = Math.round((IS ? 72 : (isPortrait ? 56 : 46)) * U);
+      ctx.font = `900 ${priceFontSize}px "Medeo Sans", system-ui, sans-serif`;
+      ctx.fillStyle = isLight ? accentColor : '#38BDF8';
       ctx.textBaseline = 'top';
-      ctx.fillText(priceText, PAD, infoY);
+      ctx.fillText(priceText, PAD, curY);
 
       if (priceSqmVal) {
         const pw = ctx.measureText(priceText).width;
-        ctx.font = `600 ${Math.round((IS ? 32 : (isPortrait ? 26 : 24)) * U)}px system-ui, sans-serif`;
-        ctx.fillStyle = isLight ? '#64748B' : '#94A3B8';
-        ctx.fillText(` ${pricePrefix}${formatNumber(priceSqmVal)} ₽/м²`, PAD + pw + Math.round(24 * U), infoY + Math.round((IS ? 34 : 24) * U));
+        const sqmFontSize = Math.round((IS ? 28 : (isPortrait ? 24 : 20)) * U);
+        ctx.font = `600 ${sqmFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        ctx.fillStyle = subTextColor;
+        ctx.fillText(
+          ` ${pricePrefix}${formatNumber(priceSqmVal)} ₽/м²`,
+          PAD + pw + Math.round(18 * U),
+          curY + priceFontSize - sqmFontSize - Math.round(4 * U)
+        );
       }
       ctx.restore();
 
-      infoY += Math.round((IS ? 86 : 72) * U);
+      curY += priceFontSize + Math.round((IS ? 18 : 12) * U);
 
-      // Mortgage Badge: Family mortgage / monthly payment
+      // C. Mortgage Banner Pill (Семейная ипотека 6%)
       if (showMortgage && mortgagePayment > 0) {
         ctx.save();
-        const mortH = Math.round((IS ? 64 : 54) * U);
-        const mortText = `Семейная ипотека ${mortgageRate}% - платеж ${showPriceFrom ? 'от ' : ''}${formatNumber(mortgagePayment)} ₽/мес`;
-        ctx.font = `700 ${Math.round((IS ? 26 : 22) * U)}px system-ui, -apple-system, sans-serif`;
-        const mw = ctx.measureText(mortText).width + Math.round(48 * U);
+        const mortH = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
+        const mortFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U);
+        const mortText = `Семейная ипотека ${mortgageRate}% · платеж ${showPriceFrom ? 'от ' : ''}${formatNumber(mortgagePayment)} ₽/мес`;
+        ctx.font = `700 ${mortFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        const mw = Math.min(contentWidth, ctx.measureText(mortText).width + Math.round(44 * U));
 
-        // Gradient badge background
-        const mortGrad = ctx.createLinearGradient(PAD, infoY, PAD + mw, infoY + mortH);
+        const mortGrad = ctx.createLinearGradient(PAD, curY, PAD + mw, curY + mortH);
         mortGrad.addColorStop(0, '#10B981');
         mortGrad.addColorStop(1, '#059669');
         ctx.fillStyle = mortGrad;
 
         ctx.shadowColor = 'rgba(16, 185, 129, 0.35)';
-        ctx.shadowBlur = Math.round(14 * U);
+        ctx.shadowBlur = Math.round(12 * U);
         ctx.shadowOffsetY = Math.round(4 * U);
 
-        ctx.beginPath();
-        safeRoundRect(ctx, PAD, infoY, Math.min(mw, w - PAD * 2), mortH, Math.round(14 * U));
+        safeRoundRect(ctx, PAD, curY, mw, mortH, Math.round(12 * U));
         ctx.fill();
 
         ctx.shadowBlur = 0;
-        ctx.shadowOffsetY = 0;
         ctx.fillStyle = '#FFFFFF';
         ctx.textBaseline = 'middle';
-        ctx.fillText(mortText, PAD + Math.round(24 * U), infoY + mortH / 2);
+        ctx.fillText(mortText, PAD + Math.round(20 * U), curY + mortH / 2);
         ctx.restore();
 
-        infoY += mortH + Math.round(20 * U);
+        curY += mortH + Math.round((IS ? 18 : 12) * U);
       }
 
-      // Feature / Advantage Badges (Pills)
+      // D. Key Advantages Bullets (with white checkmarks in accent circles)
       if (selectedAdvantages.length > 0) {
-        ctx.save();
-        let pillX = PAD;
-        const pillH = Math.round((IS ? 44 : 36) * U);
-        const maxPillY = infoY + pillH * 2 + Math.round(16 * U);
+        const bulletLimit = IS ? 4 : (isPortrait ? 3 : 2);
+        const bulletFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U);
+        const bulletLineHeight = bulletFontSize * 1.3;
+        const circleR = Math.round((IS ? 14 : (isPortrait ? 12 : 10)) * U);
 
-        ctx.font = `600 ${Math.round((IS ? 20 : 17) * U)}px system-ui, sans-serif`;
+        selectedAdvantages.slice(0, bulletLimit).forEach((adv) => {
+          if (curY + bulletLineHeight > ctaY - Math.round(10 * U)) return;
 
-        for (const adv of selectedAdvantages.slice(0, 4)) {
-          const tw = ctx.measureText(adv).width;
-          const pw = tw + Math.round(28 * U);
-
-          if (pillX + pw > w - PAD) {
-            pillX = PAD;
-            infoY += pillH + Math.round(12 * U);
-            if (infoY > maxPillY) break;
-          }
-
-          ctx.fillStyle = isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.10)';
-          ctx.strokeStyle = isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.18)';
-          ctx.lineWidth = Math.round(1.5 * U);
-
+          ctx.save();
+          // Circle with checkmark
+          const cx = PAD + circleR;
+          const cy = curY + bulletFontSize * 0.6;
           ctx.beginPath();
-          safeRoundRect(ctx, pillX, infoY, pw, pillH, pillH / 2);
+          ctx.arc(cx, cy, circleR, 0, Math.PI * 2);
+          ctx.fillStyle = accentColor;
           ctx.fill();
+
+          // White checkmark
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = Math.round(2.5 * U);
+          ctx.beginPath();
+          ctx.moveTo(cx - Math.round(5 * U), cy);
+          ctx.lineTo(cx - Math.round(1 * U), cy + Math.round(4 * U));
+          ctx.lineTo(cx + Math.round(5 * U), cy - Math.round(4 * U));
           ctx.stroke();
 
-          ctx.fillStyle = isLight ? '#1E293B' : '#F1F5F9';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(adv, pillX + Math.round(14 * U), infoY + pillH / 2);
+          // Text
+          ctx.font = `600 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
+          ctx.fillStyle = textColor;
+          ctx.textBaseline = 'top';
+          ctx.fillText(adv, cx + circleR + Math.round(14 * U), curY);
 
-          pillX += pw + Math.round(12 * U);
-        }
+          curY += bulletLineHeight + Math.round((IS ? 10 : 6) * U);
+          ctx.restore();
+        });
+      }
+
+      /* -------------------------------------------------------------
+         6. CALL-TO-ACTION BUTTON (ANCHORED)
+         ------------------------------------------------------------- */
+      if (showCta && ctaText) {
+        ctx.save();
+        ctx.font = `800 ${ctaFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        const ctaMetrics = ctx.measureText(ctaText);
+        const ctaW = Math.min(contentWidth, ctaMetrics.width + Math.round((IS ? 100 : 80) * U));
+
+        ctx.shadowColor = hexToRgba(accentColor, 0.45);
+        ctx.shadowBlur = Math.round(20 * U);
+        ctx.shadowOffsetY = Math.round(6 * U);
+
+        safeRoundRect(ctx, PAD, ctaY, ctaW, ctaH, ctaH / 2);
+        ctx.fillStyle = accentColor;
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(ctaText, PAD + Math.round(30 * U), ctaY + ctaH / 2);
+
+        // Arrow ->
+        const arrowX = PAD + ctaW - Math.round(36 * U);
+        const arrowY = ctaY + ctaH / 2;
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = Math.round(3 * U);
+        ctx.beginPath();
+        ctx.moveTo(arrowX - Math.round(10 * U), arrowY);
+        ctx.lineTo(arrowX + Math.round(4 * U), arrowY);
+        ctx.lineTo(arrowX - Math.round(2 * U), arrowY - Math.round(6 * U));
+        ctx.moveTo(arrowX + Math.round(4 * U), arrowY);
+        ctx.lineTo(arrowX - Math.round(2 * U), arrowY + Math.round(6 * U));
+        ctx.stroke();
         ctx.restore();
       }
 
       /* -------------------------------------------------------------
-         5. REALTOR CONTACT FOOTER BAR (NO DEVELOPER SIGNATURE!)
+         7. UNIFIED PHONE CONTACT LINE (ADVERTISING STANDARD)
          ------------------------------------------------------------- */
-      const footerH = Math.round((IS ? 110 : 96) * U);
-      const footerY = h - footerH - Math.round(24 * U);
-
-      ctx.save();
-      // Frosted card container
-      ctx.fillStyle = isLight ? '#FFFFFF' : 'rgba(15, 23, 42, 0.88)';
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-      ctx.shadowBlur = Math.round(20 * U);
-      ctx.shadowOffsetY = Math.round(4 * U);
-
-      ctx.beginPath();
-      safeRoundRect(ctx, PAD, footerY, w - PAD * 2, footerH, Math.round(18 * U));
-      ctx.fill();
-
-      ctx.strokeStyle = isLight ? 'rgba(226, 232, 240, 0.8)' : 'rgba(255, 255, 255, 0.15)';
-      ctx.lineWidth = Math.round(1.5 * U);
-      ctx.stroke();
-      ctx.restore();
-
-      // Agent Info Left Side
-      ctx.save();
-      ctx.textBaseline = 'middle';
-
-      const agentTitle = agentName || 'Ваш риелтор';
-      ctx.font = `800 ${Math.round((IS ? 32 : 26) * U)}px system-ui, -apple-system, sans-serif`;
-      ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
-      ctx.fillText(agentTitle, PAD + Math.round(28 * U), footerY + Math.round(34 * U));
-
-      ctx.font = `500 ${Math.round((IS ? 22 : 18) * U)}px system-ui, sans-serif`;
-      ctx.fillStyle = isLight ? '#64748B' : '#94A3B8';
-      ctx.fillText(agencySubtitle || 'Эксперт по новостройкам', PAD + Math.round(28 * U), footerY + Math.round(72 * U));
-      ctx.restore();
-
-      // Phone Right Side
       if (phone) {
         ctx.save();
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'middle';
-        ctx.font = `800 ${Math.round((IS ? 34 : 28) * U)}px system-ui, -apple-system, sans-serif`;
-        ctx.fillStyle = isLight ? '#0052FF' : '#38BDF8';
-        ctx.fillText(phone, w - PAD - Math.round(28 * U), footerY + Math.round(36 * U));
+        const iconR = Math.round((IS ? 18 : (isPortrait ? 15 : 13)) * U);
+        const iconX = PAD + iconR;
+        const iconY = phoneY - iconR / 2;
 
-        ctx.font = `600 ${Math.round((IS ? 20 : 16) * U)}px system-ui, sans-serif`;
-        ctx.fillStyle = isLight ? '#059669' : '#34D399';
-        ctx.fillText('Звоните / Пишите', w - PAD - Math.round(28 * U), footerY + Math.round(72 * U));
+        ctx.beginPath();
+        ctx.arc(iconX, iconY, iconR, 0, Math.PI * 2);
+        ctx.fillStyle = accentColor;
+        ctx.fill();
+
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = Math.round(2.5 * U);
+        ctx.beginPath();
+        ctx.arc(iconX, iconY - Math.round(2 * U), iconR * 0.4, Math.PI * 0.2, Math.PI * 0.8, false);
+        ctx.stroke();
+
+        const textStartX = iconX + iconR + Math.round(16 * U);
+        ctx.font = `800 ${phoneFontSize}px "Medeo Sans", system-ui, sans-serif`;
+        ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
+        ctx.textBaseline = 'middle';
+
+        const phoneStr = phone.startsWith('+') ? phone : (phone.startsWith('8') ? phone.replace(/^8/, '+7') : `+7 ${phone}`);
+        ctx.fillText(`Тел. для связи: ${phoneStr}`, textStartX, iconY);
+
+        if (agentName) {
+          ctx.font = `600 ${Math.round(phoneFontSize * 0.72)}px "Medeo Sans", system-ui, sans-serif`;
+          ctx.fillStyle = subTextColor;
+          ctx.textAlign = 'right';
+          ctx.fillText(agentName, w - PAD, iconY);
+        }
         ctx.restore();
       }
     } finally {
@@ -1213,6 +1119,11 @@ export function DevelopmentBannerModal({
     designTheme,
     composition,
     accentColor,
+    badgeText,
+    showBadge,
+    sloganText,
+    ctaText,
+    showCta,
     devTitle,
     roomTitle,
     areaText,
@@ -1223,7 +1134,6 @@ export function DevelopmentBannerModal({
     showPriceFrom,
     phone,
     agentName,
-    agencySubtitle,
     showMortgage,
     mortgageRate,
     mortgagePayment,
@@ -1234,8 +1144,7 @@ export function DevelopmentBannerModal({
     loadImageSafe,
   ]);
 
-  // Trigger draw on configuration changes
-  React.useEffect(() => {
+  useEffect(() => {
     draw();
   }, [draw]);
 
@@ -1366,13 +1275,13 @@ export function DevelopmentBannerModal({
           <div className="dev-banner-header-info">
             <div className="dev-banner-badge">
               <Sparkles size={14} />
-              <span>Генератор баннера новостройки</span>
+              <span>Рекламный баннер новостройки</span>
             </div>
             <h2 className="dev-banner-title">
               {devTitle} · {roomTitle}
             </h2>
             <p className="dev-banner-subtitle">
-              Рекламный баннер конкретной планировки для соцсетей, Сторис и мессенджеров (без упоминания застройщика)
+              Рекламный креатив конкретной планировки для соцсетей, Сторис и мессенджеров (без упоминания застройщика)
             </p>
           </div>
           <button
@@ -1544,6 +1453,134 @@ export function DevelopmentBannerModal({
                       ))}
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+
+            {/* Advertising Badge / Sticker */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('badge')}
+              >
+                <span className="dev-banner-sec-title">Рекламный бейдж / Стикер</span>
+                {openSections.badge ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.badge && (
+                <div className="dev-banner-sec-content">
+                  <label className="dev-checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={showBadge}
+                      onChange={(e) => setShowBadge(e.target.checked)}
+                    />
+                    <span>Показывать верхний стикер</span>
+                  </label>
+
+                  {showBadge && (
+                    <>
+                      <input
+                        type="text"
+                        className="dev-input"
+                        value={badgeText}
+                        onChange={(e) => setBadgeText(e.target.value)}
+                        placeholder="Текст стикера..."
+                      />
+                      <div className="dev-preset-chips">
+                        {BADGE_PRESETS.map((bp) => (
+                          <button
+                            key={bp}
+                            type="button"
+                            className={`btn-preset-chip ${badgeText === bp ? 'active' : ''}`}
+                            onClick={() => setBadgeText(bp)}
+                          >
+                            {bp}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Slogan / Main Offer */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('slogan')}
+              >
+                <span className="dev-banner-sec-title">Рекламный оффер / Слоган</span>
+                {openSections.slogan ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.slogan && (
+                <div className="dev-banner-sec-content">
+                  <input
+                    type="text"
+                    className="dev-input"
+                    value={sloganText}
+                    onChange={(e) => setSloganText(e.target.value)}
+                    placeholder="Главный продающий заголовок..."
+                  />
+                  <div className="dev-preset-chips">
+                    {SLOGAN_PRESETS.map((sp) => (
+                      <button
+                        key={sp}
+                        type="button"
+                        className={`btn-preset-chip ${sloganText === sp ? 'active' : ''}`}
+                        onClick={() => setSloganText(sp)}
+                      >
+                        {sp}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Call To Action Button (CTA) */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('cta')}
+              >
+                <span className="dev-banner-sec-title">Кнопка призыва (CTA)</span>
+                {openSections.cta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.cta && (
+                <div className="dev-banner-sec-content">
+                  <label className="dev-checkbox-row">
+                    <input
+                      type="checkbox"
+                      checked={showCta}
+                      onChange={(e) => setShowCta(e.target.checked)}
+                    />
+                    <span>Показывать кнопку действия</span>
+                  </label>
+
+                  {showCta && (
+                    <>
+                      <input
+                        type="text"
+                        className="dev-input"
+                        value={ctaText}
+                        onChange={(e) => setCtaText(e.target.value)}
+                        placeholder="Текст на кнопке..."
+                      />
+                      <div className="dev-preset-chips">
+                        {CTA_PRESETS.map((cp) => (
+                          <button
+                            key={cp}
+                            type="button"
+                            className={`btn-preset-chip ${ctaText === cp ? 'active' : ''}`}
+                            onClick={() => setCtaText(cp)}
+                          >
+                            {cp}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -1848,6 +1885,7 @@ export function DevelopmentBannerModal({
                   <p className="dev-sec-hint">
                     Выберите до 4 ключевых преимуществ для размещения на баннере:
                   </p>
+
                   <div className="dev-adv-chips-list">
                     {Array.from(new Set([...DEFAULT_ADVANTAGES, ...selectedAdvantages])).map((adv) => {
                       const isSel = selectedAdvantages.includes(adv);
@@ -1933,13 +1971,6 @@ export function DevelopmentBannerModal({
                         placeholder="Эксперт по новостройкам"
                       />
                     </label>
-                  </div>
-
-                  <div className="dev-banner-note-box">
-                    <ShieldCheck size={16} className="text-emerald" />
-                    <span>
-                      Имя застройщика на баннере <strong>не указывается</strong>. Все звонки и заявки клиентов поступают напрямую вам.
-                    </span>
                   </div>
                 </div>
               )}
@@ -2410,6 +2441,43 @@ export function DevelopmentBannerModal({
           box-shadow: 0 0 0 2px #0052ff;
         }
 
+        /* Preset Chips */
+        .dev-preset-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+        }
+
+        .btn-preset-chip {
+          padding: 4px 8px;
+          border-radius: 6px;
+          border: 1px solid #cbd5e1;
+          background: #ffffff;
+          color: #334155;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+
+        .dark .btn-preset-chip {
+          background: #0f172a;
+          border-color: rgba(255, 255, 255, 0.1);
+          color: #e2e8f0;
+        }
+
+        .btn-preset-chip.active, .btn-preset-chip:hover {
+          border-color: #0052ff;
+          background: rgba(0, 82, 255, 0.08);
+          color: #0052ff;
+        }
+
+        .dark .btn-preset-chip.active, .dark .btn-preset-chip:hover {
+          border-color: #60a5fa;
+          background: rgba(96, 165, 250, 0.15);
+          color: #60a5fa;
+        }
+
         /* Form Inputs */
         .dev-field-grid {
           display: grid;
@@ -2437,10 +2505,6 @@ export function DevelopmentBannerModal({
           font-size: 12px;
           height: 32px;
           box-sizing: border-box;
-          background: #ffffff;
-          color: #0f172a;
-          outline: none;
-        }
           background: #ffffff;
           color: #0f172a;
           outline: none;
@@ -2588,7 +2652,6 @@ export function DevelopmentBannerModal({
           cursor: pointer;
         }
 
-        /* Note Box */
         /* Plan upload and status styles */
         .dev-plan-status-row {
           display: flex;
@@ -2813,30 +2876,6 @@ export function DevelopmentBannerModal({
         .dark .dev-toggles-box {
           background: #0f172a;
           border-color: rgba(255, 255, 255, 0.08);
-        }
-
-        .dev-banner-note-box {
-          display: flex;
-          align-items: flex-start;
-          gap: 8px;
-          padding: 10px 12px;
-          border-radius: 8px;
-          background: rgba(16, 185, 129, 0.08);
-          border: 1px solid rgba(16, 185, 129, 0.2);
-          font-size: 12px;
-          color: #065f46;
-          line-height: 1.4;
-        }
-
-        .dark .dev-banner-note-box {
-          color: #a7f3d0;
-          background: rgba(16, 185, 129, 0.12);
-        }
-
-        .text-emerald {
-          color: #10b981;
-          flex-shrink: 0;
-          margin-top: 2px;
         }
       `}</style>
     </div>
