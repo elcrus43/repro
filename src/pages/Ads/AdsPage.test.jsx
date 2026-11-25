@@ -100,10 +100,11 @@ describe('AdsPage Component', () => {
     const mortgageBtn = screen.getByText('Ипотека');
     fireEvent.click(mortgageBtn);
 
-    // Switch to Slogan tab to verify mortgage slogan is loaded
+    // Switch to Slogan tab to verify mortgage slogan and per-service benefits library are loaded
     fireEvent.click(screen.getByText('2. Слоган & Текст'));
     const textarea = screen.getByPlaceholderText('Введите привлекающий внимание слоган...');
     expect(textarea.value).toContain('ипотек');
+    expect(screen.getByText(/База преимуществ \(Ипотека\)/i)).toBeInTheDocument();
   });
 
   it('allows adjusting font size sliders for slogan and benefits', () => {

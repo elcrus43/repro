@@ -161,27 +161,23 @@ function saveBulletsToStorage(serviceId, bullets) {
   }
 }
 
-const LS_BULLETS_LIBRARY_KEY = 'rem_ads_bullets_library';
-const DEFAULT_BULLETS_LIBRARY = Array.from(
-  new Set(SERVICE_CATEGORIES.flatMap(s => s.bullets || []))
-);
+const LS_BULLETS_LIBRARY_PREFIX = 'rem_ads_bullets_library_';
 
-function loadBulletsLibrary() {
+function loadBulletsLibrary(serviceId, defaultBullets = []) {
   try {
-    const raw = localStorage.getItem(LS_BULLETS_LIBRARY_KEY);
-    if (!raw) return DEFAULT_BULLETS_LIBRARY;
+    const raw = localStorage.getItem(LS_BULLETS_LIBRARY_PREFIX + serviceId);
+    if (!raw) return [...defaultBullets];
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_BULLETS_LIBRARY;
-    // Merge any missing original defaults so old benefit titles never disappear
-    return Array.from(new Set([...parsed, ...DEFAULT_BULLETS_LIBRARY]));
+    if (!Array.isArray(parsed) || parsed.length === 0) return [...defaultBullets];
+    return Array.from(new Set([...parsed, ...defaultBullets]));
   } catch {
-    return DEFAULT_BULLETS_LIBRARY;
+    return [...defaultBullets];
   }
 }
 
-function saveBulletsLibraryToStorage(list) {
+function saveBulletsLibraryToStorage(serviceId, list) {
   try {
-    localStorage.setItem(LS_BULLETS_LIBRARY_KEY, JSON.stringify(list));
+    localStorage.setItem(LS_BULLETS_LIBRARY_PREFIX + serviceId, JSON.stringify(list));
   } catch (e) {
     console.warn('[Ads] Failed to save bullets library:', e);
   }
@@ -210,8 +206,8 @@ export function AdsPage() {
   const [newBadgeText, setNewBadgeText] = useState('');
   const [showAddBadge, setShowAddBadge] = useState(false);
 
-  // Bullets library with persistence (all old + custom benefits)
-  const [bulletsLibrary, setBulletsLibrary] = useState(loadBulletsLibrary);
+  // Bullets library with persistence per service
+  const [bulletsLibrary, setBulletsLibrary] = useState(() => loadBulletsLibrary('sell', SERVICE_CATEGORIES[0].bullets));
   const [editingLibBulletIdx, setEditingLibBulletIdx] = useState(null);
   const [editingLibBulletText, setEditingLibBulletText] = useState('');
   const [showAddLibBullet, setShowAddLibBullet] = useState(false);
@@ -283,6 +279,9 @@ export function AdsPage() {
     setSlogan(service.defaultSlogan);
     const savedBullets = loadSavedBullets(service.id, service.bullets);
     setBullets(savedBullets);
+    setBulletsLibrary(loadBulletsLibrary(service.id, service.bullets));
+    setEditingLibBulletIdx(null);
+    setShowAddLibBullet(false);
     setCtaText(service.ctas[0] || 'Получить консультацию');
   };
 
@@ -332,7 +331,7 @@ export function AdsPage() {
     const updatedLib = [...bulletsLibrary];
     updatedLib[idx] = trimmed;
     setBulletsLibrary(updatedLib);
-    saveBulletsLibraryToStorage(updatedLib);
+    saveBulletsLibraryToStorage(selectedServiceId, updatedLib);
     if (oldVal && bullets.includes(oldVal)) {
       handleUpdateBullets(bullets.map(b => (b === oldVal ? trimmed : b)));
     }
@@ -348,7 +347,7 @@ export function AdsPage() {
     }
     const updatedLib = bulletsLibrary.filter((_, i) => i !== idx);
     setBulletsLibrary(updatedLib);
-    saveBulletsLibraryToStorage(updatedLib);
+    saveBulletsLibraryToStorage(selectedServiceId, updatedLib);
     toast.success('Удалено из базы');
   };
 
@@ -357,7 +356,7 @@ export function AdsPage() {
     if (!trimmed) return;
     const updatedLib = Array.from(new Set([trimmed, ...bulletsLibrary]));
     setBulletsLibrary(updatedLib);
-    saveBulletsLibraryToStorage(updatedLib);
+    saveBulletsLibraryToStorage(selectedServiceId, updatedLib);
     if (!bullets.includes(trimmed)) {
       handleUpdateBullets([...bullets, trimmed]);
     }
@@ -371,13 +370,14 @@ export function AdsPage() {
     if (!trimmed) return;
     const updatedLib = Array.from(new Set([trimmed, ...bulletsLibrary]));
     setBulletsLibrary(updatedLib);
-    saveBulletsLibraryToStorage(updatedLib);
+    saveBulletsLibraryToStorage(selectedServiceId, updatedLib);
     toast.success('Преимущество сохранено в базе');
   };
 
   const handleResetBulletsLibrary = () => {
-    setBulletsLibrary(DEFAULT_BULLETS_LIBRARY);
-    saveBulletsLibraryToStorage(DEFAULT_BULLETS_LIBRARY);
+    const defaults = [...activeService.bullets];
+    setBulletsLibrary(defaults);
+    saveBulletsLibraryToStorage(selectedServiceId, defaults);
     toast.success('База преимуществ восстановлена');
   };
 
@@ -1355,7 +1355,7 @@ export function AdsPage() {
                 <div style={{ paddingTop: 12, borderTop: '1px dashed var(--border)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 6, flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)' }}>
-                      База преимуществ (кликните, чтобы добавить):
+                      База преимуществ ({activeService.shortTitle}) - кликните, чтобы добавить:
                     </span>
                     <button
                       type="button"
