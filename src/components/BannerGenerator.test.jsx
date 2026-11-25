@@ -226,4 +226,36 @@ describe('BannerGenerator phone resolution', () => {
 
     fireEvent.click(coverBtn);
   });
+
+  it('renders sticker categories (communications, amenities, deal status) and allows toggling badges', () => {
+    const property = { id: 'p1', address: 'ул. Ленина 10', price: 3000000 };
+    render(
+      <BannerGenerator
+        property={property}
+        onClose={() => {}}
+      />
+    );
+
+    // Open "Бейджи и стикеры" collapsible
+    const stickersToggle = screen.getByRole('button', { name: /Бейджи и стикеры/i });
+    expect(stickersToggle).toBeInTheDocument();
+    fireEvent.click(stickersToggle);
+
+    // Check category headings
+    expect(screen.getByText('Статус сделки')).toBeInTheDocument();
+    expect(screen.getByText('Коммуникации')).toBeInTheDocument();
+    expect(screen.getByText('Удобства и отделка')).toBeInTheDocument();
+
+    // Toggle communication and amenity stickers
+    const gasBtn = screen.getByRole('button', { name: /Газ подведён/i });
+    expect(gasBtn).toBeInTheDocument();
+    fireEvent.click(gasBtn);
+
+    const designBtn = screen.getByRole('button', { name: /Дизайнерский ремонт/i });
+    expect(designBtn).toBeInTheDocument();
+    fireEvent.click(designBtn);
+
+    // Badge counter should now indicate 2
+    expect(screen.getByText('2 шт.')).toBeInTheDocument();
+  });
 });

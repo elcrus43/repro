@@ -51,7 +51,54 @@ const DESIGN_THEMES = [
     { key: 'glass', label: 'Стекло'  },
 ];
 
-const AVAILABLE_STICKERS = ['Свободная продажа', 'Встречный вариант', 'Срочно', 'Торг уместен', 'Свой текст'];
+const STICKER_CATEGORIES = [
+    {
+        id: 'status',
+        title: 'Статус сделки',
+        items: [
+            'Срочно',
+            'Свободная продажа',
+            'Торг уместен',
+            'Встречный вариант',
+            'Ипотека любого банка',
+            'Ключи в день сделки',
+            'Без комиссии',
+        ],
+    },
+    {
+        id: 'comms',
+        title: 'Коммуникации',
+        items: [
+            'Газ подведён',
+            'Индивидуальное отопление',
+            'Центральные коммуникации',
+            'Скважина',
+            'Септик',
+            'Электричество 15 кВт',
+            'Высокоскоростной интернет',
+        ],
+    },
+    {
+        id: 'amenities',
+        title: 'Удобства и отделка',
+        items: [
+            'Дизайнерский ремонт',
+            'Евроремонт',
+            'Чистовая отделка',
+            'С мебелью и техникой',
+            'Кондиционер',
+            'Тёплый пол',
+            'Панорамные окна',
+            'Гардеробная',
+            'Паркинг / Гараж',
+            'Закрытая территория',
+            'Вид на парк',
+            'Свой текст',
+        ],
+    },
+];
+
+const AVAILABLE_STICKERS = STICKER_CATEGORIES.flatMap(c => c.items);
 
 const DEFAULT_BANNER_IMAGE = 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?auto=format&fit=crop&w=1080&q=80';
 
@@ -624,10 +671,10 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             }
 
             /* ---- 2. TOP GRADIENT (for badges) ---- */
-            const topGradH = Math.round((IS ? 190 : 150) * U);
+            const topGradH = Math.round((IS ? 320 : 260) * U);
             const topGrad = ctx.createLinearGradient(0, 0, 0, topGradH);
-            topGrad.addColorStop(0, isGlass ? 'rgba(0, 0, 0, 0.38)' : 'rgba(0, 0, 0, 0.55)');
-            topGrad.addColorStop(0.5, 'rgba(0, 0, 0, 0.18)');
+            topGrad.addColorStop(0, isGlass ? 'rgba(0, 0, 0, 0.42)' : 'rgba(0, 0, 0, 0.60)');
+            topGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0.22)');
             topGrad.addColorStop(1, 'rgba(0, 0, 0, 0.00)');
             ctx.fillStyle = topGrad;
             ctx.fillRect(0, 0, w, topGradH);
@@ -876,26 +923,26 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
             ctx.fillStyle = isLight ? '#0F172A' : '#FFFFFF';
             ctx.fillText(contactText, PAD, curY + fsPhone * 0.85);
 
-            /* ---- 6. TOP BADGES (DEAL GOAL & STICKERS) IN TOP-RIGHT ---- */
+            /* ---- 6. TOP BADGES (DEAL GOAL & STICKERS) IN TOP-RIGHT (+50% ENLARGED) ---- */
             const badgePad = Math.round((IS ? 56 : (isPortrait ? 46 : 38)) * U);
             let badgeBottom = badgePad;
 
             if (showDealGoal) {
                 const goalStr = (dealGoal === 'custom' ? customGoalText.trim() : dealGoal) || 'Продажа';
                 const badgeText = goalStr.toUpperCase();
-                const badgeH = Math.round((IS ? 64 : (isPortrait ? 56 : 48)) * U);
-                const bFont = Math.round((IS ? 26 : (isPortrait ? 23 : 20)) * U);
+                const badgeH = Math.round((IS ? 96 : (isPortrait ? 84 : 72)) * U);
+                const bFont = Math.round((IS ? 39 : (isPortrait ? 35 : 30)) * U);
                 ctx.font = `800 ${bFont}px 'Medeo Sans', system-ui, sans-serif`;
                 const tw = ctx.measureText(badgeText).width;
-                const bPadX = Math.round((IS ? 28 : 22) * U);
+                const bPadX = Math.round((IS ? 42 : 33) * U);
                 const badgeW = tw + bPadX * 2;
                 const badgeX = w - badgePad - badgeW;
                 const badgeY = badgePad;
 
                 ctx.save();
-                ctx.shadowColor = 'rgba(0,0,0,0.35)';
-                ctx.shadowBlur = Math.round(16 * U);
-                ctx.shadowOffsetY = Math.round(4 * U);
+                ctx.shadowColor = 'rgba(0,0,0,0.38)';
+                ctx.shadowBlur = Math.round(20 * U);
+                ctx.shadowOffsetY = Math.round(5 * U);
 
                 const goalColor = goalStr === 'Аренда' ? '#10b981'
                     : goalStr === 'Посуточно' ? '#f97316'
@@ -903,7 +950,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     : accentColor;
 
                 ctx.beginPath();
-                safeRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, Math.round(12 * U));
+                safeRoundRect(ctx, badgeX, badgeY, badgeW, badgeH, Math.round(18 * U));
                 ctx.fillStyle = goalColor;
                 ctx.fill();
                 ctx.restore();
@@ -914,32 +961,32 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                 ctx.fillText(badgeText, badgeX + badgeW / 2, badgeY + badgeH / 2 + bFont * 0.35);
                 ctx.textAlign = 'left';
 
-                badgeBottom = badgeY + badgeH + Math.round(12 * U);
+                badgeBottom = badgeY + badgeH + Math.round(16 * U);
             }
 
             if (stickers.length) {
-                const sh = Math.round((IS ? 58 : (isPortrait ? 50 : 44)) * U);
-                const sf = Math.round((IS ? 24 : (isPortrait ? 21 : 18)) * U);
+                const sh = Math.round((IS ? 87 : (isPortrait ? 75 : 66)) * U);
+                const sf = Math.round((IS ? 36 : (isPortrait ? 32 : 27)) * U);
                 let sy = showDealGoal ? badgeBottom : badgePad;
 
                 stickers.forEach(s => {
                     const txt = s === 'Свой текст' ? (customStickerText.trim() || 'Свой текст') : s;
                     ctx.font = `700 ${sf}px 'Medeo Sans', system-ui, sans-serif`;
-                    const tw = ctx.measureText(txt.toUpperCase()).width + Math.round(40 * U);
+                    const tw = ctx.measureText(txt.toUpperCase()).width + Math.round(60 * U);
                     const sx = w - badgePad - tw;
 
                     ctx.save();
-                    ctx.shadowColor = 'rgba(0,0,0,0.35)';
-                    ctx.shadowBlur = Math.round(14 * U);
-                    ctx.shadowOffsetY = Math.round(3 * U);
-                    ctx.fillStyle = s === 'Срочно' ? '#EF4444' : 'rgba(15, 23, 42, 0.75)';
+                    ctx.shadowColor = 'rgba(0,0,0,0.38)';
+                    ctx.shadowBlur = Math.round(18 * U);
+                    ctx.shadowOffsetY = Math.round(4 * U);
+                    ctx.fillStyle = s === 'Срочно' ? '#EF4444' : 'rgba(15, 23, 42, 0.80)';
                     ctx.beginPath();
-                    safeRoundRect(ctx, sx, sy, tw, sh, Math.round(10 * U));
+                    safeRoundRect(ctx, sx, sy, tw, sh, Math.round(15 * U));
                     ctx.fill();
 
                     if (s !== 'Срочно') {
-                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
-                        ctx.lineWidth = Math.round(1.5 * U);
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+                        ctx.lineWidth = Math.round(2 * U);
                         ctx.stroke();
                     }
                     ctx.restore();
@@ -949,7 +996,7 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                     ctx.textAlign = 'center';
                     ctx.fillText(txt.toUpperCase(), sx + tw / 2, sy + sh / 2 + sf * 0.35);
                     ctx.textAlign = 'left';
-                    sy += sh + Math.round(10 * U);
+                    sy += sh + Math.round(14 * U);
                 });
             }
 
@@ -1389,46 +1436,78 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             </div>
                         </Collapsible>
 
-                        {/* STICKERS */}
+                        {/* STICKERS / BADGES */}
                         <Collapsible
-                            label="Стикеры"
+                            label="Бейджи и стикеры"
                             icon={Tag}
                             badge={stickers.length ? `${stickers.length} шт.` : null}
                             open={openSections.stickers}
                             onToggle={() => toggleSection('stickers')}
                         >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                {AVAILABLE_STICKERS.map(s => {
-                                    const on = stickers.includes(s);
-                                    return (
-                                        <button
-                                            key={s}
-                                            type="button"
-                                            onClick={() => setStickers(p => on ? p.filter(x => x !== s) : [...p, s])}
-                                            style={{
-                                                ...S.stickerRow,
-                                                fontWeight: on ? 600 : 400,
-                                                color: on ? AC : 'var(--text)',
-                                                background: on ? 'var(--primary-light, rgba(0,82,255,0.06))' : 'transparent',
-                                            }}
-                                        >
-                                            <span style={{
-                                                ...S.stickerDot,
-                                                background: on ? AC : 'var(--border)',
-                                                borderColor: on ? AC : 'var(--border)',
-                                            }} />
-                                            {s}
-                                        </button>
-                                    );
-                                })}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                                {STICKER_CATEGORIES.map(cat => (
+                                    <div key={cat.id}>
+                                        <div style={{
+                                            fontSize: 11,
+                                            fontWeight: 700,
+                                            color: 'var(--text-secondary)',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.04em',
+                                            marginBottom: 6,
+                                        }}>
+                                            {cat.title}
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                            {cat.items.map(s => {
+                                                const on = stickers.includes(s);
+                                                return (
+                                                    <button
+                                                        key={s}
+                                                        type="button"
+                                                        onClick={() => setStickers(p => on ? p.filter(x => x !== s) : [...p, s])}
+                                                        style={{
+                                                            padding: '6px 11px',
+                                                            borderRadius: 16,
+                                                            fontSize: 12,
+                                                            fontWeight: on ? 600 : 400,
+                                                            border: on ? `1px solid ${AC}` : '1px solid var(--border)',
+                                                            background: on ? 'var(--primary-light, rgba(0,82,255,0.09))' : 'var(--surface-secondary, rgba(0,0,0,0.02))',
+                                                            color: on ? AC : 'var(--text)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s ease',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: 5,
+                                                            lineHeight: 1.2,
+                                                        }}
+                                                    >
+                                                        <span style={{
+                                                            width: 6,
+                                                            height: 6,
+                                                            borderRadius: '50%',
+                                                            background: on ? AC : 'transparent',
+                                                            border: on ? `1px solid ${AC}` : '1px solid var(--text-tertiary, #94a3b8)',
+                                                            flexShrink: 0,
+                                                        }} />
+                                                        {s}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+
                                 {stickers.includes('Свой текст') && (
-                                    <input
-                                        type="text"
-                                        value={customStickerText}
-                                        onChange={e => setCustomSticker(e.target.value)}
-                                        placeholder="Свой текст стикера..."
-                                        style={{ ...S.input, marginTop: 6 }}
-                                    />
+                                    <div style={{ marginTop: 2 }}>
+                                        <div style={S.subLabel}>Свой текст стикера</div>
+                                        <input
+                                            type="text"
+                                            value={customStickerText}
+                                            onChange={e => setCustomSticker(e.target.value)}
+                                            placeholder="Введите свой текст..."
+                                            style={S.input}
+                                        />
+                                    </div>
                                 )}
                             </div>
                         </Collapsible>
