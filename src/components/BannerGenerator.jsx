@@ -1,7 +1,8 @@
 ﻿import React from 'react';
 import {
     X, Download, Share2, Settings, ChevronDown, ChevronUp,
-    Shuffle, Sparkles, Layers, Image as ImageIcon, Phone, Tag, Check, Palette
+    Shuffle, Sparkles, Layers, Image as ImageIcon, Phone, Tag, Check, Palette,
+    Save, Trash2, Bookmark
 } from 'lucide-react';
 import { formatNumber, formatPhone } from '../utils/format';
 import { useApp } from '../context/AppContext';
@@ -11,6 +12,12 @@ import {
     getSocialTokenStatus,
     shareBannerToSocial,
 } from '../lib/socialShare';
+import {
+    fetchSavedBanners,
+    saveBannerToDb,
+    deleteSavedBanner,
+    shareSavedBanner,
+} from '../lib/savedBanners';
 
 /* ================================================================
    CONSTANTS
@@ -518,12 +525,30 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
     const [shareFeedback, setShareFeedback]     = React.useState(null);
     const [tokenStatus, setTokenStatus]         = React.useState(null);
 
+    // Saved banners in DB
+    const [savedBanners, setSavedBanners] = React.useState([]);
+    const [isSavingBanner, setIsSavingBanner] = React.useState(false);
+
     // Collapsible sections
     const [openSections, setOpenSections] = React.useState({
         format: true, theme: true, goal: true, photo: true, agent: true,
-        layout: true, stickers: false, colors: true,
+        layout: true, stickers: false, colors: true, saved: false,
     });
     const toggleSection = (key) => setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+    React.useEffect(() => {
+        let active = true;
+        fetchSavedBanners({
+            userId: effectiveUser?.id,
+            kind: 'property',
+            propertyId: property?.id || null,
+        }).then(({ data }) => {
+            if (active && Array.isArray(data)) {
+                setSavedBanners(data);
+            }
+        });
+        return () => { active = false; };
+    }, [effectiveUser?.id, property?.id]);
 
     const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 
@@ -1069,6 +1094,61 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
         }
     };
 
+    const handleSaveToDb = async () => {
+        if (!canvasRef.current || isSavingBanner) return;
+        setIsSavingBanner(true);
+        setShareFeedback(null);
+        try {
+            const caption = buildBannerCaption(property, phone, locationText);
+            const title = property?.address || property?.title || property?.city || 'Баннер объекта';
+            const { data, error } = await saveBannerToDb({
+                userId: effectiveUser?.id,
+                kind: 'property',
+                propertyId: property?.id || null,
+                title,
+                format,
+                canvas: canvasRef.current,
+                caption,
+                config: { format, designTheme, accentColor, dealGoal },
+            });
+            if (error && !data) {
+                setShareFeedback({ type: 'error', text: 'Не удалось сохранить баннер' });
+                return;
+            }
+            if (data) {
+                setSavedBanners(prev => [data, ...prev]);
+                setOpenSections(prev => ({ ...prev, saved: true }));
+                setShareFeedback({ type: 'success', text: 'Баннер сохранен в базе' });
+            }
+        } catch (err) {
+            setShareFeedback({ type: 'error', text: err?.message || 'Ошибка сохранения баннера' });
+        } finally {
+            setIsSavingBanner(false);
+        }
+    };
+
+    const handleDeleteSaved = async (bannerId) => {
+        const { error } = await deleteSavedBanner({ id: bannerId, userId: effectiveUser?.id });
+        if (error) {
+            setShareFeedback({ type: 'error', text: 'Не удалось удалить баннер' });
+            return;
+        }
+        setSavedBanners(prev => prev.filter(b => String(b.id) !== String(bannerId)));
+        setShareFeedback({ type: 'info', text: 'Баннер удален из базы' });
+    };
+
+    const handleShareSaved = async (banner) => {
+        const res = await shareSavedBanner({
+            imageData: banner.image_data,
+            title: banner.title || 'Баннер объекта',
+            caption: banner.caption || buildBannerCaption(property, phone, locationText),
+            fileName: `banner-${property?.id || 'object'}-${banner.format || 'story'}.png`,
+        });
+        if (res?.ok) {
+            setShareFeedback({ type: 'success', text: res.message });
+        }
+    };
+
     /* ================================================================
        RENDER
        ================================================================ */
@@ -1512,17 +1592,110 @@ export function BannerGenerator({ property = {}, currentUser, agent: propAgent, 
                             </div>
                         </Collapsible>
 
+                        {/* SAVED BANNERS IN DB */}
+                        <Collapsible
+                            id="sec-saved"
+                            label="Сохранённые баннеры"
+                            icon={Bookmark}
+                            badge={savedBanners.length > 0 ? `${savedBanners.length}` : null}
+                            open={openSections.saved}
+                            onToggle={() => toggleSection('saved')}
+                        >
+                            {savedBanners.length === 0 ? (
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: '10px 6px' }}>
+                                    Нажмите «Сохранить» ниже, чтобы сохранить баннер в базу.
+                                </div>
+                            ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                    {savedBanners.map(b => (
+                                        <div
+                                            key={b.id}
+                                            style={{
+                                                borderRadius: 10,
+                                                border: '1px solid var(--border)',
+                                                background: 'var(--bg)',
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                            }}
+                                        >
+                                            <div style={{ height: 96, background: '#0B0F19', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                                                <img src={b.image_data} alt={b.title || 'Баннер'} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            </div>
+                                            <div style={{ padding: 6, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    {b.format || 'story'} • {b.created_at ? new Date(b.created_at).toLocaleDateString('ru-RU') : 'сегодня'}
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 4 }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleShareSaved(b)}
+                                                        title="Поделиться"
+                                                        style={{
+                                                            flex: 1, padding: '4px', borderRadius: 6, border: '1px solid var(--border)',
+                                                            background: 'var(--surface)', color: 'var(--text)', fontSize: 10, fontWeight: 600,
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+                                                        }}
+                                                    >
+                                                        <Share2 size={10} />
+                                                        <span>Поделиться</span>
+                                                    </button>
+                                                    <a
+                                                        href={b.image_data}
+                                                        download={`banner-${property?.id || 'object'}-${b.format || 'story'}.png`}
+                                                        title="Скачать"
+                                                        style={{
+                                                            padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)',
+                                                            background: 'var(--surface)', color: AC, display: 'flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none',
+                                                        }}
+                                                    >
+                                                        <Download size={10} />
+                                                    </a>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteSaved(b.id)}
+                                                        title="Удалить"
+                                                        style={{
+                                                            padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)',
+                                                            background: 'var(--surface)', color: 'var(--danger, #ef4444)', cursor: 'pointer',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        }}
+                                                    >
+                                                        <Trash2 size={10} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Collapsible>
+
                     </div>
 
                     {/* ---- Actions footer ---- */}
-                    <div style={S.panelFooter}>
+                    <div style={{ ...S.panelFooter, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                         <button
                             type="button"
                             onClick={handleDownload}
                             style={{ ...S.btnPrimary, background: AC }}
                         >
-                            <Download size={16} style={{ flexShrink: 0 }} />
-                            <span>Скачать баннер</span>
+                            <Download size={15} style={{ flexShrink: 0 }} />
+                            <span>Скачать</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSaveToDb}
+                            disabled={isSavingBanner}
+                            style={{
+                                ...S.btnPrimary,
+                                background: 'var(--primary-light, rgba(0,82,255,0.1))',
+                                color: AC,
+                                border: `1px solid ${AC}`,
+                            }}
+                        >
+                            <Save size={15} style={{ flexShrink: 0 }} />
+                            <span>{isSavingBanner ? 'Сохраняем...' : 'Сохранить'}</span>
                         </button>
                     </div>
 

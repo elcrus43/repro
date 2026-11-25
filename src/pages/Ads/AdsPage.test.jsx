@@ -15,6 +15,23 @@ vi.mock('../../components/Toast', () => ({
   useToastContext: () => ({ toast: mockToast })
 }));
 
+vi.mock('../../lib/savedBanners', () => ({
+  fetchSavedBanners: vi.fn().mockResolvedValue({ data: [], error: null }),
+  saveBannerToDb: vi.fn().mockResolvedValue({
+    data: {
+      id: 'saved-1',
+      kind: 'ads',
+      title: 'Тестовый баннер',
+      format: 'story',
+      image_data: 'data:image/png;base64,mock',
+      created_at: new Date().toISOString()
+    },
+    error: null
+  }),
+  deleteSavedBanner: vi.fn().mockResolvedValue({ error: null }),
+  shareSavedBanner: vi.fn().mockResolvedValue({ ok: true, message: 'Баннер отправлен' })
+}));
+
 vi.mock('../../context/AppContext', () => ({
   useApp: () => ({
     state: {
@@ -270,6 +287,28 @@ describe('AdsPage Component', () => {
     fireEvent.click(screen.getByText('5. Контакты'));
     expect(screen.getByText(/Цвет телефона/i)).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Цвет телефона: Изумруд'));
+  });
+
+  it('allows saving a banner to database and deleting it from saved gallery', async () => {
+    render(<AdsPage />);
+
+    expect(screen.getByText(/Сохранённые баннеры \(0\)/i)).toBeInTheDocument();
+
+    const saveBtn = screen.getByText('Сохранить');
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(mockToast.success).toHaveBeenCalledWith('Баннер сохранен в базе');
+      expect(screen.getByText(/Сохранённые баннеры \(1\)/i)).toBeInTheDocument();
+    });
+
+    const delBtn = screen.getByTitle('Удалить баннер');
+    fireEvent.click(delBtn);
+
+    await waitFor(() => {
+      expect(mockToast.success).toHaveBeenCalledWith('Баннер удален');
+      expect(screen.getByText(/Сохранённые баннеры \(0\)/i)).toBeInTheDocument();
+    });
   });
 
   it('renders canvas correctly using renderServiceBanner without exceptions', () => {

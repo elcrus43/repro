@@ -30,11 +30,19 @@ import {
   ChevronRight,
   Trash2,
   Plus,
-  Pencil
+  Pencil,
+  Save,
+  Bookmark
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToastContext } from '../../components/Toast';
 import { formatPhone } from '../../utils/format';
+import {
+  fetchSavedBanners,
+  saveBannerToDb,
+  deleteSavedBanner,
+  shareSavedBanner
+} from '../../lib/savedBanners';
 import {
   SERVICE_CATEGORIES,
   BANNER_FORMATS,
@@ -221,6 +229,8 @@ export function AdsPage() {
   const [activeTab, setActiveTab] = useState('service'); // 'service' | 'slogan' | 'design' | 'agent' | 'cta'
   const [isCopied, setIsCopied] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
+  const [savedBanners, setSavedBanners] = useState([]);
 
   // Canvas Refs & Loaded Image Elements
   const canvasRef = useRef(null);
@@ -489,6 +499,17 @@ export function AdsPage() {
     reader.readAsDataURL(file);
   };
 
+  // Load saved ads banners from DB
+  useEffect(() => {
+    let active = true;
+    fetchSavedBanners({ userId: currentUser?.id, kind: 'ads' }).then(({ data }) => {
+      if (active && Array.isArray(data)) {
+        setSavedBanners(data);
+      }
+    });
+    return () => { active = false; };
+  }, [currentUser?.id]);
+
   // Download high-resolution PNG
   const handleDownload = () => {
     if (!canvasRef.current) return;
@@ -560,6 +581,73 @@ export function AdsPage() {
       }
     } else {
       handleDownload();
+    }
+  };
+
+  const handleSaveBanner = async () => {
+    if (!canvasRef.current || isSavingBanner) return;
+    setIsSavingBanner(true);
+    try {
+      const { data, error } = await saveBannerToDb({
+        userId: currentUser?.id,
+        kind: 'ads',
+        title: slogan ? slogan.slice(0, 80) : activeService.shortTitle,
+        format: formatId,
+        canvas: canvasRef.current,
+        caption: postText,
+        config: {
+          selectedServiceId,
+          badgeText,
+          slogan,
+          bullets,
+          ctaText,
+          bottomTone,
+          accentColor,
+          layoutMode,
+          sloganWeight,
+          sloganScale,
+          bulletScale,
+          sloganColor,
+          bulletColor,
+          phoneColor,
+          textBackdrop
+        }
+      });
+      if (error && !data) {
+        toast.error('Не удалось сохранить баннер в базу');
+        return;
+      }
+      if (data) {
+        setSavedBanners(prev => [data, ...prev]);
+        toast.success('Баннер сохранен в базе');
+      }
+    } catch (err) {
+      console.error('[AdsPage] Save failed:', err);
+      toast.error('Ошибка при сохранении баннера');
+    } finally {
+      setIsSavingBanner(false);
+    }
+  };
+
+  const handleDeleteSavedBanner = async (bannerId) => {
+    const { error } = await deleteSavedBanner({ id: bannerId, userId: currentUser?.id });
+    if (error) {
+      toast.error('Не удалось удалить баннер');
+      return;
+    }
+    setSavedBanners(prev => prev.filter(b => String(b.id) !== String(bannerId)));
+    toast.success('Баннер удален');
+  };
+
+  const handleShareSavedBanner = async (banner) => {
+    const res = await shareSavedBanner({
+      imageData: banner.image_data,
+      title: banner.title || 'Рекламный баннер',
+      caption: banner.caption || postText,
+      fileName: `banner-ads-${banner.format || 'story'}.png`
+    });
+    if (res?.ok) {
+      toast.success(res.message);
     }
   };
 
@@ -2185,47 +2273,71 @@ export function AdsPage() {
             </div>
 
             {/* Export Action Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginTop: 10 }}>
               <button
                 type="button"
                 onClick={handleDownload}
                 disabled={isDownloading}
                 style={{
-                  padding: '9px 12px',
+                  padding: '9px 8px',
                   borderRadius: 8,
                   border: 'none',
                   background: 'var(--primary)',
                   color: '#ffffff',
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  gap: 5,
                   cursor: 'pointer',
                   boxShadow: '0 2px 8px rgba(0, 82, 255, 0.25)',
                   transition: 'all 0.2s ease'
                 }}
               >
                 <Download size={14} />
-                <span>{isDownloading ? 'Сохраняем...' : 'Скачать PNG'}</span>
+                <span>{isDownloading ? '...' : 'Скачать'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSaveBanner}
+                disabled={isSavingBanner}
+                style={{
+                  padding: '9px 8px',
+                  borderRadius: 8,
+                  border: '1px solid var(--primary)',
+                  background: 'rgba(0, 82, 255, 0.08)',
+                  color: 'var(--primary)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 5,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <Save size={14} />
+                <span>{isSavingBanner ? '...' : 'Сохранить'}</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleShare}
                 style={{
-                  padding: '9px 12px',
+                  padding: '9px 8px',
                   borderRadius: 8,
                   border: '1px solid var(--border)',
                   background: 'var(--surface)',
                   color: 'var(--text)',
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: 600,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 6,
+                  gap: 5,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease'
                 }}
@@ -2280,6 +2392,134 @@ export function AdsPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* Saved Ads Banners Gallery */}
+      <div style={{
+        marginTop: 20,
+        background: 'var(--surface)',
+        borderRadius: 16,
+        border: '1px solid var(--border)',
+        padding: 16
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Bookmark size={16} color="var(--primary)" />
+            <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', margin: 0 }}>
+              Сохранённые баннеры ({savedBanners.length})
+            </h3>
+          </div>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            Сохраняются в базе - можно скачать, поделиться или удалить
+          </span>
+        </div>
+
+        {savedBanners.length === 0 ? (
+          <div style={{
+            padding: '18px 12px',
+            textAlign: 'center',
+            color: 'var(--text-muted)',
+            fontSize: 12,
+            background: 'var(--bg)',
+            borderRadius: 10,
+            border: '1px dashed var(--border)'
+          }}>
+            Пока нет сохранённых баннеров. Нажмите «Сохранить» под предпросмотром, чтобы добавить баннер в базу.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(175px, 1fr))', gap: 10 }}>
+            {savedBanners.map((b) => (
+              <div
+                key={b.id}
+                style={{
+                  background: 'var(--bg)',
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column'
+                }}
+              >
+                <div style={{ height: 150, background: '#0B0F19', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <img
+                    src={b.image_data}
+                    alt={b.title || 'Баннер'}
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                  />
+                </div>
+                <div style={{ padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {b.title || 'Рекламный баннер'}
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>
+                    {b.format || 'story'} • {b.created_at ? new Date(b.created_at).toLocaleDateString('ru-RU') : 'сегодня'}
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => handleShareSavedBanner(b)}
+                      title="Поделиться"
+                      style={{
+                        flex: 1,
+                        padding: '5px 6px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        fontSize: 10,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 4
+                      }}
+                    >
+                      <Share2 size={11} />
+                      <span>Поделиться</span>
+                    </button>
+                    <a
+                      href={b.image_data}
+                      download={`banner-ads-${b.format || 'story'}.png`}
+                      title="Скачать"
+                      style={{
+                        padding: '5px 7px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--primary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <Download size={11} />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSavedBanner(b.id)}
+                      title="Удалить баннер"
+                      style={{
+                        padding: '5px 7px',
+                        borderRadius: 6,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--danger, #ef4444)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
