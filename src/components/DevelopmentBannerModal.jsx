@@ -562,7 +562,7 @@ export function DevelopmentBannerModal({
   const [isMobile, setIsMobile] = useState(() =>
     typeof window !== 'undefined' ? window.innerWidth <= 768 : false
   );
-  const [mobileTab, setMobileTab] = useState('editor'); // 'editor' | 'preview'
+  const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'editor'
 
   useEffect(() => {
     const handleResize = () => {
@@ -572,20 +572,12 @@ export function DevelopmentBannerModal({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Collapsible control sections
+  // Collapsible control sections (4 consolidated groups)
   const [openSections, setOpenSections] = useState({
-    format: true,
-    theme: true,
-    composition: true,
-    badge: true,
-    slogan: true,
-    cta: true,
-    plan: true,
-    photos: true,
-    data: true,
-    mortgage: true,
-    advantages: true,
-    agent: true,
+    style: true,
+    offer: true,
+    visuals: true,
+    details: true,
   });
 
   const toggleSection = (key) => {
@@ -1313,17 +1305,17 @@ export function DevelopmentBannerModal({
           <div className="dev-banner-mobile-nav">
             <button
               type="button"
-              className={`btn-mobile-nav ${mobileTab === 'editor' ? 'active' : ''}`}
-              onClick={() => setMobileTab('editor')}
-            >
-              <span>⚙️ Настройки и превью</span>
-            </button>
-            <button
-              type="button"
               className={`btn-mobile-nav ${mobileTab === 'preview' ? 'active' : ''}`}
               onClick={() => setMobileTab('preview')}
             >
               <span>👁️ Готовый баннер</span>
+            </button>
+            <button
+              type="button"
+              className={`btn-mobile-nav ${mobileTab === 'editor' ? 'active' : ''}`}
+              onClick={() => setMobileTab('editor')}
+            >
+              <span>⚙️ Настройки</span>
             </button>
           </div>
         )}
@@ -1364,15 +1356,27 @@ export function DevelopmentBannerModal({
                 <span>{copyFeedback ? 'Скопировано!' : 'Копировать'}</span>
               </button>
 
-              <button
-                type="button"
-                className={`btn-banner-action secondary ${copyPostFeedback ? 'success' : ''}`}
-                onClick={handleCopyPostText}
-                title="Скопировать готовый продающий текст поста для соцсетей"
-              >
-                {copyPostFeedback ? <Check size={16} /> : <Share2 size={16} />}
-                <span>{copyPostFeedback ? 'Текст скопирован!' : 'Текст поста'}</span>
-              </button>
+              {isMobile ? (
+                <button
+                  type="button"
+                  className="btn-banner-action secondary"
+                  onClick={() => setMobileTab('editor')}
+                  title="Перейти к настройкам баннера"
+                >
+                  <Sparkles size={16} />
+                  <span>Настройки</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`btn-banner-action secondary ${copyPostFeedback ? 'success' : ''}`}
+                  onClick={handleCopyPostText}
+                  title="Скопировать готовый продающий текст поста для соцсетей"
+                >
+                  {copyPostFeedback ? <Check size={16} /> : <Share2 size={16} />}
+                  <span>{copyPostFeedback ? 'Текст скопирован!' : 'Текст поста'}</span>
+                </button>
+              )}
             </div>
 
             {/* Direct Social Share Buttons */}
@@ -1405,606 +1409,560 @@ export function DevelopmentBannerModal({
             </div>
           </div>
 
-          {/* Controls Sidebar Column */}
+          {/* Controls Sidebar Column: 4 Consolidated Intuitive Groups */}
           <div className="dev-banner-sidebar">
-            {/* Format Selector */}
+            {/* GROUP 1: Style & Theme */}
             <div className="dev-banner-section">
               <div
                 className="dev-banner-sec-head"
-                onClick={() => toggleSection('format')}
+                onClick={() => toggleSection('style')}
               >
-                <span className="dev-banner-sec-title">Формат баннера</span>
-                {openSections.format ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                <span className="dev-banner-sec-title">🎨 Оформление и стиль</span>
+                {openSections.style ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </div>
-              {openSections.format && (
-                <div className="dev-banner-format-tabs">
-                  {Object.entries(BANNER_FORMATS).map(([key, f]) => (
-                    <button
-                      key={key}
-                      type="button"
-                      className={`btn-format-tab ${format === key ? 'active' : ''}`}
-                      onClick={() => setFormat(key)}
-                    >
-                      <strong>{f.label}</strong>
-                      <span className="format-hint">{f.hint}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Design Theme & Composition */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('theme')}
-              >
-                <span className="dev-banner-sec-title">Тема и композиция</span>
-                {openSections.theme ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.theme && (
+              {openSections.style && (
                 <div className="dev-banner-sec-content">
-                  <div className="dev-theme-tabs">
-                    {DESIGN_THEMES.map((t) => (
-                      <button
-                        key={t.key}
-                        type="button"
-                        className={`btn-theme-tab ${designTheme === t.key ? 'active' : ''}`}
-                        onClick={() => setDesignTheme(t.key)}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="dev-composition-tabs">
-                    {COMPOSITION_MODES.map((c) => (
-                      <button
-                        key={c.key}
-                        type="button"
-                        className={`btn-comp-tab ${composition === c.key ? 'active' : ''}`}
-                        onClick={() => setComposition(c.key)}
-                        title={c.hint}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Accent Color Palette */}
-                  <div className="dev-color-row">
-                    <span className="dev-color-label">Акцент:</span>
-                    <div className="dev-color-dots">
-                      {ACCENT_COLORS.map((hex) => (
+                  {/* Format Selector */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Формат баннера</span>
+                    <div className="dev-banner-format-tabs">
+                      {Object.entries(BANNER_FORMATS).map(([key, f]) => (
                         <button
-                          key={hex}
+                          key={key}
                           type="button"
-                          className={`btn-color-dot ${accentColor === hex ? 'active' : ''}`}
-                          style={{ backgroundColor: hex }}
-                          onClick={() => setAccentColor(hex)}
-                          aria-label={`Цвет ${hex}`}
-                        />
+                          className={`btn-format-tab ${format === key ? 'active' : ''}`}
+                          onClick={() => setFormat(key)}
+                        >
+                          <strong>{f.label}</strong>
+                          <span className="format-hint">{f.hint}</span>
+                        </button>
                       ))}
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
 
-            {/* Advertising Badge / Sticker */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('badge')}
-              >
-                <span className="dev-banner-sec-title">Рекламный бейдж / Стикер</span>
-                {openSections.badge ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.badge && (
-                <div className="dev-banner-sec-content">
-                  <label className="dev-checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={showBadge}
-                      onChange={(e) => setShowBadge(e.target.checked)}
-                    />
-                    <span>Показывать верхний стикер</span>
-                  </label>
-
-                  {showBadge && (
-                    <>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={badgeText}
-                        onChange={(e) => setBadgeText(e.target.value)}
-                        placeholder="Текст стикера..."
-                      />
-                      <div className="dev-preset-chips">
-                        {BADGE_PRESETS.map((bp) => (
-                          <button
-                            key={bp}
-                            type="button"
-                            className={`btn-preset-chip ${badgeText === bp ? 'active' : ''}`}
-                            onClick={() => setBadgeText(bp)}
-                          >
-                            {bp}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Slogan / Main Offer */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('slogan')}
-              >
-                <span className="dev-banner-sec-title">Рекламный оффер / Слоган</span>
-                {openSections.slogan ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.slogan && (
-                <div className="dev-banner-sec-content">
-                  <input
-                    type="text"
-                    className="dev-input"
-                    value={sloganText}
-                    onChange={(e) => setSloganText(e.target.value)}
-                    placeholder="Главный продающий заголовок..."
-                  />
-                  <div className="dev-preset-chips">
-                    {SLOGAN_PRESETS.map((sp) => (
-                      <button
-                        key={sp}
-                        type="button"
-                        className={`btn-preset-chip ${sloganText === sp ? 'active' : ''}`}
-                        onClick={() => setSloganText(sp)}
-                      >
-                        {sp}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Call To Action Button (CTA) */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('cta')}
-              >
-                <span className="dev-banner-sec-title">Кнопка призыва (CTA)</span>
-                {openSections.cta ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.cta && (
-                <div className="dev-banner-sec-content">
-                  <label className="dev-checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={showCta}
-                      onChange={(e) => setShowCta(e.target.checked)}
-                    />
-                    <span>Показывать кнопку действия</span>
-                  </label>
-
-                  {showCta && (
-                    <>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={ctaText}
-                        onChange={(e) => setCtaText(e.target.value)}
-                        placeholder="Текст на кнопке..."
-                      />
-                      <div className="dev-preset-chips">
-                        {CTA_PRESETS.map((cp) => (
-                          <button
-                            key={cp}
-                            type="button"
-                            className={`btn-preset-chip ${ctaText === cp ? 'active' : ''}`}
-                            onClick={() => setCtaText(cp)}
-                          >
-                            {cp}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Floorplan CAD Image Section */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('plan')}
-              >
-                <span className="dev-banner-sec-title">Чертеж планировки</span>
-                {openSections.plan ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.plan && (
-                <div className="dev-banner-sec-content">
-                  <div className="dev-plan-status-row">
-                    <div className="dev-plan-thumb-wrap">
-                      {planImageUrl ? (
-                        <img
-                          src={planImageUrl}
-                          alt="Чертеж"
-                          className="dev-plan-thumb-img"
-                        />
-                      ) : (
-                        <div className="dev-plan-thumb-placeholder">
-                          <ImageIcon size={20} />
-                        </div>
-                      )}
-                    </div>
-                    <div className="dev-plan-status-info">
-                      <strong className="dev-plan-status-title">
-                        {planImageUrl ? 'Чертеж прикреплен' : 'Чертеж не загружен'}
-                      </strong>
-                      <span className="dev-plan-status-sub">
-                        {customPlanUrl
-                          ? 'Загружен локальный файл'
-                          : planImageUrl
-                          ? 'Взят из каталога новостройки'
-                          : 'Отображается плейсхолдер'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="dev-plan-actions-row">
-                    <button
-                      type="button"
-                      className="btn-plan-action primary"
-                      onClick={() => planFileInputRef.current?.click()}
-                    >
-                      <Upload size={14} />
-                      <span>{planImageUrl ? 'Заменить чертеж' : 'Загрузить чертеж'}</span>
-                    </button>
-                    {customPlanUrl && (
-                      <button
-                        type="button"
-                        className="btn-plan-action secondary"
-                        onClick={handleResetPlan}
-                        title="Вернуть исходную планировку из каталога"
-                      >
-                        <RotateCcw size={13} />
-                        <span>Сбросить</span>
-                      </button>
-                    )}
-                    <input
-                      ref={planFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={handlePlanUpload}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Development Photos Grid Section */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('photos')}
-              >
-                <div className="dev-banner-sec-title-wrap">
-                  <span className="dev-banner-sec-title">Фотографии ЖК (сетка)</span>
-                  <span className="dev-photo-count-pill">{selectedGridImages.length} из 4</span>
-                </div>
-                {openSections.photos ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.photos && (
-                <div className="dev-banner-sec-content">
-                  <p className="dev-sec-hint">
-                    Выберите от 1 до 4 фото для формирования сетки ЖК на баннере (нажмите на фото для выбора):
-                  </p>
-
-                  <div className="dev-photos-picker-grid">
-                    {combinedDevImages.map((imgUrl, idx) => {
-                      const isSel = selectedGridImages.includes(imgUrl);
-                      const selOrder = selectedGridImages.indexOf(imgUrl) + 1;
-                      return (
-                        <div
-                          key={imgUrl + idx}
-                          className={`dev-photo-card ${isSel ? 'selected' : ''}`}
-                          onClick={() => toggleGridImage(imgUrl)}
-                          title={isSel ? 'Нажмите, чтобы исключить из сетки' : 'Нажмите, чтобы добавить в сетку'}
-                        >
-                          <img src={imgUrl} alt={`Фото ЖК ${idx + 1}`} className="dev-photo-card-img" />
-                          <div className={`dev-photo-order-badge ${isSel ? 'active' : ''}`}>
-                            {isSel ? selOrder : '+'}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="dev-photo-actions-row">
-                    <button
-                      type="button"
-                      className="btn-plan-action primary"
-                      onClick={() => devImageFileInputRef.current?.click()}
-                    >
-                      <Upload size={14} />
-                      <span>+ Добавить еще фото ЖК</span>
-                    </button>
-                    <input
-                      ref={devImageFileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      style={{ display: 'none' }}
-                      onChange={handleDevImageUpload}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Layout Specs & Pricing */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('data')}
-              >
-                <span className="dev-banner-sec-title">Параметры и стоимость</span>
-                {openSections.data ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.data && (
-                <div className="dev-banner-sec-content">
-                  <div className="dev-field-grid">
-                    <label className="dev-field-label">
-                      <span>Название ЖК</span>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={devTitle}
-                        onChange={(e) => setDevTitle(e.target.value)}
-                        placeholder="Например, ЖК Булычев"
-                      />
-                    </label>
-
-                    <label className="dev-field-label">
-                      <span>Тип планировки</span>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={roomTitle}
-                        onChange={(e) => setRoomTitle(e.target.value)}
-                        placeholder="1-комнатная квартира"
-                      />
-                    </label>
-
-                    <label className="dev-field-label">
-                      <span>Площадь (м²)</span>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={areaText}
-                        onChange={(e) => setAreaText(e.target.value)}
-                        placeholder="38.4"
-                      />
-                    </label>
-
-                    <label className="dev-field-label">
-                      <span>Цена (₽)</span>
-                      <input
-                        type="number"
-                        className="dev-input"
-                        value={priceVal || ''}
-                        onChange={(e) => setPriceVal(Number(e.target.value) || 0)}
-                        placeholder="4500000"
-                      />
-                    </label>
-
-                    <label className="dev-field-label">
-                      <span>Цена за м² (₽)</span>
-                      <input
-                        type="number"
-                        className="dev-input"
-                        value={priceSqmVal || ''}
-                        onChange={(e) => setPriceSqmVal(Number(e.target.value) || 0)}
-                        placeholder="115000"
-                      />
-                    </label>
-
-                    <label className="dev-field-label">
-                      <span>Локация / Район</span>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={locationText}
-                        onChange={(e) => setLocationText(e.target.value)}
-                        placeholder="ЮЗР, ул. Воровского"
-                      />
-                    </label>
-                  </div>
-
-                  {/* Toggle checkboxes for price 'от' and address */}
-                  <div className="dev-toggles-box">
-                    <label className="dev-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={showPriceFrom}
-                        onChange={(e) => setShowPriceFrom(e.target.checked)}
-                      />
-                      <span>Приставка «от» к стоимости (для групп квартир)</span>
-                    </label>
-
-                    <label className="dev-checkbox-row">
-                      <input
-                        type="checkbox"
-                        checked={showAddress}
-                        onChange={(e) => setShowAddress(e.target.checked)}
-                      />
-                      <span>Показать адрес на баннере</span>
-                    </label>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Mortgage Calculator Badge */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('mortgage')}
-              >
-                <span className="dev-banner-sec-title">Ипотечный расчет</span>
-                {openSections.mortgage ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.mortgage && (
-                <div className="dev-banner-sec-content">
-                  <label className="dev-checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={showMortgage}
-                      onChange={(e) => setShowMortgage(e.target.checked)}
-                    />
-                    <span>Показывать блок ипотечного платежа</span>
-                  </label>
-
-                  {showMortgage && (
-                    <div className="dev-mortgage-controls">
-                      <div className="dev-mortgage-rate-tabs">
-                        {[
-                          { rate: 6, label: 'Семейная 6%' },
-                          { rate: 8, label: 'IT 6-8%' },
-                          { rate: 18, label: 'Базовая 18%' },
-                        ].map((m) => (
-                          <button
-                            key={m.rate}
-                            type="button"
-                            className={`btn-rate-tab ${mortgageRate === m.rate ? 'active' : ''}`}
-                            onClick={() => setMortgageRate(m.rate)}
-                          >
-                            {m.label}
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="dev-mortgage-result-box">
-                        <span className="result-label">Ежемесячный платеж:</span>
-                        <strong className="result-val">
-                          от {formatNumber(mortgagePayment)} ₽/мес
-                        </strong>
-                        <span className="result-sub">ПВ 20% · срок 30 лет</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Advantages and Features Stickers */}
-            <div className="dev-banner-section">
-              <div
-                className="dev-banner-sec-head"
-                onClick={() => toggleSection('advantages')}
-              >
-                <span className="dev-banner-sec-title">Преимущества и особенности</span>
-                {openSections.advantages ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-              </div>
-              {openSections.advantages && (
-                <div className="dev-banner-sec-content">
-                  <p className="dev-sec-hint">
-                    Выберите до 4 ключевых преимуществ для размещения на баннере:
-                  </p>
-
-                  <div className="dev-adv-chips-list">
-                    {Array.from(new Set([...DEFAULT_ADVANTAGES, ...selectedAdvantages])).map((adv) => {
-                      const isSel = selectedAdvantages.includes(adv);
-                      return (
+                  {/* Theme, Composition & Accent */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Тема и композиция</span>
+                    <div className="dev-theme-tabs">
+                      {DESIGN_THEMES.map((t) => (
                         <button
-                          key={adv}
+                          key={t.key}
                           type="button"
-                          className={`btn-adv-chip ${isSel ? 'selected' : ''}`}
-                          onClick={() => toggleAdvantage(adv)}
+                          className={`btn-theme-tab ${designTheme === t.key ? 'active' : ''}`}
+                          onClick={() => setDesignTheme(t.key)}
                         >
-                          {isSel ? <CheckSquare size={13} /> : <Square size={13} />}
-                          <span>{adv}</span>
+                          {t.label}
                         </button>
-                      );
-                    })}
+                      ))}
+                    </div>
+
+                    <div className="dev-composition-tabs">
+                      {COMPOSITION_MODES.map((c) => (
+                        <button
+                          key={c.key}
+                          type="button"
+                          className={`btn-comp-tab ${composition === c.key ? 'active' : ''}`}
+                          onClick={() => setComposition(c.key)}
+                          title={c.hint}
+                        >
+                          {c.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Accent Color Palette */}
+                    <div className="dev-color-row">
+                      <span className="dev-color-label">Акцент:</span>
+                      <div className="dev-color-dots">
+                        {ACCENT_COLORS.map((hex) => (
+                          <button
+                            key={hex}
+                            type="button"
+                            className={`btn-color-dot ${accentColor === hex ? 'active' : ''}`}
+                            style={{ backgroundColor: hex }}
+                            onClick={() => setAccentColor(hex)}
+                            aria-label={`Цвет ${hex}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* GROUP 2: Marketing Offer & CTA */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('offer')}
+              >
+                <span className="dev-banner-sec-title">📢 Рекламный оффер и призыв</span>
+                {openSections.offer ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.offer && (
+                <div className="dev-banner-sec-content">
+                  {/* Badge / Sticker */}
+                  <div className="dev-subcard">
+                    <div className="dev-subcard-head">
+                      <span className="dev-subcard-title">Рекламный бейдж / Стикер</span>
+                      <label className="dev-checkbox-row subcard-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showBadge}
+                          onChange={(e) => setShowBadge(e.target.checked)}
+                        />
+                        <span>Показать</span>
+                      </label>
+                    </div>
+
+                    {showBadge && (
+                      <>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={badgeText}
+                          onChange={(e) => setBadgeText(e.target.value)}
+                          placeholder="Текст стикера..."
+                        />
+                        <div className="dev-preset-chips">
+                          {BADGE_PRESETS.map((bp) => (
+                            <button
+                              key={bp}
+                              type="button"
+                              className={`btn-preset-chip ${badgeText === bp ? 'active' : ''}`}
+                              onClick={() => setBadgeText(bp)}
+                            >
+                              {bp}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
 
-                  {/* Add Custom Advantage Form */}
-                  <form
-                    onSubmit={handleAddCustomAdvantage}
-                    className="dev-custom-adv-form"
-                  >
+                  {/* Slogan / Main Offer */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Рекламный оффер / Слоган</span>
                     <input
                       type="text"
                       className="dev-input"
-                      placeholder="Добавить свою особенность..."
-                      value={customAdvantageText}
-                      onChange={(e) => setCustomAdvantageText(e.target.value)}
+                      value={sloganText}
+                      onChange={(e) => setSloganText(e.target.value)}
+                      placeholder="Главный продающий заголовок..."
                     />
-                    <button
-                      type="submit"
-                      className="btn-add-adv"
-                      onClick={handleAddCustomAdvantage}
-                    >
-                      + Добавить
-                    </button>
-                  </form>
+                    <div className="dev-preset-chips">
+                      {SLOGAN_PRESETS.map((sp) => (
+                        <button
+                          key={sp}
+                          type="button"
+                          className={`btn-preset-chip ${sloganText === sp ? 'active' : ''}`}
+                          onClick={() => setSloganText(sp)}
+                        >
+                          {sp}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Call To Action Button (CTA) */}
+                  <div className="dev-subcard">
+                    <div className="dev-subcard-head">
+                      <span className="dev-subcard-title">Кнопка призыва (CTA)</span>
+                      <label className="dev-checkbox-row subcard-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showCta}
+                          onChange={(e) => setShowCta(e.target.checked)}
+                        />
+                        <span>Показать</span>
+                      </label>
+                    </div>
+
+                    {showCta && (
+                      <>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={ctaText}
+                          onChange={(e) => setCtaText(e.target.value)}
+                          placeholder="Текст на кнопке..."
+                        />
+                        <div className="dev-preset-chips">
+                          {CTA_PRESETS.map((cp) => (
+                            <button
+                              key={cp}
+                              type="button"
+                              className={`btn-preset-chip ${ctaText === cp ? 'active' : ''}`}
+                              onClick={() => setCtaText(cp)}
+                            >
+                              {cp}
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Realtor Contact Block */}
+            {/* GROUP 3: Visuals (Photos & Plan) */}
             <div className="dev-banner-section">
               <div
                 className="dev-banner-sec-head"
-                onClick={() => toggleSection('agent')}
+                onClick={() => toggleSection('visuals')}
               >
-                <span className="dev-banner-sec-title">Контакты риелтора</span>
-                {openSections.agent ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                <span className="dev-banner-sec-title">📸 Фотографии ЖК и чертеж</span>
+                {openSections.visuals ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
               </div>
-              {openSections.agent && (
+              {openSections.visuals && (
                 <div className="dev-banner-sec-content">
-                  <div className="dev-field-grid">
-                    <label className="dev-field-label">
-                      <span>Имя риелтора</span>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={agentName}
-                        onChange={(e) => setAgentName(e.target.value)}
-                        placeholder="Александр Ельчугин"
-                      />
-                    </label>
+                  {/* Development Photos Grid */}
+                  <div className="dev-subcard">
+                    <div className="dev-subcard-head">
+                      <span className="dev-subcard-title">Фотографии ЖК (сетка)</span>
+                      <span className="dev-photo-count-pill">{selectedGridImages.length} из 4</span>
+                    </div>
+                    <p className="dev-sec-hint">
+                      Выберите от 1 до 4 фото для формирования сетки ЖК на баннере:
+                    </p>
 
-                    <label className="dev-field-label">
-                      <span>Телефон для звонков</span>
-                      <input
-                        type="text"
-                        className="dev-input"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="+7 (909) 130-40-90"
-                      />
-                    </label>
+                    <div className="dev-photos-picker-grid">
+                      {combinedDevImages.map((imgUrl, idx) => {
+                        const isSel = selectedGridImages.includes(imgUrl);
+                        const selOrder = selectedGridImages.indexOf(imgUrl) + 1;
+                        return (
+                          <div
+                            key={imgUrl + idx}
+                            className={`dev-photo-card ${isSel ? 'selected' : ''}`}
+                            onClick={() => toggleGridImage(imgUrl)}
+                            title={isSel ? 'Нажмите, чтобы исключить из сетки' : 'Нажмите, чтобы добавить в сетку'}
+                          >
+                            <img src={imgUrl} alt={`Фото ЖК ${idx + 1}`} className="dev-photo-card-img" />
+                            <div className={`dev-photo-order-badge ${isSel ? 'active' : ''}`}>
+                              {isSel ? selOrder : '+'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
-                    <label className="dev-field-label">
-                      <span>Подпись / Статус</span>
+                    <div className="dev-photo-actions-row">
+                      <button
+                        type="button"
+                        className="btn-plan-action primary"
+                        onClick={() => devImageFileInputRef.current?.click()}
+                      >
+                        <Upload size={14} />
+                        <span>+ Добавить еще фото ЖК</span>
+                      </button>
+                      <input
+                        ref={devImageFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        style={{ display: 'none' }}
+                        onChange={handleDevImageUpload}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Floorplan CAD Image */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Чертеж планировки</span>
+                    <div className="dev-plan-status-row">
+                      <div className="dev-plan-thumb-wrap">
+                        {planImageUrl ? (
+                          <img
+                            src={planImageUrl}
+                            alt="Чертеж"
+                            className="dev-plan-thumb-img"
+                          />
+                        ) : (
+                          <div className="dev-plan-thumb-placeholder">
+                            <ImageIcon size={20} />
+                          </div>
+                        )}
+                      </div>
+                      <div className="dev-plan-status-info">
+                        <strong className="dev-plan-status-title">
+                          {planImageUrl ? 'Чертеж прикреплен' : 'Чертеж не загружен'}
+                        </strong>
+                        <span className="dev-plan-status-sub">
+                          {customPlanUrl
+                            ? 'Загружен локальный файл'
+                            : planImageUrl
+                            ? 'Взят из каталога новостройки'
+                            : 'Отображается плейсхолдер'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="dev-plan-actions-row">
+                      <button
+                        type="button"
+                        className="btn-plan-action primary"
+                        onClick={() => planFileInputRef.current?.click()}
+                      >
+                        <Upload size={14} />
+                        <span>{planImageUrl ? 'Заменить чертеж' : 'Загрузить чертеж'}</span>
+                      </button>
+                      {customPlanUrl && (
+                        <button
+                          type="button"
+                          className="btn-plan-action secondary"
+                          onClick={handleResetPlan}
+                          title="Вернуть исходную планировку из каталога"
+                        >
+                          <RotateCcw size={13} />
+                          <span>Сбросить</span>
+                        </button>
+                      )}
+                      <input
+                        ref={planFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handlePlanUpload}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* GROUP 4: Parameters, Pricing & Contacts */}
+            <div className="dev-banner-section">
+              <div
+                className="dev-banner-sec-head"
+                onClick={() => toggleSection('details')}
+              >
+                <span className="dev-banner-sec-title">💰 Стоимость, расчет и контакты</span>
+                {openSections.details ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+              {openSections.details && (
+                <div className="dev-banner-sec-content">
+                  {/* Layout Specs & Pricing */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Параметры и стоимость</span>
+                    <div className="dev-field-grid">
+                      <label className="dev-field-label">
+                        <span>Название ЖК</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={devTitle}
+                          onChange={(e) => setDevTitle(e.target.value)}
+                          placeholder="Например, ЖК Булычев"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Тип планировки</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={roomTitle}
+                          onChange={(e) => setRoomTitle(e.target.value)}
+                          placeholder="1-комнатная квартира"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Площадь (м²)</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={areaText}
+                          onChange={(e) => setAreaText(e.target.value)}
+                          placeholder="38.4"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Цена (₽)</span>
+                        <input
+                          type="number"
+                          className="dev-input"
+                          value={priceVal || ''}
+                          onChange={(e) => setPriceVal(Number(e.target.value) || 0)}
+                          placeholder="4500000"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Цена за м² (₽)</span>
+                        <input
+                          type="number"
+                          className="dev-input"
+                          value={priceSqmVal || ''}
+                          onChange={(e) => setPriceSqmVal(Number(e.target.value) || 0)}
+                          placeholder="115000"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Локация / Район</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={locationText}
+                          onChange={(e) => setLocationText(e.target.value)}
+                          placeholder="ЮЗР, ул. Воровского"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Toggle checkboxes for price 'от' and address */}
+                    <div className="dev-toggles-box">
+                      <label className="dev-checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={showPriceFrom}
+                          onChange={(e) => setShowPriceFrom(e.target.checked)}
+                        />
+                        <span>Приставка «от» к стоимости (для групп квартир)</span>
+                      </label>
+
+                      <label className="dev-checkbox-row">
+                        <input
+                          type="checkbox"
+                          checked={showAddress}
+                          onChange={(e) => setShowAddress(e.target.checked)}
+                        />
+                        <span>Показать адрес на баннере</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Mortgage Calculator Badge */}
+                  <div className="dev-subcard">
+                    <div className="dev-subcard-head">
+                      <span className="dev-subcard-title">Ипотечный расчет</span>
+                      <label className="dev-checkbox-row subcard-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showMortgage}
+                          onChange={(e) => setShowMortgage(e.target.checked)}
+                        />
+                        <span>Показать</span>
+                      </label>
+                    </div>
+
+                    {showMortgage && (
+                      <div className="dev-mortgage-controls">
+                        <div className="dev-mortgage-rate-tabs">
+                          {[
+                            { rate: 6, label: 'Семейная 6%' },
+                            { rate: 8, label: 'IT 6-8%' },
+                            { rate: 18, label: 'Базовая 18%' },
+                          ].map((m) => (
+                            <button
+                              key={m.rate}
+                              type="button"
+                              className={`btn-rate-tab ${mortgageRate === m.rate ? 'active' : ''}`}
+                              onClick={() => setMortgageRate(m.rate)}
+                            >
+                              {m.label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="dev-mortgage-result-box">
+                          <span className="result-label">Ежемесячный платеж:</span>
+                          <strong className="result-val">
+                            от {formatNumber(mortgagePayment)} ₽/мес
+                          </strong>
+                          <span className="result-sub">ПВ 20% · срок 30 лет</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Advantages and Features Stickers */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Преимущества и особенности</span>
+                    <p className="dev-sec-hint">
+                      Выберите до 4 ключевых преимуществ для размещения на баннере:
+                    </p>
+
+                    <div className="dev-adv-chips-list">
+                      {Array.from(new Set([...DEFAULT_ADVANTAGES, ...selectedAdvantages])).map((adv) => {
+                        const isSel = selectedAdvantages.includes(adv);
+                        return (
+                          <button
+                            key={adv}
+                            type="button"
+                            className={`btn-adv-chip ${isSel ? 'selected' : ''}`}
+                            onClick={() => toggleAdvantage(adv)}
+                          >
+                            {isSel ? <CheckSquare size={13} /> : <Square size={13} />}
+                            <span>{adv}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Add Custom Advantage Form */}
+                    <form
+                      onSubmit={handleAddCustomAdvantage}
+                      className="dev-custom-adv-form"
+                    >
                       <input
                         type="text"
                         className="dev-input"
-                        value={agencySubtitle}
-                        onChange={(e) => setAgencySubtitle(e.target.value)}
-                        placeholder="Эксперт по новостройкам"
+                        placeholder="Добавить свою особенность..."
+                        value={customAdvantageText}
+                        onChange={(e) => setCustomAdvantageText(e.target.value)}
                       />
-                    </label>
+                      <button
+                        type="submit"
+                        className="btn-add-adv"
+                        onClick={handleAddCustomAdvantage}
+                      >
+                        + Добавить
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Realtor Contact Block */}
+                  <div className="dev-subcard">
+                    <span className="dev-subcard-title">Контакты риелтора</span>
+                    <div className="dev-field-grid">
+                      <label className="dev-field-label">
+                        <span>Имя риелтора</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={agentName}
+                          onChange={(e) => setAgentName(e.target.value)}
+                          placeholder="Александр Ельчугин"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Телефон для звонков</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          placeholder="+7 (909) 130-40-90"
+                        />
+                      </label>
+
+                      <label className="dev-field-label">
+                        <span>Подпись / Статус</span>
+                        <input
+                          type="text"
+                          className="dev-input"
+                          value={agencySubtitle}
+                          onChange={(e) => setAgencySubtitle(e.target.value)}
+                          placeholder="Эксперт по новостройкам"
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
               )}
@@ -2018,20 +1976,20 @@ export function DevelopmentBannerModal({
             <button
               type="button"
               className="btn-mobile-dock-btn primary"
+              onClick={() => setMobileTab('preview')}
+              title="Посмотреть готовый баннер"
+            >
+              <Sparkles size={15} />
+              <span>👁️ Посмотреть баннер</span>
+            </button>
+            <button
+              type="button"
+              className="btn-mobile-dock-btn secondary"
               onClick={handleDownload}
               title="Скачать PNG"
             >
               <Download size={15} />
               <span>Скачать PNG</span>
-            </button>
-            <button
-              type="button"
-              className={`btn-mobile-dock-btn secondary ${copyFeedback ? 'success' : ''}`}
-              onClick={handleCopyImage}
-              title="Копировать картинку"
-            >
-              {copyFeedback ? <Check size={15} /> : <Copy size={15} />}
-              <span>{copyFeedback ? 'Скопировано!' : 'Копировать'}</span>
             </button>
             <button
               type="button"
@@ -2367,6 +2325,45 @@ export function DevelopmentBannerModal({
           display: flex;
           flex-direction: column;
           gap: 8px;
+        }
+
+        /* Subcards inside consolidated sections */
+        .dev-subcard {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          padding: 10px;
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 8px;
+        }
+
+        .dark .dev-subcard {
+          background: #0f172a;
+          border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .dev-subcard-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .dev-subcard-title {
+          font-size: 12px;
+          font-weight: 700;
+          color: #334155;
+        }
+
+        .dark .dev-subcard-title {
+          color: #cbd5e1;
+        }
+
+        .subcard-toggle {
+          font-size: 11px;
+          color: #64748b;
+          margin-bottom: 0;
         }
 
         .dev-sec-hint {
@@ -3041,85 +3038,66 @@ export function DevelopmentBannerModal({
             height: calc(100dvh - 90px);
           }
 
-          /* Editor Mode */
+          /* Editor Mode on Mobile: preview pane is hidden so editing has 100% viewport */
           .mobile-tab-editor .dev-banner-preview-pane {
-            flex-shrink: 0;
-            padding: 8px 12px;
-            background: #0b1120;
-            border-right: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            overflow: visible;
-          }
-
-          .mobile-tab-editor .dev-banner-canvas-wrap {
-            max-height: 27vh;
-            width: auto;
-            aspect-ratio: inherit;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 auto;
-          }
-
-          .mobile-tab-editor .dev-banner-canvas {
-            max-height: 27vh;
-            width: auto;
-            max-width: 100%;
-            object-fit: contain;
-          }
-
-          .mobile-tab-editor .dev-banner-quick-actions,
-          .mobile-tab-editor .dev-banner-social-row {
-            display: none;
+            display: none !important;
           }
 
           .mobile-tab-editor .dev-banner-sidebar {
+            display: flex !important;
             flex: 1;
             overflow-y: auto;
-            padding: 10px 10px calc(70px + env(safe-area-inset-bottom, 0px));
+            padding: 10px 10px calc(76px + env(safe-area-inset-bottom, 0px));
           }
 
-          /* Full Preview Mode */
+          /* Full Preview Mode on Mobile: sidebar is hidden, large centered banner */
+          .mobile-tab-preview .dev-banner-sidebar {
+            display: none !important;
+          }
+
           .mobile-tab-preview .dev-banner-preview-pane {
+            display: flex !important;
             flex: 1;
             overflow-y: auto;
-            padding: 14px 12px calc(24px + env(safe-area-inset-bottom, 0px));
+            padding: 12px 10px calc(24px + env(safe-area-inset-bottom, 0px));
             border-right: none;
+            justify-content: flex-start;
+            align-items: center;
           }
 
           .mobile-tab-preview .dev-banner-canvas-wrap {
-            max-height: 60vh;
+            max-height: 64vh;
+            max-width: 92vw;
             width: auto;
-            aspect-ratio: inherit;
+            height: auto;
+            margin: 0 auto;
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
           }
 
           .mobile-tab-preview .dev-banner-canvas {
-            max-height: 60vh;
+            max-height: 64vh;
+            max-width: 92vw;
             width: auto;
-            max-width: 100%;
+            height: auto;
             object-fit: contain;
           }
 
           .mobile-tab-preview .dev-banner-quick-actions {
             display: flex;
             width: 100%;
-            max-width: 360px;
-            margin-top: 14px;
+            max-width: 380px;
+            margin-top: 12px;
+            gap: 6px;
           }
 
           .mobile-tab-preview .dev-banner-social-row {
             display: flex;
             width: 100%;
-            max-width: 360px;
-            margin-top: 10px;
-          }
-
-          .mobile-tab-preview .dev-banner-sidebar {
-            display: none;
+            max-width: 380px;
+            margin-top: 8px;
           }
 
           /* Floating Mobile Dock Bar */

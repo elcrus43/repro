@@ -311,20 +311,21 @@ describe('DevelopmentBannerModal Component', () => {
     );
 
     // Mobile nav switcher buttons
-    const editorNavBtn = screen.getByRole('button', { name: /⚙️ Настройки и превью/i });
     const previewNavBtn = screen.getByRole('button', { name: /👁️ Готовый баннер/i });
-    expect(editorNavBtn).toBeInTheDocument();
+    const editorNavBtn = screen.getByRole('button', { name: /⚙️ Настройки/i });
     expect(previewNavBtn).toBeInTheDocument();
-    expect(editorNavBtn).toHaveClass('active');
-
-    // Bottom mobile dock exists in editor mode
-    const dockDownloadBtns = screen.getAllByRole('button', { name: /Скачать PNG/i });
-    expect(dockDownloadBtns.length).toBeGreaterThanOrEqual(1);
-
-    // Switch to preview mode
-    fireEvent.click(previewNavBtn);
+    expect(editorNavBtn).toBeInTheDocument();
+    // Default on mobile is the large preview of the ready banner
     expect(previewNavBtn).toHaveClass('active');
-    expect(editorNavBtn).not.toHaveClass('active');
+
+    // Switch to editor mode
+    fireEvent.click(editorNavBtn);
+    expect(editorNavBtn).toHaveClass('active');
+    expect(previewNavBtn).not.toHaveClass('active');
+
+    // Bottom mobile dock exists in editor mode with button to view banner
+    const dockViewBtn = screen.getByRole('button', { name: /Посмотреть баннер/i });
+    expect(dockViewBtn).toBeInTheDocument();
 
     // Reset window width
     window.innerWidth = 1024;
