@@ -729,9 +729,9 @@ export function DevelopmentBannerModal({
       ctx.fillStyle = toneBg;
       ctx.fillRect(0, 0, w, h);
 
-      const topPhotoH = Math.round((IS ? 0.50 : (isPortrait ? 0.44 : 0.41)) * h);
+      const topPhotoH = Math.round((IS ? 0.52 : (isPortrait ? 0.45 : 0.43)) * h);
 
-      // Render photo(s) in top zone
+      // Render photo(s) in top zone (unobstructed in grid_hero / facade_hero)
       ctx.save();
       ctx.beginPath();
       ctx.rect(0, 0, w, topPhotoH);
@@ -770,10 +770,42 @@ export function DevelopmentBannerModal({
       ctx.restore();
 
       /* -------------------------------------------------------------
-         2. INSET CAD FLOORPLAN CARD
+         2. SMOOTH 0% -> 100% TRANSPARENCY GRADIENT TRANSITION
          ------------------------------------------------------------- */
-      if (composition === 'plan_only' || composition === 'plan_hero') {
-        // Full width plan card
+      const fadeHeight = Math.round((IS ? 180 : (isPortrait ? 130 : 100)) * U);
+      const fadeStartY = Math.max(0, topPhotoH - fadeHeight);
+      const fadeEndY = topPhotoH + Math.round((IS ? 14 : 10) * U);
+
+      ctx.save();
+      const fadeGrad = ctx.createLinearGradient(0, fadeStartY, 0, fadeEndY);
+      fadeGrad.addColorStop(0.0, `rgba(${toneRgb}, 0)`);
+      fadeGrad.addColorStop(0.45, `rgba(${toneRgb}, 0.45)`);
+      fadeGrad.addColorStop(0.80, `rgba(${toneRgb}, 0.90)`);
+      fadeGrad.addColorStop(1.0, `rgba(${toneRgb}, 1)`);
+
+      ctx.fillStyle = fadeGrad;
+      ctx.fillRect(0, fadeStartY, w, fadeEndY - fadeStartY);
+
+      ctx.fillStyle = toneBg;
+      ctx.fillRect(0, fadeEndY, w, h - fadeEndY);
+      ctx.restore();
+
+      /* -------------------------------------------------------------
+         3. BOTTOM ANCHORS & CAD FLOORPLAN CARD (BELOW PHOTO ZONE)
+         ------------------------------------------------------------- */
+      const phoneFontSize = Math.round((IS ? 34 : (isPortrait ? 28 : 24)) * U);
+      const phoneY = h - PAD;
+
+      const ctaFontSize = Math.round((IS ? 28 : (isPortrait ? 24 : 20)) * U);
+      const ctaH = showCta && ctaText ? Math.round((IS ? 76 : (isPortrait ? 64 : 54)) * U) : 0;
+      const ctaPhoneGap = Math.round((IS ? 24 : 18) * U);
+      const ctaY = phoneY - phoneFontSize - ctaPhoneGap - ctaH;
+
+      const isTopPlanMode = composition === 'plan_only' || composition === 'plan_hero';
+      let offerMaxW = contentWidth;
+
+      if (isTopPlanMode) {
+        // Full width plan card in top zone
         const cardPad = Math.round(18 * U);
         const cardX = PAD;
         const cardY = PAD;
@@ -814,16 +846,23 @@ export function DevelopmentBannerModal({
           ctx.restore();
         }
       } else {
-        // Inset CAD card floating on the right
-        const cardW = Math.round((IS ? 420 : (isPortrait ? 380 : 360)) * U);
-        const cardH = Math.round((IS ? 360 : (isPortrait ? 320 : 300)) * U);
+        // CAD Floorplan Card placed BELOW the photo zone on the right (zero photo overlap!)
+        const lowerTopY = topPhotoH + Math.round((IS ? 16 : 12) * U);
+        const lowerBottomY = ctaY - Math.round((IS ? 28 : 18) * U);
+        const availLowerH = Math.max(Math.round(220 * U), lowerBottomY - lowerTopY);
+
+        const cardW = Math.round((IS ? 400 : (isPortrait ? 360 : 330)) * U);
+        const cardH = Math.min(availLowerH, Math.round((IS ? 480 : (isPortrait ? 380 : 340)) * U));
+        const colGap = Math.round((IS ? 28 : 24) * U);
+        offerMaxW = contentWidth - cardW - colGap;
+
         const cardX = w - PAD - cardW;
-        const cardY = topPhotoH - cardH - Math.round(16 * U);
+        const cardY = lowerTopY + Math.max(0, Math.round((availLowerH - cardH) / 2));
 
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.40)';
-        ctx.shadowBlur = Math.round(24 * U);
-        ctx.shadowOffsetY = Math.round(8 * U);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = Math.round(20 * U);
+        ctx.shadowOffsetY = Math.round(6 * U);
         ctx.fillStyle = '#FFFFFF';
         safeRoundRect(ctx, cardX, cardY, cardW, cardH, Math.round(16 * U));
         ctx.fill();
@@ -891,27 +930,6 @@ export function DevelopmentBannerModal({
       }
 
       /* -------------------------------------------------------------
-         3. SMOOTH 0% -> 100% TRANSPARENCY GRADIENT TRANSITION
-         ------------------------------------------------------------- */
-      const fadeHeight = Math.round((IS ? 260 : (isPortrait ? 180 : 140)) * U);
-      const fadeStartY = Math.max(0, topPhotoH - fadeHeight);
-      const fadeEndY = topPhotoH + Math.round((IS ? 30 : 20) * U);
-
-      ctx.save();
-      const fadeGrad = ctx.createLinearGradient(0, fadeStartY, 0, fadeEndY);
-      fadeGrad.addColorStop(0.0, `rgba(${toneRgb}, 0)`);
-      fadeGrad.addColorStop(0.30, `rgba(${toneRgb}, 0.35)`);
-      fadeGrad.addColorStop(0.65, `rgba(${toneRgb}, 0.85)`);
-      fadeGrad.addColorStop(1.0, `rgba(${toneRgb}, 1)`);
-
-      ctx.fillStyle = fadeGrad;
-      ctx.fillRect(0, fadeStartY, w, fadeEndY - fadeStartY);
-
-      ctx.fillStyle = toneBg;
-      ctx.fillRect(0, fadeEndY, w, h - fadeEndY);
-      ctx.restore();
-
-      /* -------------------------------------------------------------
          4. TOP ENLARGED ADVERTISING BADGE
          ------------------------------------------------------------- */
       if (showBadge && badgeText) {
@@ -961,34 +979,27 @@ export function DevelopmentBannerModal({
       }
 
       /* -------------------------------------------------------------
-         5. BOTTOM ADVERTISING OFFER & SPECIFICATIONS
+         5. BOTTOM ADVERTISING OFFER & SPECIFICATIONS (LEFT OF PLAN)
          ------------------------------------------------------------- */
-      // Calculate bottom anchors
-      const phoneFontSize = Math.round((IS ? 34 : (isPortrait ? 28 : 24)) * U);
-      const phoneY = h - PAD;
-
-      const ctaFontSize = Math.round((IS ? 28 : (isPortrait ? 24 : 20)) * U);
-      const ctaH = showCta && ctaText ? Math.round((IS ? 76 : (isPortrait ? 64 : 54)) * U) : 0;
-      const ctaPhoneGap = Math.round((IS ? 24 : 18) * U);
-      const ctaY = phoneY - phoneFontSize - ctaPhoneGap - ctaH;
-
       // Pre-measure offer & advantages block to anchor it right above CTA
-      const sloganFontSize = Math.round((IS ? 52 : (isPortrait ? 40 : 32)) * U * (sloganScale / 100));
+      const sloganFontSize = Math.round((IS ? 46 : (isPortrait ? 36 : 30)) * U * (sloganScale / 100));
       const sloganLineHeight = sloganFontSize * 1.18;
       ctx.font = `900 ${sloganFontSize}px "Medeo Sans", system-ui, sans-serif`;
       const finalSlogan = (sloganText || `${roomTitle}${areaText ? ` · ${areaText} м²` : ''} в ${devTitle}`).trim();
-      const usedSloganLines = wrapText(ctx, finalSlogan, contentWidth).slice(0, 2);
-      const sloganGap = Math.round((IS ? 16 : 10) * U);
+      const usedSloganLines = wrapText(ctx, finalSlogan, offerMaxW).slice(0, 3);
+      const sloganGap = Math.round((IS ? 14 : 10) * U);
 
-      const priceFontSize = Math.round((IS ? 70 : (isPortrait ? 54 : 44)) * U);
+      const priceFontSize = Math.round((IS ? 58 : (isPortrait ? 46 : 38)) * U);
+      const sqmFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 18)) * U);
+      const priceBlockExtra = priceSqmVal ? (sqmFontSize + Math.round(6 * U)) : 0;
       const priceGap = Math.round((IS ? 16 : 10) * U);
 
-      const mortH = Math.round((IS ? 54 : (isPortrait ? 44 : 38)) * U);
+      const mortH = Math.round((IS ? 50 : (isPortrait ? 42 : 36)) * U);
       const mortGap = Math.round((IS ? 16 : 10) * U);
       const hasMortgage = showMortgage && mortgagePayment > 0;
 
       const bulletLimit = IS ? 4 : (isPortrait ? 3 : 2);
-      const bulletFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U * (bulletScale / 100));
+      const bulletFontSize = Math.round((IS ? 22 : (isPortrait ? 18 : 15)) * U * (bulletScale / 100));
       const bulletLineHeight = bulletFontSize * 1.3;
       const bulletStepGap = Math.round((IS ? 10 : 6) * U);
       const visibleBullets = selectedAdvantages.slice(0, bulletLimit);
@@ -997,12 +1008,13 @@ export function DevelopmentBannerModal({
         usedSloganLines.length * sloganLineHeight +
         sloganGap +
         priceFontSize +
+        priceBlockExtra +
         priceGap +
         (hasMortgage ? mortH + mortGap : 0) +
         visibleBullets.length * (bulletLineHeight + bulletStepGap);
 
       const offerToCtaGap = Math.round((IS ? 28 : 18) * U);
-      const minOfferY = topPhotoH - Math.round((IS ? 12 : 6) * U);
+      const minOfferY = topPhotoH + Math.round((IS ? 16 : 10) * U);
       let curY = Math.max(minOfferY, ctaY - offerToCtaGap - totalOfferH);
 
       // A. Slogan / Marketing Headline (Medeo Sans 900)
@@ -1026,30 +1038,29 @@ export function DevelopmentBannerModal({
       ctx.font = `900 ${priceFontSize}px "Medeo Sans", system-ui, sans-serif`;
       ctx.fillStyle = priceColor || (isLight ? accentColor : '#38BDF8');
       ctx.textBaseline = 'top';
-      ctx.fillText(priceText, PAD, curY);
+      ctx.fillText(priceText, PAD, curY, offerMaxW);
 
       if (priceSqmVal) {
-        const pw = ctx.measureText(priceText).width;
-        const sqmFontSize = Math.round((IS ? 28 : (isPortrait ? 24 : 20)) * U);
         ctx.font = `600 ${sqmFontSize}px "Medeo Sans", system-ui, sans-serif`;
         ctx.fillStyle = subTextColor;
         ctx.fillText(
-          ` ${pricePrefix}${formatNumber(priceSqmVal)} ₽/м²`,
-          PAD + pw + Math.round(18 * U),
-          curY + priceFontSize - sqmFontSize - Math.round(4 * U)
+          `${pricePrefix}${formatNumber(priceSqmVal)} ₽/м²`,
+          PAD,
+          curY + priceFontSize + Math.round(4 * U),
+          offerMaxW
         );
       }
       ctx.restore();
 
-      curY += priceFontSize + priceGap;
+      curY += priceFontSize + priceBlockExtra + priceGap;
 
       // C. Mortgage Banner Pill (Семейная ипотека 6%)
       if (hasMortgage) {
         ctx.save();
-        const mortFontSize = Math.round((IS ? 24 : (isPortrait ? 20 : 16)) * U);
-        const mortText = `Семейная ипотека ${mortgageRate}% · платеж ${showPriceFrom ? 'от ' : ''}${formatNumber(mortgagePayment)} ₽/мес`;
+        const mortFontSize = Math.round((IS ? 21 : (isPortrait ? 18 : 15)) * U);
+        const mortText = `Ипотека ${mortgageRate}% · ${showPriceFrom ? 'от ' : ''}${formatNumber(mortgagePayment)} ₽/мес`;
         ctx.font = `700 ${mortFontSize}px "Medeo Sans", system-ui, sans-serif`;
-        const mw = Math.min(contentWidth, ctx.measureText(mortText).width + Math.round(44 * U));
+        const mw = Math.min(offerMaxW, ctx.measureText(mortText).width + Math.round(36 * U));
 
         const mortGrad = ctx.createLinearGradient(PAD, curY, PAD + mw, curY + mortH);
         mortGrad.addColorStop(0, '#10B981');
@@ -1066,7 +1077,7 @@ export function DevelopmentBannerModal({
         ctx.shadowBlur = 0;
         ctx.fillStyle = '#FFFFFF';
         ctx.textBaseline = 'middle';
-        ctx.fillText(mortText, PAD + Math.round(20 * U), curY + mortH / 2);
+        ctx.fillText(mortText, PAD + Math.round(18 * U), curY + mortH / 2, mw - Math.round(28 * U));
         ctx.restore();
 
         curY += mortH + mortGap;
@@ -1074,7 +1085,7 @@ export function DevelopmentBannerModal({
 
       // D. Key Advantages Bullets (with white checkmarks in accent circles)
       if (visibleBullets.length > 0) {
-        const circleR = Math.round((IS ? 14 : (isPortrait ? 12 : 10)) * U * Math.min(1.25, Math.max(0.8, bulletScale / 100)));
+        const circleR = Math.round((IS ? 13 : (isPortrait ? 11 : 9)) * U * Math.min(1.25, Math.max(0.8, bulletScale / 100)));
 
         visibleBullets.forEach((adv) => {
           if (curY + bulletLineHeight > ctaY - Math.round(8 * U)) return;
@@ -1101,7 +1112,8 @@ export function DevelopmentBannerModal({
           ctx.font = `600 ${bulletFontSize}px "Medeo Sans", system-ui, sans-serif`;
           ctx.fillStyle = bulletColor || textColor;
           ctx.textBaseline = 'top';
-          ctx.fillText(adv, cx + circleR + Math.round(14 * U), curY);
+          const textX = cx + circleR + Math.round(12 * U);
+          ctx.fillText(adv, textX, curY, offerMaxW - (textX - PAD));
 
           curY += bulletLineHeight + bulletStepGap;
           ctx.restore();
