@@ -18,16 +18,17 @@ import {
   ExternalLink,
   Layers,
   BarChart3,
-  BookOpen
+  BookOpen,
+  Tag
 } from 'lucide-react';
 import { DeveloperLogo } from '../../components/DeveloperLogo';
+import { DeveloperPromosCard } from '../../components/DeveloperPromosCard';
 import { DEVELOPERS_KNOWLEDGE } from '../../data/developersKnowledgeBase';
 import { DevelopersKnowledgeSection } from './DevelopersKnowledgeSection';
 import { 
   getStoredDevelopments, 
   fetchLatestDevelopments,
   getDevelopmentsSyncMeta,
-  KIROV_DEVELOPERS, 
   HOUSING_CLASSES, 
   ROOM_TYPES, 
   FINISHING_OPTIONS 
@@ -868,6 +869,15 @@ export default function DevelopmentsPage() {
               <BookOpen size={16} />
               <span className="mode-btn-text">База знаний</span>
             </button>
+            <button
+              type="button"
+              className={`mode-btn ${viewMode === 'promos' ? 'active' : ''}`}
+              onClick={() => setViewMode('promos')}
+              title="Акции, старты продаж и условия КВ застройщиков Кирова"
+            >
+              <Tag size={16} />
+              <span className="mode-btn-text">Акции</span>
+            </button>
           </div>
 
           {/* Add ЖК Button */}
@@ -961,20 +971,6 @@ export default function DevelopmentsPage() {
               <option value="all">Все районы Кирова</option>
               {KIROV_DISTRICTS.map(d => (
                 <option key={d.name} value={d.name}>{d.name}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Developer Select */}
-          <div className="dev-filter-select-wrap">
-            <select
-              value={selectedDeveloper}
-              onChange={(e) => setSelectedDeveloper(e.target.value)}
-              className="dev-filter-select"
-            >
-              <option value="all">Все застройщики</option>
-              {KIROV_DEVELOPERS.map(dev => (
-                <option key={dev} value={dev}>{dev}</option>
               ))}
             </select>
           </div>
@@ -1128,49 +1124,14 @@ export default function DevelopmentsPage() {
           )}
 
           <div className="dev-live-toolbar">
-            {/* Left: Master Live Summary & Global Refresh */}
             <div className="live-summary-group">
+              <span className="dev-found-count">Найдено: <strong>{filteredDevelopments.length}</strong> ЖК</span>
               <span className="live-total-badge" title="Суммарный остаток свободных квартир по всем застройщикам">
                 <span className="live-dot" />
                 Live: <strong>{formatNumber(totalLiveLotsCount)}</strong> кв.
               </span>
-              <button
-                type="button"
-                className="btn-sync-all-live"
-                onClick={handleSyncAllProviders}
-                disabled={isAnyProviderSyncing}
-                title="Синхронизировать свободные квартиры по всем застройщикам"
-              >
-                <RefreshCw size={11} className={isAnyProviderSyncing ? 'animate-spin' : ''} />
-                <span>{isAnyProviderSyncing ? 'Синхронизация...' : 'Обновить все'}</span>
-              </button>
             </div>
 
-            {/* Middle: Provider Quick-Sync Chips */}
-            <div className="live-providers-chips">
-              {Object.entries(LIVE_PROVIDERS).map(([providerId, provider]) => {
-                const pLots = liveState[providerId].lots;
-                const pProgress = liveProgress[providerId];
-                const pLastSynced = liveLastSyncedAt[providerId];
-                const timeStr = pLastSynced ? new Date(pLastSynced).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '';
-                return (
-                  <button
-                    key={providerId}
-                    type="button"
-                    className={`live-provider-chip ${pProgress.active ? 'syncing' : ''} ${pLots.length > 0 ? 'has-lots' : 'empty'}`}
-                    onClick={() => handleSyncAllForProvider(providerId)}
-                    disabled={pProgress.active}
-                    title={`${provider.label}: ${pLots.length} кв.${timeStr ? ` (обновлено в ${timeStr})` : ''}. Кликните, чтобы синхронизировать.`}
-                  >
-                    <span className="chip-label">{provider.label}</span>
-                    <span className="chip-count">{pLots.length}</span>
-                    <RefreshCw size={9} className={`chip-spin ${pProgress.active ? 'animate-spin' : ''}`} />
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Right: Meta & Actions */}
             <div className="live-meta-group">
               {syncMeta?.updatedAt && (
                 <span className="dev-sync-date" title="Дата последнего обновления базы каталога">
@@ -1179,13 +1140,22 @@ export default function DevelopmentsPage() {
               )}
               <button
                 type="button"
-                className="btn-catalog-refresh"
-                onClick={handleManualSync}
-                disabled={isSyncing}
-                title="Обновить список новостроек из актуального каталога"
+                className="btn-sync-all-live"
+                onClick={() => {
+                  const selectedKb = selectedDeveloper !== 'all'
+                    ? DEVELOPERS_KNOWLEDGE.find((k) => k.name === selectedDeveloper)
+                    : null;
+                  if (selectedKb?.liveFeedKey) {
+                    handleSyncAllForProvider(selectedKb.liveFeedKey);
+                  } else {
+                    handleSyncAllProviders();
+                  }
+                }}
+                disabled={isAnyProviderSyncing}
+                title="Обновить свободные квартиры и планировки"
               >
-                <RefreshCw size={11} className={isSyncing ? 'animate-spin' : ''} />
-                <span>Каталог</span>
+                <RefreshCw size={12} className={isAnyProviderSyncing ? 'animate-spin' : ''} />
+                <span>{isAnyProviderSyncing ? 'Обновление...' : 'Обновить'}</span>
               </button>
               <button
                 type="button"
@@ -1196,16 +1166,6 @@ export default function DevelopmentsPage() {
                 <BarChart3 size={13} />
                 <span>Статистика</span>
               </button>
-              <span className="dev-found-count">Найдено: <strong>{filteredDevelopments.length}</strong> ЖК</span>
-              {viewMode === 'grid' && (
-                <button 
-                  type="button" 
-                  className="btn-link-map" 
-                  onClick={() => setViewMode('split')}
-                >
-                  📍 Карта
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -1217,17 +1177,23 @@ export default function DevelopmentsPage() {
         <section className="dev-developers-strip" aria-label="Застройщики Кирова">
           <div className="dev-developers-strip-header">
             <span className="dev-developers-strip-title">Застройщики Кирова</span>
-            <button
-              type="button"
-              className="dev-developers-kb-link"
-              onClick={() => {
-                setFocusedKnowledgeDevId(null);
-                setViewMode('knowledge');
-              }}
-            >
-              <BookOpen size={14} />
-              <span>Открыть базу знаний</span>
-            </button>
+            {selectedDeveloper !== 'all' && (() => {
+              const activeKb = DEVELOPERS_KNOWLEDGE.find((k) => k.name === selectedDeveloper);
+              if (!activeKb) return null;
+              return (
+                <button
+                  type="button"
+                  className="dev-developers-kb-link"
+                  onClick={() => {
+                    setFocusedKnowledgeDevId(activeKb.id);
+                    setViewMode('knowledge');
+                  }}
+                >
+                  <BookOpen size={14} />
+                  <span>О застройщике «{activeKb.shortName}»</span>
+                </button>
+              );
+            })()}
           </div>
           <div className="dev-developers-scroll">
             <button
@@ -1255,11 +1221,10 @@ export default function DevelopmentsPage() {
               const liveCount = kb.liveFeedKey ? (liveState[kb.liveFeedKey]?.lots?.length || 0) : 0;
               const isSelectedDev = selectedDeveloper === kb.name;
               return (
-                <div
+                <button
                   key={kb.id}
+                  type="button"
                   className={`dev-developer-logo-card ${isSelectedDev ? 'active' : ''}`}
-                  role="button"
-                  tabIndex={0}
                   onClick={() => {
                     if (count === 0) {
                       setFocusedKnowledgeDevId(kb.id);
@@ -1268,33 +1233,16 @@ export default function DevelopmentsPage() {
                       setSelectedDeveloper((prev) => (prev === kb.name ? 'all' : kb.name));
                     }
                   }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedDeveloper((prev) => (prev === kb.name ? 'all' : kb.name));
-                    }
-                  }}
+                  title={count === 0 ? `Открыть справку по ${kb.name} в Базе знаний` : `Фильтровать ЖК: ${kb.name}`}
                 >
                   <DeveloperLogo developer={kb} size={34} />
                   <div className="dev-logo-card-meta">
                     <strong>{kb.shortName}</strong>
                     <span>
-                      {count} ЖК{liveCount > 0 ? ` · ${liveCount} кв.` : ''}
+                      {count > 0 ? `${count} ЖК${liveCount > 0 ? ` · ${liveCount} кв.` : ''}` : 'В базе знаний'}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    className="dev-logo-card-kb-btn"
-                    title={`База знаний: ${kb.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setFocusedKnowledgeDevId(kb.id);
-                      setViewMode('knowledge');
-                    }}
-                  >
-                    <BookOpen size={13} />
-                  </button>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -1303,7 +1251,15 @@ export default function DevelopmentsPage() {
 
       {/* Main Content Area */}
       <main className={`dev-content-layout ${viewMode}`}>
-        {viewMode === 'knowledge' ? (
+        {viewMode === 'promos' ? (
+          <div style={{ width: '100%' }}>
+            <DeveloperPromosCard
+              user={state.currentUser}
+              dispatch={dispatch}
+              toast={toast}
+            />
+          </div>
+        ) : viewMode === 'knowledge' ? (
           <div style={{ width: '100%' }}>
             <DevelopersKnowledgeSection
               developments={developments}
