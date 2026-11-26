@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-26T08:30:03+03:00",
+  "updated_at": "2026-11-26T08:35:44.184Z",
   "source": "reacrm-kirov-registry",
   "city": "Киров",
   "count": 37,
@@ -289,10 +289,10 @@
       "wall_material": "Панель нового стандарта с утеплением",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/5a523a69a14f9d1c81e7c67e69d0d209.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2026-03-26/genplan_269cdb8bbcd06ff88b24273d511de1ce.jpg"
       ],
-      "description": "Старт продаж ноября 2026 г. Односекционный 17-этажный дом комфорт-класса в микрорайоне Чистые Пруды: колясочные на 1 этаже, двор без машин, школа и садик рядом.",
+      "description": "Односекционный 17-этажный дом комфорт-класса на ул. Чистопрудненская, 11А: колясочные на 1 этаже, двор без машин, школа №25 и детские сады рядом.",
       "features": [
         "Старт продаж 11.2026",
         "Двор без машин",
@@ -327,7 +327,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Чистопрудненская+11А",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/zhr-chistye-prudy",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
@@ -354,10 +354,11 @@
       "wall_material": "Панель, кирпич",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
-        "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/5a523a69a14f9d1c81e7c67e69d0d209.jpg",
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/16d0a22c35507a8afe00c6e044d68c98.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2026-03-26/genplan_269cdb8bbcd06ff88b24273d511de1ce.jpg"
       ],
-      "description": "Крупнейший современный микрорайон Кирова с новой транспортной развязкой, школой №25, детскими садами и прудами. Действует семейная ипотека с ПВ от 20 000 руб.",
+      "description": "Процветающий микрорайон на юге Кирова с развитой инфраструктурой, безопасными дворами без машин, новой транспортной развязкой, школой №25 и уютными прогулочными зонами.",
       "features": [
         "Школа №25 рядом",
         "Парковая зона с прудами",
@@ -392,7 +393,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек/комплекс/28140",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Чистые+Пруды",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/zhr-chistye-prudy",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
@@ -420,10 +421,11 @@
       "wall_material": "Монолит, панель",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-21/0e0165c74ccc4935945d5c1980da86a9.jpg",
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-21/5b87c42664a6786f7db4df2b5c052426.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2024-05-13/genplan_998698ab1621a5e96d62c1a342c3431b.jpg"
       ],
-      "description": "Парк-квартал рядом с Зубаревским лесом в развивающемся микрорайоне Урванцево. Семейные планировки, скидки до 10% для семейного формата.",
+      "description": "Лайф - выразительный квартал комфорт-класса в Юго-Западном районе Кирова в спокойном семейном ритме. Готовая инфраструктура, лаконичная архитектура с арочными мотивами, высокие потолки и пешеходный двор-парк без машин.",
       "features": [
         "Рядом с Зубаревским лесом",
         "Школа и садики рядом",
@@ -457,7 +459,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Квартал+Лайф+Киров",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/life",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
@@ -484,10 +486,11 @@
       "wall_material": "Монолит-кирпич, панель",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-16/16ef3defe98560d28d20cdce8b8a48b2.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/f2a6923fc740551ec8e07139ff10779e.jpg",
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/9f473447bb60e2f48adc5374cc99468e.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2025-01-22/genplan_8dc5e4bbe5233560148b70f98db117a1.jpg"
       ],
-      "description": "Комплексная застройка рядом с природным массивом в Чистых Прудах. Кладовые помещения, льготная ипотека с минимальным ПВ и скидки на отделку.",
+      "description": "Сити Парк - новый жилой комплекс на юге Кирова, сочетающий городской комфорт и живописную природу. Современная среднеэтажная застройка из кирпича, закрытые дворы-парки и благоустройство рядом с лесом.",
       "features": [
         "Природный парк рядом",
         "Кладовые помещения",
@@ -513,7 +516,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Сити+Парк+Киров",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/siti-park",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
@@ -540,10 +543,11 @@
       "wall_material": "Монолит-кирпич",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-04-04/1d69b7de33c7376e5c83a5031b4134ae.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2024-11-27/fe2e46dd1024002fc1708c3003b5e97a.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-23/cc1819f5a8747b230bc307f28a9c40a2.jpg",
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-23/642908dbf5d8963d1ed4430ec59ab7dd.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2025-04-04/genplan_f2b59dfd610fba0717423bd94baa1fa3.jpg"
       ],
-      "description": "Квартал бизнес-класса в центральной части Кирова с подземным паркингом и закрытой территорией. Школы и садики в нескольких минутах ходьбы.",
+      "description": "ЖК «Видный» - квартал бизнес-класса в центре Кирова. Сочетание комфорта, статуса и панорамных видов на город, благородные цветовые решения фасадов, панорамное остекление и подземный паркинг.",
       "features": [
         "Бизнес-класс в центре",
         "Подземный паркинг",
@@ -578,7 +582,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Видный+Киров",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/vidnyy",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
@@ -605,10 +609,11 @@
       "wall_material": "Монолит, панель",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-16/16ef3defe98560d28d20cdce8b8a48b2.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-09-09/55677665de3ce7963fe51319e04f9f6e.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-05-18/1e88fdff46ba4fda117597e4e7539939.jpg",
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-05-18/384e6994906242be68e94f91af162f34.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2024-01-12/genplan_a9cdf0ea7b46bf17ab1a3ba411688d2c.jpg"
       ],
-      "description": "Жилой квартал с видом на реку Вятку и собственным детским садом на территории. Доступна ипотека без удорожания с ПВ от 20 000 руб.",
+      "description": "ЖК «Ривер Парк» - проект в живописной природной локации у реки Вятки и озер. Закрытый двор без машин, зоны отдыха, спортивные площадки, прогулочные бульвары, собственный детский сад и видовые закаты с верхних этажей.",
       "features": [
         "Вид на реку Вятку",
         "Собственный детский сад",
@@ -642,7 +647,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек/комплекс/45610",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Ривер+Парк+Киров",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/zhk-river-park",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
@@ -669,10 +674,11 @@
       "wall_material": "Панель",
       "images": [
         "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2026-09-21/427505601eb286c4749592b08e27919e.jpg",
-        "https://ksm-kirov.ru/media/Catalog/ProjectHeroSlide/2025-07-08/791ebe6ceb9cad619f85549ba67d1f5f.jpg",
-        "https://ksm-kirov.ru/media/Catalog/BuildingHeroSlide/2026-10-23/747bc431292c018e33144a4827fc8e6a.jpg"
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/08ab914d561baf117f508aa6d847698e.jpg",
+        "https://ksm-kirov.ru/media/Catalog/BuildingProgressImage/2026-10-19/58b63fc0ef37ec406d6906bceeedbd6a.jpg",
+        "https://ksm-kirov.ru/media/Catalog/Project/2026-09-04/genplan_9f305c8153c7187c7e8a7d14f936e332.jpg"
       ],
-      "description": "Современный жилой квартал в микрорайоне Озерки от застройщика Кировспецмонтаж. Продуманные планировки от студий до трехкомнатных квартир, благоустроенные дворы, детские площадки и развитая инфраструктура района.",
+      "description": "Озерки расположены в живописной заречной части Кирова недалеко от Нового моста через реку Вятку. Комфортное проживание для всей семьи вдали от городского шума, в окружении природы и с развитой инфраструктурой.",
       "features": [
         "Черновая и чистовая отделка",
         "Школа и детский сад в микрорайоне",
@@ -707,7 +713,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Озерки+Киров",
-      "builder_url": "https://ksm-kirov.ru",
+      "builder_url": "https://ksm-kirov.ru/catalog/projects/mkr-ozerki",
       "contact_phone": "+7 (8332) 51-11-11"
     },
     {
