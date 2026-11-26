@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-11-26T08:35:44.184Z",
+  "updated_at": "2026-11-26T08:42:00.363Z",
   "source": "reacrm-kirov-registry",
   "city": "Киров",
   "count": 37,
@@ -739,11 +739,9 @@
       "floors": "9-17 этажей",
       "wall_material": "Панель ССК, монолит",
       "images": [
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg"
+        "https://kvartiry.kssk.ru/upload/iblock/49c/f8g4q2xeh4al692ecup12vtqfdy85u4d/mikheeva_1_skandinaviya.jpg"
       ],
-      "description": "Жилой комплекс в скандинавской эстетике рядом с новой школой на 1500 мест. Доступны приватные секции по 2-3 квартиры на этаже, студии и просторные евро-3.",
+      "description": "Жилой комплекс Скандинавия от Кировского ССК рядом с новой школой на 1500 мест. Приватные секции по 2-3 квартиры на этаже, студии и просторные европланировки.",
       "features": [
         "Школа на 1500 мест рядом",
         "Секции 2-3 квартиры на этаже",
@@ -785,7 +783,7 @@
       ],
       "domrf_url": "https://scandinaviya.kssk.ru",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Скандинавия+Киров",
-      "builder_url": "https://kssk.ru",
+      "builder_url": "https://kvartiry.kssk.ru/objects/mikheeva-1/",
       "contact_phone": "+7 (8332) 71-44-44"
     },
     {
@@ -811,11 +809,9 @@
       "floors": "16-17 этажей",
       "wall_material": "Монолит-панель ССК",
       "images": [
-        "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg"
+        "https://kvartiry.kssk.ru/upload/iblock/719/g19i00a63etqsrn5jh9yw7g9iddkrp3o/moskovskaya_d_209a_metro.jpg"
       ],
-      "description": "Современный жилой комплекс вдоль Московской улицы с удобным выездом в центр. Возможна покупка с частичным ПВ 10% и меблировкой в ипотеку.",
+      "description": "Жилой комплекс Метро в юго-западном районе Кирова вдоль Московской улицы с удобным выездом в центр. Квартиры с черновой, чистовой отделкой и возможностью меблировки.",
       "features": [
         "Удобная транспортная развязка",
         "Частичный ПВ 10%",
@@ -849,7 +845,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Метро+Киров",
-      "builder_url": "https://kssk.ru",
+      "builder_url": "https://kvartiry.kssk.ru/objects/ul-moskovskaya-d-209a/",
       "contact_phone": "+7 (8332) 71-44-44"
     },
     {
@@ -875,11 +871,9 @@
       "floors": "14-17 этажей",
       "wall_material": "Панель ССК",
       "images": [
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg"
+        "https://kvartiry.kssk.ru/upload/iblock/927/imjbg3ysuae0tfi3227qg2osp4w67853/ul_potrebkooperatsii_34_sloboda.jpg"
       ],
-      "description": "Популярный квартал комфорт-класса на Юго-Западе с поэтапным вводом секций и доступным порогом входа.",
+      "description": "Жилой комплекс Слобода на Юго-Западе вблизи природы: однокомнатные, двухкомнатные, 3- и 4-комнатные квартиры с поэтапным вводом секций.",
       "features": [
         "Доступная цена входа",
         "Частичный ПВ 10%",
@@ -913,7 +907,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Слобода+Киров",
-      "builder_url": "https://kssk.ru",
+      "builder_url": "https://kvartiry.kssk.ru/objects/ul-potrebkooperatsii-34/",
       "contact_phone": "+7 (8332) 71-44-44"
     },
     {
@@ -939,11 +933,9 @@
       "floors": "17 этажей",
       "wall_material": "Монолит-кирпич",
       "images": [
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/b9e/fxk02du8xwg2v1681nkblfcc5thrp9ym/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/iblock/c36/tnumtb2c6xzotv9cpsi2bt5ame56eux6/cp-_2_.png"
+        "https://kvartiry.kssk.ru/upload/iblock/c7e/5c12b742xcjii30vctd72fxpjjisha9o/khlebozavodskoy_pr_d_d_2_kh2.png"
       ],
-      "description": "Жилой комплекс бизнес-класса в ближнем центре Кирова. Стильная архитектура, закрытый двор и быстрая выдача ключей в 2027 году.",
+      "description": "Жилой комплекс бизнес-класса Х2 в центре Кирова. Стильная архитектура, закрытый двор и быстрая выдача ключей.",
       "features": [
         "Бизнес-класс в ближнем центре",
         "Высокая готовность",
@@ -977,7 +969,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Х2+Киров",
-      "builder_url": "https://kssk.ru",
+      "builder_url": "https://kvartiry.kssk.ru/objects/khlebozavodskoy-pr-d-d-2-kh2/",
       "contact_phone": "+7 (8332) 71-44-44"
     },
     {
@@ -1003,11 +995,9 @@
       "floors": "16 этажей",
       "wall_material": "Монолит-кирпич",
       "images": [
-        "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/8d2/g6496yryhiyoos2e812df6gexuc85eqj/1920_1080_1/1.jpg"
+        "https://kvartiry.kssk.ru/upload/iblock/d0a/27j0ywfm08rxqfgjp8tlxo9r0tphrrmv/ul_zavodskaya_14_k2.jpg"
       ],
-      "description": "Видовые квартиры семейного формата с панорамой на реку Вятку (площади 41.1 - 69.1 м²). Семейная ипотека 5% при ПВ от 20.1%.",
+      "description": "Жилой комплекс Дом у реки с видовыми квартирами семейного формата и панорамой на реку Вятку от застройщика Кировский ССК.",
       "features": [
         "Панорама на реку Вятку",
         "Семейные планировки 41-69 м²",
@@ -1033,7 +1023,7 @@
       ],
       "domrf_url": "https://domureki.kssk.ru",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Дом+у+реки+Киров",
-      "builder_url": "https://kssk.ru",
+      "builder_url": "https://kvartiry.kssk.ru/objects/ul-zavodskaya-14-k2/",
       "contact_phone": "+7 (8332) 71-44-44"
     },
     {
@@ -1059,11 +1049,10 @@
       "floors": "10-16 этажей",
       "wall_material": "Панель ССК",
       "images": [
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/d0c/ym3vb6ld7ue1p12xvd6q0a2hcajvpx32/1920_1080_1/1.jpg",
-        "https://kvartiry.kssk.ru/upload/iblock/1c0/q4mi0gulsu0z26kk8gfb083v08t27vwu/2-_5_-_1_.jpg",
-        "https://kvartiry.kssk.ru/upload/resize_cache/iblock/619/1o8a00nic0hscqukifnbcklde0aj30km/1920_1080_1/1.jpg"
+        "https://kvartiry.kssk.ru/upload/iblock/114/gwg141eh80qp0gvx7ei5ga6nbncr6vhv/ul_pushkina_25.jpg",
+        "https://kvartiry.kssk.ru/upload/iblock/b62/vvoafz877negrk7je752548b3mfemchb/1879_Start-prodazh_Novovyatsk_Pushkina-25_2-sektsiya_800kh600_zima.png"
       ],
-      "description": "Доступные квартиры в Нововятском районе с возможностью покупки с частичным ПВ 10% и в рассрочку.",
+      "description": "Жилой комплекс Пушкина в Нововятском районе от застройщика Кировский ССК. Доступные квартиры с покупкой в ипотеку и рассрочку.",
       "features": [
         "Самый доступный порог входа в городе",
         "Частичный ПВ 10%",
@@ -1097,7 +1086,7 @@
       ],
       "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
       "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Пушкина+Киров",
-      "builder_url": "https://kssk.ru",
+      "builder_url": "https://kvartiry.kssk.ru/objects/pushkina-25/",
       "contact_phone": "+7 (8332) 71-44-44"
     },
     {

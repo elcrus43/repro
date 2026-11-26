@@ -83,7 +83,7 @@ export const DEVELOPERS_KNOWLEDGE = [
     brandColor: '#EA580C',
     brandBg: '#FFEDD5',
     brandAccent: '#F97316',
-    website: 'https://kssk.ru',
+    website: 'https://kvartiry.kssk.ru',
     phone: '+7 (8332) 71-44-44',
     officeAddress: 'г. Киров, ул. Герцена, 43',
     liveFeedKey: 'kssk',
