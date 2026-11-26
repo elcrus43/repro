@@ -126,8 +126,10 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-pushkina', address: 'ул. Пушкина, 25к1', lat: 58.510721, lng: 49.6919 },
   // КИНО Девелопмент
   { devId: 'zhk-gorkogo-2a', address: 'ул. Горького, 2А', lat: 58.603, lng: 49.65067 },
-  { devId: 'zhk-fusion-kino', address: 'ул. Ботаническая, 7', lat: 58.46621, lng: 49.71345 },
-  { devId: 'zhk-yuterra', address: 'ул. Творчества, 1', lat: 58.4681, lng: 49.7162 },
+  { devId: 'zhk-fusion-kino', address: 'ул. Ботаническая, 7', lat: 58.488508, lng: 49.729865 },
+  { devId: 'zhk-fusion-kino', address: 'ул. Ботаническая', lat: 58.488508, lng: 49.729865 },
+  { devId: 'zhk-yuterra', address: 'ул. Творчества, 1', lat: 58.4835, lng: 49.7338 },
+  { devId: 'zhk-yuterra', address: 'ул. Творчества, 2', lat: 58.4839, lng: 49.7342 },
   // УКС АВИТЕК
   { devId: 'zhk-krylya', address: 'ул. Попова, 5-7', lat: 58.582653, lng: 49.631654 },
   { devId: 'zhk-sovetskaya-75', address: 'ул. Советская, 75', lat: 58.612961, lng: 49.658519 },

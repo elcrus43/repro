@@ -1770,8 +1770,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "district": "Нововятский район",
     "microdistrict": "Нововятск",
     "address": "Кирово-Чепецкий р-н, д. Шутовщина, ул. Ботаническая",
-    "lat": 58.46621,
-    "lng": 49.71345,
+    "lat": 58.488508,
+    "lng": 49.729865,
     "price_from": 3420000,
     "price_to": 8200000,
     "price_sqm_from": 108000,
@@ -1834,8 +1834,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "district": "Нововятский район",
     "microdistrict": "Нововятск",
     "address": "Кирово-Чепецкий р-н, д. Шутовщина, ул. Беговая / ул. Творчества",
-    "lat": 58.4681,
-    "lng": 49.7162,
+    "lat": 58.4835,
+    "lng": 49.7338,
     "price_from": 2999000,
     "price_to": 7900000,
     "price_sqm_from": 102000,
@@ -2314,7 +2314,7 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
-const CATALOG_VERSION = '2026-11-26-v6';
+const CATALOG_VERSION = '2026-11-26-v7';
 
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();
