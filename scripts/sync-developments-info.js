@@ -1,3 +1,4 @@
+/* global process */
 /**
  * scripts/sync-developments-info.js
  * Обновляет ТОЛЬКО фото, генпланы и описания проектов КСМ (https://ksm-kirov.ru/)
