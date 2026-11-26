@@ -20,7 +20,8 @@ import {
   Command,
   Landmark,
   Target,
-  Megaphone
+  Megaphone,
+  Newspaper
 } from 'lucide-react';
 import { formatNumber, formatPhone, stripPhone } from '../utils/format';
 
@@ -236,6 +237,15 @@ export function CommandPalette() {
       subtitle: 'Генератор баннеров, слоганов и CTA для соцсетей',
       icon: Megaphone,
       action: () => { setIsOpen(false); navigate('/ads'); }
+    },
+    {
+      id: 'nav-news',
+      type: 'navigation',
+      category: 'Разделы',
+      title: 'Новости недвижимости',
+      subtitle: 'Поиск новостей, мемов, фактов и оформление в сторис',
+      icon: Newspaper,
+      action: () => { setIsOpen(false); navigate('/news'); }
     }
   ], [navigate]);
 

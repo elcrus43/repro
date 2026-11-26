@@ -18,6 +18,7 @@ import {
   Sparkles,
   MessageSquareText,
   Megaphone,
+  Newspaper,
   Sun,
   Moon,
   X
@@ -61,6 +62,7 @@ const SelectionFormPage = lazy(() => import('./pages/Selection/index.js').then(m
 const PublicChatPage = lazy(() => import('./pages/Messaging/PublicChatPage'));
 const DevelopmentsPage = lazy(() => import('./pages/Developments/DevelopmentsPage'));
 const AdsPage = lazy(() => import('./pages/Ads/AdsPage'));
+const NewsPage = lazy(() => import('./pages/News/NewsPage'));
 import { useMatchNotifications } from './hooks/useMatchNotifications';
 import { useAutoSearchNotifications } from './hooks/useAutoSearchNotifications';
 
@@ -159,6 +161,13 @@ function BottomNav() {
       icon: Megaphone,
       color: '#f97316',
       bg: 'rgba(249, 115, 22, 0.1)',
+    },
+    {
+      path: '/news',
+      label: 'Новости',
+      icon: Newspaper,
+      color: '#0ea5e9',
+      bg: 'rgba(14, 165, 233, 0.1)',
     },
     {
       path: '/profile',
@@ -546,6 +555,7 @@ function AppRoutes() {
           <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
           <Route path="/ads" element={<RequireAuth><AdsPage /></RequireAuth>} />
+          <Route path="/news" element={<RequireAuth><NewsPage /></RequireAuth>} />
           <Route path="/advertising" element={<Navigate to="/ads" replace />} />
           <Route path="/debug" element={<RequireAdmin><DebugPage /></RequireAdmin>} />
 

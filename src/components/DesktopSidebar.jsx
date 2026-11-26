@@ -15,7 +15,8 @@ import {
   Landmark,
   Search,
   Target,
-  Megaphone
+  Megaphone,
+  Newspaper
 } from 'lucide-react';
 
 export function DesktopSidebar() {
@@ -62,6 +63,7 @@ export function DesktopSidebar() {
     { path: '/history', icon: History, label: 'История' },
     { path: '/documents', icon: ClipboardList, label: 'Документы' },
     { path: '/ads', icon: Megaphone, label: 'Реклама' },
+    { path: '/news', icon: Newspaper, label: 'Новости' },
     { path: '/profile', icon: UserCircle, label: 'Профиль', badge: pendingUsersCount > 0 ? pendingUsersCount : null },
   ];
 

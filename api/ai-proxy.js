@@ -14,6 +14,7 @@
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { searchRealEstateNews, adaptNewsItemForStory } from './_news-search.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || process.env.VITE_ZHIPU_API_KEY;
@@ -156,6 +157,29 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Missing document data (fileBase64 or pagesBase64)' });
       }
       const data = await handleScanEgrn(fileBase64 || '', mimeType || 'application/pdf', pagesBase64 || []);
+      return res.status(200).json(data);
+    }
+
+    if (action === 'searchNews') {
+      const { query, category, limit } = req.body;
+      const data = await searchRealEstateNews({
+        query: query || '',
+        category: category || 'all',
+        limit: limit || 12,
+        aiGenerateFn: async (prompt) => handleGenerateAd(prompt),
+      });
+      return res.status(200).json(data);
+    }
+
+    if (action === 'adaptNewsForStory') {
+      const { item } = req.body;
+      if (!item || !item.title) {
+        return res.status(400).json({ error: 'Missing item.title parameter' });
+      }
+      const data = await adaptNewsItemForStory({
+        item,
+        aiGenerateFn: async (prompt) => handleGenerateAd(prompt),
+      });
       return res.status(200).json(data);
     }
 
