@@ -17,7 +17,10 @@ import {
   Layers,
   Maximize2,
   MessageCircle,
-  Home
+  Home,
+  ExternalLink,
+  Plus,
+  BookmarkCheck
 } from 'lucide-react';
 import { PROPERTY_TYPES } from '../../data/constants';
 import { hasPassedDealStage, isDealTypeCompatible } from '../../utils/matching';
@@ -31,7 +34,17 @@ export function DetailsPage() {
   const navigate = useNavigate();
   const { developments, ksmLots, ksskLots, ksmProjects, ksskProjects } = useDevelopmentsCatalog({ includeLiveLots: true });
   const req = state.requests.find(r => r.id === id);
-  const clients = state.clients.filter(c => (req?.client_ids || [req?.client_id]).includes(c.id));
+  const reqClientIds = Array.isArray(req?.client_ids) && req.client_ids.length > 0
+    ? req.client_ids
+    : (req?.client_id ? [req.client_id] : []);
+  const clients = state.clients.filter(c => reqClientIds.includes(c.id));
+  const clientSelectionItems = (state.selectionItems || []).filter(item => {
+    if (reqClientIds.length === 0) return false;
+    const itemClientIds = Array.isArray(item.client_ids) && item.client_ids.length > 0
+      ? item.client_ids
+      : (item.client_id ? [item.client_id] : []);
+    return reqClientIds.some(cid => itemClientIds.includes(cid));
+  });
   
   const status = req?.status || 'active';
   const isActive = status === 'active';
@@ -77,6 +90,12 @@ export function DetailsPage() {
     if (window.confirm('Удалить этот запрос на подбор?')) {
       dispatch({ type: 'DELETE_REQUEST', id });
       navigate('/requests');
+    }
+  }
+
+  async function handleDeleteSelectionItem(selectionId) {
+    if (window.confirm('Удалить объект из подборки клиента?')) {
+      await dispatch({ type: 'DELETE_SELECTION_ITEM', id: selectionId });
     }
   }
 
@@ -511,34 +530,34 @@ export function DetailsPage() {
               className="card-clickable" 
               onClick={() => navigate(`/matches?request=${id}`)}
               style={{ 
-                height: 44, 
-                borderRadius: 12, 
+                height: 36, 
+                borderRadius: 10, 
                 border: 'none', 
                 background: 'linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%)', 
                 color: '#ffffff',
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'space-between', 
-                padding: '0 16px',
+                padding: '0 12px',
                 cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(0, 82, 255, 0.25)',
+                boxShadow: '0 3px 10px rgba(0, 82, 255, 0.2)',
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500 }}>
-                <Sparkles size={16} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 500 }}>
+                <Sparkles size={14} />
                 <span>Подходящие объекты в базе CRM:</span>
                 <span style={{ 
                   background: 'rgba(255, 255, 255, 0.25)', 
-                  padding: '2px 8px', 
-                  borderRadius: 8, 
+                  padding: '1px 7px', 
+                  borderRadius: 6, 
                   fontWeight: 700, 
-                  fontSize: 12 
+                  fontSize: 11.5 
                 }}>
                   {matches.length}
                 </span>
               </div>
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           ) : (
             <div style={{ 
@@ -559,6 +578,215 @@ export function DetailsPage() {
             </div>
           )}
 
+        </div>
+
+        {/* Client Selection Items (including Avito / portals / manual) */}
+        <div style={{
+          padding: '16px',
+          borderRadius: 20,
+          background: 'var(--surface)',
+          border: '1px solid var(--border-light)',
+          boxShadow: '0 4px 18px rgba(0,0,0,0.03)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 10,
+                background: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+              }}>
+                <BookmarkCheck size={16} />
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span className="font-oswald" style={{ fontSize: 16, fontWeight: 400, color: 'var(--text)' }}>
+                    Объекты в подборе
+                  </span>
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '1px 7px', borderRadius: 999,
+                    background: 'rgba(124, 58, 237, 0.12)', color: '#7c3aed'
+                  }}>
+                    {clientSelectionItems.length}
+                  </span>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 300 }}>
+                  Добавленные варианты с Авито, ЦИАН, ДомКлик и вручную
+                </div>
+              </div>
+            </div>
+
+            {reqClientIds[0] && (
+              <button
+                type="button"
+                onClick={() => navigate(`/selection/new?client=${reqClientIds[0]}&returnTo=/requests/${id}`)}
+                className="card-clickable"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '5px 10px', borderRadius: 8,
+                  background: 'rgba(124, 58, 237, 0.1)', color: '#7c3aed',
+                  border: '1px solid rgba(124, 58, 237, 0.25)',
+                  fontSize: 11.5, fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                <Plus size={13} /> Добавить
+              </button>
+            )}
+          </div>
+
+          {clientSelectionItems.length === 0 ? (
+            <div style={{
+              padding: '12px 14px',
+              borderRadius: 12,
+              background: 'var(--bg-light)',
+              border: '1px dashed var(--border-light)',
+              fontSize: 12,
+              color: 'var(--text-muted)',
+              textAlign: 'center'
+            }}>
+              В подборке клиента пока нет добавленных объектов
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {clientSelectionItems.map(item => {
+                const parts = [];
+                if (item.rooms !== undefined && item.rooms !== null) {
+                  parts.push(item.rooms === 0 ? 'Студия' : `${item.rooms}к`);
+                }
+                if (item.area_total) parts.push(`${item.area_total} м²`);
+                if (item.floor || item.floors_total) {
+                  if (item.floor && item.floors_total) parts.push(`${item.floor}/${item.floors_total} эт.`);
+                  else if (item.floor) parts.push(`${item.floor} эт.`);
+                  else parts.push(`${item.floors_total} эт.`);
+                }
+                if (item.property_type) {
+                  parts.push(PROPERTY_TYPES[item.property_type] || item.property_type);
+                }
+
+                const firstImage = Array.isArray(item.images) && item.images.length > 0 ? item.images[0] : null;
+                const linkStr = String(item.link || '').toLowerCase();
+                const sourceLabel = linkStr.includes('avito.ru')
+                  ? 'Авито'
+                  : linkStr.includes('cian.ru')
+                    ? 'ЦИАН'
+                    : linkStr.includes('domclick.ru')
+                      ? 'ДомКлик'
+                      : null;
+
+                return (
+                  <div
+                    key={item.id}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 14,
+                      background: 'var(--bg-light)',
+                      border: '1px solid var(--border-light)',
+                      display: 'flex',
+                      gap: 10,
+                      alignItems: 'flex-start'
+                    }}
+                  >
+                    {firstImage ? (
+                      <img
+                        src={firstImage}
+                        alt={item.address || 'Объект'}
+                        style={{
+                          width: 56, height: 56, borderRadius: 10, objectFit: 'cover', flexShrink: 0,
+                          background: 'var(--surface)', border: '1px solid var(--border-light)'
+                        }}
+                      />
+                    ) : (
+                      <div style={{
+                        width: 56, height: 56, borderRadius: 10,
+                        background: 'rgba(124, 58, 237, 0.08)', color: '#7c3aed',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                      }}>
+                        <Building2 size={22} />
+                      </div>
+                    )}
+
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span className="font-oswald" style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>
+                          {item.price ? `${formatNumber(item.price)} ₽` : 'Цена не указана'}
+                        </span>
+                        {sourceLabel && (
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, padding: '1px 6px', borderRadius: 6,
+                            background: 'rgba(0, 82, 255, 0.1)', color: 'var(--primary)'
+                          }}>
+                            {sourceLabel}
+                          </span>
+                        )}
+                      </div>
+
+                      <div style={{ fontSize: 12.5, color: 'var(--text)', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{ wordBreak: 'break-word' }}>
+                          {item.city ? (item.address ? `${item.city}, ${item.address}` : item.city) : (item.address || 'Адрес не указан')}
+                        </span>
+                        {item.link && (
+                          <a
+                            href={item.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: 3,
+                              fontSize: 10, color: 'var(--primary)',
+                              background: 'rgba(0, 82, 255, 0.08)', padding: '2px 6px',
+                              borderRadius: 6, textDecoration: 'none', fontWeight: 600
+                            }}
+                          >
+                            <ExternalLink size={10} /> Открыть
+                          </a>
+                        )}
+                      </div>
+
+                      {parts.length > 0 && (
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                          {parts.join(' · ')}
+                        </div>
+                      )}
+
+                      {item.notes && (
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          {item.notes}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/selection/${item.id}/edit`)}
+                        title="Редактировать объект"
+                        style={{
+                          border: 'none', background: 'rgba(0, 82, 255, 0.08)',
+                          color: 'var(--primary)', padding: 5, borderRadius: 6,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSelectionItem(item.id)}
+                        title="Удалить из подбора"
+                        style={{
+                          border: 'none', background: 'rgba(239, 68, 68, 0.08)',
+                          color: '#ef4444', padding: 5, borderRadius: 6,
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* New Buildings Suggestions */}

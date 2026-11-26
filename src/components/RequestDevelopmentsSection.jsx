@@ -428,18 +428,18 @@ export function RequestDevelopmentsSection({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        padding: '6px 12px',
-                        borderRadius: 10,
+                        gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: 8,
                         border: inSelection ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid var(--border)',
                         background: inSelection ? 'rgba(16, 185, 129, 0.12)' : 'var(--surface)',
                         color: inSelection ? '#047857' : 'var(--text)',
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: 500,
                         cursor: 'pointer',
                       }}
                     >
-                      {inSelection ? <Check size={14} /> : <PlusCircle size={14} />}
+                      {inSelection ? <Check size={13} /> : <PlusCircle size={13} />}
                       <span>{inSelection ? 'В подборке' : 'В подборку'}</span>
                     </button>
 
@@ -452,19 +452,19 @@ export function RequestDevelopmentsSection({
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        gap: 5,
-                        padding: '6px 12px',
-                        borderRadius: 10,
+                        gap: 4,
+                        padding: '4px 10px',
+                        borderRadius: 8,
                         border: 'none',
                         background: 'var(--primary)',
                         color: '#ffffff',
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: 500,
                         cursor: 'pointer',
                       }}
                     >
                       <span>Подробнее</span>
-                      <ArrowRight size={13} />
+                      <ArrowRight size={12} />
                     </button>
                   </div>
                 </div>

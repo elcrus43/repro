@@ -76,7 +76,7 @@ export function FormPage() {
                         floor: data.floor ? (isNaN(Number(data.floor)) ? '' : Number(data.floor)) : '',
                         floors_total: data.floors_total ? (isNaN(Number(data.floors_total)) ? '' : Number(data.floors_total)) : '',
                         property_type: data.property_type || 'apartment',
-                        link: data.link || data.url || '',
+                        link: data.link || data.url || data.source_url || '',
                         images: Array.isArray(data.images) && data.images.length > 0 
                             ? [data.images[0]] 
                             : (data.image 
