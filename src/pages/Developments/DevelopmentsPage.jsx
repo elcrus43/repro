@@ -17,8 +17,12 @@ import {
   Sparkles,
   ExternalLink,
   Layers,
-  BarChart3
+  BarChart3,
+  BookOpen
 } from 'lucide-react';
+import { DeveloperLogo } from '../../components/DeveloperLogo';
+import { DEVELOPERS_KNOWLEDGE } from '../../data/developersKnowledgeBase';
+import { DevelopersKnowledgeSection } from './DevelopersKnowledgeSection';
 import { 
   getStoredDevelopments, 
   fetchLatestDevelopments,
@@ -292,8 +296,9 @@ export default function DevelopmentsPage() {
     zhelezno: { active: false, current: 0, total: ZHELEZNO_PROJECT_SLUGS.length, currentName: '' },
   });
 
-  // View Mode: 'split' | 'grid' | 'map' | 'lots'
+  // View Mode: 'split' | 'grid' | 'map' | 'lots' | 'knowledge'
   const [viewMode, setViewMode] = useState(() => (typeof window !== 'undefined' && window.innerWidth <= 900 ? 'grid' : 'split'));
+  const [focusedKnowledgeDevId, setFocusedKnowledgeDevId] = useState(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showHousePins, setShowHousePins] = useState(true);
   const [mapFocusTarget, setMapFocusTarget] = useState(null);
@@ -850,6 +855,18 @@ export default function DevelopmentsPage() {
               <Layers size={16} />
               <span className="mode-btn-text">Подбор квартир ({totalLiveLotsCount})</span>
             </button>
+            <button
+              type="button"
+              className={`mode-btn ${viewMode === 'knowledge' ? 'active' : ''}`}
+              onClick={() => {
+                setFocusedKnowledgeDevId(null);
+                setViewMode('knowledge');
+              }}
+              title="База знаний по новостройкам и карточкам застройщиков Кирова"
+            >
+              <BookOpen size={16} />
+              <span className="mode-btn-text">База знаний</span>
+            </button>
           </div>
 
           {/* Add ЖК Button */}
@@ -865,7 +882,7 @@ export default function DevelopmentsPage() {
       </header>
 
       {/* Filter Section */}
-      {viewMode !== 'lots' && (
+      {viewMode !== 'lots' && viewMode !== 'knowledge' && (
       <section className={`dev-filters-card ${showMobileFilters ? 'mobile-filters-open' : ''}`}>
         <div className="dev-mobile-filter-bar">
           <div className="dev-search-input-wrap" style={{ flex: 1, minWidth: 0 }}>
@@ -1194,9 +1211,120 @@ export default function DevelopmentsPage() {
       </section>
       )}
 
+      {/* Developer Logo Cards Strip in Catalog */}
+      {viewMode !== 'lots' && viewMode !== 'knowledge' && (
+        <section className="dev-developers-strip" aria-label="Застройщики Кирова">
+          <div className="dev-developers-strip-header">
+            <span className="dev-developers-strip-title">Застройщики Кирова</span>
+            <button
+              type="button"
+              className="dev-developers-kb-link"
+              onClick={() => {
+                setFocusedKnowledgeDevId(null);
+                setViewMode('knowledge');
+              }}
+            >
+              <BookOpen size={14} />
+              <span>Открыть базу знаний</span>
+            </button>
+          </div>
+          <div className="dev-developers-scroll">
+            <button
+              type="button"
+              className={`dev-developer-logo-card ${selectedDeveloper === 'all' ? 'active' : ''}`}
+              onClick={() => setSelectedDeveloper('all')}
+            >
+              <span className="dev-all-badge">Все</span>
+              <div className="dev-logo-card-meta">
+                <strong>Все ЖК</strong>
+                <span>{developments.length} проектов</span>
+              </div>
+            </button>
+            {DEVELOPERS_KNOWLEDGE.map((kb) => {
+              const count = developments.filter((d) => {
+                const devName = String(d.developer || '').toLowerCase();
+                return (
+                  devName === kb.name.toLowerCase() ||
+                  devName === kb.shortName.toLowerCase() ||
+                  devName.includes(kb.shortName.toLowerCase()) ||
+                  kb.name.toLowerCase().includes(devName)
+                );
+              }).length;
+              if (count === 0 && !kb.liveFeedKey) return null;
+              const liveCount = kb.liveFeedKey ? (liveState[kb.liveFeedKey]?.lots?.length || 0) : 0;
+              const isSelectedDev = selectedDeveloper === kb.name;
+              return (
+                <div
+                  key={kb.id}
+                  className={`dev-developer-logo-card ${isSelectedDev ? 'active' : ''}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedDeveloper((prev) => (prev === kb.name ? 'all' : kb.name))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedDeveloper((prev) => (prev === kb.name ? 'all' : kb.name));
+                    }
+                  }}
+                >
+                  <DeveloperLogo developer={kb} size={34} />
+                  <div className="dev-logo-card-meta">
+                    <strong>{kb.shortName}</strong>
+                    <span>
+                      {count} ЖК{liveCount > 0 ? ` · ${liveCount} кв.` : ''}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="dev-logo-card-kb-btn"
+                    title={`База знаний: ${kb.name}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFocusedKnowledgeDevId(kb.id);
+                      setViewMode('knowledge');
+                    }}
+                  >
+                    <BookOpen size={13} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Main Content Area */}
       <main className={`dev-content-layout ${viewMode}`}>
-        {viewMode === 'lots' ? (
+        {viewMode === 'knowledge' ? (
+          <div style={{ width: '100%' }}>
+            <DevelopersKnowledgeSection
+              developments={developments}
+              liveLotsByProvider={{
+                ksm: liveState.ksm.lots,
+                kssk: liveState.kssk.lots,
+                kino: liveState.kino.lots,
+                avitek: liveState.avitek.lots,
+                altai: liveState.altai.lots,
+                stroysoyuz: liveState.stroysoyuz.lots,
+                profstroy: liveState.profstroy.lots,
+                smu5: liveState.smu5.lots,
+                zhelezno: liveState.zhelezno.lots,
+              }}
+              initialDeveloperId={focusedKnowledgeDevId}
+              onClearInitialDeveloper={() => setFocusedKnowledgeDevId(null)}
+              onSelectDeveloperInCatalog={(devName) => {
+                setSelectedDeveloper(devName);
+                setViewMode(window.innerWidth <= 900 ? 'grid' : 'split');
+              }}
+              onOpenDevelopment={(dev) => setDetailModalDev(dev)}
+              onShowOnMap={(dev) => {
+                setSelectedDevId(dev.id);
+                setMapFocusTarget({ lat: dev.lat, lng: dev.lng, zoom: 15, ts: Date.now() });
+                setViewMode('split');
+              }}
+            />
+          </div>
+        ) : viewMode === 'lots' ? (
           <div style={{ width: '100%' }}>
             <LiveLotsFinder
               ksmLots={liveState.ksm.lots}
@@ -2181,6 +2309,548 @@ export default function DevelopmentsPage() {
         .dark .btn-lots-stats:hover {
           background: #3b82f6;
           color: #ffffff;
+        }
+
+        /* Developer Logo Cards Strip */
+        .dev-developers-strip {
+          margin-bottom: 14px;
+        }
+        .dev-developers-strip-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 8px;
+        }
+        .dev-developers-strip-title {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text-secondary, #475569);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+        .dev-developers-kb-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: transparent;
+          border: none;
+          color: var(--primary, #0052ff);
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 2px 6px;
+          border-radius: 8px;
+        }
+        .dev-developers-kb-link:hover {
+          background: rgba(0, 82, 255, 0.08);
+        }
+        .dev-developers-scroll {
+          display: flex;
+          align-items: stretch;
+          gap: 10px;
+          overflow-x: auto;
+          padding-bottom: 6px;
+          scrollbar-width: thin;
+        }
+        .dev-developer-logo-card {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          border-radius: 14px;
+          background: var(--surface, #ffffff);
+          border: 1.5px solid var(--border, #e2e8f0);
+          cursor: pointer;
+          flex-shrink: 0;
+          transition: all 0.18s ease;
+          box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+        }
+        .dev-developer-logo-card:hover {
+          border-color: var(--primary, #0052ff);
+          transform: translateY(-1px);
+        }
+        .dev-developer-logo-card.active {
+          border-color: var(--primary, #0052ff);
+          background: rgba(0, 82, 255, 0.06);
+          box-shadow: 0 4px 12px rgba(0, 82, 255, 0.14);
+        }
+        .dev-all-badge {
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: #0f172a;
+          color: #ffffff;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 800;
+          flex-shrink: 0;
+        }
+        .dev-logo-card-meta {
+          display: flex;
+          flex-direction: column;
+          text-align: left;
+          line-height: 1.2;
+        }
+        .dev-logo-card-meta strong {
+          font-size: 13px;
+          font-weight: 700;
+          color: var(--text, #0f172a);
+          white-space: nowrap;
+        }
+        .dev-logo-card-meta span {
+          font-size: 11px;
+          color: var(--text-secondary, #64748b);
+          white-space: nowrap;
+        }
+        .dev-logo-card-kb-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 26px;
+          height: 26px;
+          border-radius: 8px;
+          border: 1px solid var(--border, #e2e8f0);
+          background: var(--bg, #f8fafc);
+          color: var(--text-secondary, #475569);
+          cursor: pointer;
+          margin-left: 2px;
+        }
+        .dev-logo-card-kb-btn:hover {
+          color: var(--primary, #0052ff);
+          border-color: var(--primary, #0052ff);
+        }
+
+        /* Knowledge Base Section */
+        .dev-kb-container {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          padding-bottom: 32px;
+        }
+        .dev-kb-hero {
+          background: var(--surface, #ffffff);
+          border: 1.5px solid var(--border, #e2e8f0);
+          border-radius: 20px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .dev-kb-hero-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        .dev-kb-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          color: var(--primary, #0052ff);
+          background: rgba(0, 82, 255, 0.1);
+          padding: 4px 10px;
+          border-radius: 20px;
+          margin-bottom: 8px;
+        }
+        .dev-kb-title {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+        }
+        .dev-kb-sub {
+          margin: 4px 0 0 0;
+          font-size: 13px;
+          color: var(--text-secondary, #64748b);
+        }
+        .dev-kb-search-wrap {
+          position: relative;
+          min-width: 280px;
+          flex: 1;
+          max-width: 420px;
+        }
+        .dev-kb-search-icon {
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #94a3b8;
+        }
+        .dev-kb-search-input {
+          width: 100%;
+          padding: 10px 34px 10px 36px;
+          border-radius: 12px;
+          border: 1.5px solid var(--border, #e2e8f0);
+          background: var(--bg, #f8fafc);
+          color: var(--text, #0f172a);
+          font-size: 13px;
+        }
+        .dev-kb-clear-btn {
+          position: absolute;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          background: transparent;
+          border: none;
+          color: #64748b;
+          cursor: pointer;
+        }
+        .dev-kb-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .dev-kb-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border-radius: 999px;
+          border: 1px solid var(--border, #e2e8f0);
+          background: var(--bg, #f8fafc);
+          color: var(--text, #0f172a);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .dev-kb-pill.active {
+          background: var(--primary, #0052ff);
+          color: #ffffff;
+          border-color: var(--primary, #0052ff);
+        }
+        .dev-kb-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 12px;
+        }
+        .dev-kb-section-header h3 {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin: 0;
+          font-size: 17px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+        }
+        .dev-kb-count {
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text-secondary, #64748b);
+        }
+        .dev-kb-cards-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+          gap: 16px;
+        }
+        .dev-kb-card {
+          background: var(--surface, #ffffff);
+          border: 1.5px solid var(--border, #e2e8f0);
+          border-radius: 18px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .dev-kb-card-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+        }
+        .dev-kb-card-brand {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .dev-kb-card-name {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+        }
+        .dev-kb-card-tagline {
+          margin: 2px 0 0 0;
+          font-size: 12px;
+          color: var(--text-secondary, #64748b);
+        }
+        .dev-kb-card-badges {
+          display: flex;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .dev-kb-stat-pill {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: var(--bg, #f1f5f9);
+          color: var(--text, #334155);
+        }
+        .dev-kb-stat-pill.live {
+          background: rgba(16, 185, 129, 0.14);
+          color: #059669;
+        }
+        .dev-kb-card-summary {
+          margin: 0;
+          font-size: 13px;
+          line-height: 1.45;
+          color: var(--text, #334155);
+        }
+        .dev-kb-strengths {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .dev-kb-strengths li {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          font-size: 12px;
+          color: var(--text-secondary, #475569);
+        }
+        .dev-kb-strengths li svg {
+          color: #10b981;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .dev-kb-specs {
+          background: var(--bg, #f8fafc);
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .dev-kb-spec-row {
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .dev-kb-spec-label {
+          font-weight: 700;
+          color: var(--text, #0f172a);
+          margin-right: 4px;
+        }
+        .dev-kb-spec-val {
+          color: var(--text-secondary, #475569);
+        }
+        .dev-kb-meta-bar {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          font-size: 12px;
+        }
+        .dev-kb-contact-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: var(--primary, #0052ff);
+          font-weight: 600;
+          text-decoration: none;
+        }
+        .dev-kb-min-price {
+          margin-left: auto;
+          font-weight: 700;
+          color: var(--text, #0f172a);
+        }
+        .dev-kb-projects {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .dev-kb-projects-label {
+          font-size: 11px;
+          font-weight: 700;
+          color: var(--text-secondary, #64748b);
+          text-transform: uppercase;
+        }
+        .dev-kb-project-chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+        .dev-kb-project-chip {
+          display: inline-flex;
+          align-items: center;
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 8px;
+          overflow: hidden;
+          background: var(--bg, #f8fafc);
+        }
+        .dev-kb-proj-open {
+          border: none;
+          background: transparent;
+          padding: 4px 8px;
+          font-size: 12px;
+          font-weight: 600;
+          color: var(--text, #0f172a);
+          cursor: pointer;
+        }
+        .dev-kb-proj-open:hover {
+          color: var(--primary, #0052ff);
+        }
+        .dev-kb-proj-map {
+          border: none;
+          border-left: 1px solid var(--border, #e2e8f0);
+          background: transparent;
+          padding: 4px 6px;
+          color: var(--text-secondary, #64748b);
+          cursor: pointer;
+        }
+        .dev-kb-proj-map:hover {
+          color: var(--primary, #0052ff);
+        }
+        .dev-kb-note-box {
+          border: 1px dashed var(--border, #cbd5e1);
+          border-radius: 12px;
+          padding: 10px 12px;
+        }
+        .dev-kb-note-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--text, #0f172a);
+          margin-bottom: 4px;
+        }
+        .dev-kb-note-header span {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+        .dev-kb-note-edit-btn {
+          border: none;
+          background: transparent;
+          color: var(--primary, #0052ff);
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .dev-kb-note-text {
+          margin: 0;
+          font-size: 12px;
+          color: var(--text, #334155);
+          white-space: pre-wrap;
+        }
+        .dev-kb-note-empty {
+          margin: 0;
+          font-size: 12px;
+          color: #94a3b8;
+        }
+        .dev-kb-note-editor textarea {
+          width: 100%;
+          border-radius: 8px;
+          border: 1px solid var(--border, #cbd5e1);
+          padding: 8px;
+          font-size: 12px;
+          background: var(--bg, #ffffff);
+          color: var(--text, #0f172a);
+          margin-bottom: 6px;
+        }
+        .dev-kb-note-actions {
+          display: flex;
+          gap: 8px;
+        }
+        .dev-kb-note-save {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: var(--primary, #0052ff);
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .dev-kb-note-cancel {
+          background: transparent;
+          border: 1px solid var(--border, #cbd5e1);
+          color: var(--text-secondary, #475569);
+          border-radius: 8px;
+          padding: 5px 10px;
+          font-size: 12px;
+          cursor: pointer;
+        }
+        .dev-kb-card-footer {
+          margin-top: auto;
+        }
+        .dev-kb-filter-btn {
+          width: 100%;
+          padding: 9px 12px;
+          border-radius: 10px;
+          border: 1.5px solid var(--primary, #0052ff);
+          background: rgba(0, 82, 255, 0.06);
+          color: var(--primary, #0052ff);
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .dev-kb-filter-btn:hover {
+          background: var(--primary, #0052ff);
+          color: #ffffff;
+        }
+        .dev-kb-guide-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+          gap: 16px;
+        }
+        .dev-kb-guide-card {
+          background: var(--surface, #ffffff);
+          border: 1.5px solid var(--border, #e2e8f0);
+          border-radius: 18px;
+          padding: 16px;
+        }
+        .dev-kb-guide-top {
+          margin-bottom: 12px;
+        }
+        .dev-kb-guide-badge {
+          display: inline-block;
+          font-size: 10px;
+          font-weight: 700;
+          text-transform: uppercase;
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: rgba(16, 185, 129, 0.12);
+          color: #059669;
+          margin-bottom: 6px;
+        }
+        .dev-kb-guide-top h4 {
+          margin: 0;
+          font-size: 15px;
+          font-weight: 800;
+          color: var(--text, #0f172a);
+        }
+        .dev-kb-guide-items {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+        .dev-kb-guide-item strong {
+          display: block;
+          font-size: 13px;
+          color: var(--text, #0f172a);
+          margin-bottom: 2px;
+        }
+        .dev-kb-guide-item p {
+          margin: 0;
+          font-size: 12px;
+          line-height: 1.45;
+          color: var(--text-secondary, #475569);
         }
       `}</style>
 

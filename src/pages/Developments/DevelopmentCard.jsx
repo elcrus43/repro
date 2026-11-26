@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building2, MapPin, Calendar, PlusCircle, Check } from 'lucide-react';
 import { formatNumber } from '../../utils/format';
+import { DeveloperLogo } from '../../components/DeveloperLogo';
 
 export function DevelopmentCard({
   development,
@@ -58,9 +59,12 @@ export function DevelopmentCard({
       {/* Content */}
       <div className="dev-card-content">
         <div className="dev-card-header">
-          <div>
-            <span className="dev-card-dev-name">{dev.developer || 'Застройщик'}</span>
-            <h3 className="dev-card-title">{dev.name}</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <DeveloperLogo developer={dev.developer} size={28} />
+            <div style={{ minWidth: 0 }}>
+              <span className="dev-card-dev-name">{dev.developer || 'Застройщик'}</span>
+              <h3 className="dev-card-title">{dev.name}</h3>
+            </div>
           </div>
           {isRequestMatched && (
             <span className={`dev-match-highlight-badge ${requestMatch.priceMatchType === 'near' ? 'near' : 'exact'}`}>

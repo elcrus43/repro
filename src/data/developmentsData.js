@@ -365,8 +365,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "district": "Ленинский район",
     "microdistrict": "Чистые Пруды",
     "address": "г. Киров, ул. Чистопрудненская, 11, 13, 13А / ул. Ивана Попова, 58",
-    "lat": 58.56809,
-    "lng": 49.63744,
+    "lat": 58.562643,
+    "lng": 49.634552,
     "price_from": 6100000,
     "price_to": 9600000,
     "price_sqm_from": 108000,
@@ -680,8 +680,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "district": "Первомайский район",
     "microdistrict": "Озерки",
     "address": "г. Киров, ул. Торфяная, 13в",
-    "lat": 58.6662,
-    "lng": 49.6809,
+    "lat": 58.662489,
+    "lng": 49.685795,
     "price_from": 4187700,
     "price_to": 9500000,
     "price_sqm_from": 115000,
@@ -2315,7 +2315,7 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
-const CATALOG_VERSION = '2026-11-17-v3';
+const CATALOG_VERSION = '2026-11-26-v1';
 
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();

@@ -132,14 +132,15 @@ const VERIFIED_HOUSE_ENTRIES = [
   { devId: 'zhk-krylya', address: 'ул. Попова, 5-7', lat: 58.582653, lng: 49.631654 },
   { devId: 'zhk-sovetskaya-75', address: 'ул. Советская, 75', lat: 58.612961, lng: 49.658519 },
   { devId: 'zhk-erdyakova-19a', address: 'ул. Романа Ердякова, 19а', lat: 58.612526, lng: 49.636609 },
-  // Алтай-Строй
-  { devId: 'zhk-dinastiya', address: 'Хлебозаводской пер., 30', lat: 58.587842, lng: 49.664871 },
-  { devId: 'zhk-erdyakova-9', address: 'ул. Романа Ердякова, 9', lat: 58.613412, lng: 49.637512 },
+  // Алтай-Строй / СМТ
+  { devId: 'zhk-dinastiya', address: 'Хлебозаводской пер., 30', lat: 58.594414, lng: 49.639898 },
+  { devId: 'zhk-dinastiya', address: 'Хлебозаводской проезд, 30', lat: 58.594414, lng: 49.639898 },
+  { devId: 'zhk-erdyakova-9', address: 'ул. Романа Ердякова, 9', lat: 58.609549, lng: 49.635804 },
   // Стройсоюз
-  { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 33', lat: 58.6015, lng: 49.6820 },
-  { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 29', lat: 58.6020, lng: 49.6812 },
-  { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 28', lat: 58.5521, lng: 49.6885 },
-  { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 26', lat: 58.5525, lng: 49.6879 },
+  { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 33', lat: 58.5962, lng: 49.6881 },
+  { devId: 'zhk-uspenskaya', address: 'ул. Успенская, 29', lat: 58.596624, lng: 49.688137 },
+  { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 28', lat: 58.50673, lng: 49.67763 },
+  { devId: 'zhk-sloboda-solomintsy', address: 'ул. Мичурина, 26', lat: 58.5064, lng: 49.6771 },
   { devId: 'zhk-repinskie-prudy', address: 'ул. Блюхера, 46', lat: 58.58245, lng: 49.67530 },
   { devId: 'zhk-repinskie-prudy', address: 'Блюхера, 46', lat: 58.58245, lng: 49.67530 },
   { devId: 'zhk-repinskie-prudy', address: 'ул. Блюхера, 46 / ул. Никитская', lat: 58.58245, lng: 49.67530 },

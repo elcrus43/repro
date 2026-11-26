@@ -10,6 +10,7 @@
     - [showings.md](facts/showings.md) — показы (планирование, проведение)
     - [requests.md](facts/requests.md) — запросы клиентов (критерии поиска)
     - [deals.md](facts/deals.md) — сделки (финальные соглашения)
+    - [developments-knowledge-base.md](facts/developments-knowledge-base.md) — база знаний по новостройкам и застройщикам Кирова
   - **hall_events** → [events/](events/) — ключевые события разработки
     - [2026-04-14-wiki-init.md](events/2026-04-14-wiki-init.md) — инициализация wiki
     - [2026-05-04-verification-and-test-fixes.md](events/2026-05-04-verification-and-test-fixes.md) — верификация и исправление тестов
