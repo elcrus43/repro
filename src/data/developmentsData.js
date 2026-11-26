@@ -158,7 +158,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек/комплекс/32954",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Знак",
-    "builder_url": "https://zhk-znak.ru",
+    "builder_url": "https://zhcom.ru/kirov/projects/znak_kirov/",
     "contact_phone": "+7 (8332) 203-722"
   },
   {
@@ -224,7 +224,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Зарядное",
-    "builder_url": "https://zhk-zaryadnoe.ru",
+    "builder_url": "https://zhcom.ru/kirov/projects/zaryadnoe/",
     "contact_phone": "+7 (8332) 203-722"
   },
   {
@@ -290,7 +290,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Инноград",
-    "builder_url": "https://zhk-innograd.ru",
+    "builder_url": "https://zhcom.ru/kirov/projects/innograd/",
     "contact_phone": "+7 (8332) 203-722"
   },
   {
@@ -1440,8 +1440,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "/images/developments/zhk-zapovedny.png",
-      "https://stroy-soyuz.ru/upload/iblock/ebd/7ynvpus9i400j4ns5gtyvz37ob9fxfij.png",
-      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/c3a/d4ofo47mmbuc9qno62gff5vywm55vfqw.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/744/0zpz1spuzzejd49qdp6asnnyfr4i61h4.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/c9e/jghdl1s1opeso7q599t276qaov1qmtj8.jpg"
     ],
     "description": "Малоэтажный кирпичный квартал в зеленой зоне. В новой очереди действует программа с ремонтом 15 000 ₽/м² и сниженной ипотечной ставкой.",
     "features": [
@@ -1477,7 +1478,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Заповедный+Киров",
-    "builder_url": "https://stroysoyuz43.ru",
+    "builder_url": "https://stroy-soyuz.ru/projects/zhk-zapovednyy-3-ochered/",
     "contact_phone": "+7 (8332) 71-57-05"
   },
   {
@@ -1503,9 +1504,10 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "8-14 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg",
-      "/images/developments/zhk-zapovedny.png",
-      "https://stroy-soyuz.ru/upload/iblock/161/wmk1jwiyfgbbbk13kd5wmgcqrvk5rcdu.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/62e/t5dvw0jxn5qxj4f615o7h5dflxyv1ev2.png",
+      "https://stroy-soyuz.ru/upload/iblock/d06/jyushe9vk58q833owd579vv2osugiy2p.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/273/bsvzvtefcq6psgou4jdp9v9npiv49ld2.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/e52/u3ujex82p4p9metih19j1vhjhvzlbi4h.jpg"
     ],
     "description": "Новая очередь престижного жилого комплекса в центральной части Кирова рядом с парковой зоной и инфраструктурой.",
     "features": [
@@ -1533,7 +1535,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Репинские+пруды+Киров",
-    "builder_url": "https://stroysoyuz43.ru",
+    "builder_url": "https://stroy-soyuz.ru/projects/zhk-repinskie-prudy-2-ochered/",
     "contact_phone": "+7 (8332) 71-57-05"
   },
   {
@@ -1560,8 +1562,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "https://stroy-soyuz.ru/upload/iblock/161/wmk1jwiyfgbbbk13kd5wmgcqrvk5rcdu.jpg",
-      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg",
-      "https://stroy-soyuz.ru/upload/iblock/5d5/vxwl8zau5uas806jzu922qhucdl15kdl.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/700/c17jyn7wdqqa91k2ach1wnjyudbv742w.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/457/1m47im8mfmkettbl73qlg29owd2p9cvo.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/cb6/9kmszsykuvdbvatarqkue0y0mn79xbwp.png"
     ],
     "description": "Малоэтажные 4-этажные кирпичные дома с дворами без машин, окруженные природой. Продуманные семейные планировки.",
     "features": [
@@ -1590,7 +1593,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Слобода+Соломинцы",
-    "builder_url": "https://stroysoyuz43.ru",
+    "builder_url": "https://stroy-soyuz.ru/projects/zhk-sloboda-solomintsy/",
     "contact_phone": "+7 (8332) 71-57-05"
   },
   {
@@ -1616,8 +1619,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "https://stroy-soyuz.ru/upload/iblock/5d5/vxwl8zau5uas806jzu922qhucdl15kdl.jpg",
-      "https://stroy-soyuz.ru/upload/iblock/cef/yrb07os5t4crdbvsxu70hr1kmvm7bflj.jpg",
-      "https://stroy-soyuz.ru/upload/iblock/ec2/de1ml5tuttay9nsgc2ps1mt7l42tambx.jpg"
+      "https://stroy-soyuz.ru/upload/iblock/49b/v54c7f56zjlfs0v4q5q4b2qauv5i98qd.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/fd5/4prln3b6hbvt7vhdvl86b0ihpkt0lv80.jpg",
+      "https://stroy-soyuz.ru/upload/iblock/403/163gz82177dn13t7op4pp564rikjppd9.jpg"
     ],
     "description": "Приватный клубный дом в историческом центре города. Высокий уровень приватности, семейная ипотека 6% при ПВ 50%.",
     "features": [
@@ -1645,7 +1649,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Премьер+Свободы+115",
-    "builder_url": "https://stroysoyuz43.ru",
+    "builder_url": "https://stroy-soyuz.ru/projects/premier/",
     "contact_phone": "+7 (8332) 71-57-05"
   },
   {
@@ -1700,7 +1704,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Резиденция+на+Успенской",
-    "builder_url": "https://stroysoyuz43.ru",
+    "builder_url": "https://stroy-soyuz.ru/",
     "contact_phone": "+7 (8332) 71-57-05"
   },
   {
@@ -1726,8 +1730,9 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич",
     "images": [
       "/images/developments/zhk-gorkogo-2a.jpg",
-      "https://gorkogo2a.ru/static/images/start-screen-bg.jpeg",
-      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg"
+      "https://api.kino-dev.ru/storage/images/1rbYpBloGP0023-noc0003-2-1.jpg",
+      "https://api.kino-dev.ru/storage/images/bGLWvQzB1i00340000-6-11zon.jpg",
+      "https://api.kino-dev.ru/storage/images/gtu3oPsulnframe-1948766191.jpg"
     ],
     "description": "Кирпичный дом бизнес-класса в центральной части Кирова с подземным паркингом. В ноябре 2026 действуют скидки до 2.2 млн руб.",
     "features": [
@@ -1755,7 +1760,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Горького+2а+Киров",
-    "builder_url": "https://кинодевелопмент.рф",
+    "builder_url": "https://kino-dev.ru/proekty/gorkogo-2a",
     "contact_phone": "+7 (8332) 45-45-45"
   },
   {
@@ -1782,8 +1787,8 @@ export const DEFAULT_DEVELOPMENTS = [
     "wall_material": "Кирпич, монолит",
     "images": [
       "/images/developments/zhk-fusion-kino.jpg",
-      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1920:0/g:ce/bl:0/c:0/plain/s3://idalite-media/media/projects/19305b28-5de6-427b-b7dd-dee0829c24de/sites/blocks/29c0dcb70fc241b5a0fccd5e1f035f6d.jpg",
-      "https://cdn.idalite.ru/i/insecure/q:85/rs:fit:1200:1200/plain/s3://idalite-media/media/images/b6887fedb1774ab6843843d591b7e2b7.jpg"
+      "https://api.kino-dev.ru/storage/images/NiGpfLUDE4obshhii-render-dnem-5-2.png",
+      "https://api.kino-dev.ru/storage/images/i6pjV6exkIframe-1948765895.jpg"
     ],
     "description": "Среднеэтажный пригородный проект рядом с Нововятским районом. Компактные студии и евро-планировки с выбором чистовой отделки.",
     "features": [
@@ -1819,7 +1824,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Фьюжн+Киров",
-    "builder_url": "https://кинодевелопмент.рф",
+    "builder_url": "https://kino-dev.ru/proekty/fusion",
     "contact_phone": "+7 (8332) 45-45-45"
   },
   {
@@ -1883,7 +1888,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Ютерра",
-    "builder_url": "https://ютерра.рф",
+    "builder_url": "https://kino-dev.ru/",
     "contact_phone": "+7 (8332) 45-45-45"
   },
   {
@@ -2306,7 +2311,7 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
-const CATALOG_VERSION = '2026-11-26-v4';
+const CATALOG_VERSION = '2026-11-26-v5';
 
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();
