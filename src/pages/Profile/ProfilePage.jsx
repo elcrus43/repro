@@ -12,7 +12,9 @@ import {
     connectCalendar,
     disconnectCalendar,
     initCalendarAuth,
+    setCalendarToken,
     addEventToCalendar,
+    GOOGLE_SCOPES,
 } from '../../lib/googleCalendar';
 import { ChangePasswordModal } from '../../components/ChangePasswordModal';
 import { SocialAccountsCard } from '../../components/SocialAccountsCard';
@@ -91,10 +93,12 @@ export function ProfilePage() {
 
     // Initialize Google Calendar auth with current session
     React.useEffect(() => {
+        const connected = !!(state.currentUser?.google_calendar_connected || state.currentUser?.google_refresh_token);
         authService.getSession().then(({ data: { session } }) => {
             if (session?.access_token) {
-                initCalendarAuth(session.access_token, !!state.currentUser?.google_refresh_token);
+                initCalendarAuth(session.access_token, connected);
             }
+            setGcalConnected(isCalendarConnected() || connected);
         });
     }, [state.currentUser]);
 
@@ -113,7 +117,7 @@ export function ProfilePage() {
     }, []);
 
     React.useEffect(() => {
-        if (user) setEditData({
+        if (user && !isEditing) setEditData({
             full_name: user.full_name || '',
             phone: user.phone || '',
             agency_name: user.agency_name || '',
@@ -121,7 +125,7 @@ export function ProfilePage() {
             tax_status: user.tax_status || user.passport_details?.tax_status || 'Самозанятый',
             passport_details: user.passport_details || {}
         });
-    }, [user]);
+    }, [user, isEditing]);
 
     if (!user) return null;
 
@@ -172,7 +176,7 @@ export function ProfilePage() {
 
             const codeClient = window.google.accounts.oauth2.initCodeClient({
                 client_id: client_id,
-                scope: 'https://www.googleapis.com/auth/calendar.events',
+                scope: GOOGLE_SCOPES,
                 ux_mode: 'popup',
                 prompt: 'consent',
                 access_type: 'offline',
@@ -210,13 +214,11 @@ export function ProfilePage() {
 
                         const { access_token, expires_in } = await res.json();
                         
-                        // Cache the access token locally for 1 hour
-                        localStorage.setItem('gcal_access_token', access_token);
-                        localStorage.setItem('gcal_token_expiry', String(Date.now() + (expires_in - 60) * 1000));
+                        setCalendarToken(access_token, expires_in);
 
                         dispatch({
                             type: 'UPDATE_PROFILE',
-                            profile: { id: user.id, google_refresh_token: 'connected' },
+                            profile: { id: user.id, google_calendar_connected: true, google_refresh_token: 'connected' },
                         });
                         setGcalConnected(true);
                         toast.success('Google Calendar успешно подключён!');
@@ -243,7 +245,7 @@ export function ProfilePage() {
             // Clear refresh token flag in local state
             dispatch({
                 type: 'UPDATE_PROFILE',
-                profile: { id: user.id, google_refresh_token: null },
+                profile: { id: user.id, google_calendar_connected: false, google_refresh_token: null },
             });
             setGcalConnected(false);
             toast.success('Google Calendar отключён');
@@ -663,14 +665,14 @@ export function ProfilePage() {
                             <Calendar size={20} />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <div className="font-oswald" style={{ fontSize: 15, fontWeight: 300, color: 'var(--text)' }}>Google Календарь</div>
+                            <div className="font-oswald" style={{ fontSize: 15, fontWeight: 300, color: 'var(--text)' }}>Google Календарь и Контакты</div>
                             <div style={{ fontSize: 12, color: 'var(--text-secondary)', opacity: 0.7, fontWeight: 300 }}>
                                 {!isCalendarConfigured() ? (
                                     <span style={{ color: 'var(--danger)' }}>Не настроен (укажите VITE_GOOGLE_CLIENT_ID в .env)</span>
                                 ) : gcalConnected ? (
-                                    <span style={{ color: 'var(--success)' }}>✓ Подключен и активен</span>
+                                    <span style={{ color: 'var(--success)' }}>✓ Подключен и активен (Календарь + Контакты)</span>
                                 ) : (
-                                    <span style={{ color: 'var(--danger)' }}>✗ Не подключён — события не синхронизируются</span>
+                                    <span style={{ color: 'var(--danger)' }}>✗ Не подключён - события и контакты не синхронизируются</span>
                                 )}
                             </div>
                         </div>
@@ -683,7 +685,7 @@ export function ProfilePage() {
                         const hasToken = !!token;
                         const isValid = expiry && Date.now() < Number(expiry);
                         const expiresIn = expiry ? Math.round((Number(expiry) - Date.now()) / 60000) : null;
-                        const hasDbToken = !!state.currentUser?.google_refresh_token;
+                        const hasDbToken = !!(state.currentUser?.google_calendar_connected || state.currentUser?.google_refresh_token);
                         return (
                             <div style={{ 
                                 padding: '12px 14px', borderRadius: 14, 
@@ -797,7 +799,7 @@ export function ProfilePage() {
                                     style={{ borderRadius: 14, height: 44, fontSize: 13 }}
                                     onClick={handleConnectCalendar}
                                 >
-                                    Подключить Google Календарь
+                                    Подключить Google (Календарь и Контакты)
                                 </button>
                             )}
                         </div>

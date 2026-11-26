@@ -11,7 +11,8 @@
 import { buildApiUrl } from './apiConfig';
 
 const CLIENT_ID   = import.meta.env.VITE_GOOGLE_CLIENT_ID || '991093392145-f09fodb4e2gf8smrh0tgpco9t4rqserf.apps.googleusercontent.com';
-const SCOPES      = 'https://www.googleapis.com/auth/calendar.events';
+export const GOOGLE_SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/contacts';
+const SCOPES      = GOOGLE_SCOPES;
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const EDGE_FN_URL  = buildApiUrl('/api/google-calendar-token');
 
@@ -55,13 +56,21 @@ let supabaseAuthToken = null;
  * Initialize with current Supabase session token and refresh token status.
  * Call this once after user logs in (from AppContext or auth listener).
  */
-export function initCalendarAuth(sessionToken, userHasRefreshToken = false) {
+export function initCalendarAuth(sessionToken, userHasRefreshToken) {
     supabaseAuthToken = sessionToken;
-    if (userHasRefreshToken) {
-        hasRefreshToken = true;
+    if (userHasRefreshToken !== undefined) {
+        hasRefreshToken = Boolean(userHasRefreshToken);
     }
-    // Try to restore cached access token
-    restoreToken();
+    // Try to restore cached access token; if missing on a new device, refresh in background
+    const hasValidLocal = restoreToken();
+    if (!hasValidLocal && hasRefreshToken && supabaseAuthToken) {
+        refreshViaEdgeFunction();
+    }
+}
+
+export function setCalendarToken(token, expiresInSeconds) {
+    hasRefreshToken = true;
+    saveToken(token, expiresInSeconds);
 }
 
 /* ─── Storage ───────────────────────────────────────────────────────────────── */
@@ -145,7 +154,10 @@ async function refreshViaEdgeFunction() {
                 const body = await res.json().catch(() => ({}));
                 console.warn('[Google Calendar] Refresh failed:', body.error);
                 // 401 = refresh token revoked — clear local cache
-                if (res.status === 401) clearToken();
+                if (res.status === 401) {
+                    hasRefreshToken = false;
+                    clearToken();
+                }
                 return false;
             }
 
@@ -254,9 +266,9 @@ export async function connectCalendar() {
 
 /**
  * Get current valid access token (auto-refreshes if needed).
- * Used internally by calendar API calls.
+ * Used internally by calendar and contacts API calls.
  */
-async function getAccessToken() {
+export async function getGoogleAccessToken() {
     // 1. Valid token in memory/localStorage
     if (restoreToken()) return accessToken;
 
@@ -264,13 +276,18 @@ async function getAccessToken() {
     const refreshed = await refreshViaEdgeFunction();
     if (refreshed && accessToken) return accessToken;
 
-    throw new Error('Google Calendar не подключён. Зайдите в Профиль и нажмите «Подключить Google Календарь».');
+    throw new Error('Google аккаунт не подключён. Зайдите в Профиль и нажмите «Подключить Google».');
+}
+
+async function getAccessToken() {
+    return getGoogleAccessToken();
 }
 
 /**
  * Disconnect — revokes tokens server-side and clears local cache.
  */
 export async function disconnectCalendar() {
+    hasRefreshToken = false;
     clearToken();
 
     if (!supabaseAuthToken) return;

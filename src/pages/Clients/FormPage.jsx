@@ -8,6 +8,9 @@ import { findDuplicateClients } from '../../utils/clientDuplicate';
 import { FormCard } from '../../components/FormCard';
 import { PassportScanModal } from '../../components/PassportScanModal';
 import { AddressAutocomplete } from '../../components/AddressAutocomplete';
+import { GoogleContactStatusBadge } from '../../components/GoogleContactStatusBadge';
+import { useGoogleContactCheck } from '../../hooks/useGoogleContactCheck';
+import { createGoogleContact } from '../../lib/googleContacts';
 import { CLIENT_SOURCES, CLIENT_TYPES } from '../../data/constants';
 import { User, Phone, Mail, FileText, Share2, Activity, ShieldCheck, ChevronDown, ChevronUp, X, Plus, AlertTriangle, Camera, Landmark, Loader2, CheckCircle2, Cake, Calendar, Building2, Search, UserCheck, Link2, Unlink2 } from 'lucide-react';
 
@@ -102,7 +105,11 @@ export function FormPage() {
     const [bankLoading, setBankLoading] = useState(false);
     const [bankFound, setBankFound] = useState(false);
     const [duplicateModalMatch, setDuplicateModalMatch] = useState(null);
+    const [saveToGoogleContacts, setSaveToGoogleContacts] = useState(true);
     const bikTimerRef = useRef(null);
+
+    const primaryPhone = (form.phones && form.phones[0]) || form.phone || '';
+    const googleCheck = useGoogleContactCheck(primaryPhone, { enabled: !id });
 
     // Состояние для юридического лица
     const isLegalEntity = form.client_types?.includes('legal_entity');
@@ -552,7 +559,24 @@ export function FormPage() {
             const client = buildClientPayload(undefined, authId);
             const ok = await dispatch({ type: 'ADD_CLIENT', client: { ...client, realtor_id: state.currentUser?.id } });
             if (ok !== false) {
-                toast.success('Клиент создан');
+                let googleMsg = null;
+                if (saveToGoogleContacts && googleCheck.status === 'not_found') {
+                    try {
+                        const gRes = await createGoogleContact(client, { checkDuplicate: false });
+                        if (gRes.created) {
+                            googleMsg = 'Клиент создан в CRM и добавлен в Google Контакты';
+                        } else if (gRes.alreadyExists) {
+                            googleMsg = 'Клиент создан в CRM (контакт уже есть в Google)';
+                        }
+                    } catch (gErr) {
+                        console.warn('[Google Contacts create error]', gErr);
+                        toast.error(`Клиент создан в CRM, но не записан в Google Контакты: ${gErr.message}`);
+                        googleMsg = '';
+                    }
+                }
+                if (googleMsg !== '') {
+                    toast.success(googleMsg || 'Клиент создан');
+                }
                 const returnTo = searchParams.get('returnTo');
                 if (returnTo) navigate(returnTo);
                 else navigate('/clients');
@@ -696,6 +720,20 @@ export function FormPage() {
                                 const phones = form.phones || [form.phone || ''];
                                 setF('phones', [...phones, '']);
                             }}><Plus size={16} /> Добавить телефон</button>
+                            {!id && (
+                                <GoogleContactStatusBadge
+                                    status={googleCheck.status}
+                                    contact={googleCheck.contact}
+                                    error={googleCheck.error}
+                                    saveToGoogle={saveToGoogleContacts}
+                                    onToggleSaveToGoogle={setSaveToGoogleContacts}
+                                    canApplyContact={!form.full_name?.trim()}
+                                    onApplyContact={(c) => {
+                                        if (c.name && !form.full_name?.trim()) setF('full_name', c.name);
+                                        if (c.email && !form.email?.trim()) setF('email', c.email);
+                                    }}
+                                />
+                            )}
                         </div>
 
                         {(() => {

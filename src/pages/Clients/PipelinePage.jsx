@@ -6,6 +6,9 @@ import { formatPhone, formatNumber, stripPhone } from '../../utils/format';
 import { getContractTypeConfig } from '../../utils/contractTerms';
 import { CLIENT_PIPELINE_STAGES, getClientPipelineMeta, getClientPipelineStage } from '../../utils/clientPipeline';
 import { nanoid } from '../../utils/nanoid';
+import { GoogleContactStatusBadge } from '../../components/GoogleContactStatusBadge';
+import { useGoogleContactCheck } from '../../hooks/useGoogleContactCheck';
+import { createGoogleContact } from '../../lib/googleContacts';
 import {
   Phone, User, Home, Tag, Calendar, FileText, CheckCircle2,
   XCircle, Plus, MessageSquare, ChevronDown, ChevronUp, X, Pencil
@@ -64,6 +67,10 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     phone: '',
     client_type: 'buyer',
     notes: ''
+  });
+  const [saveQuickToGoogle, setSaveQuickToGoogle] = useState(true);
+  const quickGoogleCheck = useGoogleContactCheck(quickClientForm.phone, {
+    enabled: Boolean(addClientModalColumn),
   });
   const [actionForm, setActionForm] = useState({
     date: '',
@@ -335,6 +342,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
 
   const handleOpenAddClientModal = (column) => {
     setAddClientModalColumn(column);
+    setSaveQuickToGoogle(true);
     setQuickClientForm({
       full_name: '',
       phone: '',
@@ -376,6 +384,19 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
     };
 
     dispatch({ type: 'ADD_CLIENT', client: newClient });
+
+    if (saveQuickToGoogle && quickGoogleCheck.status === 'not_found' && newClient.phone) {
+      createGoogleContact(newClient, { checkDuplicate: false })
+        .then((gRes) => {
+          if (gRes.created) {
+            toast.success(`Контакт «${name}» также добавлен в Google Контакты`);
+          }
+        })
+        .catch((gErr) => {
+          console.warn('[Pipeline Google Contacts create error]', gErr);
+          toast.error(`Клиент сохранён в CRM, но не записан в Google Контакты: ${gErr.message}`);
+        });
+    }
 
     if (quickClientForm.notes?.trim()) {
       dispatch({
@@ -1833,7 +1854,7 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                     type="tel"
                     placeholder="+7 (999) 000-00-00"
                     value={quickClientForm.phone}
-                    onChange={e => setQuickClientForm(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={e => setQuickClientForm(prev => ({ ...prev, phone: formatPhone(e.target.value, true) }))}
                     style={{
                       width: '100%', boxSizing: 'border-box', padding: '10px 12px',
                       borderRadius: 10, border: '1px solid var(--border)',
@@ -1865,6 +1886,21 @@ export function PipelinePage({ initialSegment = 'all', scope = 'mine' }) {
                   </select>
                 </div>
               </div>
+
+              <GoogleContactStatusBadge
+                compact
+                status={quickGoogleCheck.status}
+                contact={quickGoogleCheck.contact}
+                error={quickGoogleCheck.error}
+                saveToGoogle={saveQuickToGoogle}
+                onToggleSaveToGoogle={setSaveQuickToGoogle}
+                canApplyContact={!quickClientForm.full_name?.trim()}
+                onApplyContact={(c) => {
+                  if (c.name && !quickClientForm.full_name?.trim()) {
+                    setQuickClientForm(prev => ({ ...prev, full_name: c.name }));
+                  }
+                }}
+              />
 
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', marginBottom: 4 }}>
