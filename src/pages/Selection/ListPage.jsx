@@ -64,12 +64,23 @@ export function ListPage() {
         const items = state.selectionItems || [];
         const filtered = items.filter(item => {
             if (!search) return true;
+            const q = search.toLowerCase().trim();
+            const cleanQ = q.replace(/\D/g, '');
             const itemClientIds = item.client_ids && item.client_ids.length > 0 ? item.client_ids : (item.client_id ? [item.client_id] : []);
             const matchingClients = state.clients.filter(c => itemClientIds.includes(c.id));
-            const clientMatch = matchingClients.some(c => (c.full_name || '').toLowerCase().includes(search.toLowerCase()));
-            return (item.address || '').toLowerCase().includes(search.toLowerCase()) ||
+            const clientMatch = matchingClients.some(c => {
+                const phones = [c.phone, ...(c.phones || [])].filter(Boolean);
+                return (c.full_name || '').toLowerCase().includes(q) ||
+                    phones.some(p => p.includes(q) || (cleanQ.length >= 3 && stripPhone(p).includes(cleanQ)));
+            });
+            const contactPhoneMatch = item.contact_phone && (
+                item.contact_phone.toLowerCase().includes(q) ||
+                (cleanQ.length >= 3 && stripPhone(item.contact_phone).includes(cleanQ))
+            );
+            return (item.address || '').toLowerCase().includes(q) ||
                 clientMatch ||
-                (item.contact_name || '').toLowerCase().includes(search.toLowerCase());
+                (item.contact_name || '').toLowerCase().includes(q) ||
+                Boolean(contactPhoneMatch);
         });
 
         // Group by client_id

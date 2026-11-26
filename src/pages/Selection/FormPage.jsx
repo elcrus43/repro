@@ -6,7 +6,7 @@ import { AddressAutocomplete } from '../../components/AddressAutocomplete';
 import { decodeImportData } from '../../utils/importDecoder';
 import { nanoid } from '../../utils/nanoid';
 import { formatPhone, stripPhone } from '../../utils/format';
-import { ChevronLeft, MapPin, DollarSign, User, Phone, Check, Ruler, Image, Upload } from 'lucide-react';
+import { ChevronLeft, MapPin, DollarSign, User, Phone, Check, Ruler, Link2, ExternalLink, Search, X } from 'lucide-react';
 import { PROPERTY_TYPES, CLIENT_TYPE_LABELS } from '../../data/constants';
 import { compressBlob } from '../../utils/image';
 import { MultiClientSelector } from '../../components/MultiClientSelector';
@@ -53,7 +53,36 @@ export function FormPage() {
 
     const [form, setForm] = useState(initialForm);
     const [matchingClient, setMatchingClient] = useState(null);
+    const [contactSearch, setContactSearch] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+
+    const contactSearchResults = React.useMemo(() => {
+        const q = contactSearch.trim().toLowerCase();
+        if (!q) return [];
+        const cleanQ = q.replace(/\D/g, '');
+        return (state.clients || []).filter(c => {
+            if (!c) return false;
+            const nameMatch = (c.full_name || '').toLowerCase().includes(q);
+            const phones = [c.phone, ...(c.phones || [])].filter(Boolean);
+            const phoneMatch = phones.some(p =>
+                p.toLowerCase().includes(q) ||
+                formatPhone(p).toLowerCase().includes(q) ||
+                (cleanQ.length >= 3 && stripPhone(p).includes(cleanQ))
+            );
+            return nameMatch || phoneMatch;
+        }).slice(0, 6);
+    }, [contactSearch, state.clients]);
+
+    const handleSelectExistingContact = (client) => {
+        setForm(f => ({
+            ...f,
+            contact_name: client.full_name || f.contact_name,
+            contact_phone: client.phone ? formatPhone(client.phone, true) : f.contact_phone,
+            contact_client_type: client.client_types?.[0] || f.contact_client_type || 'seller',
+        }));
+        setMatchingClient(client);
+        setContactSearch('');
+    };
 
     useEffect(() => {
         if (existing && !form.id) {
@@ -306,6 +335,41 @@ export function FormPage() {
                             <DollarSign size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: 15 }} />
                         </div>
                     </div>
+
+                    <div className="form-group">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                            <label className="form-label" style={{ fontWeight: 300, fontSize: 13, marginBottom: 0 }}>Ссылка на объявление</label>
+                            {/^https?:\/\//i.test(String(form.link || '').trim()) && (
+                                <a
+                                    href={form.link.trim()}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        fontSize: 11.5,
+                                        fontWeight: 600,
+                                        color: 'var(--primary)',
+                                        textDecoration: 'none'
+                                    }}
+                                >
+                                    <ExternalLink size={12} /> Открыть
+                                </a>
+                            )}
+                        </div>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="url"
+                                className="form-input"
+                                style={{ paddingLeft: 36, borderRadius: 14 }}
+                                value={form.link || ''}
+                                onChange={e => setF('link', e.target.value)}
+                                placeholder="https://www.avito.ru/... или cian.ru/..."
+                            />
+                            <Link2 size={16} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: 15 }} />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Контактное лицо */}
@@ -316,6 +380,107 @@ export function FormPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Phone size={20} color="var(--primary)" />
                         <div className="font-oswald" style={{ fontSize: 14, fontWeight: 300, textTransform: 'uppercase' }}>Контакты</div>
+                    </div>
+
+                    {/* Сквозной поиск по контактам (имя, телефон) */}
+                    <div className="form-group" style={{ position: 'relative' }}>
+                        <label className="form-label" style={{ fontWeight: 300, fontSize: 13 }}>Сквозной поиск контакта (имя или телефон)</label>
+                        <div style={{ position: 'relative' }}>
+                            <Search size={15} color="var(--text-muted)" style={{ position: 'absolute', left: 12, top: 15, pointerEvents: 'none' }} />
+                            <input
+                                type="text"
+                                className="form-input"
+                                style={{ paddingLeft: 36, paddingRight: contactSearch ? 34 : 12, borderRadius: 14 }}
+                                value={contactSearch}
+                                onChange={e => setContactSearch(e.target.value)}
+                                placeholder="Введите имя или цифры телефона..."
+                            />
+                            {contactSearch && (
+                                <button
+                                    type="button"
+                                    onClick={() => setContactSearch('')}
+                                    aria-label="Очистить поиск контакта"
+                                    style={{
+                                        position: 'absolute',
+                                        right: 10,
+                                        top: 12,
+                                        width: 22,
+                                        height: 22,
+                                        borderRadius: '50%',
+                                        border: 'none',
+                                        background: 'var(--bg-light)',
+                                        color: 'var(--text-muted)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <X size={12} />
+                                </button>
+                            )}
+                        </div>
+
+                        {contactSearch.trim() && (
+                            <div style={{
+                                marginTop: 6,
+                                borderRadius: 12,
+                                border: '1px solid var(--border-light)',
+                                background: 'var(--bg-light)',
+                                overflow: 'hidden',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}>
+                                {contactSearchResults.length === 0 ? (
+                                    <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+                                        Совпадений в базе контактов не найдено
+                                    </div>
+                                ) : (
+                                    contactSearchResults.map(client => (
+                                        <button
+                                            key={client.id}
+                                            type="button"
+                                            onClick={() => handleSelectExistingContact(client)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: 8,
+                                                padding: '9px 12px',
+                                                border: 'none',
+                                                borderBottom: '1px solid var(--border-light)',
+                                                background: 'transparent',
+                                                textAlign: 'left',
+                                                cursor: 'pointer',
+                                                width: '100%'
+                                            }}
+                                        >
+                                            <div style={{ minWidth: 0 }}>
+                                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                                                    {client.full_name || 'Без имени'}
+                                                </div>
+                                                <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                                                    {client.phone ? formatPhone(client.phone) : 'Телефон не указан'}
+                                                </div>
+                                            </div>
+                                            {Array.isArray(client.client_types) && client.client_types.length > 0 && (
+                                                <span style={{
+                                                    fontSize: 10,
+                                                    fontWeight: 600,
+                                                    padding: '2px 7px',
+                                                    borderRadius: 6,
+                                                    background: 'rgba(0, 82, 255, 0.08)',
+                                                    color: 'var(--primary)',
+                                                    flexShrink: 0
+                                                }}>
+                                                    {client.client_types.map(t => CLIENT_TYPE_LABELS[t] || t).join(', ')}
+                                                </span>
+                                            )}
+                                        </button>
+                                    ))
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {matchingClient && (
