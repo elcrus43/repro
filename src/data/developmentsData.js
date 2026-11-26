@@ -1913,11 +1913,12 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "10-14 этажей",
     "wall_material": "Монолит-кирпич",
     "images": [
-      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png",
-      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg",
-      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg"
+      "https://smu5kirov.ru/uploads/pt/ptichka-6a032c1733ca3427702359.jpg",
+      "https://smu5kirov.ru/uploads/pt/ptichka2-6a032c1869284106880924.jpg",
+      "https://smu5kirov.ru/uploads/ob/obshchii-6a032ed347de0433304527.jpg",
+      "https://smu5kirov.ru/uploads/pt/ptichka2-6a0483d3022a5952111683.jpg"
     ],
-    "description": "Малоквартирный дом бизнес-класса в центре Кирова. Доступны евро-3 площадью 65.89 м² по спеццене 180 тыс. ₽/м².",
+    "description": "Жилой дом «Маяк» - 8-этажный кирпичный дом бизнес-класса с закрытой территорией и подземной парковкой в деловом центре Кирова.",
     "features": [
       "Бизнес-класс в центре",
       "Малоквартирный формат",
@@ -1951,7 +1952,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Маяк+Молодой+Гвардии+84",
-    "builder_url": "https://smu5kirov.ru",
+    "builder_url": "https://smu5kirov.ru/project/dom-maiak",
     "contact_phone": "+7 (8332) 71-11-55"
   },
   {
@@ -1976,11 +1977,12 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "17 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg",
-      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png",
-      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg"
+      "https://smu5kirov.ru/uploads/so/sovremennik-01-69fc4d1bcc30c351337843.jpg",
+      "https://smu5kirov.ru/uploads/so/sovremennik-12-69fc4d1b1728d252886016.jpg",
+      "https://smu5kirov.ru/uploads/so/sovremennik-25-69fc4d199ad06780696158.jpg",
+      "https://smu5kirov.ru/uploads/so/sovremennik-02-69fc4d1b858bb299195124.jpg"
     ],
-    "description": "17-этажный кирпичный дом комфорт-класса в Зональном районе с видовыми квартирами. Действует акция со скидкой 1 млн руб. на видовые квартиры.",
+    "description": "Жилой дом «Современник» - 16-этажный полностью кирпичный дом комфорт-класса со своей закрытой территорией и видовыми квартирами в Зональном районе.",
     "features": [
       "Скидка 1 млн на видовые квартиры",
       "100% кирпич",
@@ -2014,7 +2016,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Современник+Хлыновская+21",
-    "builder_url": "https://smu5kirov.ru",
+    "builder_url": "https://smu5kirov.ru/project/dom-sovremennik",
     "contact_phone": "+7 (8332) 71-11-55"
   },
   {
@@ -2039,11 +2041,12 @@ export const DEFAULT_DEVELOPMENTS = [
     "floors": "8-10 этажей",
     "wall_material": "Кирпич",
     "images": [
-      "https://smu5kirov.ru/uploads/13/1394kh952-2-6a4671d68d8c2319688891.jpg",
-      "https://smu5kirov.ru/uploads/11/11-post-6aedf408d57a9573429649.jpg",
-      "https://smu5kirov.ru/uploads/im/img-20260423-203107-6a031eb60c6cf132138429.png"
+      "https://smu5kirov.ru/uploads/01/01-6a46307325677832036564.jpg",
+      "https://smu5kirov.ru/uploads/04/04-6a46325639ee8715541873.jpg",
+      "https://smu5kirov.ru/uploads/05/05-6a4636190950a892145519.jpg",
+      "https://smu5kirov.ru/uploads/ka/kam-10-1-6a4671d68e1fc725166163.jpg"
     ],
-    "description": "Клубный кирпичный дом бизнес-класса в тихом районе с высокой степенью готовности (сдача в IV кв. 2026 г.).",
+    "description": "Клубный дом на Рудницкого, 32 - малоэтажный кирпичный дом бизнес-класса в тихом центре Кирова с высокой степенью готовности.",
     "features": [
       "Бизнес-класс",
       "Сдача в конце 2026 г.",
@@ -2069,7 +2072,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Рудницкого+32+Киров",
-    "builder_url": "https://smu5kirov.ru",
+    "builder_url": "https://smu5kirov.ru/project/klubnyi-dom-na-rudnitskogo",
     "contact_phone": "+7 (8332) 71-11-55"
   },
   {
@@ -2133,7 +2136,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Династия+Киров",
-    "builder_url": "https://altai-stroi.org",
+    "builder_url": "https://altai-stroi.org/",
     "contact_phone": "+7 (8332) 77-88-99"
   },
   {
@@ -2189,7 +2192,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=ЖК+Оникс+Киров",
-    "builder_url": "https://altai-stroi.org",
+    "builder_url": "https://altai-stroi.org/",
     "contact_phone": "+7 (8332) 77-88-99"
   },
   {
@@ -2245,7 +2248,7 @@ export const DEFAULT_DEVELOPMENTS = [
     ],
     "domrf_url": "https://xn--80az8a.xn--d1aqf.xn--p1ai/сервисы/каталог-новостроек",
     "avito_url": "https://www.avito.ru/kirovskaya_oblast_kirov/kvartiry?q=Ердякова+9+Киров",
-    "builder_url": "https://altai-stroi.org",
+    "builder_url": "https://altai-stroi.org/zhilye-kompleksy/na-erdyakova-9/",
     "contact_phone": "+7 (8332) 77-88-99"
   },
   {
@@ -2311,7 +2314,7 @@ const STORAGE_KEY = 'reacrm_custom_developments';
 const REMOTE_CACHE_KEY = 'reacrm_developments_remote_cache';
 const REMOTE_META_KEY = 'reacrm_developments_sync_meta';
 
-const CATALOG_VERSION = '2026-11-26-v5';
+const CATALOG_VERSION = '2026-11-26-v6';
 
 function mergeDevelopmentsLists(baseList, customList) {
   const map = new Map();
