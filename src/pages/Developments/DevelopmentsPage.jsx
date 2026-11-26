@@ -671,8 +671,16 @@ export default function DevelopmentsPage() {
 
       // 4. Completion
       if (selectedCompletion === 'completed' && !dev.is_completed) return false;
-      if (selectedCompletion === '2026' && dev.completion_year !== 2026) return false;
-      if (selectedCompletion === '2027+' && (dev.completion_year || 0) < 2027) return false;
+      if (selectedCompletion !== 'all' && selectedCompletion !== 'completed') {
+        if (selectedCompletion === '2027+') {
+          if ((dev.completion_year || 0) < 2027) return false;
+        } else {
+          const targetYear = Number(selectedCompletion);
+          const matchesYear = dev.completion_year === targetYear;
+          const matchesDateText = String(dev.completion_date || '').includes(selectedCompletion);
+          if (!matchesYear && !matchesDateText) return false;
+        }
+      }
 
       // 5. Developer
       if (selectedDeveloper !== 'all' && dev.developer !== selectedDeveloper) return false;
@@ -1079,8 +1087,12 @@ export default function DevelopmentsPage() {
             {[
               { id: 'all', label: 'Любой' },
               { id: 'completed', label: 'Сдан' },
-              { id: '2026', label: '2026 г.' },
-              { id: '2027+', label: '2027+' }
+              { id: '2026', label: '2026' },
+              { id: '2027', label: '2027' },
+              { id: '2028', label: '2028' },
+              { id: '2029', label: '2029' },
+              { id: '2030', label: '2030' },
+              { id: '2031', label: '2031' }
             ].map(item => (
               <button
                 key={item.id}
