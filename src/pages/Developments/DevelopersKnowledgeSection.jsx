@@ -253,6 +253,14 @@ export function DevelopersKnowledgeSection({
 
                 {/* Structured specs */}
                 <div className="dev-kb-specs">
+                  {(kb.legalName || kb.inn) && (
+                    <div className="dev-kb-spec-row">
+                      <span className="dev-kb-spec-label">ЕИСЖС (наш.дом.рф):</span>
+                      <span className="dev-kb-spec-val">
+                        {[kb.legalName, kb.inn ? `ИНН ${kb.inn}` : null].filter(Boolean).join(' · ')}
+                      </span>
+                    </div>
+                  )}
                   <div className="dev-kb-spec-row">
                     <span className="dev-kb-spec-label">Отделка:</span>
                     <span className="dev-kb-spec-val">{kb.finishingStandards}</span>
@@ -284,6 +292,17 @@ export function DevelopersKnowledgeSection({
                     >
                       <ExternalLink size={13} />
                       <span>Сайт</span>
+                    </a>
+                  )}
+                  {kb.erzUrl && (
+                    <a
+                      href={kb.erzUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="dev-kb-contact-link"
+                    >
+                      <ExternalLink size={13} />
+                      <span>Реестр ЕИСЖС</span>
                     </a>
                   )}
                   {kb.minPrice && (

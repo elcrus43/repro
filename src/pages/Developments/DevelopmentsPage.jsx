@@ -1251,7 +1251,7 @@ export default function DevelopmentsPage() {
                   kb.name.toLowerCase().includes(devName)
                 );
               }).length;
-              if (count === 0 && !kb.liveFeedKey) return null;
+              if (count === 0 && !kb.liveFeedKey && !kb.logoUrl) return null;
               const liveCount = kb.liveFeedKey ? (liveState[kb.liveFeedKey]?.lots?.length || 0) : 0;
               const isSelectedDev = selectedDeveloper === kb.name;
               return (
@@ -1260,7 +1260,14 @@ export default function DevelopmentsPage() {
                   className={`dev-developer-logo-card ${isSelectedDev ? 'active' : ''}`}
                   role="button"
                   tabIndex={0}
-                  onClick={() => setSelectedDeveloper((prev) => (prev === kb.name ? 'all' : kb.name))}
+                  onClick={() => {
+                    if (count === 0) {
+                      setFocusedKnowledgeDevId(kb.id);
+                      setViewMode('knowledge');
+                    } else {
+                      setSelectedDeveloper((prev) => (prev === kb.name ? 'all' : kb.name));
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault();
