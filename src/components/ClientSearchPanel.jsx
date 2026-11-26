@@ -565,21 +565,21 @@ export function ClientSearchPanel({ request }) {
             onClick={handleSearch}
             disabled={loading}
             style={{
-              flex: 1, minWidth: 130, height: 36, padding: '0 12px', borderRadius: 10,
+              height: 30, padding: '0 12px', borderRadius: 8,
               border: 'none', cursor: loading ? 'not-allowed' : 'pointer',
               background: loading ? 'var(--bg-light)' : 'var(--primary)',
               color: loading ? 'var(--text-muted)' : '#fff',
-              fontSize: 12.5, fontWeight: 500,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              fontSize: 12, fontWeight: 500,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               transition: 'all 0.15s ease',
             }}
           >
             {loading ? (
-              <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Идёт автоподбор…</>
+              <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Идёт автоподбор…</>
             ) : hasSearched ? (
-              <><RefreshCw size={14} /> Обновить поиск</>
+              <><RefreshCw size={13} /> Обновить поиск</>
             ) : (
-              <><Search size={14} /> Найти подходящие объекты</>
+              <><Search size={13} /> Найти подходящие объекты</>
             )}
           </button>
 
@@ -589,17 +589,17 @@ export function ClientSearchPanel({ request }) {
               onClick={handleTelegramAlert}
               disabled={telegramLoading}
               style={{
-                height: 36, padding: '0 12px', borderRadius: 10,
+                height: 30, padding: '0 10px', borderRadius: 8,
                 border: '1.5px solid rgba(0, 136, 204, 0.3)',
                 background: 'rgba(0, 136, 204, 0.1)', color: '#0088cc',
-                fontSize: 12, fontWeight: 500, cursor: telegramLoading ? 'not-allowed' : 'pointer',
-                display: 'inline-flex', alignItems: 'center', gap: 6,
+                fontSize: 11.5, fontWeight: 500, cursor: telegramLoading ? 'not-allowed' : 'pointer',
+                display: 'inline-flex', alignItems: 'center', gap: 5,
               }}
             >
               {telegramLoading ? (
-                <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Отправка…</>
+                <><Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} /> Отправка…</>
               ) : (
-                <><Send size={14} /> В Telegram</>
+                <><Send size={13} /> В Telegram</>
               )}
             </button>
           )}

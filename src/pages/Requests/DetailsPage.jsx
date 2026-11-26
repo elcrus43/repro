@@ -530,34 +530,35 @@ export function DetailsPage() {
               className="card-clickable" 
               onClick={() => navigate(`/matches?request=${id}`)}
               style={{ 
-                height: 36, 
-                borderRadius: 10, 
+                alignSelf: 'flex-start',
+                height: 30, 
+                borderRadius: 8, 
                 border: 'none', 
                 background: 'linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%)', 
                 color: '#ffffff',
-                display: 'flex', 
+                display: 'inline-flex', 
                 alignItems: 'center', 
-                justifyContent: 'space-between', 
-                padding: '0 12px',
+                gap: 8,
+                padding: '0 10px',
                 cursor: 'pointer',
-                boxShadow: '0 3px 10px rgba(0, 82, 255, 0.2)',
+                boxShadow: '0 2px 8px rgba(0, 82, 255, 0.2)',
                 transition: 'all 0.15s ease'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 500 }}>
-                <Sparkles size={14} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, fontWeight: 500 }}>
+                <Sparkles size={13} />
                 <span>Подходящие объекты в базе CRM:</span>
                 <span style={{ 
                   background: 'rgba(255, 255, 255, 0.25)', 
-                  padding: '1px 7px', 
+                  padding: '1px 6px', 
                   borderRadius: 6, 
                   fontWeight: 700, 
-                  fontSize: 11.5 
+                  fontSize: 11 
                 }}>
                   {matches.length}
                 </span>
               </div>
-              <ChevronRight size={15} />
+              <ChevronRight size={14} />
             </button>
           ) : (
             <div style={{ 
