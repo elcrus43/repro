@@ -230,3 +230,18 @@ export function filterAndSortLots(lots = [], { roomType = 'all', search = '', so
     return String(a.id || '').localeCompare(String(b.id || ''));
   });
 }
+
+/**
+ * Повышает качество URL планировки, убирая кеш-миниатюру 1С-Битрикс (/upload/resize_cache/iblock/...)
+ * до оригинального файла в высоком разрешении (/upload/iblock/...).
+ * @param {string | null | undefined} url
+ * @returns {string}
+ */
+export function upgradePlanImageUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const upgraded = url.replace(
+    /\/upload\/resize_cache\/iblock\/([^/]+)\/\d+_\d+_\d+\/([^/?#]+)/i,
+    '/upload/iblock/$1/$2'
+  );
+  return upgraded;
+}

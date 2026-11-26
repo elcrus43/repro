@@ -37,6 +37,7 @@ import { getProfstroySlugForDevelopment } from '../../lib/profstroyLots';
 import { getSmu5SlugForDevelopment } from '../../lib/smu5Lots';
 import { getZheleznoSlugForDevelopment } from '../../lib/zheleznoLots';
 import { buildSelectionItemFromLot, groupLotsByLayout } from '../../lib/liveLotsFinder';
+import { upgradePlanImageUrl } from '../../lib/liveLotsShared';
 import { DevelopmentBannerModal } from '../../components/DevelopmentBannerModal';
 
 const KSM_ROOM_FILTERS = [
@@ -663,7 +664,16 @@ export function DevelopmentDetailModal({
                                 title={group.planImage ? 'Открыть планировку' : 'Планировка отсутствует'}
                               >
                                 {group.planImage ? (
-                                  <img src={group.planImage} alt={group.roomsLabel} loading="lazy" />
+                                  <img
+                                    src={upgradePlanImageUrl(group.planImage)}
+                                    alt={group.roomsLabel}
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      if (group.planImage && e.currentTarget.src !== group.planImage) {
+                                        e.currentTarget.src = group.planImage;
+                                      }
+                                    }}
+                                  />
                                 ) : (
                                   <Home size={22} className="text-muted" />
                                 )}
@@ -849,7 +859,16 @@ export function DevelopmentDetailModal({
                               title={lot.plan_image ? 'Открыть планировку' : 'Планировка отсутствует'}
                             >
                               {lot.plan_image ? (
-                                <img src={lot.plan_image} alt={lot.title} loading="lazy" />
+                                <img
+                                  src={upgradePlanImageUrl(lot.plan_image)}
+                                  alt={lot.title}
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    if (lot.plan_image && e.currentTarget.src !== lot.plan_image) {
+                                      e.currentTarget.src = lot.plan_image;
+                                    }
+                                  }}
+                                />
                               ) : (
                                 <Home size={20} className="text-muted" />
                               )}
@@ -1228,9 +1247,14 @@ export function DevelopmentDetailModal({
               </div>
             </div>
             <img
-              src={previewPlanLot.plan_image}
+              src={upgradePlanImageUrl(previewPlanLot.plan_image)}
               alt={previewPlanLot.title}
               className="ksm-plan-lightbox-img"
+              onError={(e) => {
+                if (previewPlanLot.plan_image && e.currentTarget.src !== previewPlanLot.plan_image) {
+                  e.currentTarget.src = previewPlanLot.plan_image;
+                }
+              }}
             />
           </div>
         </div>
@@ -1973,16 +1997,17 @@ export function DevelopmentDetailModal({
           }
         }
         .ksm-lot-plan {
-          width: 56px;
-          height: 56px;
-          border-radius: 8px;
-          background: var(--surface, #ffffff);
+          width: 84px;
+          height: 84px;
+          border-radius: 10px;
+          background: #ffffff;
           border: 1px solid var(--border, #e2e8f0);
           display: flex;
           align-items: center;
           justify-content: center;
           overflow: hidden;
           flex-shrink: 0;
+          padding: 4px;
         }
         .ksm-lot-plan.clickable {
           cursor: zoom-in;
@@ -1991,6 +2016,7 @@ export function DevelopmentDetailModal({
           width: 100%;
           height: 100%;
           object-fit: contain;
+          image-rendering: auto;
         }
         .ksm-lot-main {
           min-width: 0;
@@ -2099,10 +2125,10 @@ export function DevelopmentDetailModal({
         .ksm-plan-lightbox-card {
           background: var(--surface, #ffffff);
           border-radius: 16px;
-          padding: 16px;
-          max-width: 680px;
+          padding: 18px;
+          max-width: 960px;
           width: 100%;
-          max-height: 85vh;
+          max-height: 92vh;
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -2116,10 +2142,12 @@ export function DevelopmentDetailModal({
         }
         .ksm-plan-lightbox-img {
           width: 100%;
-          max-height: 70vh;
+          max-height: 78vh;
+          min-height: 320px;
           object-fit: contain;
           background: #ffffff;
           border-radius: 10px;
+          padding: 8px;
         }
         .dev-ksm-view-toggle {
           display: inline-flex;
@@ -2183,8 +2211,8 @@ export function DevelopmentDetailModal({
           }
         }
         .ksm-lot-plan.lg {
-          width: 72px;
-          height: 72px;
+          width: 112px;
+          height: 112px;
         }
         .ksm-layout-count-badge {
           font-size: 10px;

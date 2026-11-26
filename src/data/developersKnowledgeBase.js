@@ -165,7 +165,7 @@ export const DEVELOPERS_KNOWLEDGE = [
     name: 'КИНО Девелопмент',
     shortName: 'КИНО',
     monogram: 'КИНО',
-    logoUrl: '/images/developers/yuterra.webp',
+    logoUrl: '/images/developers/kino.webp',
     legalName: 'ГК «КИНО Девелопмент»',
     inn: '',
     erzUrl: ERZ_KIROV_URL,
