@@ -113,7 +113,7 @@ export const DEVELOPERS_KNOWLEDGE = [
     brandColor: '#4338CA',
     brandBg: '#E0E7FF',
     brandAccent: '#6366F1',
-    website: 'https://profstroy-kirov.ru',
+    website: 'https://xn----dtbfdhlbb8adiakbpbqnfoz7q.xn--p1ai/',
     phone: '+7 (922) 990-57-17',
     officeAddress: 'г. Киров, ул. Преображенская, 82Б',
     liveFeedKey: 'profstroy',
