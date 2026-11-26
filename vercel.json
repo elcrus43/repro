@@ -55,7 +55,7 @@
     ],
     "crons": [
         {
-            "path": "/api/cron-lots?provider=kssk",
+            "path": "/api/cron-lots?provider=all",
             "schedule": "0 5 * * *"
         },
         {

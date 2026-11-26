@@ -97,6 +97,7 @@ import {
 import {
   STROYSOYUZ_PROJECT_SLUGS,
   STROYSOYUZ_PROJECT_NAMES,
+  STROYSOYUZ_DEVELOPMENT_TO_ALL_SLUGS,
   getStroysoyuzSlugForDevelopment,
   fetchStroysoyuzLots,
   syncStroysoyuzProject,
@@ -1504,8 +1505,16 @@ export default function DevelopmentsPage() {
           smu5Slug ||
           zheleznoSlug;
         const providerSpec = providerId ? LIVE_PROVIDERS[providerId] : null;
+        const stroysoyuzSlugs =
+          providerId === 'stroysoyuz' && detailModalDev?.id
+            ? STROYSOYUZ_DEVELOPMENT_TO_ALL_SLUGS[detailModalDev.id]
+            : null;
         const detailLots = providerId && activeSlug
-          ? liveState[providerId].lots.filter((lot) => lot.project_slug === activeSlug)
+          ? liveState[providerId].lots.filter((lot) =>
+              Array.isArray(stroysoyuzSlugs)
+                ? stroysoyuzSlugs.includes(lot.project_slug)
+                : lot.project_slug === activeSlug
+            )
           : [];
         const detailMeta = providerId && activeSlug
           ? liveSummaries[providerId][activeSlug] || null

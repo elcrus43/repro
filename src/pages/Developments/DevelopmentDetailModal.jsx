@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { 
   X, 
   MapPin, 
@@ -79,6 +79,8 @@ export function DevelopmentDetailModal({
   const [addedKsmLots, setAddedKsmLots] = useState({});
   const [previewPlanLot, setPreviewPlanLot] = useState(null);
   const [bannerTarget, setBannerTarget] = useState(null);
+  const [expandedAptType, setExpandedAptType] = useState(null);
+  const autoSyncedProjectsRef = useRef(new Set());
 
   const ksmSlug = getKsmSlugForDevelopment(dev);
   const ksskSlug = getKsskSlugForDevelopment(dev);
@@ -161,6 +163,42 @@ export function DevelopmentDetailModal({
   const activeLots = Array.isArray(liveLots) ? liveLots : ksmLots;
   const activeMeta = liveMeta || ksmMeta;
   const activeSyncHandler = onSyncLiveProject || onSyncKsmProject;
+
+  // Автоматически подгружаем планировки и лоты при открытии карточки, если кэш пуст
+  useEffect(() => {
+    const slug = resolvedProvider?.slug;
+    if (!dev?.id || !slug || !activeSyncHandler || isKsmSyncing) return;
+    if (activeLots.length > 0) return;
+    const syncKey = `${resolvedProvider.id}:${slug}`;
+    if (autoSyncedProjectsRef.current.has(syncKey)) return;
+    autoSyncedProjectsRef.current.add(syncKey);
+    setIsKsmSyncing(true);
+    Promise.resolve(activeSyncHandler(slug))
+      .catch(() => {})
+      .finally(() => setIsKsmSyncing(false));
+  }, [dev?.id, resolvedProvider?.id, resolvedProvider?.slug, activeLots.length, activeSyncHandler, isKsmSyncing]);
+
+  const layoutsByRoomType = useMemo(() => {
+    const providerId = resolvedProvider?.id || 'ksm';
+    const providerLabel = resolvedProvider?.label || 'КСМ';
+    const enrichedAll = (Array.isArray(activeLots) ? activeLots : []).map((lot) => ({
+      ...lot,
+      _dev: dev || null,
+      _devId: dev?.id || null,
+      _devName: dev?.name || '',
+      _provider: providerId,
+      _providerLabel: providerLabel,
+    }));
+    const allGroups = groupLotsByLayout(enrichedAll);
+    const map = {};
+    for (const grp of allGroups) {
+      const rt = grp.roomsType || grp.representativeLot?.rooms_type;
+      if (!rt) continue;
+      if (!map[rt]) map[rt] = [];
+      map[rt].push(grp);
+    }
+    return map;
+  }, [activeLots, dev, resolvedProvider]);
 
   const filteredKsmLots = useMemo(
     () =>
@@ -273,6 +311,15 @@ export function DevelopmentDetailModal({
 
   const toggleLayoutGroup = (groupKey) => {
     setExpandedLayoutGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
+  };
+
+  const handleToggleAptType = async (aptType) => {
+    if (!aptType) return;
+    const willExpand = expandedAptType !== aptType;
+    setExpandedAptType(willExpand ? aptType : null);
+    if (willExpand && activeLots.length === 0 && resolvedProvider?.slug && activeSyncHandler && !isKsmSyncing) {
+      await handleSyncKsmLots();
+    }
   };
 
   return (
@@ -905,7 +952,9 @@ export function DevelopmentDetailModal({
             <div className="dev-apts-header">
               <div>
                 <h3 className="section-title">Планировки и квартиры в продаже</h3>
-                <p className="section-subtitle">Добавьте выбранную квартиру в подборку для отправки клиенту</p>
+                <p className="section-subtitle">
+                  Нажмите на тип квартиры, чтобы открыть полный список доступных планировок, или добавьте в подборку
+                </p>
               </div>
 
               {/* Client Selector for Fast Addition */}
@@ -944,58 +993,171 @@ export function DevelopmentDetailModal({
                   {dev.apartments && dev.apartments.length > 0 ? (
                     dev.apartments.map((apt, idx) => {
                       const isAdded = addedApts[apt.type];
+                      const typeLayouts = layoutsByRoomType[apt.type] || [];
+                      const isAptExpanded = expandedAptType === apt.type;
+                      const canExpand = typeLayouts.length > 0 || Boolean(resolvedProvider?.slug);
                       return (
-                        <tr key={idx}>
-                          <td>
-                            <strong>{apt.name}</strong>
-                          </td>
-                          <td>{apt.area}</td>
-                          <td>
-                            <span className="apt-price-val">
-                              {apt.price_from ? `${formatNumber(apt.price_from)} ₽` : 'По запросу'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="apt-sqm-val">
-                              {apt.price_sqm ? `${formatNumber(apt.price_sqm)} ₽` : '-'}
-                            </span>
-                          </td>
-                          <td>
-                            <span className="apt-count-badge">
-                              {apt.count ? `${apt.count} шт.` : 'Есть'}
-                            </span>
-                          </td>
-                          <td className="text-right">
-                            <div className="dev-table-actions-cell">
-                              <button
-                                type="button"
-                                className="btn-table-banner"
-                                onClick={() => setBannerTarget({ dev, layout: apt })}
-                                title="Создать баннер планировки"
-                              >
-                                <Sparkles size={13} />
-                                <span>Баннер</span>
-                              </button>
-                              <button
-                                type="button"
-                                className={`btn-add-table-sel ${isAdded ? 'added' : ''}`}
-                                onClick={() => handleAddAptToSelection(apt)}
-                              >
-                                {isAdded ? (
-                                  <>
-                                    <Check size={14} />
-                                    <span>Добавлено</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <PlusCircle size={14} />
-                                    <span>В подборку</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                        <React.Fragment key={idx}>
+                          <tr className={isAptExpanded ? 'dev-apt-row-expanded' : ''}>
+                            <td>
+                              {canExpand ? (
+                                <button
+                                  type="button"
+                                  className="dev-apt-type-btn"
+                                  onClick={() => handleToggleAptType(apt.type)}
+                                  title="Нажмите, чтобы увидеть все доступные планировки"
+                                >
+                                  <strong>{apt.name}</strong>
+                                  {typeLayouts.length > 0 && (
+                                    <span className="dev-apt-layouts-pill">
+                                      {typeLayouts.length} планир.
+                                    </span>
+                                  )}
+                                  {isAptExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                </button>
+                              ) : (
+                                <strong>{apt.name}</strong>
+                              )}
+                            </td>
+                            <td>{apt.area}</td>
+                            <td>
+                              <span className="apt-price-val">
+                                {apt.price_from ? `${formatNumber(apt.price_from)} ₽` : 'По запросу'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="apt-sqm-val">
+                                {apt.price_sqm ? `${formatNumber(apt.price_sqm)} ₽` : '-'}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="apt-count-badge">
+                                {apt.count ? `${apt.count} шт.` : 'Есть'}
+                              </span>
+                            </td>
+                            <td className="text-right">
+                              <div className="dev-table-actions-cell">
+                                <button
+                                  type="button"
+                                  className="btn-table-banner"
+                                  onClick={() => setBannerTarget({ dev, layout: apt })}
+                                  title="Создать баннер планировки"
+                                >
+                                  <Sparkles size={13} />
+                                  <span>Баннер</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`btn-add-table-sel ${isAdded ? 'added' : ''}`}
+                                  onClick={() => handleAddAptToSelection(apt)}
+                                >
+                                  {isAdded ? (
+                                    <>
+                                      <Check size={14} />
+                                      <span>Добавлено</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <PlusCircle size={14} />
+                                      <span>В подборку</span>
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isAptExpanded && (
+                            <tr className="dev-apt-drawer-row">
+                              <td colSpan={6}>
+                                <div className="dev-apt-layouts-drawer">
+                                  {isKsmSyncing && typeLayouts.length === 0 ? (
+                                    <div className="dev-apt-layouts-loading">
+                                      <Loader2 size={16} className="spin" />
+                                      <span>Подгружаем планировки от застройщика...</span>
+                                    </div>
+                                  ) : typeLayouts.length > 0 ? (
+                                    <>
+                                      <div className="dev-apt-layouts-drawer-head">
+                                        <span>
+                                          Все планировки: <strong>{apt.name}</strong> ({typeLayouts.length})
+                                        </span>
+                                      </div>
+                                      <div className="dev-apt-layouts-grid">
+                                        {typeLayouts.map((group) => {
+                                          const repLot = group.representativeLot;
+                                          const isGroupSingleAdded = group.count === 1 && Boolean(addedKsmLots[repLot.id]);
+                                          return (
+                                            <div key={group.groupKey} className="dev-apt-layout-item">
+                                              <div
+                                                className={`ksm-lot-plan lg ${group.planImage ? 'clickable' : ''}`}
+                                                onClick={() => {
+                                                  if (group.planImage) setPreviewPlanLot(repLot);
+                                                }}
+                                                title={group.planImage ? 'Открыть планировку' : 'Планировка отсутствует'}
+                                              >
+                                                {group.planImage ? (
+                                                  <img src={group.planImage} alt={group.roomsLabel} loading="lazy" />
+                                                ) : (
+                                                  <Home size={22} className="text-muted" />
+                                                )}
+                                              </div>
+                                              <div className="dev-apt-layout-info">
+                                                <div className="dev-apt-layout-title">
+                                                  <strong>{group.area ? `${group.area} м²` : group.roomsLabel}</strong>
+                                                  <span className="ksm-layout-count-badge">
+                                                    {group.count} кв.{group.floorsSummary ? ` · ${group.floorsSummary}` : ''}
+                                                  </span>
+                                                </div>
+                                                <div className="dev-apt-layout-price">
+                                                  {group.minPrice ? `от ${formatNumber(group.minPrice)} ₽` : 'По запросу'}
+                                                  {group.minPriceSqm ? ` · ${formatNumber(group.minPriceSqm)} ₽/м²` : ''}
+                                                </div>
+                                                {group.address && (
+                                                  <div className="dev-apt-layout-addr">{group.address}</div>
+                                                )}
+                                                <div className="dev-apt-layout-actions">
+                                                  <button
+                                                    type="button"
+                                                    className="btn-ksm-banner compact"
+                                                    onClick={() => setBannerTarget({ dev, layout: group })}
+                                                  >
+                                                    <Sparkles size={12} />
+                                                    <span>Баннер</span>
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={`btn-add-table-sel ${isGroupSingleAdded ? 'added' : ''}`}
+                                                    onClick={() => handleAddKsmLotToSelection(repLot)}
+                                                  >
+                                                    {isGroupSingleAdded ? (
+                                                      <>
+                                                        <Check size={13} />
+                                                        <span>Добавлено</span>
+                                                      </>
+                                                    ) : (
+                                                      <>
+                                                        <PlusCircle size={13} />
+                                                        <span>В подборку</span>
+                                                      </>
+                                                    )}
+                                                  </button>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="dev-apt-layouts-empty">
+                                      По типу «{apt.name}» сейчас нет загруженных отдельных планировок в live-фиде. Попробуйте обновить остатки выше или уточните у застройщика.
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
                       );
                     })
                   ) : (
@@ -2206,6 +2368,99 @@ export function DevelopmentDetailModal({
         }
         .btn-lightbox-banner:hover {
           background: #0045d8;
+        }
+        .dev-apt-type-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          background: transparent;
+          border: none;
+          padding: 4px 6px;
+          margin: -4px -6px;
+          border-radius: 8px;
+          color: inherit;
+          cursor: pointer;
+          text-align: left;
+          transition: background 0.15s;
+        }
+        .dev-apt-type-btn:hover {
+          background: rgba(0, 82, 255, 0.08);
+          color: #0052ff;
+        }
+        .dev-apt-layouts-pill {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: 999px;
+          background: rgba(0, 82, 255, 0.1);
+          color: #0052ff;
+        }
+        .dev-apt-drawer-row td {
+          padding: 0 !important;
+          background: var(--bg, #f8fafc);
+        }
+        .dev-apt-layouts-drawer {
+          padding: 14px 16px;
+          border-top: 1px solid var(--border, #e2e8f0);
+          border-bottom: 1px solid var(--border, #e2e8f0);
+        }
+        .dev-apt-layouts-drawer-head {
+          font-size: 13px;
+          margin-bottom: 10px;
+          color: var(--text, #0f172a);
+        }
+        .dev-apt-layouts-loading,
+        .dev-apt-layouts-empty {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 13px;
+          color: var(--text-secondary, #64748b);
+          padding: 6px 0;
+        }
+        .dev-apt-layouts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+          gap: 10px;
+        }
+        .dev-apt-layout-item {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+          background: var(--surface, #ffffff);
+          border: 1px solid var(--border, #e2e8f0);
+          border-radius: 12px;
+          padding: 10px;
+        }
+        .dev-apt-layout-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .dev-apt-layout-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
+        .dev-apt-layout-price {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0052ff;
+        }
+        .dev-apt-layout-addr {
+          font-size: 11px;
+          color: var(--text-secondary, #64748b);
+        }
+        .dev-apt-layout-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          margin-top: 4px;
+          flex-wrap: wrap;
         }
       `}</style>
 
