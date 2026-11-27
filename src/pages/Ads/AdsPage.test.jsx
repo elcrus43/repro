@@ -345,4 +345,34 @@ describe('AdsPage Component', () => {
     expect(mockCanvas.width).toBe(1080);
     expect(mockCanvas.height).toBe(1080);
   });
+
+  it('allows adding, persisting, selecting, and deleting a custom service', () => {
+    const { unmount } = render(<AdsPage />);
+
+    // Open custom service form
+    fireEvent.click(screen.getByText('Добавить услугу'));
+
+    const nameInput = screen.getByPlaceholderText(/Название услуги/i);
+    const badgeInput = screen.getByPlaceholderText(/Бейдж/i);
+    const sloganInput = screen.getByPlaceholderText(/Слоган/i);
+
+    fireEvent.change(nameInput, { target: { value: 'Коммерческая недвижимость' } });
+    fireEvent.change(badgeInput, { target: { value: '0% КОМИССИИ' } });
+    fireEvent.change(sloganInput, { target: { value: 'Подбор офисов и складов' } });
+
+    fireEvent.click(screen.getByText('Сохранить услугу'));
+
+    expect(mockToast.success).toHaveBeenCalledWith('Услуга сохранена');
+    expect(screen.getByText('Коммерческая недвижимость')).toBeInTheDocument();
+
+    // Unmount and re-render to verify localStorage persistence
+    unmount();
+    render(<AdsPage />);
+    expect(screen.getByText('Коммерческая недвижимость')).toBeInTheDocument();
+
+    // Delete the custom service
+    fireEvent.click(screen.getByLabelText('Удалить услугу Коммерческая недвижимость'));
+    expect(mockToast.success).toHaveBeenCalledWith('Услуга удалена');
+    expect(screen.queryByText('Коммерческая недвижимость')).not.toBeInTheDocument();
+  });
 });

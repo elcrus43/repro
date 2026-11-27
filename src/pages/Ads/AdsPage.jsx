@@ -183,16 +183,48 @@ function saveBulletsLibraryToStorage(serviceId, list) {
   }
 }
 
+const LS_CUSTOM_SERVICES_KEY = 'rem_ads_custom_services';
+
+function loadCustomServices() {
+  try {
+    const raw = localStorage.getItem(LS_CUSTOM_SERVICES_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter(s => s && s.id && s.shortTitle) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveCustomServicesToStorage(list) {
+  try {
+    localStorage.setItem(LS_CUSTOM_SERVICES_KEY, JSON.stringify(list));
+  } catch (e) {
+    console.warn('[Ads] Failed to save custom services:', e);
+  }
+}
+
 export function AdsPage() {
   const { state } = useApp();
   const { toast } = useToastContext();
   const currentUser = state.currentUser;
 
+  // Custom services with localStorage persistence
+  const [customServices, setCustomServices] = useState(loadCustomServices);
+  const [showAddService, setShowAddService] = useState(false);
+  const [newServiceName, setNewServiceName] = useState('');
+  const [newServiceBadge, setNewServiceBadge] = useState('');
+  const [newServiceSlogan, setNewServiceSlogan] = useState('');
+
+  const allServices = useMemo(() => {
+    return [...SERVICE_CATEGORIES, ...customServices];
+  }, [customServices]);
+
   // Selected Service
   const [selectedServiceId, setSelectedServiceId] = useState('sell');
   const activeService = useMemo(() => {
-    return SERVICE_CATEGORIES.find(s => s.id === selectedServiceId) || SERVICE_CATEGORIES[0];
-  }, [selectedServiceId]);
+    return allServices.find(s => s.id === selectedServiceId) || allServices[0];
+  }, [allServices, selectedServiceId]);
 
   // Customizable Banner Fields
   const [badgeText, setBadgeText] = useState(activeService.badge);
@@ -896,54 +928,271 @@ export function AdsPage() {
 
               {/* Service Cards Grid - Compact & Responsive */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8 }}>
-                {SERVICE_CATEGORIES.map(service => {
+                {allServices.map(service => {
                   const Icon = ICON_MAP[service.iconName] || Building2;
                   const isSelected = selectedServiceId === service.id;
                   return (
-                    <button
-                      key={service.id}
-                      type="button"
-                      onClick={() => handleServiceSelect(service)}
-                      style={{
-                        padding: '10px 10px',
-                        borderRadius: 10,
-                        border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                        background: isSelected ? 'rgba(0, 82, 255, 0.06)' : 'var(--bg)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'flex-start',
-                        gap: 6,
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.12)' : 'none'
-                      }}
-                    >
-                      <div style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 7,
-                        background: isSelected ? 'var(--primary)' : 'var(--surface)',
-                        color: isSelected ? '#ffffff' : 'var(--text)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
-                      }}>
-                        <Icon size={14} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)', lineHeight: 1.25 }}>
-                          {service.shortTitle}
+                    <div key={service.id} style={{ position: 'relative', display: 'flex' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleServiceSelect(service)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 10px',
+                          borderRadius: 10,
+                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                          background: isSelected ? 'rgba(0, 82, 255, 0.06)' : 'var(--bg)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: 6,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease',
+                          boxShadow: isSelected ? '0 2px 8px rgba(0, 82, 255, 0.12)' : 'none'
+                        }}
+                      >
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 7,
+                          background: isSelected ? 'var(--primary)' : 'var(--surface)',
+                          color: isSelected ? '#ffffff' : 'var(--text)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                        }}>
+                          <Icon size={14} />
                         </div>
-                        <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.2 }}>
-                          {service.badge}
+                        <div style={{ width: '100%', paddingRight: service.isCustom ? 14 : 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? 'var(--primary)' : 'var(--text)', lineHeight: 1.25 }}>
+                            {service.shortTitle}
+                          </div>
+                          <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.2 }}>
+                            {service.badge}
+                          </div>
                         </div>
-                      </div>
-                    </button>
+                      </button>
+                      {service.isCustom && (
+                        <button
+                          type="button"
+                          aria-label={`Удалить услугу ${service.shortTitle}`}
+                          title="Удалить свою услугу"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const next = customServices.filter(s => s.id !== service.id);
+                            setCustomServices(next);
+                            saveCustomServicesToStorage(next);
+                            if (selectedServiceId === service.id) {
+                              handleServiceSelect(SERVICE_CATEGORIES[0]);
+                            }
+                            toast?.success?.('Услуга удалена');
+                          }}
+                          style={{
+                            position: 'absolute',
+                            top: 6,
+                            right: 6,
+                            width: 22,
+                            height: 22,
+                            borderRadius: 6,
+                            border: 'none',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
+
+                <button
+                  type="button"
+                  onClick={() => setShowAddService(v => !v)}
+                  style={{
+                    padding: '10px 10px',
+                    borderRadius: 10,
+                    border: '1.5px dashed var(--primary)',
+                    background: showAddService ? 'rgba(0, 82, 255, 0.06)' : 'transparent',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    justifyContent: 'center',
+                    gap: 6,
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    color: 'var(--primary)'
+                  }}
+                >
+                  <div style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 7,
+                    background: 'rgba(0, 82, 255, 0.1)',
+                    color: 'var(--primary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <Plus size={15} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, lineHeight: 1.25 }}>
+                      Добавить услугу
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.2 }}>
+                      Своя с сохранением
+                    </div>
+                  </div>
+                </button>
               </div>
+
+              {showAddService && (
+                <div style={{
+                  marginTop: 12,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 8
+                }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                    Новая услуга
+                  </div>
+                  <input
+                    type="text"
+                    value={newServiceName}
+                    onChange={(e) => setNewServiceName(e.target.value)}
+                    placeholder="Название услуги (например: Коммерческая недвижимость)"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)',
+                      fontSize: 12
+                    }}
+                  />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8 }}>
+                    <input
+                      type="text"
+                      value={newServiceBadge}
+                      onChange={(e) => setNewServiceBadge(e.target.value)}
+                      placeholder="Бейдж (например: БЕЗ КОМИССИИ)"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        fontSize: 12
+                      }}
+                    />
+                    <input
+                      type="text"
+                      value={newServiceSlogan}
+                      onChange={(e) => setNewServiceSlogan(e.target.value)}
+                      placeholder="Слоган (необязательно)"
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'var(--surface)',
+                        color: 'var(--text)',
+                        fontSize: 12
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddService(false);
+                        setNewServiceName('');
+                        setNewServiceBadge('');
+                        setNewServiceSlogan('');
+                      }}
+                      style={{
+                        padding: '7px 12px',
+                        borderRadius: 8,
+                        border: '1px solid var(--border)',
+                        background: 'transparent',
+                        color: 'var(--text-secondary)',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trimmedName = newServiceName.trim();
+                        if (!trimmedName) {
+                          toast?.error?.('Введите название услуги');
+                          return;
+                        }
+                        const trimmedBadge = newServiceBadge.trim().toUpperCase() || 'СПЕЦПРЕДЛОЖЕНИЕ';
+                        const trimmedSlogan = newServiceSlogan.trim() || trimmedName;
+                        const newService = {
+                          id: `custom_${Date.now()}`,
+                          title: trimmedName,
+                          shortTitle: trimmedName,
+                          badge: trimmedBadge,
+                          iconName: 'Sparkles',
+                          defaultSlogan: trimmedSlogan,
+                          slogans: [trimmedSlogan],
+                          bullets: [
+                            'Индивидуальный подход к вашей задаче',
+                            'Бесплатная первичная консультация',
+                            'Оплата строго за достигнутый результат'
+                          ],
+                          ctas: ['Получить консультацию', 'Позвонить сейчас'],
+                          hashtags: ['#недвижимость', '#риелтор'],
+                          isCustom: true
+                        };
+                        const next = [...customServices, newService];
+                        setCustomServices(next);
+                        saveCustomServicesToStorage(next);
+                        handleServiceSelect(newService);
+                        setShowAddService(false);
+                        setNewServiceName('');
+                        setNewServiceBadge('');
+                        setNewServiceSlogan('');
+                        toast?.success?.('Услуга сохранена');
+                      }}
+                      style={{
+                        padding: '7px 14px',
+                        borderRadius: 8,
+                        border: 'none',
+                        background: 'var(--primary)',
+                        color: '#ffffff',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Save size={13} />
+                      <span>Сохранить услугу</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Forward Button */}
               <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
