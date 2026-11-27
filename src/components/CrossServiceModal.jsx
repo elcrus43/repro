@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { X, Copy, Check, Upload, Trash2, UserPlus, Search, Paperclip } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { useToastContext } from './Toast';
+import { AddressAutocomplete } from './AddressAutocomplete';
 import {
   CROSS_SERVICE_TEMPLATES,
   CROSS_SERVICE_STATUSES,
@@ -452,6 +453,17 @@ export function CrossServiceModal({
                         width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 12,
                         border: '1px solid var(--border)', background: 'var(--bg-light)',
                         color: 'var(--text)', fontSize: 13, resize: 'vertical',
+                      }}
+                    />
+                  ) : field.role === 'address' ? (
+                    <AddressAutocomplete
+                      value={val}
+                      onChange={addressVal => setField(field.key, addressVal)}
+                      placeholder={field.placeholder || 'Начните вводить адрес...'}
+                      inputStyle={{
+                        width: '100%', boxSizing: 'border-box', padding: '10px 32px 10px 34px',
+                        borderRadius: 12, border: '1px solid var(--border)',
+                        background: 'var(--bg-light)', color: 'var(--text)', fontSize: 13,
                       }}
                     />
                   ) : (
