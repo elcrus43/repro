@@ -68,12 +68,33 @@ export async function canvasToBannerImage(canvas, fileName = 'banner.webp') {
   return canvas.toDataURL('image/jpeg', 0.84);
 }
 
-export async function fetchSavedBanners({ userId, kind, propertyId } = {}) {
-  const local = getLocalBanners(userId).filter((b) => {
+function filterBanners(list, { kind, propertyId } = {}) {
+  return (Array.isArray(list) ? list : []).filter((b) => {
+    if (!b || !b.id) return false;
     if (kind && b.kind !== kind) return false;
     if (propertyId && String(b.property_id) !== String(propertyId)) return false;
     return true;
   });
+}
+
+function mergeBanners(primary, secondary) {
+  const seen = new Set();
+  const merged = [];
+  for (const item of [...(primary || []), ...(secondary || [])]) {
+    if (!item || !item.id) continue;
+    const key = String(item.id);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(item);
+  }
+  merged.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+  return merged;
+}
+
+export async function fetchSavedBanners({ userId, kind, propertyId } = {}) {
+  const userLocal = getLocalBanners(userId);
+  const guestLocal = userId ? getLocalBanners('guest') : [];
+  const local = filterBanners(mergeBanners(userLocal, guestLocal), { kind, propertyId });
 
   if (!userId) {
     return { data: local, error: null };
@@ -93,7 +114,8 @@ export async function fetchSavedBanners({ userId, kind, propertyId } = {}) {
       return { data: local, error };
     }
 
-    return { data, error: null };
+    const dbFiltered = filterBanners(data, { kind, propertyId });
+    return { data: mergeBanners(dbFiltered, local), error: null };
   } catch (err) {
     return { data: local, error: err };
   }
@@ -125,6 +147,8 @@ export async function saveBannerToDb({
     try {
       const { data, error } = await neonDb.insert('saved_banners', record);
       if (!error && data) {
+        const existing = getLocalBanners(userId).filter((b) => String(b.id) !== String(data.id));
+        setLocalBanners(userId, [data, ...existing]);
         return { data, error: null };
       }
     } catch (err) {
@@ -145,6 +169,10 @@ export async function saveBannerToDb({
 export async function deleteSavedBanner({ id, userId }) {
   const local = getLocalBanners(userId).filter((b) => String(b.id) !== String(id));
   setLocalBanners(userId, local);
+  if (userId) {
+    const guestLocal = getLocalBanners('guest').filter((b) => String(b.id) !== String(id));
+    setLocalBanners('guest', guestLocal);
+  }
 
   if (id && !String(id).startsWith('local-')) {
     try {

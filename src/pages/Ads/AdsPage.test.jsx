@@ -208,9 +208,10 @@ describe('AdsPage Component', () => {
     const goldColorBtn = screen.getByText('Золотой');
     fireEvent.click(goldColorBtn);
 
-    // Select a visual texture preset
-    const marblePreset = screen.getByText('Мрамор');
-    fireEvent.click(marblePreset);
+    // Custom photo background only
+    expect(screen.getByText(/Фон баннера \(только своё фото\)/i)).toBeInTheDocument();
+    expect(screen.getByText('Загрузить своё фото')).toBeInTheDocument();
+    expect(screen.queryByText('Мрамор')).not.toBeInTheDocument();
   });
 
   it('allows setting CTA and top badge on CTA tab', () => {

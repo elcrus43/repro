@@ -253,7 +253,7 @@ export function AdsPage() {
   const [bottomTone, setBottomTone] = useState('dark'); // 'dark' | 'light'
   const [layoutMode, setLayoutMode] = useState('expert');
   const [accentColor, setAccentColor] = useState(BANNER_PALETTE[0].color);
-  const [bgPresetId, setBgPresetId] = useState('arch_blueprint');
+  const [bgPresetId, setBgPresetId] = useState('none');
   const [customBgUrl, setCustomBgUrl] = useState(null);
   const [agencyName, setAgencyName] = useState('REA CRM');
 
@@ -2098,98 +2098,71 @@ export function AdsPage() {
                 </div>
               </div>
 
-              {/* Top Image / Background Texture Presets with Visual Thumbnails */}
+              {/* Top Image: Custom Photo Only */}
               <div style={{ paddingTop: 14, borderTop: '1px solid var(--border)' }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 8 }}>
-                  Картинка вверху / фоновая текстура:
+                  Фон баннера (только своё фото):
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))', gap: 8 }}>
-                  {CURATED_BACKGROUND_PRESETS.map(preset => {
-                    const isSelected = bgPresetId === preset.id && !customBgUrl;
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          setBgPresetId(preset.id);
-                          setCustomBgUrl(null);
-                        }}
-                        style={{
-                          padding: 4,
-                          borderRadius: 10,
-                          border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                          background: isSelected ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          gap: 4,
-                          overflow: 'hidden',
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <div style={{
-                          width: '100%',
-                          height: 46,
-                          borderRadius: 6,
-                          overflow: 'hidden',
-                          background: preset.previewBg || '#0F172A'
-                        }}>
-                          {preset.url && (
-                            <img
-                              src={preset.url}
-                              alt={preset.label}
-                              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                            />
-                          )}
-                        </div>
-                        <span style={{
-                          fontSize: 10,
-                          fontWeight: isSelected ? 700 : 600,
-                          color: isSelected ? 'var(--primary)' : 'var(--text)',
-                          paddingBottom: 2
-                        }}>
-                          {preset.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-
-                  <input
-                    type="file"
-                    ref={fileInputBgRef}
-                    onChange={handleBgUpload}
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                  />
+                <input
+                  type="file"
+                  ref={fileInputBgRef}
+                  onChange={handleBgUpload}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <button
                     type="button"
                     onClick={() => fileInputBgRef.current?.click()}
                     style={{
-                      padding: 4,
+                      padding: '8px 12px',
                       borderRadius: 10,
                       border: `2px dashed ${customBgUrl ? 'var(--primary)' : 'var(--border)'}`,
-                      background: customBgUrl ? 'rgba(0, 82, 255, 0.08)' : 'transparent',
+                      background: customBgUrl ? 'rgba(0, 82, 255, 0.08)' : 'var(--bg)',
                       cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 4,
-                      minHeight: 72
+                      gap: 8,
+                      minHeight: 54
                     }}
                   >
                     {customBgUrl ? (
-                      <div style={{ width: '100%', height: 46, borderRadius: 6, overflow: 'hidden' }}>
+                      <div style={{ width: 52, height: 42, borderRadius: 6, overflow: 'hidden', flexShrink: 0 }}>
                         <img src={customBgUrl} alt="Своё фото" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       </div>
                     ) : (
                       <Upload size={18} color="var(--primary)" />
                     )}
-                    <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--primary)' }}>
-                      {customBgUrl ? 'Своя картинка' : 'Загрузить фото'}
+                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)' }}>
+                      {customBgUrl ? 'Заменить своё фото' : 'Загрузить своё фото'}
                     </span>
                   </button>
+
+                  {customBgUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomBgUrl(null);
+                        setBgPresetId('none');
+                      }}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: 10,
+                        border: '1px solid var(--border)',
+                        background: 'var(--bg)',
+                        color: '#ef4444',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      <Trash2 size={14} />
+                      <span>Убрать фото</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -2868,6 +2841,28 @@ export function AdsPage() {
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
                   Предпросмотр баннера
                 </span>
+                {savedBanners.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById('ads-saved-banners')?.scrollIntoView({ behavior: 'smooth' })}
+                    style={{
+                      padding: '2px 7px',
+                      borderRadius: 10,
+                      border: '1px solid rgba(0, 82, 255, 0.25)',
+                      background: 'rgba(0, 82, 255, 0.08)',
+                      color: 'var(--primary)',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3
+                    }}
+                  >
+                    <Bookmark size={10} />
+                    <span>{savedBanners.length}</span>
+                  </button>
+                )}
               </div>
 
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -3069,7 +3064,9 @@ export function AdsPage() {
       </div>
 
       {/* Saved Ads Banners Gallery */}
-      <div style={{
+      <div
+        id="ads-saved-banners"
+        style={{
         marginTop: 20,
         background: 'var(--surface)',
         borderRadius: 16,
