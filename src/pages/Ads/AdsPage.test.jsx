@@ -376,4 +376,17 @@ describe('AdsPage Component', () => {
     expect(mockToast.success).toHaveBeenCalledWith('Услуга удалена');
     expect(screen.queryByText('Коммерческая недвижимость')).not.toBeInTheDocument();
   });
+
+  it('allows saving a new slogan to service list and setting it as default', () => {
+    render(<AdsPage />);
+    fireEvent.click(screen.getByText('2. Слоган & Текст'));
+
+    const textarea = screen.getByPlaceholderText('Введите привлекающий внимание слоган...');
+    fireEvent.change(textarea, { target: { value: 'Новый слоган по умолчанию' } });
+
+    fireEvent.click(screen.getByText('Сделать по умолчанию'));
+    expect(mockToast.success).toHaveBeenCalledWith('Слоган установлен по умолчанию');
+    expect(screen.getAllByText('Новый слоган по умолчанию').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('по умолчанию')).toBeInTheDocument();
+  });
 });

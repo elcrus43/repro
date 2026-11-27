@@ -204,6 +204,45 @@ function saveCustomServicesToStorage(list) {
   }
 }
 
+const LS_SLOGANS_PREFIX = 'rem_ads_slogans_';
+const LS_DEFAULT_SLOGAN_PREFIX = 'rem_ads_default_slogan_';
+
+function loadServiceSlogans(serviceId, baseSlogans = []) {
+  try {
+    const raw = localStorage.getItem(LS_SLOGANS_PREFIX + serviceId);
+    if (!raw) return [...baseSlogans];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return [...baseSlogans];
+    return parsed;
+  } catch {
+    return [...baseSlogans];
+  }
+}
+
+function saveServiceSlogans(serviceId, list) {
+  try {
+    localStorage.setItem(LS_SLOGANS_PREFIX + serviceId, JSON.stringify(list));
+  } catch (e) {
+    console.warn('[Ads] Failed to save service slogans:', e);
+  }
+}
+
+function loadServiceDefaultSlogan(serviceId, fallback) {
+  try {
+    return localStorage.getItem(LS_DEFAULT_SLOGAN_PREFIX + serviceId) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveServiceDefaultSlogan(serviceId, text) {
+  try {
+    localStorage.setItem(LS_DEFAULT_SLOGAN_PREFIX + serviceId, text);
+  } catch (e) {
+    console.warn('[Ads] Failed to save default slogan:', e);
+  }
+}
+
 export function AdsPage() {
   const { state } = useApp();
   const { toast } = useToastContext();
@@ -228,7 +267,9 @@ export function AdsPage() {
 
   // Customizable Banner Fields
   const [badgeText, setBadgeText] = useState(activeService.badge);
-  const [slogan, setSlogan] = useState(activeService.defaultSlogan);
+  const [serviceSlogans, setServiceSlogans] = useState(() => loadServiceSlogans(activeService.id, activeService.slogans));
+  const [serviceDefaultSlogan, setServiceDefaultSlogan] = useState(() => loadServiceDefaultSlogan(activeService.id, activeService.defaultSlogan));
+  const [slogan, setSlogan] = useState(() => loadServiceDefaultSlogan(activeService.id, activeService.defaultSlogan));
   const [ctaText, setCtaText] = useState(activeService.ctas[0] || 'Получить консультацию');
 
   // Badges list with persistence
@@ -308,13 +349,82 @@ export function AdsPage() {
   const handleServiceSelect = (service) => {
     setSelectedServiceId(service.id);
     setBadgeText(service.badge);
-    setSlogan(service.defaultSlogan);
+    const nextDefaultSlogan = loadServiceDefaultSlogan(service.id, service.defaultSlogan);
+    const nextSlogans = loadServiceSlogans(service.id, service.slogans);
+    setServiceDefaultSlogan(nextDefaultSlogan);
+    setServiceSlogans(nextSlogans);
+    setSlogan(nextDefaultSlogan);
     const savedBullets = loadSavedBullets(service.id, service.bullets);
     setBullets(savedBullets);
     setBulletsLibrary(loadBulletsLibrary(service.id, service.bullets));
     setEditingLibBulletIdx(null);
     setShowAddLibBullet(false);
     setCtaText(service.ctas[0] || 'Получить консультацию');
+  };
+
+  const handleSaveSloganToService = () => {
+    const trimmed = slogan.trim();
+    if (!trimmed) {
+      toast.error('Введите текст слогана');
+      return;
+    }
+    const nextList = serviceSlogans.includes(trimmed) ? serviceSlogans : [trimmed, ...serviceSlogans];
+    setServiceSlogans(nextList);
+    saveServiceSlogans(selectedServiceId, nextList);
+    if (activeService.isCustom) {
+      const nextCustom = customServices.map(s => (s.id === selectedServiceId ? { ...s, slogans: nextList } : s));
+      setCustomServices(nextCustom);
+      saveCustomServicesToStorage(nextCustom);
+    }
+    toast.success('Слоган сохранён в список услуги');
+  };
+
+  const handleSetDefaultSlogan = () => {
+    const trimmed = slogan.trim();
+    if (!trimmed) {
+      toast.error('Введите текст слогана');
+      return;
+    }
+    const nextList = serviceSlogans.includes(trimmed) ? serviceSlogans : [trimmed, ...serviceSlogans];
+    setServiceSlogans(nextList);
+    saveServiceSlogans(selectedServiceId, nextList);
+    setServiceDefaultSlogan(trimmed);
+    saveServiceDefaultSlogan(selectedServiceId, trimmed);
+    if (activeService.isCustom) {
+      const nextCustom = customServices.map(s => (
+        s.id === selectedServiceId ? { ...s, defaultSlogan: trimmed, slogans: nextList } : s
+      ));
+      setCustomServices(nextCustom);
+      saveCustomServicesToStorage(nextCustom);
+    }
+    toast.success('Слоган установлен по умолчанию');
+  };
+
+  const handleDeleteServiceSlogan = (targetSlog) => {
+    if (serviceSlogans.length <= 1) {
+      toast.error('Должен остаться хотя бы один слоган');
+      return;
+    }
+    const nextList = serviceSlogans.filter(s => s !== targetSlog);
+    setServiceSlogans(nextList);
+    saveServiceSlogans(selectedServiceId, nextList);
+    let nextDefault = serviceDefaultSlogan;
+    if (serviceDefaultSlogan === targetSlog) {
+      nextDefault = nextList[0];
+      setServiceDefaultSlogan(nextDefault);
+      saveServiceDefaultSlogan(selectedServiceId, nextDefault);
+    }
+    if (slogan === targetSlog) {
+      setSlogan(nextList[0]);
+    }
+    if (activeService.isCustom) {
+      const nextCustom = customServices.map(s => (
+        s.id === selectedServiceId ? { ...s, defaultSlogan: nextDefault, slogans: nextList } : s
+      ));
+      setCustomServices(nextCustom);
+      saveCustomServicesToStorage(nextCustom);
+    }
+    toast.success('Слоган удалён из списка');
   };
 
   const handleUpdateBullets = (newBullets) => {
@@ -458,7 +568,7 @@ export function AdsPage() {
 
   // Shuffle slogan from current service or global catalog
   const handleShuffleSlogan = () => {
-    const list = activeService.slogans || [];
+    const list = serviceSlogans || [];
     if (list.length === 0) return;
     const currentIndex = list.indexOf(slogan);
     const nextList = list.filter((_, idx) => idx !== currentIndex);
@@ -1262,43 +1372,83 @@ export function AdsPage() {
                   Рекомендованные слоганы для услуги:
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-                  {activeService.slogans.map((slog, index) => {
+                  {serviceSlogans.map((slog, index) => {
                     const isSelected = slogan === slog;
+                    const isDefault = serviceDefaultSlogan === slog;
                     return (
-                      <button
-                        key={index}
-                        type="button"
-                        onClick={() => setSlogan(slog)}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: 8,
-                          border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                          background: isSelected ? 'rgba(0, 82, 255, 0.06)' : 'var(--bg)',
-                          color: isSelected ? 'var(--primary)' : 'var(--text)',
-                          fontSize: 12,
-                          fontWeight: isSelected ? 700 : 500,
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          transition: 'all 0.15s ease'
-                        }}
-                      >
-                        <div style={{
-                          width: 16,
-                          height: 16,
-                          borderRadius: '50%',
-                          border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
-                        </div>
-                        <span style={{ flex: 1, lineHeight: 1.35 }}>{slog}</span>
-                      </button>
+                      <div key={index} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setSlogan(slog)}
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            padding: '8px 12px',
+                            borderRadius: 8,
+                            border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                            background: isSelected ? 'rgba(0, 82, 255, 0.06)' : 'var(--bg)',
+                            color: isSelected ? 'var(--primary)' : 'var(--text)',
+                            fontSize: 12,
+                            fontWeight: isSelected ? 700 : 500,
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <div style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: '50%',
+                            border: `2px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            {isSelected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)' }} />}
+                          </div>
+                          <span style={{ flex: 1, lineHeight: 1.35 }}>{slog}</span>
+                          {isDefault && (
+                            <span style={{
+                              fontSize: 9,
+                              fontWeight: 700,
+                              padding: '2px 6px',
+                              borderRadius: 6,
+                              background: 'rgba(0, 82, 255, 0.1)',
+                              color: 'var(--primary)',
+                              flexShrink: 0
+                            }}>
+                              по умолчанию
+                            </span>
+                          )}
+                        </button>
+                        {serviceSlogans.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteServiceSlogan(slog)}
+                            title="Удалить слоган из списка"
+                            aria-label={`Удалить слоган ${slog}`}
+                            style={{
+                              width: 28,
+                              height: 28,
+                              borderRadius: 8,
+                              border: '1px solid var(--border)',
+                              background: 'var(--bg)',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1327,6 +1477,48 @@ export function AdsPage() {
                     resize: 'vertical'
                   }}
                 />
+                <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={handleSaveSloganToService}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 8,
+                      border: '1px solid var(--border)',
+                      background: 'var(--bg)',
+                      color: 'var(--text)',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5
+                    }}
+                  >
+                    <Plus size={12} />
+                    <span>Сохранить в список</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSetDefaultSlogan}
+                    style={{
+                      padding: '5px 10px',
+                      borderRadius: 8,
+                      border: '1px solid rgba(0, 82, 255, 0.3)',
+                      background: 'rgba(0, 82, 255, 0.08)',
+                      color: 'var(--primary)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 5
+                    }}
+                  >
+                    <Save size={12} />
+                    <span>Сделать по умолчанию</span>
+                  </button>
+                </div>
               </div>
 
               {/* Slogan Font Size Slider */}
