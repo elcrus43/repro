@@ -19,6 +19,7 @@ import {
   MessageSquareText,
   Megaphone,
   Newspaper,
+  Briefcase,
   Sun,
   Moon,
   X
@@ -43,6 +44,7 @@ const PropertyFormPage = lazy(() => import('./pages/Properties/index.js').then(m
 const PublicPropertyPage = lazy(() => import('./pages/Properties/index.js').then(m => ({ default: m.PublicPropertyPage })));
 const ComparePage = lazy(() => import('./pages/Properties/index.js').then(m => ({ default: m.ComparePage })));
 const DocumentsPage = lazy(() => import('./pages/Documents/DocumentsPage'));
+const CrossServicesPage = lazy(() => import('./pages/CrossServices/CrossServicesPage').then(m => ({ default: m.CrossServicesPage })));
 const RequestsPage = lazy(() => import('./pages/Requests/index.js'));
 const RequestCardPage = lazy(() => import('./pages/Requests/index.js').then(m => ({ default: m.RequestCardPage })));
 const RequestFormPage = lazy(() => import('./pages/Requests/index.js').then(m => ({ default: m.RequestFormPage })));
@@ -147,6 +149,13 @@ function BottomNav() {
       icon: ClipboardList,
       color: '#10b981',
       bg: 'rgba(16, 185, 129, 0.1)',
+    },
+    {
+      path: '/cross-services',
+      label: 'Кросс-услуги',
+      icon: Briefcase,
+      color: '#0284c7',
+      bg: 'rgba(2, 132, 199, 0.1)',
     },
     {
       path: '/templates',
@@ -554,6 +563,7 @@ function AppRoutes() {
           <Route path="/chat/:dealId/:side" element={<PublicChatPage />} />
           <Route path="/compare" element={<RequireAuth><ComparePage /></RequireAuth>} />
           <Route path="/documents" element={<RequireAuth><DocumentsPage /></RequireAuth>} />
+          <Route path="/cross-services" element={<RequireAuth><CrossServicesPage /></RequireAuth>} />
           <Route path="/ads" element={<RequireAuth><AdsPage /></RequireAuth>} />
           <Route path="/news" element={<RequireAuth><NewsPage /></RequireAuth>} />
           <Route path="/advertising" element={<Navigate to="/ads" replace />} />

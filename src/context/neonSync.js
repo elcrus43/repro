@@ -163,7 +163,8 @@ export async function loadUserData(userId, role) {
           'created_at', t.created_at,
           'passport_details', t.passport_details
         )), '[]'::json) FROM "profiles" t),
-        'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t)
+        'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t),
+        'cross_services', (SELECT COALESCE(json_agg(t ORDER BY t.created_at DESC), '[]'::json) FROM "cross_services" t)
       ) as data
     `
     : `
@@ -188,7 +189,8 @@ export async function loadUserData(userId, role) {
           'created_at', t.created_at,
           'passport_details', CASE WHEN t.id = $1 THEN t.passport_details ELSE NULL END
         )), '[]'::json) FROM "profiles" t),
-        'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t WHERE t."realtor_id" = $1)
+        'selection_items', (SELECT COALESCE(json_agg(t), '[]'::json) FROM "selection_items" t WHERE t."realtor_id" = $1),
+        'cross_services', (SELECT COALESCE(json_agg(t ORDER BY t.created_at DESC), '[]'::json) FROM "cross_services" t WHERE t."realtor_id" = $1)
       ) as data
     `;
 
@@ -300,6 +302,7 @@ export async function loadUserData(userId, role) {
     return p;
   });
   const rawSelection = mergeUnique(fetchedData.selection_items, getLocal('selectionItems'), []);
+  const crossServices = mergeUnique(fetchedData.cross_services, getLocal('crossServices'), []);
 
   return {
     clients,
@@ -312,6 +315,7 @@ export async function loadUserData(userId, role) {
     pendingUsers,
     pricelist:   fetchedData.pricelist ?? [],
     deals,
+    crossServices,
     selectionItems: rawSelection.map(item => ({
       ...item,
       client_ids: item.client_ids || (item.client_id ? [item.client_id] : []),
@@ -529,13 +533,32 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       /* ── Профиль ────────────────────────────────────────────── */
       case 'UPDATE_PROFILE': {
-        const { id, full_name, phone, agency_name, inn, passport_details } = action.profile;
-        const updateData = { full_name: full_name || '', phone: phone || '', agency_name: agency_name || '' };
+        const { id, full_name, phone, agency_name, inn, passport_details } = action.profile || {};
+        const targetId = id || currentUser?.id;
+        if (!targetId) {
+          handleError('Не удалось определить ID пользователя для сохранения профиля');
+          return false;
+        }
+        const updateData = {};
+        if (full_name !== undefined) updateData.full_name = full_name || '';
+        if (phone !== undefined) updateData.phone = phone || '';
+        if (agency_name !== undefined) updateData.agency_name = agency_name || '';
         if (inn !== undefined) updateData.inn = inn || null;
         if (passport_details !== undefined) {
-          updateData.passport_details = typeof passport_details === 'string' ? JSON.parse(passport_details) : (passport_details || {});
+          if (typeof passport_details === 'string') {
+            try {
+              updateData.passport_details = JSON.parse(passport_details);
+            } catch {
+              updateData.passport_details = {};
+            }
+          } else {
+            updateData.passport_details = passport_details || {};
+          }
         }
-        result = await neonDb.update('profiles', id, updateData);
+        if (Object.keys(updateData).length === 0) {
+          return true;
+        }
+        result = await neonDb.update('profiles', targetId, updateData);
         break;
       }
 
@@ -642,6 +665,26 @@ export async function syncAction(rawAction, { onError, onRollback, currentUser }
 
       case 'DELETE_SELECTION_ITEM':
         result = await neonDb.delete('selection_items', action.id);
+        break;
+
+      /* ── Кросс-услуги ─────────────────────────────────────── */
+      case 'ADD_CROSS_SERVICE': {
+        const itemData = { ...action.item };
+        Object.keys(itemData).forEach(key => { if (itemData[key] === undefined) delete itemData[key]; });
+        result = await neonDb.insert('cross_services', itemData);
+        break;
+      }
+
+      case 'UPDATE_CROSS_SERVICE': {
+        const { id: csId, ...csData } = action.item;
+        const itemData = { ...csData };
+        Object.keys(itemData).forEach(key => { if (itemData[key] === undefined) delete itemData[key]; });
+        result = await neonDb.update('cross_services', csId, itemData);
+        break;
+      }
+
+      case 'DELETE_CROSS_SERVICE':
+        result = await neonDb.delete('cross_services', action.id);
         break;
 
       /* ── Объекты ──────────────────────────────────────────── */

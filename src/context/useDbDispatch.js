@@ -227,6 +227,28 @@ export function useDbDispatch(state, dispatch, onError) {
         // No enhancement needed
         break;
 
+      case 'ADD_CROSS_SERVICE':
+        enhancedAction.item = {
+          ...action.item,
+          id: action.item.id || nanoid(),
+          realtor_id: action.item.realtor_id || stateRef.current.currentUser?.id,
+          status: action.item.status || 'new',
+          created_at: now,
+          updated_at: now,
+        };
+        break;
+
+      case 'UPDATE_CROSS_SERVICE':
+        enhancedAction.item = {
+          ...action.item,
+          realtor_id: action.item.realtor_id || stateRef.current.currentUser?.id,
+          updated_at: now,
+        };
+        break;
+
+      case 'DELETE_CROSS_SERVICE':
+        break;
+
       // Чистые действия — не требуют синхронизации с БД
       case 'LOGOUT':
       case 'SET_LOADING':
@@ -256,6 +278,12 @@ export function useDbDispatch(state, dispatch, onError) {
     // Это гарантирует, что если dbDispatch будет вызван снова ДО того как React 
     // выполнит ререндер и обновит stateRef через useLayoutEffect, 
     // следующий вызов увидит уже "оптимистично" измененные данные.
+    if (enhancedAction.type === 'UPDATE_PROFILE' && enhancedAction.profile) {
+      stateRef.current = {
+        ...stateRef.current,
+        currentUser: { ...stateRef.current.currentUser, ...enhancedAction.profile },
+      };
+    }
     if (enhancedAction.type === 'UPDATE_PROPERTY' || enhancedAction.type === 'ADD_PROPERTY') {
       const nextProps = stateRef.current.properties.map(p => 
         p.id === enhancedAction.property.id ? enhancedAction.property : p
@@ -286,6 +314,20 @@ export function useDbDispatch(state, dispatch, onError) {
     if (enhancedAction.type === 'DELETE_SELECTION_ITEM') {
       const nextSelection = (stateRef.current.selectionItems || []).filter(i => i.id !== enhancedAction.id);
       stateRef.current = { ...stateRef.current, selectionItems: nextSelection };
+    }
+    if (enhancedAction.type === 'ADD_CROSS_SERVICE') {
+      const nextCross = [enhancedAction.item, ...(stateRef.current.crossServices || [])];
+      stateRef.current = { ...stateRef.current, crossServices: nextCross };
+    }
+    if (enhancedAction.type === 'UPDATE_CROSS_SERVICE') {
+      const nextCross = (stateRef.current.crossServices || []).map(i =>
+        i.id === enhancedAction.item.id ? { ...i, ...enhancedAction.item } : i
+      );
+      stateRef.current = { ...stateRef.current, crossServices: nextCross };
+    }
+    if (enhancedAction.type === 'DELETE_CROSS_SERVICE') {
+      const nextCross = (stateRef.current.crossServices || []).filter(i => i.id !== enhancedAction.id);
+      stateRef.current = { ...stateRef.current, crossServices: nextCross };
     }
     if (enhancedAction.type === 'ADD_SHOWING') {
       const nextShowings = [...(stateRef.current.showings || []), enhancedAction.showing];
@@ -478,7 +520,14 @@ export function useDbDispatch(state, dispatch, onError) {
         if (rawSession) {
           const parsed = JSON.parse(rawSession);
           if (parsed?.user) {
-            parsed.user = { ...parsed.user, ...enhancedAction.profile };
+            const nextUser = { ...parsed.user, ...enhancedAction.profile };
+            nextUser.user_metadata = {
+              ...(parsed.user.user_metadata || {}),
+              full_name: nextUser.full_name ?? parsed.user.user_metadata?.full_name ?? '',
+              name: nextUser.full_name ?? parsed.user.user_metadata?.name ?? '',
+              phone: nextUser.phone ?? parsed.user.user_metadata?.phone ?? '',
+            };
+            parsed.user = nextUser;
             localStorage.setItem('neon_session', JSON.stringify(parsed));
           }
         }

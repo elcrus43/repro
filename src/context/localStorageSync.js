@@ -180,6 +180,14 @@ export async function syncAction(action, { onError } = {}) {
                 deleteItem('matches', action.id);
                 break;
 
+            case 'ADD_CROSS_SERVICE':
+            case 'UPDATE_CROSS_SERVICE':
+                updateItem('crossServices', action.item);
+                break;
+            case 'DELETE_CROSS_SERVICE':
+                deleteItem('crossServices', action.id);
+                break;
+
             case 'APPROVE_USER':
                 updateItem('profiles', { id: action.userId, status: 'approved' });
                 break;

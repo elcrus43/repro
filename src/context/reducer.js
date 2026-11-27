@@ -154,6 +154,7 @@ export const EMPTY_STATE = {
   profiles:     [],
   pricelist:    [],
   deals:        [],
+  crossServices: [],
   loading:      true,
   error:        null,
   calendarStatus: null, // null | 'loading' | 'ok' | 'error'
@@ -517,6 +518,24 @@ export function reducer(state, action) {
       const selectionItems = (state.selectionItems || []).filter(i => i.id !== action.id);
       try { localStorage.setItem('rm_selection_items', JSON.stringify(selectionItems)); } catch (e) {}
       return { ...state, selectionItems };
+    }
+
+    /* ── Кросс-услуги ────────────────────────────────────────────────────── */
+    case 'ADD_CROSS_SERVICE': {
+      const next = [action.item, ...(state.crossServices || [])];
+      return { ...state, crossServices: next };
+    }
+
+    case 'UPDATE_CROSS_SERVICE': {
+      const next = (state.crossServices || []).map(i =>
+        i.id === action.item.id ? { ...i, ...action.item } : i
+      );
+      return { ...state, crossServices: next };
+    }
+
+    case 'DELETE_CROSS_SERVICE': {
+      const next = (state.crossServices || []).filter(i => i.id !== action.id);
+      return { ...state, crossServices: next };
     }
 
     default:

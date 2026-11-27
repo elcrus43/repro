@@ -21,9 +21,11 @@ import {
   Landmark,
   Target,
   Megaphone,
-  Newspaper
+  Newspaper,
+  Briefcase
 } from 'lucide-react';
 import { formatNumber, formatPhone, stripPhone } from '../utils/format';
+import { buildCrossServiceSearchText, getCrossServiceTemplate } from '../data/crossServices';
 
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
@@ -246,6 +248,15 @@ export function CommandPalette() {
       subtitle: 'Поиск новостей, мемов, фактов и оформление в сторис',
       icon: Newspaper,
       action: () => { setIsOpen(false); navigate('/news'); }
+    },
+    {
+      id: 'nav-cross-services',
+      type: 'navigation',
+      category: 'Разделы',
+      title: 'Кросс-услуги',
+      subtitle: 'Страхование, клининг, переезд, ремонт, приемка и др.',
+      icon: Briefcase,
+      action: () => { setIsOpen(false); navigate('/cross-services'); }
     }
   ], [navigate]);
 
@@ -320,8 +331,28 @@ export function CommandPalette() {
         action: () => { setIsOpen(false); navigate('/tasks'); }
       }));
 
-    return [...matchedStatic, ...matchedProperties, ...matchedClients, ...matchedDeals];
-  }, [query, staticActions, state.properties, state.clients, state.deals, navigate]);
+    // Search cross-services
+    const matchedCrossServices = (state.crossServices || [])
+      .filter(cs => {
+        const client = cs.client_id ? state.clients?.find(c => c.id === cs.client_id) : null;
+        return buildCrossServiceSearchText(cs, client).includes(q);
+      })
+      .slice(0, 4)
+      .map(cs => {
+        const tpl = getCrossServiceTemplate(cs.service_type);
+        return {
+          id: `cs-${cs.id}`,
+          type: 'cross_service',
+          category: 'Кросс-услуги',
+          title: `${tpl.shortTitle} - ${cs.client_name || 'Без имени'}`,
+          subtitle: cs.client_phone ? formatPhone(cs.client_phone) : (cs.address || tpl.title),
+          icon: Briefcase,
+          action: () => { setIsOpen(false); navigate('/cross-services'); }
+        };
+      });
+
+    return [...matchedStatic, ...matchedProperties, ...matchedClients, ...matchedDeals, ...matchedCrossServices];
+  }, [query, staticActions, state.properties, state.clients, state.deals, state.crossServices, navigate]);
 
   // Keyboard navigation
   const handleInputKeyDown = (e) => {

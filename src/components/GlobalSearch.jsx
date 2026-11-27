@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, X, Building2, Users, Target, Sparkles, FileCheck, ArrowRight } from 'lucide-react';
+import { Search, X, Building2, Users, Target, Sparkles, FileCheck, ArrowRight, Briefcase } from 'lucide-react';
 import { PROPERTY_TYPES } from '../data/constants';
+import { buildCrossServiceSearchText, getCrossServiceTemplate, getCrossServiceStatusMeta } from '../data/crossServices';
 import { hasPassedDealStage, isDealTypeCompatible } from '../utils/matching';
 import { formatNumber, formatPhone, stripPhone } from '../utils/format';
 
@@ -40,7 +41,7 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
     }, []);
 
     const results = useMemo(() => {
-        if (!query.trim()) return { properties: [], clients: [], requests: [], deals: [], matches: [] };
+        if (!query.trim()) return { properties: [], clients: [], requests: [], deals: [], matches: [], crossServices: [] };
         const q = query.toLowerCase().trim();
 
         return {
@@ -76,10 +77,14 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                 const text = `${prop?.address || ''} ${prop?.city || ''} ${client?.full_name || ''} ${m.status || ''}`.toLowerCase();
                 return text.includes(q) && m.score > 70;
             }).slice(0, 3),
+            crossServices: (state.crossServices || []).filter(cs => {
+                const client = cs.client_id ? state.clients?.find(c => c.id === cs.client_id) : null;
+                return buildCrossServiceSearchText(cs, client).includes(q);
+            }).slice(0, 4),
         };
-    }, [query, state.properties, state.clients, state.requests, state.deals, state.matches]);
+    }, [query, state.properties, state.clients, state.requests, state.deals, state.matches, state.crossServices]);
 
-    const totalCount = results.properties.length + results.clients.length + results.deals.length + results.requests.length + results.matches.length;
+    const totalCount = results.properties.length + results.clients.length + results.deals.length + results.requests.length + results.matches.length + results.crossServices.length;
     const hasResults = totalCount > 0;
 
     const handleSelect = (url) => {
@@ -308,6 +313,37 @@ export function GlobalSearch({ placeholder = 'Сквозной поиск...', s
                                             <ArrowRight size={13} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: 8 }} />
                                         </div>
                                     ))}
+                                </div>
+                            )}
+
+                            {/* Кросс-услуги */}
+                            {results.crossServices.length > 0 && (
+                                <div style={{ marginTop: 4 }}>
+                                    <div style={{ padding: '6px 14px', fontSize: 11, fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <Briefcase size={13} /> Кросс-услуги ({results.crossServices.length})
+                                    </div>
+                                    {results.crossServices.map(cs => {
+                                        const tpl = getCrossServiceTemplate(cs.service_type);
+                                        const st = getCrossServiceStatusMeta(cs.status);
+                                        return (
+                                            <div
+                                                key={cs.id}
+                                                onClick={() => handleSelect('/cross-services')}
+                                                className="card-clickable search-result-row"
+                                                style={{ padding: '8px 14px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                                            >
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {tpl.shortTitle} - {cs.client_name || 'Без имени'}
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                        {st.label}{cs.client_phone ? ` · ${formatPhone(cs.client_phone)}` : ''}
+                                                    </div>
+                                                </div>
+                                                <ArrowRight size={13} color="var(--text-muted)" style={{ flexShrink: 0, marginLeft: 8 }} />
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

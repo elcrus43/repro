@@ -16,7 +16,8 @@ import {
   Search,
   Target,
   Megaphone,
-  Newspaper
+  Newspaper,
+  Briefcase
 } from 'lucide-react';
 
 export function DesktopSidebar() {
@@ -59,6 +60,7 @@ export function DesktopSidebar() {
     { path: '/developments', icon: Landmark, label: 'Новостройки' },
     { path: '/requests', icon: Target, label: 'Подбор' },
     { path: '/clients', icon: Users, label: 'Клиенты' },
+    { path: '/cross-services', icon: Briefcase, label: 'Кросс-услуги' },
     { path: '/tasks', icon: FileCheck, label: 'Сделки' },
     { path: '/history', icon: History, label: 'История' },
     { path: '/documents', icon: ClipboardList, label: 'Документы' },

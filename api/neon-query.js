@@ -22,7 +22,7 @@ const NEON_JWT_SECRET   = process.env.NEON_JWT_SECRET;
 const ALLOWED_TABLES = new Set([
   'profiles', 'clients', 'properties', 'requests', 'matches',
   'showings', 'tasks', 'pricelist', 'deals', 'selection_items',
-  'app_errors', 'deal_messages', 'saved_banners'
+  'app_errors', 'deal_messages', 'saved_banners', 'cross_services'
 ]);
 
 // Зарезервированные ключевые слова SQL для исключения ложных алиасов
@@ -222,7 +222,7 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
 
   // P0-2, P0-3, SQLi-2, SQLi-5: Валидация ВСЕХ подзапросов в запросе
   const subqueries = extractSubqueries(query);
-  const privateTablesList = ['clients', 'deals', 'tasks', 'showings', 'selection_items', 'matches', 'requests', 'saved_banners'];
+  const privateTablesList = ['clients', 'deals', 'tasks', 'showings', 'selection_items', 'matches', 'requests', 'saved_banners', 'cross_services'];
   for (const sq of subqueries) {
     for (const tbl of privateTablesList) {
       const fromPattern = new RegExp(`\\bFROM\\s+(?:ONLY\\s+)?["']?${tbl}["']?\\b`, 'i');
@@ -249,7 +249,7 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
   const insertMatch = trimmedQuery.match(/^INSERT\s+INTO\s+["']?([a-zA-Z0-9_]+)["']?\s*\(([\s\S]*?)\)\s*VALUES\s*\(([\s\S]*?)\)/i);
   if (insertMatch) {
     const targetTable = insertMatch[1].toLowerCase();
-    const realtorTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'saved_banners']);
+    const realtorTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'saved_banners', 'cross_services']);
     if (realtorTables.has(targetTable)) {
       const colList = insertMatch[2].split(',').map(c => c.trim().replace(/["']/g, '').toLowerCase());
       const valList = insertMatch[3].split(',').map(v => v.trim());
@@ -281,7 +281,7 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
       const cond = `"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $${nextIdx})`;
       query = injectWhereCondition(query, cond);
     } else {
-      const personalTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'saved_banners']);
+      const personalTables = new Set(['clients', 'properties', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'saved_banners', 'cross_services']);
       if (personalTables.has(delTable)) {
         const prefix = delAlias ? `"${delAlias}".` : '';
         const nextIdx = params.length + 1;
@@ -294,7 +294,7 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
   // 3. Защита UPDATE (SQLi-1 скобочная изоляция, снятие регрессии matches)
   const { table: updTable, alias: updAlias } = extractTableAndAlias(query, 'UPDATE');
   if (updTable && /^\s*UPDATE\b/i.test(query)) {
-    const strictlyIsolated = new Set(['clients', 'tasks', 'showings', 'selection_items', 'deals', 'requests', 'saved_banners']);
+    const strictlyIsolated = new Set(['clients', 'tasks', 'showings', 'selection_items', 'deals', 'requests', 'saved_banners', 'cross_services']);
     const prefix = updAlias ? `"${updAlias}".` : '';
     if (strictlyIsolated.has(updTable)) {
       const nextIdx = params.length + 1;
@@ -332,7 +332,7 @@ export function transformAndValidateQuery(rawQuery, rawParams = [], jwtPayload =
         const cond = `${prefix}"deal_id" IN (SELECT id FROM deals WHERE realtor_id = $${nextIdx})`;
         query = injectWhereCondition(query, cond);
       } else {
-        const privateTables = new Set(['clients', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'saved_banners']);
+        const privateTables = new Set(['clients', 'deals', 'tasks', 'showings', 'selection_items', 'requests', 'matches', 'saved_banners', 'cross_services']);
         if (privateTables.has(selTable)) {
           const prefix = selAlias ? `"${selAlias}".` : '';
           const nextIdx = params.length + 1;
@@ -672,23 +672,50 @@ export default async function handler(req, res) {
     try {
       rows = await executeWithRetry(sql, query, params);
     } catch (firstErr) {
-      // Auto-bootstrap saved_banners table on first access if missing (42P01)
-      if (firstErr?.code === '42P01' && /\bsaved_banners\b/i.test(query)) {
-        await sql(`
-          CREATE TABLE IF NOT EXISTS saved_banners (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            realtor_id UUID NOT NULL,
-            kind TEXT NOT NULL DEFAULT 'ads',
-            property_id TEXT,
-            title TEXT,
-            format TEXT,
-            image_data TEXT NOT NULL,
-            caption TEXT,
-            config JSONB,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-          )
-        `);
-        await sql(`CREATE INDEX IF NOT EXISTS idx_saved_banners_realtor_kind ON saved_banners(realtor_id, kind, created_at DESC)`);
+      // Auto-bootstrap saved_banners / cross_services tables on first access if missing (42P01)
+      if (firstErr?.code === '42P01' && (/\bsaved_banners\b/i.test(query) || /\bcross_services\b/i.test(query))) {
+        if (/\bsaved_banners\b/i.test(query)) {
+          await sql(`
+            CREATE TABLE IF NOT EXISTS saved_banners (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              realtor_id UUID NOT NULL,
+              kind TEXT NOT NULL DEFAULT 'ads',
+              property_id TEXT,
+              title TEXT,
+              format TEXT,
+              image_data TEXT NOT NULL,
+              caption TEXT,
+              config JSONB,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+          `);
+          await sql(`CREATE INDEX IF NOT EXISTS idx_saved_banners_realtor_kind ON saved_banners(realtor_id, kind, created_at DESC)`);
+        }
+        if (/\bcross_services\b/i.test(query)) {
+          await sql(`
+            CREATE TABLE IF NOT EXISTS cross_services (
+              id TEXT PRIMARY KEY,
+              realtor_id UUID,
+              client_id TEXT,
+              property_id TEXT,
+              service_type TEXT NOT NULL,
+              status TEXT NOT NULL DEFAULT 'new',
+              client_name TEXT,
+              client_phone TEXT,
+              client_email TEXT,
+              address TEXT,
+              price NUMERIC,
+              commission NUMERIC,
+              details JSONB DEFAULT '{}'::jsonb,
+              attachments JSONB DEFAULT '[]'::jsonb,
+              notes TEXT,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+          `);
+          await sql(`CREATE INDEX IF NOT EXISTS idx_cross_services_realtor ON cross_services(realtor_id, created_at DESC)`);
+          await sql(`CREATE INDEX IF NOT EXISTS idx_cross_services_client ON cross_services(client_id)`);
+        }
         rows = await executeWithRetry(sql, query, params);
       } else {
         throw firstErr;

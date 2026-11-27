@@ -229,7 +229,8 @@ export const CLIENT_TYPES = [
     { id: 'tenant', label: 'Наниматель' },
     { id: 'lessor', label: 'Арендодатель' },
     { id: 'lessee', label: 'Арендатор' },
-    { id: 'lawyer', label: 'Юрист' }
+    { id: 'lawyer', label: 'Юрист' },
+    { id: 'cross_service', label: 'Кросс-услуги' }
 ];
 
 export const CLIENT_TYPE_LABELS = {
@@ -244,6 +245,7 @@ export const CLIENT_TYPE_LABELS = {
     lessor: 'Арендодатель',
     lessee: 'Арендатор',
     lawyer: 'Юрист',
+    cross_service: 'Кросс-услуги',
     'Лид': 'Лид',
     'Покупатель': 'Покупатель',
     'Продавец': 'Продавец',
@@ -254,5 +256,6 @@ export const CLIENT_TYPE_LABELS = {
     'Наниматель': 'Наниматель',
     'Арендодатель': 'Арендодатель',
     'Арендатор': 'Арендатор',
-    'Юрист': 'Юрист'
+    'Юрист': 'Юрист',
+    'Кросс-услуги': 'Кросс-услуги'
 };

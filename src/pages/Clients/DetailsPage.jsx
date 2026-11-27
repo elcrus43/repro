@@ -6,6 +6,8 @@ import { formatPhone, stripPhone, formatNumber, getEventStatusLabel, toLocalISOS
 import { PROPERTY_TYPES, AGENCY_CONTRACT_TYPES, CLIENT_TYPES, CLIENT_TYPE_LABELS } from '../../data/constants';
 import { nanoid } from '../../utils/nanoid';
 import { ClientVerificationModal } from '../../components/ClientVerificationModal';
+import { CrossServiceModal } from '../../components/CrossServiceModal';
+import { getCrossServiceTemplate, getCrossServiceStatusMeta, formatCrossServiceShareText } from '../../data/crossServices';
 import { hasPassedDealStage } from '../../utils/matching';
 import {
     ChevronLeft,
@@ -139,6 +141,7 @@ export function DetailsPage() {
 
     // Состояние для юридического лица и уполномоченного лица
     const isLegalEntity = client?.client_types?.includes('legal_entity');
+    const [crossServiceModal, setCrossServiceModal] = useState({ open: false, item: null });
     const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
     const [authModalMode, setAuthModalMode] = useState('select'); // 'select' | 'manual'
     const [authModalSearch, setAuthModalSearch] = useState('');
@@ -1912,6 +1915,108 @@ export function DetailsPage() {
                 <div className="client-profile-grid">
                     {/* Левая колонка: Агентские договоры, Сделки, Проверка, Реквизиты */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                        {/* ── Кросс-услуги клиента ── */}
+                {(() => {
+                    const clientCrossServices = (state.crossServices || []).filter(cs => cs.client_id === client.id);
+                    return (
+                        <div className="card" style={{
+                            padding: '14px 16px',
+                            border: '1px solid var(--border-light)',
+                            boxShadow: '0 2px 10px rgba(0,0,0,0.02)',
+                            borderRadius: 18,
+                            background: 'var(--surface)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 10
+                        }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{
+                                        width: 32, height: 32, borderRadius: 10,
+                                        background: clientCrossServices.length > 0 ? 'rgba(2, 132, 199, 0.1)' : 'var(--bg-light)',
+                                        color: clientCrossServices.length > 0 ? '#0284c7' : 'var(--text-secondary)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}>
+                                        <Briefcase size={16} />
+                                    </div>
+                                    <div>
+                                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                                            Кросс-услуги {clientCrossServices.length > 0 ? `(${clientCrossServices.length})` : ''}
+                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                                            Страхование, клининг, ремонт и доп. сервисы
+                                        </div>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setCrossServiceModal({ open: true, item: null })}
+                                    className="btn btn-primary"
+                                    style={{ borderRadius: 10, padding: '6px 12px', fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                >
+                                    <Plus size={14} /> Заявка
+                                </button>
+                            </div>
+
+                            {clientCrossServices.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                    {clientCrossServices.map(cs => {
+                                        const tpl = getCrossServiceTemplate(cs.service_type);
+                                        const st = getCrossServiceStatusMeta(cs.status);
+                                        return (
+                                            <div key={cs.id} style={{
+                                                padding: '10px 12px',
+                                                borderRadius: 12,
+                                                background: 'var(--bg-light)',
+                                                borderLeft: `3px solid ${tpl.color}`,
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                gap: 8,
+                                            }}>
+                                                <div style={{ minWidth: 0, flex: 1 }}>
+                                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {tpl.shortTitle}
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                                        <span style={{ padding: '1px 6px', borderRadius: 6, background: st.bg, color: st.color, fontWeight: 700 }}>
+                                                            {st.label}
+                                                        </span>
+                                                        <span>{cs.created_at ? new Date(cs.created_at).toLocaleDateString('ru-RU') : ''}</span>
+                                                        {cs.commission ? <strong style={{ color: '#10b981' }}>+{formatNumber(cs.commission)} ₽</strong> : null}
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                                                    <button
+                                                        type="button"
+                                                        title="Копировать заявку"
+                                                        onClick={async () => {
+                                                            try {
+                                                                await navigator.clipboard.writeText(formatCrossServiceShareText(cs));
+                                                                toast.success('Заявка скопирована');
+                                                            } catch { toast.error('Не удалось скопировать'); }
+                                                        }}
+                                                        style={{ padding: 6, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}
+                                                    >
+                                                        <FileText size={13} />
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        title="Редактировать"
+                                                        onClick={() => setCrossServiceModal({ open: true, item: cs })}
+                                                        style={{ padding: 6, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}
+                                                    >
+                                                        <Pencil size={13} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
                                         {/* ── Агентские договоры ── */}
                 <div className="card" style={{
                     padding: '14px 16px',
@@ -5159,6 +5264,15 @@ export function DetailsPage() {
                 items={mySelectionItems}
                 currentUser={state.currentUser}
             />
+
+            {crossServiceModal.open && (
+                <CrossServiceModal
+                    isOpen={crossServiceModal.open}
+                    initialItem={crossServiceModal.item}
+                    initialClientId={client.id}
+                    onClose={() => setCrossServiceModal({ open: false, item: null })}
+                />
+            )}
         </div>
     );
 }
